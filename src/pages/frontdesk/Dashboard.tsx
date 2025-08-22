@@ -62,13 +62,7 @@ export default function FrontDeskDashboard() {
   
   const { queuedActions, addToQueue, retryQueue, clearQueue } = useOfflineQueue();
 
-  if (isLoading) return <LoadingState message="Loading front desk..." />;
-  if (error) return <ErrorState message="Failed to load front desk data" onRetry={refetch} />;
-
-  const dashboard = frontDeskData?.data;
-  if (!dashboard) return <DataEmpty message="No front desk data available" />;
-
-  // Keyboard shortcuts
+  // Keyboard shortcuts - MOVED BEFORE EARLY RETURNS
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       if (event.ctrlKey || event.metaKey || event.altKey) return;
@@ -152,20 +146,20 @@ export default function FrontDeskDashboard() {
     }
   }, [isOffline, addToQueue]);
 
+  // Simple room action handler for keyboard shortcuts (doesn't depend on dashboard data)
   const handleRoomAction = useCallback((roomId: string, actionType: string) => {
-    const room = dashboard?.rooms?.find(r => r.id === roomId);
     const action = { 
       type: actionType, 
-      data: { roomId, roomNumber: room?.number, guestName: room?.guestName }, 
+      data: { roomId }, 
       timestamp: Date.now() 
     };
     
     if (isOffline) {
       addToQueue(action);
     } else {
-      console.log(`Executing ${actionType} for room ${room?.number}:`, action.data);
+      console.log(`Executing ${actionType} for room ${roomId}:`, action.data);
     }
-  }, [isOffline, addToQueue, dashboard]);
+  }, [isOffline, addToQueue]);
 
   const handleCardClick = useCallback((filterType: string) => {
     setDashboardFilter(prev => prev === filterType ? null : filterType);
@@ -179,6 +173,29 @@ export default function FrontDeskDashboard() {
     hover: { scale: 1.02 },
     tap: { scale: 0.98 }
   };
+
+  // Early returns AFTER all hooks are defined
+  if (isLoading) return <LoadingState message="Loading front desk..." />;
+  if (error) return <ErrorState message="Failed to load front desk data" onRetry={refetch} />;
+
+  const dashboard = frontDeskData?.data;
+  if (!dashboard) return <DataEmpty message="No front desk data available" />;
+
+  // All callbacks that depend on dashboard data
+  const handleRoomActionWithData = useCallback((roomId: string, actionType: string) => {
+    const room = dashboard?.rooms?.find(r => r.id === roomId);
+    const action = { 
+      type: actionType, 
+      data: { roomId, roomNumber: room?.number, guestName: room?.guestName }, 
+      timestamp: Date.now() 
+    };
+    
+    if (isOffline) {
+      addToQueue(action);
+    } else {
+      console.log(`Executing ${actionType} for room ${room?.number}:`, action.data);
+    }
+  }, [isOffline, addToQueue, dashboard]);
 
   return (
     <div className="min-h-screen bg-gradient-subtle pb-24">
@@ -327,10 +344,10 @@ export default function FrontDeskDashboard() {
                 </CardHeader>
                 <CardContent className="p-0 h-[calc(100%-4rem)]">
                   <RoomGrid
-                    rooms={dashboard?.rooms || []}
+                    rooms={dashboard.rooms || []}
                     selectedRoom={selectedRoom}
                     onRoomSelect={setSelectedRoom}
-                    onRoomAction={handleRoomAction}
+                    onRoomAction={handleRoomActionWithData}
                     filterBy={dashboardFilter}
                     isReadOnly={isReadOnly}
                   />
@@ -350,11 +367,11 @@ export default function FrontDeskDashboard() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="text-3xl font-bold text-primary">
-                    {dashboard?.occupancyRate}%
+                    {dashboard.occupancyRate}%
                   </div>
-                  <Progress value={dashboard?.occupancyRate} className="h-2" />
+                  <Progress value={dashboard.occupancyRate} className="h-2" />
                   <div className="text-xs text-muted-foreground">
-                    {dashboard?.totalRooms - dashboard?.roomsAvailable} / {dashboard?.totalRooms} rooms
+                    {dashboard.totalRooms - dashboard.roomsAvailable} / {dashboard.totalRooms} rooms
                   </div>
                 </CardContent>
               </Card>
@@ -363,7 +380,7 @@ export default function FrontDeskDashboard() {
               <div className="grid grid-cols-1 gap-3">
                 <QuickActionCard
                   title="Available"
-                  value={dashboard?.roomsAvailable}
+                  value={dashboard.roomsAvailable}
                   icon={Bed}
                   actionLabel="Assign Room"
                   onAction={() => handleCardClick('available')}
@@ -374,29 +391,29 @@ export default function FrontDeskDashboard() {
 
                 <QuickActionCard
                   title="Arrivals Today"
-                  value={dashboard?.arrivalsToday}
+                  value={dashboard.arrivalsToday}
                   icon={CheckCircle}
                   actionLabel="View Arrivals"
                   onAction={() => handleCardClick('arrivals')}
                   disabled={isReadOnly}
                   variant="primary"
-                  subtitle={`${dashboard?.pendingCheckIns} pending`}
+                  subtitle={`${dashboard.pendingCheckIns} pending`}
                 />
 
                 <QuickActionCard
                   title="Departures"
-                  value={dashboard?.departuresToday}
+                  value={dashboard.departuresToday}
                   icon={LogOut}
                   actionLabel="View Departures"
                   onAction={() => handleCardClick('departures')}
                   disabled={isReadOnly}
                   variant="warning"
-                  subtitle={`${dashboard?.pendingCheckOuts} pending`}
+                  subtitle={`${dashboard.pendingCheckOuts} pending`}
                 />
 
                 <QuickActionCard
                   title="Overstays"
-                  value={dashboard?.overstays}
+                  value={dashboard.overstays}
                   icon={Clock}
                   actionLabel="View Overstays"
                   onAction={() => handleCardClick('overstays')}
@@ -407,7 +424,7 @@ export default function FrontDeskDashboard() {
 
                 <QuickActionCard
                   title="Out of Service"
-                  value={dashboard?.oosRooms}
+                  value={dashboard.oosRooms}
                   icon={Wrench}
                   actionLabel="View OOS"
                   onAction={() => handleCardClick('oos')}
@@ -418,13 +435,13 @@ export default function FrontDeskDashboard() {
 
                 <QuickActionCard
                   title="Pending Payments"
-                  value={`₦${dashboard?.pendingPayments?.toLocaleString()}`}
+                  value={`₦${dashboard.pendingPayments?.toLocaleString()}`}
                   icon={CreditCard}
                   actionLabel="View Pending"
                   onAction={() => handleCardClick('pending_payments')}
                   disabled={isReadOnly}
                   variant="destructive"
-                  subtitle={`${dashboard?.pendingPaymentCount} guests`}
+                  subtitle={`${dashboard.pendingPaymentCount} guests`}
                 />
               </div>
             </div>

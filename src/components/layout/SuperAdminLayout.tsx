@@ -24,6 +24,7 @@ const navigation = [
   { name: 'Plans', href: '/sa/plans', icon: CreditCard },
   { name: 'Policies', href: '/sa/policies', icon: AlertTriangle },
   { name: 'Wizard', href: '/sa/wizard', icon: Wand2 },
+  { name: 'Advanced', href: '/sa/advanced', icon: Settings },
   { name: 'Audit', href: '/sa/audit', icon: Activity },
   { name: 'Metrics', href: '/sa/metrics', icon: BarChart3 },
 ];

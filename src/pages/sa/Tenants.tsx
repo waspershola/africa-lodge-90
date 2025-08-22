@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Search, Edit, Trash2, Building2, Mail, MapPin, Clock } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Building2, Mail, MapPin, Clock, UserCheck, Pause, Play, Upload, Download, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,10 +8,11 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { DataEmpty } from '@/components/ui/data-empty';
-import { useTenants, useDeleteTenant } from '@/hooks/useApi';
+import { useTenants, useDeleteTenant, useSuspendTenant, useReactivateTenant, useImpersonateTenant, useBulkImportTenants } from '@/hooks/useApi';
 import { CreateTenantForm } from '@/components/sa/CreateTenantForm';
 import { EditTenantForm } from '@/components/sa/EditTenantForm';
 import type { Tenant } from '@/lib/api/mockAdapter';
@@ -34,9 +35,15 @@ export default function Tenants() {
   const [searchTerm, setSearchTerm] = useState('');
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
   const { data: tenantsData, isLoading, error, refetch } = useTenants();
   const deleteTenant = useDeleteTenant();
+  const suspendTenant = useSuspendTenant();
+  const reactivateTenant = useReactivateTenant();
+  const impersonateTenant = useImpersonateTenant();
+  const bulkImportTenants = useBulkImportTenants();
 
   if (isLoading) return <LoadingState message="Loading tenants..." />;
   if (error) return <ErrorState message="Failed to load tenants" onRetry={refetch} />;
@@ -54,9 +61,73 @@ export default function Tenants() {
     }
   };
 
+  const handleSuspend = async (id: string) => {
+    if (confirm('Are you sure you want to suspend this tenant?')) {
+      suspendTenant.mutate(id);
+    }
+  };
+
+  const handleReactivate = async (id: string) => {
+    if (confirm('Are you sure you want to reactivate this tenant?')) {
+      reactivateTenant.mutate(id);
+    }
+  };
+
+  const handleImpersonate = async (id: string) => {
+    impersonateTenant.mutate(id);
+  };
+
+  const handleBulkImport = () => {
+    if (!selectedFile) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const csvData = e.target?.result as string;
+        const lines = csvData.split('\n').filter(line => line.trim());
+        const headers = lines[0].split(',');
+        const data = lines.slice(1).map(line => {
+          const values = line.split(',');
+          return headers.reduce((obj, header, index) => ({
+            ...obj,
+            [header.trim()]: values[index]?.trim()
+          }), {});
+        });
+        
+        bulkImportTenants.mutate(data);
+        setBulkImportOpen(false);
+        setSelectedFile(null);
+      } catch (error) {
+        console.error('Failed to parse CSV:', error);
+      }
+    };
+    reader.readAsText(selectedFile);
+  };
+
+  const exportToCSV = () => {
+    const csvContent = [
+      'name,slug,contactEmail,city,totalRooms,plan,status',
+      ...tenants.map(t => `${t.name},${t.slug},${t.contactEmail},${t.city},${t.totalRooms},${t.plan},${t.status}`)
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'tenants-export.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const getStatusBadge = (status: string) => {
+    const variants = {
+      active: 'default',
+      suspended: 'destructive',
+      inactive: 'secondary'
+    } as const;
+    
     return (
-      <Badge variant={status === 'active' ? 'default' : 'secondary'}>
+      <Badge variant={variants[status as keyof typeof variants] || 'secondary'}>
         {status}
       </Badge>
     );
@@ -120,13 +191,14 @@ export default function Tenants() {
           <p className="text-muted-foreground">Manage hotel properties and their subscriptions</p>
         </div>
         
-        <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-gradient-primary shadow-luxury hover:shadow-hover">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Tenant
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-gradient-primary shadow-luxury hover:shadow-hover">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Tenant
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Create New Tenant</DialogTitle>
@@ -134,6 +206,26 @@ export default function Tenants() {
             <CreateTenantForm onSuccess={() => setCreateModalOpen(false)} />
           </DialogContent>
         </Dialog>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">
+              <MoreHorizontal className="h-4 w-4 mr-2" />
+              Actions
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onClick={() => setBulkImportOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Import CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={exportToCSV}>
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
       </motion.div>
 
       {/* Search */}
@@ -242,40 +334,63 @@ export default function Tenants() {
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Sheet>
-                        <SheetTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => setEditingTenant(tenant)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </SheetTrigger>
-                        <SheetContent className="w-full sm:max-w-md">
-                          <SheetHeader>
-                            <SheetTitle>Edit Tenant</SheetTitle>
-                          </SheetHeader>
-                          {editingTenant && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleImpersonate(tenant.id)}>
+                          <UserCheck className="h-4 w-4 mr-2" />
+                          Impersonate
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <Sheet>
+                          <SheetTrigger asChild>
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                          </SheetTrigger>
+                          <SheetContent className="w-full sm:max-w-md">
+                            <SheetHeader>
+                              <SheetTitle>Edit Tenant</SheetTitle>
+                            </SheetHeader>
                             <EditTenantForm 
-                              tenant={editingTenant}
+                              tenant={tenant}
                               onSuccess={() => setEditingTenant(null)}
                             />
-                          )}
-                        </SheetContent>
-                      </Sheet>
-                      
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(tenant.id)}
-                        disabled={deleteTenant.isPending}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                          </SheetContent>
+                        </Sheet>
+                        <DropdownMenuSeparator />
+                        {tenant.status === 'active' ? (
+                          <DropdownMenuItem 
+                            onClick={() => handleSuspend(tenant.id)}
+                            className="text-orange-600"
+                          >
+                            <Pause className="h-4 w-4 mr-2" />
+                            Suspend
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem 
+                            onClick={() => handleReactivate(tenant.id)}
+                            className="text-green-600"
+                          >
+                            <Play className="h-4 w-4 mr-2" />
+                            Reactivate
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          onClick={() => handleDelete(tenant.id)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}
@@ -292,6 +407,40 @@ export default function Tenants() {
           />
         </motion.div>
       )}
+
+      {/* Bulk Import Dialog */}
+      <Dialog open={bulkImportOpen} onOpenChange={setBulkImportOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bulk Import Tenants</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Upload CSV File</label>
+              <Input
+                type="file"
+                accept=".csv"
+                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                className="mt-2"
+              />
+            </div>
+            <div className="text-sm text-muted-foreground">
+              <p>CSV should have columns: name, slug, contactEmail, city, totalRooms, plan</p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setBulkImportOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleBulkImport}
+                disabled={!selectedFile || bulkImportTenants.isPending}
+              >
+                {bulkImportTenants.isPending ? 'Importing...' : 'Import'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

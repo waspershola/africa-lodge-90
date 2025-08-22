@@ -20,6 +20,7 @@ import Support from "./pages/sa/Support";
 import Wizard from "./pages/sa/Wizard";
 import Plans from "./pages/sa/Plans";
 import Policies from "./pages/sa/Policies";
+import Advanced from "./pages/sa/Advanced";
 import Audit from "./pages/sa/Audit";
 import Metrics from "./pages/sa/Metrics";
 
@@ -51,6 +52,7 @@ const App = () => (
             <Route path="wizard" element={<Wizard />} />
             <Route path="plans" element={<Plans />} />
             <Route path="policies" element={<Policies />} />
+            <Route path="advanced" element={<Advanced />} />
             <Route path="audit" element={<Audit />} />
             <Route path="metrics" element={<Metrics />} />
           </Route>

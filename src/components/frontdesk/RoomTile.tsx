@@ -81,27 +81,28 @@ export const RoomTile = ({ room, isSelected, onClick }: RoomTileProps) => {
     <Card
       className={cn(
         "group cursor-pointer transition-all duration-200 hover:shadow-md relative overflow-hidden",
+        "h-32 w-full", // Fixed height for consistency
         config.bg,
         config.border,
         isSelected && "ring-2 ring-primary ring-offset-2 scale-105"
       )}
       onClick={onClick}
     >
-      <CardContent className="p-3 space-y-2">
+      <CardContent className="p-2 h-full flex flex-col justify-between">
         {/* Room Number & Type */}
         <div className="text-center">
-          <div className={cn("text-lg font-bold", config.text)}>
+          <div className={cn("text-base font-bold leading-tight", config.text)}>
             {room.number}
           </div>
-          <div className={cn("text-xs", config.text)}>
+          <div className={cn("text-[10px] leading-tight truncate", config.text)} title={room.type}>
             {room.name}
           </div>
         </div>
 
         {/* Status Badge */}
-        <div className="flex justify-center">
+        <div className="flex justify-center my-1">
           <Badge 
-            className={cn("text-xs px-2 py-0.5", config.badge)}
+            className={cn("text-[9px] px-1 py-0", config.badge)}
             variant="secondary"
           >
             {config.label}
@@ -110,60 +111,70 @@ export const RoomTile = ({ room, isSelected, onClick }: RoomTileProps) => {
 
         {/* Guest Info */}
         {room.guest && (
-          <div className="text-center">
-            <div className={cn("text-xs font-medium truncate", config.text)}>
+          <div className="text-center min-h-[2rem]">
+            <div 
+              className={cn("text-[10px] font-medium leading-tight truncate", config.text)}
+              title={room.guest}
+            >
               {room.guest}
             </div>
             {room.checkIn && (
-              <div className={cn("text-xs opacity-75", config.text)}>
-                Since: {new Date(room.checkIn).toLocaleDateString()}
+              <div className={cn("text-[9px] opacity-75 leading-tight", config.text)}>
+                {new Date(room.checkIn).toLocaleDateString('en-GB', { 
+                  day: '2-digit', 
+                  month: '2-digit' 
+                })}
               </div>
             )}
           </div>
         )}
 
-        {/* Alert Icons */}
-        {hasAlerts && (
-          <div className="flex justify-center gap-1 flex-wrap">
-            {room.alerts.cleaning && (
-              <div className="h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center" title="Cleaning Required">
-                <Sparkles className="h-3 w-3 text-white" />
-              </div>
-            )}
-            {room.alerts.depositPending && (
-              <div className="h-5 w-5 rounded-full bg-yellow-500 flex items-center justify-center" title="Deposit Pending">
-                <CreditCard className="h-3 w-3 text-white" />
-              </div>
-            )}
-            {room.alerts.idMissing && (
-              <div className="h-5 w-5 rounded-full bg-red-500 flex items-center justify-center" title="ID Missing">
-                <IdCard className="h-3 w-3 text-white" />
-              </div>
-            )}
-            {room.alerts.maintenance && (
-              <div className="h-5 w-5 rounded-full bg-orange-500 flex items-center justify-center" title="Maintenance Required">
-                <Wrench className="h-3 w-3 text-white" />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Folio Balance */}
-        {room.folio && room.folio.balance > 0 && (
-          <div className="text-center">
-            <div className={cn(
-              "text-xs font-medium",
-              room.folio.isPaid ? "text-success" : "text-destructive"
-            )}>
-              ₦{room.folio.balance.toLocaleString()}
+        {/* Bottom Section - Alerts and Balance */}
+        <div className="flex items-center justify-center gap-1 min-h-[1.25rem]">
+          {/* Alert Icons */}
+          {hasAlerts && (
+            <>
+              {room.alerts.cleaning && (
+                <div className="h-3 w-3 rounded-full bg-blue-500 flex items-center justify-center" title="Cleaning Required">
+                  <Sparkles className="h-2 w-2 text-white" />
+                </div>
+              )}
+              {room.alerts.depositPending && (
+                <div className="h-3 w-3 rounded-full bg-yellow-500 flex items-center justify-center" title="Deposit Pending">
+                  <CreditCard className="h-2 w-2 text-white" />
+                </div>
+              )}
+              {room.alerts.idMissing && (
+                <div className="h-3 w-3 rounded-full bg-red-500 flex items-center justify-center" title="ID Missing">
+                  <IdCard className="h-2 w-2 text-white" />
+                </div>
+              )}
+              {room.alerts.maintenance && (
+                <div className="h-3 w-3 rounded-full bg-orange-500 flex items-center justify-center" title="Maintenance Required">
+                  <Wrench className="h-2 w-2 text-white" />
+                </div>
+              )}
+            </>
+          )}
+          
+          {/* Folio Balance */}
+          {room.folio && room.folio.balance > 0 && (
+            <div 
+              className={cn(
+                "text-[9px] font-medium px-1 rounded",
+                room.folio.isPaid ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"
+              )}
+              title={`₦${room.folio.balance.toLocaleString()}`}
+            >
+              ₦{room.folio.balance >= 1000 ? `${(room.folio.balance/1000).toFixed(0)}k` : room.folio.balance}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Overstay Indicator */}
         {room.status === 'overstay' && (
           <div className="absolute top-1 right-1">
-            <div className="h-3 w-3 rounded-full bg-purple-500 animate-pulse" />
+            <div className="h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
           </div>
         )}
 

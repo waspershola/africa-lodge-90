@@ -22,6 +22,11 @@ import {
 } from "lucide-react";
 import { RoomGrid } from "./frontdesk/RoomGrid";
 import { ActionQueue } from "./frontdesk/ActionQueue";
+import { ActionBar } from "./frontdesk/ActionBar";
+import { GuestQueuePanel } from "./frontdesk/GuestQueuePanel";
+import { RoomLegend } from "./frontdesk/RoomLegend";
+import { KeyboardShortcutsHelper } from "./frontdesk/KeyboardShortcutsHelper";
+import { QuickFilters } from "./frontdesk/QuickFilters";
 import type { Room } from "./frontdesk/RoomGrid";
 
 // Mock data
@@ -62,6 +67,7 @@ const FrontDeskDashboard = () => {
   const [activeFilter, setActiveFilter] = useState<string | undefined>(undefined);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [showActionQueue, setShowActionQueue] = useState(false);
+  const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
 
   // Simulate online/offline status
   useEffect(() => {
@@ -84,6 +90,16 @@ const FrontDeskDashboard = () => {
 
   const handleCardClick = (filterKey: string) => {
     setActiveFilter(activeFilter === filterKey ? undefined : filterKey);
+  };
+
+  const handleAction = (action: string) => {
+    console.log('Front desk action:', action);
+    // Handle various front desk actions here
+  };
+
+  const handleGuestAction = (guest: any, action: string) => {
+    console.log('Guest action:', action, guest);
+    // Handle guest-specific actions here
   };
 
   const dashboardCards = [
@@ -217,173 +233,75 @@ const FrontDeskDashboard = () => {
         </div>
       </div>
 
-      {/* Split Screen Layout */}
+      {/* Main Content */}
       <div className="p-6 space-y-6">
         {/* Action Queue (when offline) */}
         {showActionQueue && (
           <ActionQueue isVisible={showActionQueue} isOnline={!isOffline} />
         )}
 
-        <div className="grid lg:grid-cols-4 gap-6">
-          {/* Left Panel - Room Grid (3/4 width) */}
-          <div className="lg:col-span-3">
-            <RoomGrid 
-              searchQuery={searchQuery}
-              activeFilter={activeFilter}
-              onRoomSelect={setSelectedRoom}
-            />
-          </div>
-
-          {/* Right Panel - Dashboard Cards (1/4 width) */}
-          <div className="lg:col-span-1 space-y-4">
-            <div className="space-y-3">
-              <h3 className="font-semibold text-lg">Quick KPIs</h3>
-              <div className="space-y-3">
-                {dashboardCards.map((card, index) => (
-                  <Card 
-                    key={index} 
-                    className={`luxury-card cursor-pointer transition-all duration-200 hover:shadow-md ${
-                      activeFilter === card.filterKey ? 'ring-2 ring-primary shadow-lg' : ''
-                    }`}
-                    onClick={() => card.filterKey && handleCardClick(card.filterKey)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                          card.color === 'success' ? 'bg-success/10 text-success' :
-                          card.color === 'primary' ? 'bg-primary/10 text-primary' :
-                          card.color === 'accent' ? 'bg-accent/10 text-accent-foreground' :
-                          card.color === 'warning' ? 'bg-warning/10 text-warning-foreground' :
-                          card.color === 'danger' ? 'bg-danger/10 text-danger' :
-                          'bg-muted/50 text-muted-foreground'
-                        }`}>
-                          {card.icon}
-                        </div>
-                        <div>
-                          <div className="text-xl font-bold">{card.value}</div>
-                          <div className="text-xs text-muted-foreground">{card.title}</div>
-                        </div>
-                      </div>
-                      
-                      {card.filterKey ? (
-                        <Button 
-                          variant={activeFilter === card.filterKey ? "default" : "outline"}
-                          size="sm" 
-                          className="w-full text-xs"
-                        >
-                          {activeFilter === card.filterKey ? (
-                            <>
-                              <Filter className="h-3 w-3 mr-1" />
-                              Filtering
-                            </>
-                          ) : (
-                            'Filter Rooms'
-                          )}
-                        </Button>
-                      ) : (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="w-full text-xs"
-                        >
-                          {card.action}
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          </div>
+        {/* Room Status Overview */}
+        <div className="space-y-4">
+          <RoomGrid 
+            searchQuery={searchQuery}
+            activeFilter={activeFilter}
+            onRoomSelect={setSelectedRoom}
+          />
         </div>
 
-        {/* Quick Activity Overview */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-          {/* Today's Arrivals */}
-          <Card className="luxury-card">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <LogIn className="h-4 w-4 text-success" />
-                Today's Arrivals
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {mockArrivals.slice(0, 3).map(arrival => (
-                <div key={arrival.id} className="flex items-center justify-between text-sm">
-                  <span className="truncate">{arrival.guest}</span>
-                  <Badge 
-                    variant={arrival.status === 'checked-in' ? 'default' : 'secondary'}
-                    className={arrival.status === 'checked-in' ? 'bg-success text-success-foreground' : ''}
-                  >
-                    {arrival.status === 'checked-in' ? '✓' : '⏱'}
-                  </Badge>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+        {/* Action Bar */}
+        <ActionBar 
+          onAction={handleAction}
+          showKeyboardHelp={showKeyboardHelp}
+          onToggleKeyboardHelp={() => setShowKeyboardHelp(!showKeyboardHelp)}
+        />
 
-          {/* Today's Departures */}
-          <Card className="luxury-card">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <LogOut className="h-4 w-4 text-warning" />
-                Today's Departures
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {mockDepartures.slice(0, 3).map(departure => (
-                <div key={departure.id} className="flex items-center justify-between text-sm">
-                  <span className="truncate">{departure.guest}</span>
-                  <Badge 
-                    variant={departure.status === 'checked-out' ? 'default' : 'secondary'}
-                    className={departure.status === 'checked-out' ? 'bg-success text-success-foreground' : ''}
-                  >
-                    {departure.status === 'checked-out' ? '✓' : '⏱'}
+        {/* Quick KPIs Cards - Now under room grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+          {dashboardCards.map((card, index) => (
+            <Card 
+              key={index} 
+              className={`luxury-card cursor-pointer transition-all duration-200 hover:shadow-md ${
+                activeFilter === card.filterKey ? 'ring-2 ring-primary shadow-lg' : ''
+              }`}
+              onClick={() => card.filterKey && handleCardClick(card.filterKey)}
+            >
+              <CardContent className="p-3 text-center">
+                <div className={`h-6 w-6 rounded-full flex items-center justify-center mx-auto mb-2 ${
+                  card.color === 'success' ? 'bg-success/10 text-success' :
+                  card.color === 'primary' ? 'bg-primary/10 text-primary' :
+                  card.color === 'accent' ? 'bg-accent/10 text-accent-foreground' :
+                  card.color === 'warning' ? 'bg-warning/10 text-warning-foreground' :
+                  card.color === 'danger' ? 'bg-danger/10 text-danger' :
+                  'bg-muted/50 text-muted-foreground'
+                }`}>
+                  {card.icon}
+                </div>
+                <div className="text-lg font-bold">{card.value}</div>
+                <div className="text-xs text-muted-foreground">{card.title}</div>
+                {activeFilter === card.filterKey && (
+                  <Badge variant="default" className="mt-2 text-xs">
+                    <Filter className="h-2 w-2 mr-1" />
+                    Active
                   </Badge>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          {/* Active Alerts */}
-          <Card className="luxury-card">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <AlertCircle className="h-4 w-4 text-danger" />
-                Active Alerts
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {mockAlerts.slice(0, 3).map(alert => (
-                <div key={alert.id} className="flex items-center gap-2 text-sm">
-                  <div className={`h-2 w-2 rounded-full ${
-                    alert.priority === 'high' ? 'bg-danger' : 'bg-warning'
-                  }`} />
-                  <span className="truncate flex-1">{alert.message}</span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+                )}
+              </CardContent>
+            </Card>
+          ))}
         </div>
+
+        {/* Guest Queue Panel */}
+        <GuestQueuePanel onGuestAction={handleGuestAction} />
+
+        {/* Room Legend */}
+        <RoomLegend />
       </div>
 
-      {/* Sticky Footer Actions */}
-      <div className="fixed bottom-0 left-0 right-0 bg-card border-t p-4 shadow-lg">
-        <div className="max-w-6xl mx-auto flex flex-wrap gap-3 justify-center">
-          <Button className="bg-gradient-primary">
-            <Plus className="h-4 w-4 mr-2" />
-            New Reservation
-          </Button>
-          <Button variant="outline">
-            <CreditCard className="h-4 w-4 mr-2" />
-            Collect Payment
-          </Button>
-          <Button variant="outline">
-            <Search className="h-4 w-4 mr-2" />
-            Quick Search
-          </Button>
-        </div>
-      </div>
+      {/* Keyboard Shortcuts Helper */}
+      <KeyboardShortcutsHelper 
+        isVisible={showKeyboardHelp}
+        onClose={() => setShowKeyboardHelp(false)}
+      />
     </div>
   );
 };

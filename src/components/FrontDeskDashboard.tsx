@@ -28,6 +28,10 @@ import { RoomLegend } from "./frontdesk/RoomLegend";
 import { KeyboardShortcutsHelper } from "./frontdesk/KeyboardShortcutsHelper";
 import { QuickFilters } from "./frontdesk/QuickFilters";
 import { NotificationBanner } from "./frontdesk/NotificationBanner";
+import { NewReservationDialog } from "./frontdesk/NewReservationDialog";
+import { SearchDialog } from "./frontdesk/SearchDialog"; 
+import { PaymentDialog } from "./frontdesk/PaymentDialog";
+import { QuickGuestCapture } from "./frontdesk/QuickGuestCapture";
 import type { Room } from "./frontdesk/RoomGrid";
 
 // Mock data
@@ -75,6 +79,14 @@ const FrontDeskDashboard = () => {
     { id: '3', type: 'deposit' as const, message: 'Deposit payments due', count: 1, priority: 'medium' as const },
     { id: '4', type: 'maintenance' as const, message: 'Work orders pending', count: 2, priority: 'medium' as const },
   ]);
+  
+  // Dialog states
+  const [showNewReservation, setShowNewReservation] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [showQuickCapture, setShowQuickCapture] = useState(false);
+  const [captureAction, setCaptureAction] = useState<"assign" | "walkin" | "check-in" | "check-out" | "assign-room" | "extend-stay" | "transfer-room" | "add-service" | "work-order" | "housekeeping" | "">("");
+  const [rooms, setRooms] = useState<Room[]>([]);
 
   // Simulate online/offline status
   useEffect(() => {
@@ -90,10 +102,35 @@ const FrontDeskDashboard = () => {
     };
   }, []);
 
-  // Show action queue when offline
+  // Keyboard shortcuts
   useEffect(() => {
-    setShowActionQueue(isOffline);
-  }, [isOffline]);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if no input is focused and no modal is open
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (showNewReservation || showSearch || showPayment || showQuickCapture) return;
+      
+      switch (e.key.toLowerCase()) {
+        case 'a':
+          e.preventDefault();
+          setCaptureAction('assign-room');
+          setShowQuickCapture(true);
+          break;
+        case 'i':
+          e.preventDefault();
+          setCaptureAction('check-in');
+          setShowQuickCapture(true);
+          break;
+        case 'o':
+          e.preventDefault();
+          setCaptureAction('check-out');
+          setShowQuickCapture(true);
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showNewReservation, showSearch, showPayment, showQuickCapture]);
 
   const handleCardClick = (filterKey: string) => {
     setActiveFilter(activeFilter === filterKey ? undefined : filterKey);
@@ -101,7 +138,52 @@ const FrontDeskDashboard = () => {
 
   const handleAction = (action: string) => {
     console.log('Front desk action:', action);
-    // Handle various front desk actions here
+    
+    switch (action) {
+      case 'new-reservation':
+        setShowNewReservation(true);
+        break;
+      case 'assign-room':
+        setCaptureAction('assign-room');
+        setShowQuickCapture(true);
+        break;
+      case 'check-in':
+        setCaptureAction('check-in');
+        setShowQuickCapture(true);
+        break;
+      case 'check-out':
+        setCaptureAction('check-out');
+        setShowQuickCapture(true);
+        break;
+      case 'collect-payment':
+        setShowPayment(true);
+        break;
+      case 'search':
+        setShowSearch(true);
+        break;
+      case 'extend-stay':
+      case 'transfer-room':
+      case 'add-service':
+      case 'work-order':
+      case 'housekeeping':
+        setCaptureAction(action);
+        setShowQuickCapture(true);
+        break;
+      default:
+        console.log('Unhandled action:', action);
+    }
+  };
+
+  const handleRoomUpdate = (updatedRoom: Room) => {
+    setRooms(prev => prev.map(room => 
+      room.number === updatedRoom.number ? updatedRoom : room
+    ));
+  };
+
+  const handleGuestCaptureComplete = (guestData: any) => {
+    console.log('Guest capture completed:', { action: captureAction, guestData });
+    setShowQuickCapture(false);
+    setCaptureAction("");
   };
 
   const handleGuestAction = (guest: any, action: string) => {
@@ -329,6 +411,29 @@ const FrontDeskDashboard = () => {
       <KeyboardShortcutsHelper 
         isVisible={showKeyboardHelp}
         onClose={() => setShowKeyboardHelp(false)}
+      />
+
+      {/* Action Dialogs */}
+      <NewReservationDialog 
+        open={showNewReservation}
+        onOpenChange={setShowNewReservation}
+      />
+      
+      <SearchDialog 
+        open={showSearch}
+        onOpenChange={setShowSearch}
+      />
+      
+      <PaymentDialog 
+        open={showPayment}
+        onOpenChange={setShowPayment}
+      />
+
+      <QuickGuestCapture
+        open={showQuickCapture && captureAction !== ""}
+        onOpenChange={setShowQuickCapture}
+        action={captureAction as any}
+        onComplete={handleGuestCaptureComplete}
       />
     </div>
   );

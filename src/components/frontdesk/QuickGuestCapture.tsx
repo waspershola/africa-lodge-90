@@ -49,10 +49,10 @@ import { useToast } from "@/hooks/use-toast";
 import type { Room } from "./RoomGrid";
 
 interface QuickGuestCaptureProps {
-  room: Room | null;
+  room?: Room | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  action: 'assign' | 'walkin';
+  action: 'assign' | 'walkin' | 'check-in' | 'check-out' | 'assign-room' | 'extend-stay' | 'transfer-room' | 'add-service' | 'work-order' | 'housekeeping';
   onComplete: (guestData: any) => void;
 }
 
@@ -174,7 +174,35 @@ export const QuickGuestCapture = ({
     );
   }, [guestList, guestSearchValue]);
 
-  if (!room) return null;
+  const getActionTitle = () => {
+    switch (action) {
+      case 'assign': 
+      case 'assign-room': 
+        return 'Assign Room';
+      case 'walkin': 
+      case 'check-in': 
+        return 'Check-in Guest';
+      case 'check-out': 
+        return 'Check-out Guest';
+      case 'extend-stay': 
+        return 'Extend Stay';
+      case 'transfer-room': 
+        return 'Transfer Room';
+      case 'add-service': 
+        return 'Add Service';
+      case 'work-order': 
+        return 'Create Work Order';
+      case 'housekeeping': 
+        return 'Housekeeping Request';
+      default: 
+        return 'Guest Registration';
+    }
+  };
+
+  // Skip room requirement for certain actions
+  if (!room && !['check-in', 'check-out', 'extend-stay', 'transfer-room', 'add-service', 'work-order', 'housekeeping'].includes(action)) {
+    return null;
+  }
 
   const handleGuestSelect = (guest: MockGuest) => {
     setSelectedGuest(guest);
@@ -293,12 +321,12 @@ export const QuickGuestCapture = ({
       if (formData.printNow) {
         toast({
           title: "Processing Complete",
-          description: `${action === 'assign' ? 'Room assigned' : 'Check-in completed'} for ${formData.guestName}. Check-in slip sent to printer.`,
+          description: `${getActionTitle()} completed for ${formData.guestName}. Check-in slip sent to printer.`,
         });
       } else {
         toast({
-          title: "Processing Complete",
-          description: `${action === 'assign' ? 'Room assigned' : 'Check-in completed'} for ${formData.guestName}.`,
+          title: "Processing Complete", 
+          description: `${getActionTitle()} completed for ${formData.guestName}.`,
         });
       }
 
@@ -331,10 +359,6 @@ export const QuickGuestCapture = ({
     }
   };
 
-  const actionTitle = action === 'assign' ? 'Assign Room' : 'Walk-in Check-in';
-  const actionDescription = action === 'assign' 
-    ? `Assign Room ${room.number} to a guest`
-    : `Complete walk-in check-in for Room ${room.number}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -342,10 +366,10 @@ export const QuickGuestCapture = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
-            {actionTitle}
+            {getActionTitle()}
           </DialogTitle>
           <DialogDescription>
-            {actionDescription} • {room.type}
+            {room ? `${getActionTitle()} for Room ${room.number} • ${room.type}` : getActionTitle()}
           </DialogDescription>
         </DialogHeader>
 
@@ -622,7 +646,7 @@ export const QuickGuestCapture = ({
               ) : (
                 <>
                   <CheckCircle className="h-4 w-4" />
-                  {actionTitle}
+                  {getActionTitle()}
                 </>
               )}
             </Button>

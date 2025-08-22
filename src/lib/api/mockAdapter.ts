@@ -382,6 +382,110 @@ const mockPlans = [
   }
 ];
 
+// Mock reservations data
+const mockReservations = [
+  {
+    id: 'RES001',
+    guestName: 'John Smith',
+    email: 'john.smith@email.com',
+    phone: '+234 801 234 5678',
+    room: '205',
+    roomType: 'Deluxe King',
+    checkIn: new Date(2024, 7, 22),
+    checkOut: new Date(2024, 7, 25),
+    status: 'confirmed',
+    guests: 2,
+    nights: 3,
+    amount: 450000,
+    source: 'Direct Booking',
+    paymentStatus: 'partial',
+    specialRequests: 'Early check-in requested',
+    createdAt: new Date(2024, 6, 15),
+    updatedAt: new Date(2024, 6, 18)
+  },
+  {
+    id: 'RES002', 
+    guestName: 'Sarah Wilson',
+    email: 'sarah.wilson@email.com',
+    phone: '+234 802 345 6789',
+    room: '312',
+    roomType: 'Standard Twin',
+    checkIn: new Date(2024, 7, 23),
+    checkOut: new Date(2024, 7, 26),
+    status: 'checked-in',
+    guests: 1,
+    nights: 3,
+    amount: 285000,
+    source: 'Booking.com',
+    paymentStatus: 'paid',
+    specialRequests: '',
+    createdAt: new Date(2024, 6, 20),
+    updatedAt: new Date(2024, 7, 23)
+  },
+  {
+    id: 'RES003',
+    guestName: 'Michael Chen',
+    email: 'michael.chen@email.com', 
+    phone: '+234 803 456 7890',
+    room: '108',
+    roomType: 'Family Suite',
+    checkIn: new Date(2024, 7, 24),
+    checkOut: new Date(2024, 7, 27),
+    status: 'pending',
+    guests: 3,
+    nights: 3,
+    amount: 520000,
+    source: 'Phone Booking',
+    paymentStatus: 'pending',
+    specialRequests: 'Late checkout requested',
+    createdAt: new Date(2024, 7, 10),
+    updatedAt: new Date(2024, 7, 20)
+  }
+];
+
+// Mock room availability data
+const mockRoomAvailability = [
+  {
+    roomNumber: '101',
+    roomType: 'Standard Twin',
+    floor: 1,
+    status: 'available',
+    capacity: 2,
+    price: 85000,
+    amenities: ['WiFi', 'AC', 'TV']
+  },
+  {
+    roomNumber: '102',
+    roomType: 'Standard Twin',
+    floor: 1,
+    status: 'occupied',
+    capacity: 2,
+    price: 85000,
+    amenities: ['WiFi', 'AC', 'TV'],
+    currentGuest: 'RES002'
+  },
+  {
+    roomNumber: '205',
+    roomType: 'Deluxe King',
+    floor: 2,
+    status: 'reserved',
+    capacity: 2,
+    price: 125000,
+    amenities: ['WiFi', 'AC', 'TV', 'Mini Bar'],
+    currentGuest: 'RES001'
+  },
+  {
+    roomNumber: '301',
+    roomType: 'Family Suite',
+    floor: 3,
+    status: 'out-of-service',
+    capacity: 4,
+    price: 185000,
+    amenities: ['WiFi', 'AC', 'TV', 'Kitchenette'],
+    maintenanceReason: 'AC repair'
+  }
+];
+
 const mockAuditLogs = [
   {
     id: '1',
@@ -719,6 +823,108 @@ export const mockApi = {
     await delay();
     if (shouldFail()) throw new Error('Failed to fetch audit logs');
     return { data: mockOwnerAuditLogs };
+  },
+
+  // Reservations API endpoints
+  getReservations: async (): Promise<{ data: any[] }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch reservations');
+    return { data: mockReservations };
+  },
+
+  getReservation: async (id: string): Promise<{ data: any }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch reservation');
+    const reservation = mockReservations.find(r => r.id === id);
+    if (!reservation) throw new Error('Reservation not found');
+    return { data: reservation };
+  },
+
+  createReservation: async (data: any): Promise<{ data: any }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to create reservation');
+    const newReservation = {
+      id: `RES${Date.now()}`,
+      ...data,
+      status: 'pending',
+      paymentStatus: 'pending',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    mockReservations.push(newReservation);
+    return { data: newReservation };
+  },
+
+  updateReservation: async (id: string, data: any): Promise<{ data: any }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to update reservation');
+    const index = mockReservations.findIndex(r => r.id === id);
+    if (index === -1) throw new Error('Reservation not found');
+    mockReservations[index] = { ...mockReservations[index], ...data, updatedAt: new Date() };
+    return { data: mockReservations[index] };
+  },
+
+  deleteReservation: async (id: string): Promise<{ data: { success: boolean } }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to delete reservation');
+    const index = mockReservations.findIndex(r => r.id === id);
+    if (index === -1) throw new Error('Reservation not found');
+    mockReservations.splice(index, 1);
+    return { data: { success: true } };
+  },
+
+  // Room Availability API endpoints
+  getRoomAvailability: async (checkIn?: Date, checkOut?: Date): Promise<{ data: any[] }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch room availability');
+    return { data: mockRoomAvailability };
+  },
+
+  assignRoom: async (reservationId: string, roomNumber: string): Promise<{ data: any }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to assign room');
+    const reservation = mockReservations.find(r => r.id === reservationId);
+    if (!reservation) throw new Error('Reservation not found');
+    
+    // Check for conflicts
+    const conflicts = mockReservations.filter(r => 
+      r.room === roomNumber && 
+      r.id !== reservationId &&
+      r.status !== 'cancelled' &&
+      ((new Date(reservation.checkIn) >= new Date(r.checkIn) && new Date(reservation.checkIn) < new Date(r.checkOut)) ||
+       (new Date(reservation.checkOut) > new Date(r.checkIn) && new Date(reservation.checkOut) <= new Date(r.checkOut)))
+    );
+    
+    if (conflicts.length > 0) {
+      throw new Error('Room assignment conflict detected');
+    }
+    
+    reservation.room = roomNumber;
+    reservation.updatedAt = new Date();
+    return { data: reservation };
+  },
+
+  // Check-in/Check-out operations
+  checkInGuest: async (reservationId: string): Promise<{ data: any }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to check in guest');
+    const reservation = mockReservations.find(r => r.id === reservationId);
+    if (!reservation) throw new Error('Reservation not found');
+    
+    reservation.status = 'checked-in';
+    reservation.updatedAt = new Date();
+    return { data: reservation };
+  },
+
+  checkOutGuest: async (reservationId: string): Promise<{ data: any }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to check out guest');
+    const reservation = mockReservations.find(r => r.id === reservationId);
+    if (!reservation) throw new Error('Reservation not found');
+    
+    reservation.status = 'checked-out';
+    reservation.updatedAt = new Date();
+    return { data: reservation };
   },
   // Super Admin - Tenants
   async getTenants() {

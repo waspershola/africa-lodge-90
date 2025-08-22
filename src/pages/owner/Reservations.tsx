@@ -7,9 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ReservationCalendar from '@/components/owner/reservations/ReservationCalendar';
+import InteractiveReservationCalendar from '@/components/owner/reservations/InteractiveReservationCalendar';
 import ReservationList from '@/components/owner/reservations/ReservationList';
 import NewReservationDialog from '@/components/owner/reservations/NewReservationDialog';
 import ReservationDetails from '@/components/owner/reservations/ReservationDetails';
+import { useReservations } from '@/hooks/useApi';
 
 export default function ReservationsPage() {
   const [view, setView] = useState('calendar');
@@ -18,47 +20,62 @@ export default function ReservationsPage() {
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState(null);
 
-  // Mock reservation data
+  const { data: reservations = [], isLoading, error } = useReservations();
+
+  // Calculate stats from API data
   const reservationStats = {
-    total: 145,
-    confirmed: 98,
-    pending: 12,
-    checkedIn: 67,
-    checkedOut: 23,
-    cancelled: 8,
-    noShow: 2
+    total: reservations.length,
+    confirmed: reservations.filter(r => r.status === 'confirmed').length,
+    pending: reservations.filter(r => r.status === 'pending').length,
+    checkedIn: reservations.filter(r => r.status === 'checked-in').length,
+    checkedOut: reservations.filter(r => r.status === 'checked-out').length,
+    cancelled: reservations.filter(r => r.status === 'cancelled').length,
+    noShow: 0
   };
 
-  const todayActivity = [
-    {
-      time: '09:00',
-      type: 'check-out',
-      guest: 'John Smith',
-      room: '205',
-      status: 'completed'
-    },
-    {
-      time: '11:30',
-      type: 'check-in',
-      guest: 'Sarah Wilson',
-      room: '312',
-      status: 'pending'
-    },
-    {
-      time: '14:00',
-      type: 'check-in',
-      guest: 'Michael Chen',
-      room: '108',
-      status: 'pending'
-    },
-    {
-      time: '15:30',
-      type: 'check-out',
-      guest: 'Emily Davis',
-      room: '201',
-      status: 'pending'
-    }
-  ];
+  // Today's activity from reservations
+  const today = new Date();
+  const todayActivity = reservations
+    .filter(r => {
+      const checkIn = new Date(r.checkIn);
+      const checkOut = new Date(r.checkOut);
+      return (
+        (checkIn.toDateString() === today.toDateString()) ||
+        (checkOut.toDateString() === today.toDateString())
+      );
+    })
+    .map(r => {
+      const checkIn = new Date(r.checkIn);
+      const checkOut = new Date(r.checkOut);
+      
+      if (checkIn.toDateString() === today.toDateString()) {
+        return {
+          time: '14:00',
+          type: 'check-in',
+          guest: r.guestName,
+          room: r.room,
+          status: r.status === 'confirmed' ? 'pending' : 'completed'
+        };
+      }
+      if (checkOut.toDateString() === today.toDateString()) {
+        return {
+          time: '12:00',
+          type: 'check-out',
+          guest: r.guestName,
+          room: r.room,
+          status: r.status === 'checked-out' ? 'completed' : 'pending'
+        };
+      }
+    })
+    .filter(Boolean);
+
+  if (isLoading) {
+    return <div className="p-6">Loading reservations...</div>;
+  }
+
+  if (error) {
+    return <div className="p-6 text-destructive">Error loading reservations: {error.message}</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -193,7 +210,7 @@ export default function ReservationsPage() {
           {/* Reservations Content */}
           <Tabs value={view} onValueChange={setView}>
             <TabsContent value="calendar">
-              <ReservationCalendar 
+              <InteractiveReservationCalendar 
                 searchTerm={searchTerm}
                 statusFilter={statusFilter}
                 onReservationSelect={setSelectedReservation}

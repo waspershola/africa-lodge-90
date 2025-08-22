@@ -6,27 +6,12 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Calendar, Users, Phone, Mail, MapPin, MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
-
-interface Reservation {
-  id: string;
-  guestName: string;
-  email: string;
-  phone: string;
-  room: string;
-  roomType: string;
-  checkIn: Date;
-  checkOut: Date;
-  status: 'confirmed' | 'pending' | 'checked-in' | 'checked-out' | 'cancelled';
-  guests: number;
-  nights: number;
-  amount: number;
-  source: string;
-}
+import { useReservations } from '@/hooks/useApi';
 
 interface ReservationListProps {
   searchTerm: string;
   statusFilter: string;
-  onReservationSelect: (reservation: Reservation) => void;
+  onReservationSelect: (reservation: any) => void;
 }
 
 export default function ReservationList({ 
@@ -34,86 +19,9 @@ export default function ReservationList({
   statusFilter, 
   onReservationSelect 
 }: ReservationListProps) {
-  // Mock reservations data
-  const mockReservations: Reservation[] = [
-    {
-      id: 'RES001',
-      guestName: 'John Smith',
-      email: 'john.smith@email.com',
-      phone: '+234 801 234 5678',
-      room: '205',
-      roomType: 'Deluxe King',
-      checkIn: new Date(2024, 7, 22),
-      checkOut: new Date(2024, 7, 25),
-      status: 'confirmed',
-      guests: 2,
-      nights: 3,
-      amount: 450000,
-      source: 'Direct Booking'
-    },
-    {
-      id: 'RES002',
-      guestName: 'Sarah Wilson',
-      email: 'sarah.wilson@email.com',
-      phone: '+234 802 345 6789',
-      room: '312',
-      roomType: 'Standard Twin',
-      checkIn: new Date(2024, 7, 23),
-      checkOut: new Date(2024, 7, 26),
-      status: 'checked-in',
-      guests: 1,
-      nights: 3,
-      amount: 285000,
-      source: 'Booking.com'
-    },
-    {
-      id: 'RES003',
-      guestName: 'Michael Chen',
-      email: 'michael.chen@email.com',
-      phone: '+234 803 456 7890',
-      room: '108',
-      roomType: 'Family Suite',
-      checkIn: new Date(2024, 7, 24),
-      checkOut: new Date(2024, 7, 27),
-      status: 'pending',
-      guests: 3,
-      nights: 3,
-      amount: 520000,
-      source: 'Phone Booking'
-    },
-    {
-      id: 'RES004',
-      guestName: 'Emily Davis',
-      email: 'emily.davis@email.com',
-      phone: '+234 804 567 8901',
-      room: '201',
-      roomType: 'Presidential Suite',
-      checkIn: new Date(2024, 7, 20),
-      checkOut: new Date(2024, 7, 22),
-      status: 'checked-out',
-      guests: 2,
-      nights: 2,
-      amount: 680000,
-      source: 'Direct Booking'
-    },
-    {
-      id: 'RES005',
-      guestName: 'David Brown',
-      email: 'david.brown@email.com',
-      phone: '+234 805 678 9012',
-      room: '415',
-      roomType: 'Deluxe King',
-      checkIn: new Date(2024, 7, 25),
-      checkOut: new Date(2024, 7, 28),
-      status: 'cancelled',
-      guests: 2,
-      nights: 3,
-      amount: 450000,
-      source: 'Expedia'
-    }
-  ];
+  const { data: reservations = [], isLoading } = useReservations();
 
-  const filteredReservations = mockReservations.filter(reservation => {
+  const filteredReservations = reservations.filter(reservation => {
     const matchesSearch = searchTerm === '' || 
       reservation.guestName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       reservation.room.includes(searchTerm) ||
@@ -144,6 +52,10 @@ export default function ReservationList({
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
+
+  if (isLoading) {
+    return <div className="p-6">Loading reservations...</div>;
+  }
 
   return (
     <Card>

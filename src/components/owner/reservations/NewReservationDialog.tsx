@@ -8,8 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, Plus, Minus } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useCreateReservation, useRoomAvailability } from '@/hooks/useApi';
 
 interface NewReservationDialogProps {
   open: boolean;
@@ -31,6 +32,9 @@ export default function NewReservationDialog({ open, onOpenChange }: NewReservat
     source: 'direct'
   });
 
+  const createReservation = useCreateReservation();
+  const { data: roomAvailability = [] } = useRoomAvailability(formData.checkIn, formData.checkOut);
+
   const roomTypes = [
     { value: 'standard', label: 'Standard Room', price: 85000 },
     { value: 'deluxe', label: 'Deluxe King', price: 125000 },
@@ -38,21 +42,57 @@ export default function NewReservationDialog({ open, onOpenChange }: NewReservat
     { value: 'presidential', label: 'Presidential Suite', price: 350000 }
   ];
 
-  const availableRooms = [
-    '101', '102', '103', '201', '202', '203', '301', '302', '303'
-  ];
+  const availableRooms = roomAvailability
+    .filter(room => room.status === 'available' && (!formData.roomType || room.roomType.toLowerCase().includes(formData.roomType)))
+    .map(room => room.roomNumber);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
-    console.log('New reservation:', formData);
-    onOpenChange(false);
+    
+    if (!formData.checkIn || !formData.checkOut || !formData.guestName || !formData.email || !formData.roomType) {
+      return;
+    }
+
+    const nights = calculateNights();
+    const roomTypeData = roomTypes.find(r => r.value === formData.roomType);
+    const amount = nights * (roomTypeData?.price || 0);
+
+    createReservation.mutate({
+      guestName: formData.guestName,
+      email: formData.email,
+      phone: formData.phone,
+      checkIn: formData.checkIn,
+      checkOut: formData.checkOut,
+      roomType: roomTypeData?.label || formData.roomType,
+      room: formData.room || 'Auto-assign',
+      guests: formData.adults + formData.children,
+      nights,
+      amount,
+      source: formData.source,
+      specialRequests: formData.specialRequests
+    }, {
+      onSuccess: () => {
+        onOpenChange(false);
+        setFormData({
+          guestName: '',
+          email: '',
+          phone: '',
+          checkIn: undefined,
+          checkOut: undefined,
+          roomType: '',
+          room: '',
+          adults: 1,
+          children: 0,
+          specialRequests: '',
+          source: 'direct'
+        });
+      }
+    });
   };
 
   const calculateNights = () => {
     if (formData.checkIn && formData.checkOut) {
-      const diffTime = formData.checkOut.getTime() - formData.checkIn.getTime();
-      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return differenceInDays(formData.checkOut, formData.checkIn);
     }
     return 0;
   };

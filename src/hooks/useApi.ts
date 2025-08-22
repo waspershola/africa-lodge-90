@@ -197,6 +197,178 @@ export const useOwnerAuditLogs = () => {
   });
 };
 
+// Reservation API Hooks
+export const useReservations = () => {
+  return useQuery({
+    queryKey: ['reservations'],
+    queryFn: mockApi.getReservations,
+    select: (response) => response.data
+  });
+};
+
+export const useReservation = (id: string) => {
+  return useQuery({
+    queryKey: ['reservations', id],
+    queryFn: () => mockApi.getReservation(id),
+    select: (response) => response.data,
+    enabled: !!id
+  });
+};
+
+export const useCreateReservation = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: (data: any) => mockApi.createReservation(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['room-availability'] });
+      toast({
+        title: 'Success',
+        description: 'Reservation created successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useUpdateReservation = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => mockApi.updateReservation(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['reservations', id] });
+      queryClient.invalidateQueries({ queryKey: ['room-availability'] });
+      toast({
+        title: 'Success',
+        description: 'Reservation updated successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useDeleteReservation = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: (id: string) => mockApi.deleteReservation(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['room-availability'] });
+      toast({
+        title: 'Success',
+        description: 'Reservation cancelled successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useAssignRoom = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: ({ reservationId, roomNumber }: { reservationId: string; roomNumber: string }) => 
+      mockApi.assignRoom(reservationId, roomNumber),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['room-availability'] });
+      toast({
+        title: 'Success',
+        description: 'Room assigned successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useCheckInGuest = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: (reservationId: string) => mockApi.checkInGuest(reservationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['room-availability'] });
+      toast({
+        title: 'Success',
+        description: 'Guest checked in successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useCheckOutGuest = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: (reservationId: string) => mockApi.checkOutGuest(reservationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['room-availability'] });
+      toast({
+        title: 'Success',
+        description: 'Guest checked out successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useRoomAvailability = (checkIn?: Date, checkOut?: Date) => {
+  return useQuery({
+    queryKey: ['room-availability', checkIn, checkOut],
+    queryFn: () => mockApi.getRoomAvailability(checkIn, checkOut),
+    select: (response) => response.data
+  });
+};
+
 // Super Admin hooks - Tenants
 export const useTenants = () => {
   return useQuery({

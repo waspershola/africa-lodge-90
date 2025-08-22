@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import ReservationContextMenu from '@/components/owner/reservations/ReservationContextMenu';
 import { 
   Calendar, 
   ChevronLeft, 
@@ -306,71 +307,76 @@ export default function InteractiveReservationCalendar({
                         onDrop={(e) => handleDrop(e, room.number, date)}
                       >
                         {reservation && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div
-                                className="w-full p-2 bg-white/80 rounded border cursor-move shadow-sm"
-                                draggable
-                                onDragStart={(e) => handleDragStart(e, reservation)}
-                              >
-                                <div className="flex items-center justify-between mb-1">
-                                  <div className="text-xs font-medium truncate">
-                                    {reservation.guestName}
-                                  </div>
-                                  <Grip className="h-3 w-3 text-muted-foreground" />
-                                </div>
-                                
-                                <div className="text-xs text-muted-foreground">
-                                  #{reservation.id}
-                                </div>
-                                
-                                <div className="flex items-center justify-between mt-1">
-                                  <div className="flex items-center gap-1 text-xs">
-                                    <Users className="h-3 w-3" />
-                                    <span>{reservation.guests}</span>
+                          <ReservationContextMenu
+                            reservation={reservation}
+                            onViewDetails={onReservationSelect}
+                          >
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div
+                                  className="w-full p-2 bg-white/80 rounded border cursor-move shadow-sm"
+                                  draggable
+                                  onDragStart={(e) => handleDragStart(e, reservation)}
+                                >
+                                  <div className="flex items-center justify-between mb-1">
+                                    <div className="text-xs font-medium truncate">
+                                      {reservation.guestName}
+                                    </div>
+                                    <Grip className="h-3 w-3 text-muted-foreground" />
                                   </div>
                                   
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="sm" className="h-4 w-4 p-0">
-                                        <MoreHorizontal className="h-3 w-3" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent>
-                                      <DropdownMenuItem onClick={() => handleReservationAction('view', reservation)}>
-                                        View Details
-                                      </DropdownMenuItem>
-                                      {reservation.status === 'confirmed' && (
-                                        <DropdownMenuItem onClick={() => handleReservationAction('check-in', reservation)}>
-                                          Check In
+                                  <div className="text-xs text-muted-foreground">
+                                    #{reservation.id}
+                                  </div>
+                                  
+                                  <div className="flex items-center justify-between mt-1">
+                                    <div className="flex items-center gap-1 text-xs">
+                                      <Users className="h-3 w-3" />
+                                      <span>{reservation.guests}</span>
+                                    </div>
+                                    
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="h-4 w-4 p-0">
+                                          <MoreHorizontal className="h-3 w-3" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent>
+                                        <DropdownMenuItem onClick={() => handleReservationAction('view', reservation)}>
+                                          View Details
                                         </DropdownMenuItem>
-                                      )}
-                                      {reservation.status === 'checked-in' && (
-                                        <DropdownMenuItem onClick={() => handleReservationAction('check-out', reservation)}>
-                                          Check Out
-                                        </DropdownMenuItem>
-                                      )}
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
+                                        {reservation.status === 'confirmed' && (
+                                          <DropdownMenuItem onClick={() => handleReservationAction('check-in', reservation)}>
+                                            Check In
+                                          </DropdownMenuItem>
+                                        )}
+                                        {reservation.status === 'checked-in' && (
+                                          <DropdownMenuItem onClick={() => handleReservationAction('check-out', reservation)}>
+                                            Check Out
+                                          </DropdownMenuItem>
+                                        )}
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
                                 </div>
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-xs">
-                              <div className="space-y-1">
-                                <div className="font-medium">{reservation.guestName}</div>
-                                <div className="text-xs">Booking ID: {reservation.id}</div>
-                                <div className="text-xs">
-                                  Check-in: {format(new Date(reservation.checkIn), 'MMM d, yyyy')}
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-xs">
+                                <div className="space-y-1">
+                                  <div className="font-medium">{reservation.guestName}</div>
+                                  <div className="text-xs">Booking ID: {reservation.id}</div>
+                                  <div className="text-xs">
+                                    Check-in: {format(new Date(reservation.checkIn), 'MMM d, yyyy')}
+                                  </div>
+                                  <div className="text-xs">
+                                    Check-out: {format(new Date(reservation.checkOut), 'MMM d, yyyy')}
+                                  </div>
+                                  <div className="text-xs">
+                                    Balance: ₦{reservation.amount.toLocaleString()}
+                                  </div>
                                 </div>
-                                <div className="text-xs">
-                                  Check-out: {format(new Date(reservation.checkOut), 'MMM d, yyyy')}
-                                </div>
-                                <div className="text-xs">
-                                  Balance: ₦{reservation.amount.toLocaleString()}
-                                </div>
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
+                              </TooltipContent>
+                            </Tooltip>
+                          </ReservationContextMenu>
                         )}
                       </div>
                     );

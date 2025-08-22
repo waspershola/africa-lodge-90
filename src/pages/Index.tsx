@@ -194,7 +194,7 @@ const Index = () => {
             <motion.div variants={fadeIn}>
               <Badge variant="secondary" className="mb-4 bg-white/20 text-white border-white/30 backdrop-blur-sm">
                 <Globe className="h-3 w-3 mr-1" />
-                Built for African Hotels
+                Modern Hotel Management
               </Badge>
             </motion.div>
             
@@ -204,15 +204,15 @@ const Index = () => {
             >
               Redefining Hotel Management
               <br />
-              <span className="text-yellow-300">in Africa</span>
+              <span className="text-yellow-300">Worldwide</span>
             </motion.h1>
             
             <motion.p 
               className="text-lg md:text-xl text-white/90 mb-8 max-w-2xl mx-auto leading-relaxed drop-shadow-md"
               variants={fadeIn}
             >
-              The first hotel management SaaS designed for African markets. Handle offline operations, 
-              local payments, fuel tracking, and QR room service in one beautiful platform.
+              Complete hotel management platform designed for modern hospitality. Handle operations, 
+              payments, room service, and analytics in one unified system.
             </motion.p>
             
             <motion.div 
@@ -300,10 +300,10 @@ const Index = () => {
             transition={{ duration: 0.6 }}
           >
             <h2 className="text-3xl md:text-4xl font-bold display-heading text-gradient mb-4">
-              Built for African Hotels
+              Built for Modern Hotels
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Every feature designed with local market realities in mind - from power outages to cash payments.
+              Every feature designed with real-world challenges in mind - from offline operations to diverse payment methods.
             </p>
           </motion.div>
           
@@ -419,7 +419,7 @@ const Index = () => {
               Loved by Hotel Operators
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              See how African hotels are transforming their operations with LuxuryHotelSaaS.
+              See how hotels worldwide are transforming their operations with LuxuryHotelSaaS.
             </p>
           </motion.div>
 
@@ -538,7 +538,7 @@ const Index = () => {
               Start Managing Smarter
             </h2>
             <p className="text-lg text-white/90 mb-8 max-w-2xl mx-auto drop-shadow-md">
-              Join hundreds of African hotels already using LuxuryHotelSaaS to streamline operations and delight guests.
+              Join hundreds of hotels worldwide already using LuxuryHotelSaaS to streamline operations and delight guests.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
@@ -578,7 +578,7 @@ const Index = () => {
                 </span>
               </div>
               <p className="text-white/80 leading-relaxed">
-                The Africa-first hotel management platform that understands your unique challenges.
+                The modern hotel management platform that understands your unique challenges.
               </p>
             </div>
             
@@ -614,7 +614,7 @@ const Index = () => {
           </div>
           
           <div className="border-t border-white/20 mt-12 pt-8 text-center text-white/70">
-            <p>© 2024 LuxuryHotelSaaS. Built for African Hotels.</p>
+            <p>© 2024 LuxuryHotelSaaS. Built for Modern Hotels.</p>
           </div>
         </div>
       </footer>

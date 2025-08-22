@@ -37,7 +37,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/qr-menu" element={<QRMenu />} />
-          <Route path="/front-desk" element={<FrontDeskDashboard />} />
+          <Route path="/front-desk" element={<FrontDeskPWA />} />
+          <Route path="/old-front-desk" element={<FrontDeskDashboard />} />
           <Route path="/owner-dashboard" element={<OwnerDashboard />} />
           <Route path="/reports" element={<ReportsInterface />} />
           <Route path="/qr-export" element={<QRExportPage />} />

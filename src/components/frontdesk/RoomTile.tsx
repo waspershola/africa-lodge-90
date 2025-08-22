@@ -118,7 +118,7 @@ export default function RoomTile({
       >
         <Card 
           className={`
-            cursor-pointer transition-all duration-200 h-24
+            cursor-pointer transition-all duration-200 h-24 group
             ${config.color}
             ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''}
             ${isReadOnly ? 'opacity-60' : 'hover:shadow-lg'}

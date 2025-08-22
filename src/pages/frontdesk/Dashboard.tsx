@@ -47,6 +47,9 @@ export default function FrontDeskDashboard() {
   const [currentView, setCurrentView] = useState<'grid' | 'dashboard'>('grid');
   const [dashboardFilter, setDashboardFilter] = useState<string | null>(null);
   
+  // Use default hotel slug if none provided (for direct /front-desk access)
+  const effectiveHotelSlug = hotelSlug || 'default-hotel';
+  
   const { 
     data: frontDeskData, 
     isLoading, 
@@ -55,7 +58,7 @@ export default function FrontDeskDashboard() {
     isOffline,
     offlineTimeRemaining,
     isReadOnly
-  } = useFrontDeskData(hotelSlug || '');
+  } = useFrontDeskData(effectiveHotelSlug);
   
   const { queuedActions, addToQueue, retryQueue, clearQueue } = useOfflineQueue();
 
@@ -207,7 +210,7 @@ export default function FrontDeskDashboard() {
                   Front Desk
                 </h1>
                 <p className="text-sm text-muted-foreground capitalize">
-                  {hotelSlug?.replace('-', ' ')} Hotel
+                  {effectiveHotelSlug?.replace('-', ' ')} Hotel
                 </p>
               </div>
             </div>

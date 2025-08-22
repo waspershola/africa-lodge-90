@@ -24,6 +24,7 @@ import Advanced from "./pages/sa/Advanced";
 import Audit from "./pages/sa/Audit";
 import Metrics from "./pages/sa/Metrics";
 import HotelDashboard from "./pages/hotel/Dashboard";
+import FrontDeskPWA from "./pages/frontdesk/Dashboard";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,9 @@ const App = () => (
           
           {/* Hotel Dashboard Routes */}
           <Route path="/hotel/:tenantId/dashboard" element={<HotelDashboard />} />
+          
+          {/* Front Desk PWA Routes */}
+          <Route path="/:hotelSlug/frontdesk" element={<FrontDeskPWA />} />
           
           {/* Super Admin Routes */}
           <Route path="/sa" element={<SuperAdminLayout />}>

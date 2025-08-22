@@ -11,6 +11,7 @@ import OwnerDashboard from "./components/OwnerDashboard";
 import ReportsInterface from "./components/ReportsInterface";
 import QRExportPage from "./components/QRExportPage";
 import SuperAdminLayout from "./components/layout/SuperAdminLayout";
+import Dashboard from "./pages/sa/Dashboard";
 import Tenants from "./pages/sa/Tenants";
 import Plans from "./pages/sa/Plans";
 import Policies from "./pages/sa/Policies";
@@ -35,6 +36,8 @@ const App = () => (
           
           {/* Super Admin Routes */}
           <Route path="/sa" element={<SuperAdminLayout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="dashboard" element={<Dashboard />} />
             <Route path="tenants" element={<Tenants />} />
             <Route path="plans" element={<Plans />} />
             <Route path="policies" element={<Policies />} />

@@ -133,6 +133,13 @@ export const useMetrics = () => {
   });
 };
 
+export const useDashboardData = () => {
+  return useQuery({
+    queryKey: ['sa', 'dashboard'],
+    queryFn: mockApi.getDashboardData,
+  });
+};
+
 export const usePolicies = () => {
   return useQuery({
     queryKey: ['sa', 'policies'],

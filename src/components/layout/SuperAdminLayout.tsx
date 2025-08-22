@@ -10,13 +10,15 @@ import {
   BarChart3,
   Menu,
   ArrowLeft,
-  Settings
+  Settings,
+  LayoutDashboard
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
 const navigation = [
+  { name: 'Dashboard', href: '/sa/dashboard', icon: LayoutDashboard },
   { name: 'Tenants', href: '/sa/tenants', icon: Building2 },
   { name: 'Plans', href: '/sa/plans', icon: CreditCard },
   { name: 'Policies', href: '/sa/policies', icon: Shield },

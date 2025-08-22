@@ -158,7 +158,12 @@ const mockMetrics = {
     activeTenants: 142,
     monthlyActiveUsers: 2847,
     totalRevenue: 18500000,
-    growthRate: 12.5
+    mrr: 1540000,
+    arr: 18480000,
+    growthRate: 12.5,
+    churnRate: 3.2,
+    avgOccupancy: 78.5,
+    activeStaff: 1284
   },
   trends: {
     tenants: [
@@ -178,8 +183,52 @@ const mockMetrics = {
       { month: 'Feb', value: 2400 },
       { month: 'Mar', value: 2650 },
       { month: 'Apr', value: 2847 }
+    ],
+    occupancy: [
+      { month: 'Jan', value: 72.3 },
+      { month: 'Feb', value: 75.8 },
+      { month: 'Mar', value: 76.9 },
+      { month: 'Apr', value: 78.5 }
     ]
   }
+};
+
+const mockDashboardData = {
+  topPerformers: [
+    { id: '1', name: 'Grand Palace Hotel', city: 'Lagos', revenue: 2850000, occupancy: 85.2, orders: 1247, satisfaction: 4.8 },
+    { id: '2', name: 'Boutique Suites', city: 'Abuja', revenue: 1920000, occupancy: 78.4, orders: 892, satisfaction: 4.6 },
+    { id: '4', name: 'Marina Heights', city: 'Lagos', revenue: 1650000, occupancy: 82.1, orders: 743, satisfaction: 4.7 },
+    { id: '5', name: 'Capital Lodge', city: 'Abuja', revenue: 1420000, occupancy: 76.8, orders: 654, satisfaction: 4.5 },
+    { id: '3', name: 'City Inn Express', city: 'Port Harcourt', revenue: 980000, occupancy: 65.3, orders: 421, satisfaction: 4.2 }
+  ],
+  healthStatus: [
+    { tenantId: '1', name: 'Grand Palace Hotel', status: 'healthy', uptime: 99.8, latency: 142, errors: 0 },
+    { tenantId: '2', name: 'Boutique Suites', status: 'healthy', uptime: 99.5, latency: 156, errors: 2 },
+    { tenantId: '3', name: 'City Inn Express', status: 'warning', uptime: 97.2, latency: 289, errors: 12 },
+    { tenantId: '4', name: 'Marina Heights', status: 'healthy', uptime: 99.9, latency: 138, errors: 0 },
+    { tenantId: '5', name: 'Capital Lodge', status: 'healthy', uptime: 98.9, latency: 178, errors: 4 }
+  ],
+  resourceUsage: [
+    { tenantId: '1', name: 'Grand Palace Hotel', dbSize: 2.8, apiCalls: 45200, storage: 1.2, plan: 'Pro' },
+    { tenantId: '2', name: 'Boutique Suites', dbSize: 1.9, apiCalls: 28900, storage: 0.8, plan: 'Growth' },
+    { tenantId: '3', name: 'City Inn Express', dbSize: 0.9, apiCalls: 12400, storage: 0.3, plan: 'Starter' },
+    { tenantId: '4', name: 'Marina Heights', dbSize: 2.1, apiCalls: 32100, storage: 0.9, plan: 'Growth' },
+    { tenantId: '5', name: 'Capital Lodge', dbSize: 1.6, apiCalls: 23800, storage: 0.6, plan: 'Growth' }
+  ],
+  billingOverview: {
+    totalInvoices: 142,
+    paidInvoices: 135,
+    failedPayments: 7,
+    pendingAmount: 485000,
+    nextBillingCycle: '2024-02-01'
+  },
+  regions: [
+    { name: 'Lagos', count: 45, revenue: 8200000 },
+    { name: 'Abuja', count: 38, revenue: 6800000 },
+    { name: 'Port Harcourt', count: 28, revenue: 2100000 },
+    { name: 'Kano', count: 22, revenue: 1900000 },
+    { name: 'Ibadan', count: 23, revenue: 1600000 }
+  ]
 };
 
 // Utility functions
@@ -274,6 +323,13 @@ export const mockApi = {
     await delay();
     if (shouldFail()) throw new Error('Failed to fetch metrics');
     return { data: mockMetrics };
+  },
+
+  // Super Admin - Dashboard
+  async getDashboardData() {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch dashboard data');
+    return { data: mockDashboardData };
   },
 
   // Super Admin - Policies

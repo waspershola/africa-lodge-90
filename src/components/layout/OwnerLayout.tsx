@@ -7,7 +7,8 @@ import {
   FileText, 
   UserCircle, 
   Battery, 
-  Settings 
+  Settings,
+  DollarSign
 } from 'lucide-react';
 import UnifiedDashboardLayout from './UnifiedDashboardLayout';
 
@@ -20,6 +21,7 @@ const navigation = [
   { name: 'Room Service QR', href: '/owner-dashboard/qr-codes', icon: QrCode },
   { name: 'Reports', href: '/owner-dashboard/reports', icon: FileText },
   { name: 'Staff & Roles', href: '/owner-dashboard/staff', icon: UserCircle },
+  { name: 'Financials', href: '/owner-dashboard/financials', icon: DollarSign },
   { name: 'Power & Fuel', href: '/owner-dashboard/utilities', icon: Battery },
 ];
 

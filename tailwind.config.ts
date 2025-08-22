@@ -20,9 +20,9 @@ export default {
 		extend: {
 			fontFamily: {
 				inter: ['Inter', 'sans-serif'],
-				playfair: ['Playfair Display', 'serif'],
+				poppins: ['Poppins', 'sans-serif'],
 				sans: ['Inter', 'system-ui', 'sans-serif'],
-				serif: ['Playfair Display', 'Georgia', 'serif'],
+				serif: ['Inter', 'system-ui', 'sans-serif'], // Using Inter for consistency
 			},
 			colors: {
 				border: 'hsl(var(--border))',

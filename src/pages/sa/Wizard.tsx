@@ -224,7 +224,10 @@ export default function Wizard() {
         <Card className="modern-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <steps.find(s => s.id === currentStep)?.icon className="h-5 w-5 text-primary" />
+              {(() => {
+                const CurrentStepIcon = steps.find(s => s.id === currentStep)?.icon;
+                return CurrentStepIcon ? <CurrentStepIcon className="h-5 w-5 text-primary" /> : null;
+              })()}
               {steps.find(s => s.id === currentStep)?.name}
             </CardTitle>
           </CardHeader>

@@ -282,6 +282,157 @@ const mockDashboardData = {
   }
 };
 
+const mockTemplates = [
+  {
+    id: '1',
+    name: 'Luxury Resort Template',
+    description: 'Perfect for high-end resort properties with spa and concierge services',
+    category: 'luxury',
+    pricing: { markup: 25, taxes: 8, serviceFees: 5 },
+    roomTypes: [
+      { name: 'Presidential Suite', basePrice: 500, amenities: ['WiFi', 'AC', 'TV', 'Minibar', 'Jacuzzi'] },
+      { name: 'Executive Room', basePrice: 200, amenities: ['WiFi', 'AC', 'TV', 'Minibar'] },
+      { name: 'Standard Room', basePrice: 100, amenities: ['WiFi', 'AC', 'TV'] }
+    ],
+    branding: { theme: 'luxury', primaryColor: '#1A237E', secondaryColor: '#FFD700' }
+  },
+  {
+    id: '2',
+    name: 'Business Hotel Template',
+    description: 'Optimized for business travelers with meeting facilities',
+    category: 'business',
+    pricing: { markup: 15, taxes: 8, serviceFees: 3 },
+    roomTypes: [
+      { name: 'Business Suite', basePrice: 180, amenities: ['WiFi', 'AC', 'TV', 'Desk', 'Coffee'] },
+      { name: 'Standard Room', basePrice: 90, amenities: ['WiFi', 'AC', 'TV'] }
+    ],
+    branding: { theme: 'modern', primaryColor: '#2C3E50', secondaryColor: '#3498DB' }
+  },
+  {
+    id: '3',
+    name: 'Budget Inn Template',
+    description: 'Cost-effective solution for budget accommodations',
+    category: 'budget',
+    pricing: { markup: 10, taxes: 8, serviceFees: 2 },
+    roomTypes: [
+      { name: 'Economy Room', basePrice: 50, amenities: ['WiFi', 'AC'] },
+      { name: 'Standard Room', basePrice: 70, amenities: ['WiFi', 'AC', 'TV'] }
+    ],
+    branding: { theme: 'minimal', primaryColor: '#27AE60', secondaryColor: '#F39C12' }
+  }
+];
+
+const mockRoles = [
+  {
+    id: '1',
+    name: 'Hotel Owner',
+    description: 'Full access to all hotel operations',
+    isDefault: true,
+    assignedCount: 25,
+    permissions: {
+      reservations: ['view', 'create', 'edit', 'delete', 'checkin', 'checkout'],
+      guests: ['view', 'create', 'edit', 'delete', 'notes'],
+      rooms: ['view', 'edit', 'maintenance', 'pricing'],
+      billing: ['view', 'process', 'refund', 'reports'],
+      reports: ['view', 'export', 'financial', 'operational']
+    }
+  },
+  {
+    id: '2',
+    name: 'Front Desk Manager',
+    description: 'Manage reservations, guests, and front desk operations',
+    isDefault: true,
+    assignedCount: 42,
+    permissions: {
+      reservations: ['view', 'create', 'edit', 'checkin', 'checkout'],
+      guests: ['view', 'create', 'edit', 'notes'],
+      rooms: ['view'],
+      billing: ['view', 'process'],
+      reports: ['view']
+    }
+  },
+  {
+    id: '3',
+    name: 'Front Desk Agent',
+    description: 'Handle check-in/out and basic guest services',
+    isDefault: true,
+    assignedCount: 78,
+    permissions: {
+      reservations: ['view', 'checkin', 'checkout'],
+      guests: ['view'],
+      rooms: ['view'],
+      billing: ['view'],
+      reports: []
+    }
+  }
+];
+
+const mockGlobalUsers = [
+  {
+    id: '1',
+    name: 'Sarah Johnson',
+    email: 'sarah@luxuryhotelsaas.com',
+    type: 'platform',
+    tenantAccess: 'global',
+    status: 'active',
+    lastLogin: '2024-01-15T10:30:00Z',
+    assignedTenants: null
+  },
+  {
+    id: '2',
+    name: 'Mike Chen',
+    email: 'mike@luxuryhotelsaas.com',
+    type: 'support',
+    tenantAccess: 'global',
+    status: 'active',
+    lastLogin: '2024-01-14T16:45:00Z',
+    assignedTenants: null
+  },
+  {
+    id: '3',
+    name: 'API Integration Service',
+    email: 'integrator@example.com',
+    type: 'integrator',
+    tenantAccess: 'specific',
+    status: 'active',
+    lastLogin: '2024-01-15T08:20:00Z',
+    assignedTenants: ['1', '2', '3']
+  }
+];
+
+const mockSupportTickets = [
+  {
+    id: '1',
+    tenantId: '1',
+    tenantName: 'Grand Palace Hotel',
+    subject: 'Payment integration issue',
+    description: 'Unable to process credit card payments through the POS system',
+    priority: 'high',
+    status: 'open',
+    createdAt: '2024-01-20T09:15:00Z'
+  },
+  {
+    id: '2',
+    tenantId: '2',
+    tenantName: 'Boutique Suites',
+    subject: 'Staff login problems',
+    description: 'Front desk staff unable to login to the system',
+    priority: 'medium',
+    status: 'in_progress',
+    createdAt: '2024-01-19T16:20:00Z'
+  },
+  {
+    id: '3',
+    tenantId: '3',
+    tenantName: 'City Inn Express',
+    subject: 'Report generation error',
+    description: 'Monthly reports failing to generate',
+    priority: 'low',
+    status: 'resolved',
+    createdAt: '2024-01-18T14:30:00Z'
+  }
+];
+
 // Utility functions
 const delay = () => new Promise(resolve => setTimeout(resolve, Math.random() * 400 + 200));
 const shouldFail = () => Math.random() < 0.1; // 10% failure rate
@@ -387,15 +538,198 @@ export const mockApi = {
   async getTemplates() {
     await delay();
     if (shouldFail()) throw new Error('Failed to fetch templates');
-    return { data: mockDashboardData.templates };
+    return { data: mockTemplates };
   },
 
   async createTemplate(data: any) {
     await delay();
     if (shouldFail()) throw new Error('Failed to create template');
-    const newTemplate = { id: Date.now().toString(), ...data, usage: 0 };
-    mockDashboardData.templates.push(newTemplate);
+    const newTemplate = { 
+      id: Date.now().toString(), 
+      ...data, 
+      createdAt: new Date().toISOString() 
+    };
+    mockTemplates.push(newTemplate);
     return { data: newTemplate };
+  },
+
+  async updateTemplate(id: string, data: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to update template');
+    const index = mockTemplates.findIndex(t => t.id === id);
+    if (index === -1) throw new Error('Template not found');
+    mockTemplates[index] = { ...mockTemplates[index], ...data };
+    return { data: mockTemplates[index] };
+  },
+
+  async deleteTemplate(id: string) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to delete template');
+    const index = mockTemplates.findIndex(t => t.id === id);
+    if (index === -1) throw new Error('Template not found');
+    mockTemplates.splice(index, 1);
+    return { success: true };
+  },
+
+  // Super Admin - Roles
+  async getRoles() {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch roles');
+    return { data: mockRoles };
+  },
+
+  async createRole(data: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to create role');
+    const newRole = {
+      id: Date.now().toString(),
+      ...data,
+      isDefault: false,
+      assignedCount: 0
+    };
+    mockRoles.push(newRole);
+    return { data: newRole };
+  },
+
+  async updateRole(id: string, data: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to update role');
+    const index = mockRoles.findIndex(r => r.id === id);
+    if (index === -1) throw new Error('Role not found');
+    mockRoles[index] = { ...mockRoles[index], ...data };
+    return { data: mockRoles[index] };
+  },
+
+  async deleteRole(id: string) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to delete role');
+    const index = mockRoles.findIndex(r => r.id === id);
+    if (index === -1) throw new Error('Role not found');
+    if (mockRoles[index].isDefault) throw new Error('Cannot delete system role');
+    mockRoles.splice(index, 1);
+    return { success: true };
+  },
+
+  // Super Admin - Global Users
+  async getGlobalUsers() {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch global users');
+    return { data: mockGlobalUsers };
+  },
+
+  async createGlobalUser(data: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to create global user');
+    const newUser = {
+      id: Date.now().toString(),
+      ...data,
+      status: 'active',
+      lastLogin: null,
+      createdAt: new Date().toISOString()
+    };
+    mockGlobalUsers.push(newUser);
+    return { data: newUser };
+  },
+
+  async updateGlobalUser(id: string, data: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to update global user');
+    const index = mockGlobalUsers.findIndex(u => u.id === id);
+    if (index === -1) throw new Error('User not found');
+    mockGlobalUsers[index] = { ...mockGlobalUsers[index], ...data };
+    return { data: mockGlobalUsers[index] };
+  },
+
+  async deleteGlobalUser(id: string) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to delete global user');
+    const index = mockGlobalUsers.findIndex(u => u.id === id);
+    if (index === -1) throw new Error('User not found');
+    mockGlobalUsers.splice(index, 1);
+    return { success: true };
+  },
+
+  // Super Admin - Support
+  async getSupportTickets() {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch support tickets');
+    return { data: mockSupportTickets };
+  },
+
+  async createSupportTicket(data: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to create support ticket');
+    const newTicket = {
+      id: Date.now().toString(),
+      ...data,
+      createdAt: new Date().toISOString()
+    };
+    mockSupportTickets.push(newTicket);
+    return { data: newTicket };
+  },
+
+  async updateSupportTicket(id: string, data: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to update support ticket');
+    const index = mockSupportTickets.findIndex(t => t.id === id);
+    if (index === -1) throw new Error('Ticket not found');
+    mockSupportTickets[index] = { ...mockSupportTickets[index], ...data };
+    return { data: mockSupportTickets[index] };
+  },
+
+  // Super Admin - Emergency Mode
+  async getEmergencyMode() {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch emergency mode status');
+    return { 
+      data: { 
+        globalMode: mockDashboardData.emergencyMode.enabled,
+        lastToggled: mockDashboardData.emergencyMode.activatedAt,
+        ...mockDashboardData.emergencyMode 
+      } 
+    };
+  },
+
+  async toggleEmergencyMode(data: { type: string; enabled: boolean; tenantId?: string }) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to toggle emergency mode');
+    
+    if (data.type === 'global') {
+      mockDashboardData.emergencyMode = {
+        enabled: data.enabled,
+        activatedBy: data.enabled ? 'admin' : null,
+        activatedAt: data.enabled ? new Date().toISOString() : null,
+        reason: data.enabled ? 'Global emergency activated' : null
+      };
+    } else if (data.type === 'tenant' && data.tenantId) {
+      const tenant = mockTenants.find(t => t.id === data.tenantId);
+      if (tenant) {
+        (tenant as any).emergencyMode = data.enabled;
+        tenant.updatedAt = new Date().toISOString();
+      }
+    }
+    
+    return { data: { enabled: data.enabled } };
+  },
+
+  // Super Admin - Tenant Management
+  async createTenantUser(data: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to create tenant user');
+    const newUser = {
+      id: Date.now().toString(),
+      ...data,
+      createdAt: new Date().toISOString()
+    };
+    return { data: newUser };
+  },
+
+  async impersonateTenant(tenantId: string) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to impersonate tenant');
+    const tenant = mockTenants.find(t => t.id === tenantId);
+    if (!tenant) throw new Error('Tenant not found');
+    return { data: { token: `impersonate-${tenantId}-${Date.now()}`, tenant } };
   },
 
   // Super Admin - Broadcasts
@@ -417,26 +751,6 @@ export const mockApi = {
     };
     mockDashboardData.broadcasts.unshift(broadcast);
     return { data: broadcast };
-  },
-
-  // Super Admin - Support
-  async getSupportTickets() {
-    await delay();
-    if (shouldFail()) throw new Error('Failed to fetch support tickets');
-    return { data: mockDashboardData.supportTickets };
-  },
-
-  // Super Admin - Emergency Mode
-  async toggleEmergencyMode(enabled: boolean, reason?: string) {
-    await delay();
-    if (shouldFail()) throw new Error('Failed to toggle emergency mode');
-    mockDashboardData.emergencyMode = {
-      enabled,
-      activatedBy: enabled ? 'admin' : null,
-      activatedAt: enabled ? new Date().toISOString() : null,
-      reason: enabled ? reason || null : null
-    };
-    return { data: mockDashboardData.emergencyMode };
   },
 
   // Super Admin - Policies

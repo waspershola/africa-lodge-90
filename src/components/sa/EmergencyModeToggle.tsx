@@ -26,13 +26,16 @@ export default function EmergencyModeToggle() {
   const handleToggle = async () => {
     if (isEmergencyActive) {
       // Deactivate immediately
-      await toggleEmergencyMode.mutateAsync({ enabled: false });
+      await toggleEmergencyMode.mutateAsync({ 
+        type: 'global', 
+        enabled: false 
+      });
     } else {
       // Activate with reason
       if (!reason.trim()) return;
       await toggleEmergencyMode.mutateAsync({ 
-        enabled: true, 
-        reason: reason.trim() 
+        type: 'global',
+        enabled: true
       });
       setReason('');
       setIsDialogOpen(false);

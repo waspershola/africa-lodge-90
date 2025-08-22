@@ -8,6 +8,9 @@ import NotFound from "./pages/NotFound";
 import QRMenu from "./components/QRMenu";
 import FrontDeskDashboard from "./components/FrontDeskDashboard";
 import OwnerDashboard from "./components/OwnerDashboard";
+import OwnerLayout from "./components/layout/OwnerLayout";
+import OwnerDashboardPage from "./pages/owner/Dashboard";
+import Configuration from "./pages/owner/Configuration";
 import ReportsInterface from "./components/ReportsInterface";
 import QRExportPage from "./components/QRExportPage";
 import SuperAdminLayout from "./components/layout/SuperAdminLayout";
@@ -37,8 +40,14 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/qr-menu" element={<QRMenu />} />
           <Route path="/front-desk" element={<FrontDeskDashboard />} />
-          <Route path="/owner-dashboard" element={<OwnerDashboard />} />
           <Route path="/reports" element={<ReportsInterface />} />
+          
+          {/* Owner Dashboard Routes */}
+          <Route path="/owner-dashboard" element={<OwnerLayout />}>
+            <Route index element={<OwnerDashboardPage />} />
+            <Route path="dashboard" element={<OwnerDashboardPage />} />
+            <Route path="configuration" element={<Configuration />} />
+          </Route>
           <Route path="/qr-export" element={<QRExportPage />} />
           
           {/* Hotel Dashboard Routes */}

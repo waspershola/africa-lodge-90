@@ -57,39 +57,48 @@ const sidebarItems = [
   {
     title: "Dashboard",
     icon: BarChart3,
+    href: "/owner-dashboard",
     active: true
   },
   {
+    title: "Hotel Configuration",
+    icon: Settings,
+    href: "/owner-dashboard/configuration"
+  },
+  {
     title: "Reservations",
-    icon: Calendar
+    icon: Calendar,
+    href: "/owner-dashboard/reservations"
   },
   {
     title: "Rooms & Rates",
-    icon: BedDouble
+    icon: BedDouble,
+    href: "/owner-dashboard/rooms"
   },
   {
     title: "Guests",
-    icon: Users
+    icon: Users,
+    href: "/owner-dashboard/guests"
   },
   {
     title: "Room Service QR",
-    icon: QrCode
+    icon: QrCode,
+    href: "/owner-dashboard/qr-codes"
   },
   {
     title: "Reports",
-    icon: FileText
+    icon: FileText,
+    href: "/owner-dashboard/reports"
   },
   {
     title: "Staff & Roles",
-    icon: UserCircle
+    icon: UserCircle,
+    href: "/owner-dashboard/staff"
   },
   {
     title: "Power & Fuel",
-    icon: Battery
-  },
-  {
-    title: "Settings",
-    icon: Settings
+    icon: Battery,
+    href: "/owner-dashboard/utilities"
   }
 ];
 

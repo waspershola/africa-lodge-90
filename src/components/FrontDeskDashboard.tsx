@@ -27,6 +27,7 @@ import { GuestQueuePanel } from "./frontdesk/GuestQueuePanel";
 import { RoomLegend } from "./frontdesk/RoomLegend";
 import { KeyboardShortcutsHelper } from "./frontdesk/KeyboardShortcutsHelper";
 import { QuickFilters } from "./frontdesk/QuickFilters";
+import { NotificationBanner } from "./frontdesk/NotificationBanner";
 import type { Room } from "./frontdesk/RoomGrid";
 
 // Mock data
@@ -68,6 +69,12 @@ const FrontDeskDashboard = () => {
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [showActionQueue, setShowActionQueue] = useState(false);
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
+  const [activeAlerts, setActiveAlerts] = useState([
+    { id: '1', type: 'payment' as const, message: 'Pending payments require collection', count: 3, priority: 'high' as const },
+    { id: '2', type: 'id' as const, message: 'Missing guest ID documentation', count: 2, priority: 'high' as const },
+    { id: '3', type: 'deposit' as const, message: 'Deposit payments due', count: 1, priority: 'medium' as const },
+    { id: '4', type: 'maintenance' as const, message: 'Work orders pending', count: 2, priority: 'medium' as const },
+  ]);
 
   // Simulate online/offline status
   useEffect(() => {
@@ -100,6 +107,16 @@ const FrontDeskDashboard = () => {
   const handleGuestAction = (guest: any, action: string) => {
     console.log('Guest action:', action, guest);
     // Handle guest-specific actions here
+  };
+
+  const handleDismissAlert = (alertId: string) => {
+    setActiveAlerts(prev => prev.filter(alert => alert.id !== alertId));
+  };
+
+  const handleViewAllAlerts = (type: string) => {
+    console.log('View all alerts of type:', type);
+    // Filter room grid or open alerts modal
+    setActiveFilter(type === 'payment' ? 'pending-payments' : undefined);
   };
 
   const dashboardCards = [
@@ -239,6 +256,13 @@ const FrontDeskDashboard = () => {
         {showActionQueue && (
           <ActionQueue isVisible={showActionQueue} isOnline={!isOffline} />
         )}
+
+        {/* Notification Alerts */}
+        <NotificationBanner 
+          alerts={activeAlerts}
+          onDismiss={handleDismissAlert}
+          onViewAll={handleViewAllAlerts}
+        />
 
         {/* Room Status Overview */}
         <div className="space-y-4">

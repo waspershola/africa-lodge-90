@@ -22,7 +22,8 @@ import {
   Phone,
   Mail,
   IdCard,
-  AlertTriangle
+  AlertTriangle,
+  Edit3
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Room } from "./RoomGrid";
@@ -81,26 +82,31 @@ export const RoomActionDrawer = ({
         ];
       case 'occupied':
         return [
-          { icon: LogOut, label: 'Check-out', action: 'checkout', variant: 'default' as const },
-          { icon: FileText, label: 'Open Folio', action: 'folio', variant: 'outline' as const },
-          { icon: CreditCard, label: 'Collect Payment', action: 'payment', variant: 'outline' as const },
+          { icon: LogOut, label: 'Check-Out', action: 'checkout', variant: 'default' as const },
+          { icon: Calendar, label: 'Extend Stay', action: 'extend-stay', variant: 'outline' as const },
+          { icon: UserPlus, label: 'Transfer Room', action: 'transfer-room', variant: 'outline' as const },
+          { icon: Sparkles, label: 'Add Service', action: 'add-service', variant: 'outline' as const },
+          { icon: CreditCard, label: 'Post Payment', action: 'post-payment', variant: 'outline' as const },
         ];
       case 'reserved':
         return [
-          { icon: LogIn, label: 'Check-in Guest', action: 'checkin', variant: 'default' as const },
-          { icon: FileText, label: 'View Reservation', action: 'reservation', variant: 'outline' as const },
-          { icon: Phone, label: 'Contact Guest', action: 'contact', variant: 'outline' as const },
+          { icon: LogIn, label: 'Check-In', action: 'checkin', variant: 'default' as const },
+          { icon: AlertTriangle, label: 'Cancel Reservation', action: 'cancel-reservation', variant: 'destructive' as const },
+          { icon: FileText, label: 'Modify Reservation', action: 'modify-reservation', variant: 'outline' as const },
+          { icon: UserPlus, label: 'Assign Different Room', action: 'assign-different', variant: 'outline' as const },
         ];
       case 'oos':
         return [
-          { icon: Wrench, label: 'Update Work Order', action: 'workorder', variant: 'default' as const },
-          { icon: UserPlus, label: 'Mark Available', action: 'available', variant: 'outline' as const },
+          { icon: Sparkles, label: 'Mark as Available', action: 'mark-available', variant: 'default' as const },
+          { icon: Wrench, label: 'Create Work Order', action: 'create-workorder', variant: 'outline' as const },
+          { icon: Sparkles, label: 'Assign to Housekeeping', action: 'assign-housekeeping', variant: 'outline' as const },
         ];
       case 'overstay':
         return [
-          { icon: LogOut, label: 'Force Check-out', action: 'force-checkout', variant: 'destructive' as const },
-          { icon: CreditCard, label: 'Collect Payment', action: 'payment', variant: 'default' as const },
-          { icon: Phone, label: 'Contact Guest', action: 'contact', variant: 'outline' as const },
+          { icon: Calendar, label: 'Extend Stay', action: 'extend-stay', variant: 'default' as const },
+          { icon: CreditCard, label: 'Apply Overstay Charge', action: 'overstay-charge', variant: 'outline' as const },
+          { icon: LogOut, label: 'Check-Out', action: 'checkout', variant: 'destructive' as const },
+          { icon: UserPlus, label: 'Transfer Room', action: 'transfer-room', variant: 'outline' as const },
         ];
       default:
         return [];
@@ -253,7 +259,7 @@ export const RoomActionDrawer = ({
                 onClick={() => handleAction('Add Note')}
                 disabled={isProcessing}
               >
-                <Calendar className="h-4 w-4 mr-2" />
+                <Edit3 className="h-4 w-4 mr-2" />
                 Add Note
               </Button>
               <Button 
@@ -275,6 +281,11 @@ export const RoomActionDrawer = ({
                 Email
               </Button>
             </div>
+          </div>
+
+          {/* Audit Trail */}
+          <div className="pt-4 border-t text-xs text-muted-foreground">
+            <p>Last updated by John Doe at {new Date().toLocaleTimeString()}</p>
           </div>
         </div>
       </SheetContent>

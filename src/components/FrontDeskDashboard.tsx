@@ -349,13 +349,6 @@ const FrontDeskDashboard = () => {
           />
         </div>
 
-        {/* Notification Alerts - Under Room Overview */}
-        <NotificationBanner 
-          alerts={activeAlerts}
-          onDismiss={handleDismissAlert}
-          onViewAll={handleViewAllAlerts}
-        />
-
         {/* Quick KPIs - Horizontal row under Room Status Overview */}
         <div className="space-y-4">
           <h3 className="text-lg font-medium">Quick KPIs</h3>
@@ -393,11 +386,18 @@ const FrontDeskDashboard = () => {
           </div>
         </div>
 
-        {/* Action Bar - Always visible under KPIs */}
+        {/* Action Bar - Under Quick KPIs */}
         <ActionBar 
           onAction={handleAction}
           showKeyboardHelp={showKeyboardHelp}
           onToggleKeyboardHelp={() => setShowKeyboardHelp(!showKeyboardHelp)}
+        />
+
+        {/* Notification Alerts */}
+        <NotificationBanner 
+          alerts={activeAlerts}
+          onDismiss={handleDismissAlert}
+          onViewAll={handleViewAllAlerts}
         />
 
         {/* Guest Queue Panel */}

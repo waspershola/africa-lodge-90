@@ -76,13 +76,13 @@
     --radius-lg: 1.75rem;
     --radius-xl: 2rem;
     
-    /* Unified Dashboard Sidebar - Luxury Theme */
-    --sidebar-background: 0 100% 27%; /* #8B0000 luxury red */
-    --sidebar-foreground: 0 0% 100%; /* white text/icons */
-    --sidebar-primary: 51 100% 50%; /* #FFD700 gold highlights */
-    --sidebar-primary-foreground: 0 100% 27%; /* red text on gold */
-    --sidebar-accent: 0 100% 35%; /* lighter red for hover */
-    --sidebar-accent-foreground: 0 0% 100%; /* white text on hover */
+    /* Sidebar (for dashboard) */
+    --sidebar-background: 0 65% 51%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 51 100% 50%;
+    --sidebar-primary-foreground: 0 0% 13%;
+    --sidebar-accent: 0 45% 65%;
+    --sidebar-accent-foreground: 0 0% 95%;
     --sidebar-border: 0 55% 45%;
     --sidebar-ring: 51 100% 50%;
   }

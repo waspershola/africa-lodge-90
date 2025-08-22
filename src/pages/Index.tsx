@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import heroHotelBg from "@/assets/hero-hotel-bg.jpg";
 
 const Index = () => {
   const fadeIn = {
@@ -175,7 +176,12 @@ const Index = () => {
       </motion.header>
 
       {/* Hero Section */}
-      <section className="py-20 px-4 modern-pattern">
+      <section 
+        className="py-20 px-4 relative bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: `linear-gradient(rgba(139, 0, 0, 0.7), rgba(255, 215, 0, 0.3)), url(${heroHotelBg})`
+        }}
+      >
         <div className="container mx-auto text-center">
           <motion.div
             className="max-w-4xl mx-auto"

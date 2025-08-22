@@ -24,7 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { 
   usePlans, useCreatePlan, useUpdatePlan, useDeletePlan, usePlanMetrics, 
-  useSendInvoiceReminder, useCheckSubscriptionExpiry, useTenants 
+  useSendInvoiceReminder, useCheckSubscriptionExpiry, useTenants, useUpdateTenant
 } from '@/hooks/useApi';
 import type { Plan } from '@/lib/api/mockAdapter';
 
@@ -94,12 +94,13 @@ export default function Plans() {
   const { data: plansData, isLoading: plansLoading, error: plansError, refetch: refetchPlans } = usePlans();
   const { data: metricsData, isLoading: metricsLoading } = usePlanMetrics();
   const { data: expiryData } = useCheckSubscriptionExpiry();
-  const { data: tenantsData } = useTenants();
+  const { data: tenantsData, refetch: refetchTenants } = useTenants();
 
   const createPlan = useCreatePlan();
   const updatePlan = useUpdatePlan();
   const deletePlan = useDeletePlan();
   const sendInvoiceReminder = useSendInvoiceReminder();
+  const updateTenant = useUpdateTenant();
 
   const createForm = useForm<PlanFormData>({
     resolver: zodResolver(planFormSchema),
@@ -193,6 +194,20 @@ export default function Plans() {
       await sendInvoiceReminder.mutateAsync({ tenantId, type });
     } catch (error) {
       // Error handled by hook
+    }
+  };
+
+  const handleSuspendTenant = async (tenantId: string) => {
+    if (confirm('Are you sure you want to suspend this tenant? They will lose access to the platform.')) {
+      try {
+        await updateTenant.mutateAsync({
+          id: tenantId,
+          data: { status: 'suspended' }
+        });
+        refetchTenants();
+      } catch (error) {
+        // Error handled by hook
+      }
     }
   };
 
@@ -830,8 +845,10 @@ export default function Plans() {
                           <Button
                             variant="destructive"
                             size="sm"
+                            onClick={() => handleSuspendTenant(tenant.id)}
+                            disabled={updateTenant.isPending}
                           >
-                            Suspend
+                            {updateTenant.isPending ? 'Suspending...' : 'Suspend'}
                           </Button>
                         </div>
                       </div>
@@ -927,8 +944,13 @@ export default function Plans() {
                               <h4 className="font-medium">{tenant.name}</h4>
                               <p className="text-sm text-muted-foreground">Plan: {tenant.plan} • Status: {tenant.billingStatus}</p>
                             </div>
-                            <Button variant="destructive" size="sm">
-                              Suspend Now
+                            <Button 
+                              variant="destructive" 
+                              size="sm"
+                              onClick={() => handleSuspendTenant(tenant.id)}
+                              disabled={updateTenant.isPending}
+                            >
+                              {updateTenant.isPending ? 'Suspending...' : 'Suspend Now'}
                             </Button>
                           </div>
                         ))}

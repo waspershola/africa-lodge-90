@@ -21,6 +21,8 @@ import {
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import heroHotelBg from "@/assets/hero-hotel-bg.jpg";
+import sunsetHotelBg from "@/assets/sunset-hotel-bg.jpg";
+import diningHotelBg from "@/assets/dining-hotel-bg.jpg";
 
 const Index = () => {
   const fadeIn = {
@@ -179,7 +181,7 @@ const Index = () => {
       <section 
         className="py-20 px-4 relative bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: `linear-gradient(rgba(139, 0, 0, 0.7), rgba(255, 215, 0, 0.3)), url(${heroHotelBg})`
+          backgroundImage: `linear-gradient(rgba(139, 0, 0, 0.8), rgba(255, 215, 0, 0.4)), url(${heroHotelBg})`
         }}
       >
         <div className="container mx-auto text-center">
@@ -190,23 +192,23 @@ const Index = () => {
             animate="animate"
           >
             <motion.div variants={fadeIn}>
-              <Badge variant="secondary" className="mb-4 bg-accent/10 text-accent border-accent/20">
+              <Badge variant="secondary" className="mb-4 bg-white/20 text-white border-white/30 backdrop-blur-sm">
                 <Globe className="h-3 w-3 mr-1" />
                 Built for African Hotels
               </Badge>
             </motion.div>
             
             <motion.h1 
-              className="text-4xl md:text-6xl font-bold display-heading text-gradient mb-6"
+              className="text-4xl md:text-6xl font-bold display-heading text-white mb-6 drop-shadow-lg"
               variants={fadeIn}
             >
-              Hotel Operations
+              Redefining Hotel Management
               <br />
-              <span className="text-gradient-accent">Simplified</span>
+              <span className="text-yellow-300">in Africa</span>
             </motion.h1>
             
             <motion.p 
-              className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed"
+              className="text-lg md:text-xl text-white/90 mb-8 max-w-2xl mx-auto leading-relaxed drop-shadow-md"
               variants={fadeIn}
             >
               The first hotel management SaaS designed for African markets. Handle offline operations, 
@@ -219,40 +221,40 @@ const Index = () => {
             >
               <Button 
                 size="lg" 
-                className="bg-gradient-primary shadow-luxury hover:shadow-hover text-lg px-8 py-6"
+                className="bg-yellow-500 hover:bg-red-700 text-black hover:text-white text-lg px-8 py-6 font-semibold shadow-2xl hover:shadow-red-500/50 transition-all duration-300"
                 asChild
               >
                 <Link to="/front-desk">
-                  Try Front Desk Demo
+                  Get Started Free
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
               <Button 
                 variant="outline" 
                 size="lg"
-                className="text-lg px-8 py-6 border-primary/20 hover:bg-primary/10"
+                className="text-lg px-8 py-6 border-white/50 text-white hover:bg-white/20 backdrop-blur-sm"
                 asChild
               >
                 <Link to="/qr-menu">
-                  View QR Menu Demo
+                  Book a Demo
                 </Link>
               </Button>
             </motion.div>
 
             <motion.div 
-              className="mt-12 flex flex-wrap justify-center items-center gap-8 text-muted-foreground"
+              className="mt-12 flex flex-wrap justify-center items-center gap-8 text-white/80"
               variants={fadeIn}
             >
               <div className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-accent" />
+                <CheckCircle className="h-5 w-5 text-yellow-300" />
                 <span>No setup fees</span>
               </div>
               <div className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-accent" />
+                <CheckCircle className="h-5 w-5 text-yellow-300" />
                 <span>30-day free trial</span>
               </div>
               <div className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-accent" />
+                <CheckCircle className="h-5 w-5 text-yellow-300" />
                 <span>Cancel anytime</span>
               </div>
             </motion.div>
@@ -398,7 +400,13 @@ const Index = () => {
       </section>
 
       {/* Testimonials */}
-      <section id="testimonials" className="py-20 px-4">
+      <section 
+        id="testimonials" 
+        className="py-20 px-4 relative bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: `linear-gradient(rgba(255, 215, 0, 0.9), rgba(255, 215, 0, 0.7)), url(${diningHotelBg})`
+        }}
+      >
         <div className="container mx-auto">
           <motion.div 
             className="text-center mb-16"
@@ -513,7 +521,12 @@ const Index = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-4 bg-card">
+      <section 
+        className="py-20 px-4 relative bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: `linear-gradient(rgba(139, 0, 0, 0.8), rgba(255, 215, 0, 0.3)), url(${sunsetHotelBg})`
+        }}
+      >
         <div className="container mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -521,27 +534,27 @@ const Index = () => {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="text-3xl md:text-4xl font-bold display-heading text-gradient mb-6">
-              Ready to Transform Your Hotel?
+            <h2 className="text-3xl md:text-4xl font-bold display-heading text-white mb-6 drop-shadow-lg">
+              Start Managing Smarter
             </h2>
-            <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+            <p className="text-lg text-white/90 mb-8 max-w-2xl mx-auto drop-shadow-md">
               Join hundreds of African hotels already using LuxuryHotelSaaS to streamline operations and delight guests.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
                 size="lg" 
-                className="bg-gradient-primary shadow-luxury hover:shadow-hover text-lg px-8 py-6"
+                className="bg-yellow-500 hover:bg-red-700 text-black hover:text-white text-lg px-8 py-6 font-semibold shadow-2xl hover:shadow-red-500/50 transition-all duration-300"
                 asChild
               >
                 <Link to="/owner-dashboard">
-                  Try Owner Dashboard
+                  Start Managing Smarter
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
               <Button 
                 variant="outline" 
                 size="lg"
-                className="text-lg px-8 py-6"
+                className="text-lg px-8 py-6 border-white/50 text-white hover:bg-white/20 backdrop-blur-sm"
                 asChild
               >
                 <Link to="/reports">
@@ -554,53 +567,53 @@ const Index = () => {
       </section>
 
       {/* Footer */}
-      <footer className="py-16 px-4 bg-muted">
+      <footer className="py-16 px-4" style={{ backgroundColor: '#8B0000' }}>
         <div className="container mx-auto">
           <div className="grid md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center space-x-2 mb-4">
-                <Building2 className="h-8 w-8 text-primary" />
-                <span className="text-2xl font-bold display-heading text-gradient">
+                <Building2 className="h-8 w-8 text-yellow-400" />
+                <span className="text-2xl font-bold display-heading text-white">
                   LuxuryHotelSaaS
                 </span>
               </div>
-              <p className="text-muted-foreground leading-relaxed">
+              <p className="text-white/80 leading-relaxed">
                 The Africa-first hotel management platform that understands your unique challenges.
               </p>
             </div>
             
             <div>
-              <h4 className="font-semibold mb-4">Product</h4>
-              <ul className="space-y-2 text-muted-foreground">
-                <li><a href="#features" className="hover:text-primary transition-colors">Features</a></li>
-                <li><a href="#pricing" className="hover:text-primary transition-colors">Pricing</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Integrations</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">API</a></li>
+              <h4 className="font-semibold mb-4 text-white">Product</h4>
+              <ul className="space-y-2 text-white/70">
+                <li><a href="#features" className="hover:text-yellow-400 transition-colors">Features</a></li>
+                <li><a href="#pricing" className="hover:text-yellow-400 transition-colors">Pricing</a></li>
+                <li><a href="#" className="hover:text-yellow-400 transition-colors">Integrations</a></li>
+                <li><a href="#" className="hover:text-yellow-400 transition-colors">API</a></li>
               </ul>
             </div>
             
             <div>
-              <h4 className="font-semibold mb-4">Support</h4>
-              <ul className="space-y-2 text-muted-foreground">
-                <li><a href="#" className="hover:text-primary transition-colors">Help Center</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Contact Us</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Status</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Training</a></li>
+              <h4 className="font-semibold mb-4 text-white">Support</h4>
+              <ul className="space-y-2 text-white/70">
+                <li><a href="#" className="hover:text-yellow-400 transition-colors">Help Center</a></li>
+                <li><a href="#" className="hover:text-yellow-400 transition-colors">Contact Us</a></li>
+                <li><a href="#" className="hover:text-yellow-400 transition-colors">Status</a></li>
+                <li><a href="#" className="hover:text-yellow-400 transition-colors">Training</a></li>
               </ul>
             </div>
             
             <div>
-              <h4 className="font-semibold mb-4">Company</h4>
-              <ul className="space-y-2 text-muted-foreground">
-                <li><a href="#" className="hover:text-primary transition-colors">About</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Blog</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Careers</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Privacy</a></li>
+              <h4 className="font-semibold mb-4 text-white">Company</h4>
+              <ul className="space-y-2 text-white/70">
+                <li><a href="#" className="hover:text-yellow-400 transition-colors">About</a></li>
+                <li><a href="#" className="hover:text-yellow-400 transition-colors">Blog</a></li>
+                <li><a href="#" className="hover:text-yellow-400 transition-colors">Careers</a></li>
+                <li><a href="#" className="hover:text-yellow-400 transition-colors">Privacy</a></li>
               </ul>
             </div>
           </div>
           
-          <div className="border-t border-border mt-12 pt-8 text-center text-muted-foreground">
+          <div className="border-t border-white/20 mt-12 pt-8 text-center text-white/70">
             <p>© 2024 LuxuryHotelSaaS. Built for African Hotels.</p>
           </div>
         </div>

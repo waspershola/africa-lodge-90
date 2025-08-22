@@ -33,8 +33,8 @@ interface RoomGridProps {
   onRoomSelect?: (room: Room) => void;
 }
 
-// Mock room data
-const mockRooms: Room[] = [
+// Mock room data - make it mutable for updates
+let mockRooms: Room[] = [
   { id: '101', number: '101', name: 'Standard', status: 'available', type: 'Standard', alerts: {} },
   { id: '102', number: '102', name: 'Standard', status: 'occupied', type: 'Standard', guest: 'John Doe', checkIn: '2024-01-15', alerts: { cleaning: true } },
   { id: '103', number: '103', name: 'Standard', status: 'reserved', type: 'Standard', guest: 'Jane Smith', checkIn: '2024-01-22', alerts: { depositPending: true } },
@@ -53,10 +53,11 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [filteredRooms, setFilteredRooms] = useState<Room[]>(mockRooms);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [roomData, setRoomData] = useState<Room[]>(mockRooms);
 
   // Filter rooms based on search query and active filter
   useEffect(() => {
-    let filtered = mockRooms;
+    let filtered = roomData;
 
     // Apply search filter
     if (searchQuery.trim()) {
@@ -102,7 +103,7 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
     }
 
     setFilteredRooms(filtered);
-  }, [searchQuery, activeFilter]);
+  }, [searchQuery, activeFilter, roomData]);
 
   const handleRoomClick = (room: Room) => {
     setSelectedRoom(room);
@@ -143,28 +144,41 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
   }, [selectedRoom]);
 
   // Get status counts for summary
-  const statusCounts = mockRooms.reduce((acc, room) => {
+  const statusCounts = roomData.reduce((acc, room) => {
     acc[room.status] = (acc[room.status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
+  const handleRoomUpdate = (updatedRoom: Room) => {
+    setRoomData(prevRooms => {
+      const updatedRooms = prevRooms.map(room => 
+        room.id === updatedRoom.id ? updatedRoom : room
+      );
+      // Also update the global mock data
+      const roomIndex = mockRooms.findIndex(r => r.id === updatedRoom.id);
+      if (roomIndex !== -1) {
+        mockRooms[roomIndex] = updatedRoom;
+      }
+      return updatedRooms;
+    });
+    setSelectedRoom(null);
+    setIsDrawerOpen(false);
+  };
+
   return (
     <div className="space-y-6">
-      {/* Room Grid Header */}
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Room Status Overview</h2>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-success/10 text-success border-success/20">
-              Available: {statusCounts.available || 0}
-            </Badge>
-            <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">
-              Occupied: {statusCounts.occupied || 0}
-            </Badge>
-            <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/20">
-              Reserved: {statusCounts.reserved || 0}
-            </Badge>
-          </div>
+      {/* Room Status Summary */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="bg-room-available/10 text-room-available border-room-available/20">
+            Available: {statusCounts.available || 0}
+          </Badge>
+          <Badge variant="outline" className="bg-room-occupied/10 text-room-occupied border-room-occupied/20">
+            Occupied: {statusCounts.occupied || 0}
+          </Badge>
+          <Badge variant="outline" className="bg-room-reserved/10 text-room-reserved border-room-reserved/20">
+            Reserved: {statusCounts.reserved || 0}
+          </Badge>
         </div>
 
         {/* Active Filter Display */}
@@ -228,6 +242,7 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
           setIsDrawerOpen(false);
           setSelectedRoom(null);
         }}
+        onRoomUpdate={handleRoomUpdate}
       />
 
       {/* Keyboard Shortcuts Help */}

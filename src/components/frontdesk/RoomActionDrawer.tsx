@@ -26,6 +26,7 @@ import {
   Edit3
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { QuickGuestCapture } from "./QuickGuestCapture";
 import type { Room } from "./RoomGrid";
 
 interface RoomActionDrawerProps {
@@ -33,6 +34,7 @@ interface RoomActionDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onClose: () => void;
+  onRoomUpdate?: (updatedRoom: Room) => void;
 }
 
 export const RoomActionDrawer = ({
@@ -40,16 +42,32 @@ export const RoomActionDrawer = ({
   open,
   onOpenChange,
   onClose,
+  onRoomUpdate,
 }: RoomActionDrawerProps) => {
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showQuickCapture, setShowQuickCapture] = useState(false);
+  const [captureAction, setCaptureAction] = useState<'assign' | 'walkin'>('assign');
 
   if (!room) return null;
 
   const handleAction = async (action: string) => {
+    // Handle quick capture actions differently
+    if (action === 'Assign Room') {
+      setCaptureAction('assign');
+      setShowQuickCapture(true);
+      return;
+    }
+    
+    if (action === 'Walk-in Check-in') {
+      setCaptureAction('walkin');
+      setShowQuickCapture(true);
+      return;
+    }
+
     setIsProcessing(true);
     
-    // Simulate API call
+    // Simulate API call for other actions
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     toast({
@@ -58,6 +76,12 @@ export const RoomActionDrawer = ({
     });
     
     setIsProcessing(false);
+    onClose();
+  };
+
+  const handleGuestCaptureComplete = (updatedRoom: Room) => {
+    onRoomUpdate?.(updatedRoom);
+    setShowQuickCapture(false);
     onClose();
   };
 
@@ -114,8 +138,9 @@ export const RoomActionDrawer = ({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:w-[500px] sm:max-w-[500px]">
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent className="w-full sm:w-[500px] sm:max-w-[500px]">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-3">
             <span>Room {room.number}</span>
@@ -288,7 +313,17 @@ export const RoomActionDrawer = ({
             <p>Last updated by John Doe at {new Date().toLocaleTimeString()}</p>
           </div>
         </div>
-      </SheetContent>
-    </Sheet>
+        </SheetContent>
+      </Sheet>
+
+      {/* Quick Guest Capture Dialog */}
+      <QuickGuestCapture 
+        room={room}
+        open={showQuickCapture}
+        onOpenChange={setShowQuickCapture}
+        action={captureAction}
+        onComplete={handleGuestCaptureComplete}
+      />
+    </>
   );
 };

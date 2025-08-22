@@ -257,13 +257,6 @@ const FrontDeskDashboard = () => {
           <ActionQueue isVisible={showActionQueue} isOnline={!isOffline} />
         )}
 
-        {/* Notification Alerts */}
-        <NotificationBanner 
-          alerts={activeAlerts}
-          onDismiss={handleDismissAlert}
-          onViewAll={handleViewAllAlerts}
-        />
-
         {/* Room Status Overview - Priority #1 */}
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Room Status Overview</h2>
@@ -273,6 +266,13 @@ const FrontDeskDashboard = () => {
             onRoomSelect={setSelectedRoom}
           />
         </div>
+
+        {/* Notification Alerts - Under Room Overview */}
+        <NotificationBanner 
+          alerts={activeAlerts}
+          onDismiss={handleDismissAlert}
+          onViewAll={handleViewAllAlerts}
+        />
 
         {/* Quick KPIs - Horizontal row under Room Status Overview */}
         <div className="space-y-4">

@@ -11,6 +11,7 @@ import OwnerDashboard from "./components/OwnerDashboard";
 import OwnerLayout from "./components/layout/OwnerLayout";
 import OwnerDashboardPage from "./pages/owner/Dashboard";
 import Configuration from "./pages/owner/Configuration";
+import StaffRoles from "./pages/owner/StaffRoles";
 import ReportsInterface from "./components/ReportsInterface";
 import QRExportPage from "./components/QRExportPage";
 import SuperAdminLayout from "./components/layout/SuperAdminLayout";
@@ -47,6 +48,7 @@ const App = () => (
             <Route index element={<OwnerDashboardPage />} />
             <Route path="dashboard" element={<OwnerDashboardPage />} />
             <Route path="configuration" element={<Configuration />} />
+            <Route path="staff" element={<StaffRoles />} />
           </Route>
           <Route path="/qr-export" element={<QRExportPage />} />
           

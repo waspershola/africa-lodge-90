@@ -158,6 +158,9 @@ const mockRoles = [
       billing: { read: true, write: true },
       settings: { read: true, write: true }
     },
+    staffCount: 1,
+    isSystem: true,
+    createdDate: '2024-01-01',
     scope: 'tenant'
   },
   {
@@ -173,6 +176,9 @@ const mockRoles = [
       billing: { read: true, write: false },
       settings: { read: false, write: false }
     },
+    staffCount: 3,
+    isSystem: false,
+    createdDate: '2024-01-15',
     scope: 'tenant'
   },
   {
@@ -188,6 +194,9 @@ const mockRoles = [
       billing: { read: true, write: false },
       settings: { read: true, write: false }
     },
+    staffCount: 2,
+    isSystem: false,
+    createdDate: '2024-01-10',
     scope: 'tenant'
   },
   {
@@ -202,6 +211,9 @@ const mockRoles = [
       audit: { read: true, write: true, export: true },
       support: { read: true, write: true }
     },
+    staffCount: 0,
+    isSystem: true,
+    createdDate: '2024-01-01',
     scope: 'global'
   }
 ];

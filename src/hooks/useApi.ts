@@ -514,6 +514,29 @@ export const usePlans = () => {
   });
 };
 
+export const useCreatePlan = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (data: any) => mockApi.createPlan(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'plans'] });
+      toast({
+        title: 'Success',
+        description: 'Plan created successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
 export const useUpdatePlan = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -535,6 +558,87 @@ export const useUpdatePlan = () => {
         variant: 'destructive',
       });
     },
+  });
+};
+
+export const useDeletePlan = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (id: string) => mockApi.deletePlan(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'plans'] });
+      toast({
+        title: 'Success',
+        description: 'Plan deleted successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const usePlanMetrics = () => {
+  return useQuery({
+    queryKey: ['sa', 'plan-metrics'],
+    queryFn: mockApi.getPlanMetrics,
+  });
+};
+
+export const useSendInvoiceReminder = () => {
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ tenantId, type }: { tenantId: string; type: 'overdue' | 'upcoming' }) =>
+      mockApi.sendInvoiceReminder(tenantId, type),
+    onSuccess: () => {
+      toast({
+        title: 'Success',
+        description: 'Invoice reminder sent successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useProcessSubscriptionRenewal = () => {
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (tenantId: string) => mockApi.processSubscriptionRenewal(tenantId),
+    onSuccess: () => {
+      toast({
+        title: 'Success',
+        description: 'Subscription renewal processed successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useCheckSubscriptionExpiry = () => {
+  return useQuery({
+    queryKey: ['sa', 'subscription-expiry'],
+    queryFn: mockApi.checkSubscriptionExpiry,
+    refetchInterval: 5 * 60 * 1000, // Check every 5 minutes
   });
 };
 

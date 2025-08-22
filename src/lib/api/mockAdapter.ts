@@ -296,9 +296,13 @@ const mockPlans = [
   {
     id: 'starter',
     name: 'Starter',
+    description: 'Perfect for small boutique hotels',
     price: 35000,
     currency: 'NGN',
     maxRooms: 25,
+    trialDays: 14,
+    billingCycle: 'monthly',
+    popular: false,
     features: {
       frontDesk: true,
       localPayments: true,
@@ -313,14 +317,17 @@ const mockPlans = [
       multiProperty: false,
       advancedAnalytics: false
     },
-    popular: false
   },
   {
     id: 'growth',
     name: 'Growth',
+    description: 'Ideal for growing hotels with advanced features',
     price: 65000,
     currency: 'NGN',
     maxRooms: 75,
+    trialDays: 14,
+    billingCycle: 'monthly',
+    popular: true,
     features: {
       frontDesk: true,
       localPayments: true,
@@ -335,14 +342,17 @@ const mockPlans = [
       multiProperty: false,
       advancedAnalytics: false
     },
-    popular: true
   },
   {
     id: 'pro',
     name: 'Pro',
+    description: 'Enterprise solution with unlimited features',
     price: 120000,
     currency: 'NGN',
     maxRooms: 999,
+    trialDays: 30,
+    billingCycle: 'monthly',
+    popular: false,
     features: {
       frontDesk: true,
       localPayments: true,
@@ -356,8 +366,7 @@ const mockPlans = [
       kioskCheckin: true,
       multiProperty: true,
       advancedAnalytics: true
-    },
-    popular: false
+    }
   }
 ];
 
@@ -794,11 +803,22 @@ export const mockApi = {
     };
   },
 
-  // Super Admin - Plans
   async getPlans() {
     await delay();
     if (shouldFail()) throw new Error('Failed to fetch plans');
     return { data: mockPlans };
+  },
+
+  async createPlan(data: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to create plan');
+    const newPlan = {
+      id: Date.now().toString(),
+      ...data,
+      createdAt: new Date().toISOString()
+    };
+    mockPlans.push(newPlan);
+    return { data: newPlan };
   },
 
   async updatePlan(id: string, data: any) {
@@ -808,6 +828,99 @@ export const mockApi = {
     if (index === -1) throw new Error('Plan not found');
     mockPlans[index] = { ...mockPlans[index], ...data };
     return { data: mockPlans[index] };
+  },
+
+  async deletePlan(id: string) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to delete plan');
+    const index = mockPlans.findIndex(p => p.id === id);
+    if (index === -1) throw new Error('Plan not found');
+    mockPlans.splice(index, 1);
+    return { success: true };
+  },
+
+  async getPlanMetrics() {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch plan metrics');
+    return {
+      data: {
+        adoption: [
+          { planName: 'Starter', subscribers: 45, revenue: 1575000, growth: 12.5 },
+          { planName: 'Growth', subscribers: 78, revenue: 5070000, growth: 18.3 },
+          { planName: 'Pro', subscribers: 33, revenue: 3960000, growth: 22.1 }
+        ],
+        revenue: [
+          { month: 'Jan', starter: 1200000, growth: 3800000, pro: 2800000 },
+          { month: 'Feb', starter: 1350000, growth: 4200000, pro: 3200000 },
+          { month: 'Mar', starter: 1450000, growth: 4650000, pro: 3650000 },
+          { month: 'Apr', starter: 1575000, growth: 5070000, pro: 3960000 }
+        ],
+        trialConversions: [
+          { planName: 'Starter', trials: 125, conversions: 89, conversionRate: 71.2 },
+          { planName: 'Growth', trials: 98, conversions: 78, conversionRate: 79.6 },
+          { planName: 'Pro', trials: 45, conversions: 33, conversionRate: 73.3 }
+        ],
+        churn: [
+          { planName: 'Starter', churned: 8, retained: 37, churnRate: 17.8 },
+          { planName: 'Growth', churned: 5, retained: 73, churnRate: 6.4 },
+          { planName: 'Pro', churned: 2, retained: 31, churnRate: 6.1 }
+        ]
+      }
+    };
+  },
+
+  async sendInvoiceReminder(tenantId: string, type: 'overdue' | 'upcoming') {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to send invoice reminder');
+    return {
+      data: {
+        messageId: Date.now().toString(),
+        sentTo: tenantId,
+        type,
+        status: 'sent',
+        sentAt: new Date().toISOString()
+      }
+    };
+  },
+
+  async processSubscriptionRenewal(tenantId: string) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to process subscription renewal');
+    const tenant = mockTenants.find(t => t.id === tenantId);
+    if (!tenant) throw new Error('Tenant not found');
+    
+    // Simulate subscription expiry check and renewal
+    const nextBillingDate = new Date();
+    nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+    
+    return {
+      data: {
+        tenantId,
+        renewed: true,
+        nextBillingDate: nextBillingDate.toISOString(),
+        amount: mockPlans.find(p => p.name === tenant.plan)?.price || 0
+      }
+    };
+  },
+
+  async checkSubscriptionExpiry() {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to check subscription expiry');
+    
+    // Simulate checking for expired subscriptions
+    const expiredTenants = mockTenants.filter(t => t.billingStatus === 'overdue');
+    const expiringTenants = mockTenants.filter(t => 
+      t.billingStatus === 'active' && Math.random() > 0.8 // Simulate 20% expiring soon
+    );
+    
+    return {
+      data: {
+        expired: expiredTenants,
+        expiringSoon: expiringTenants,
+        totalChecked: mockTenants.length,
+        suspensionRequired: expiredTenants.length
+      }
+    };
   },
 
   // Super Admin - Audit

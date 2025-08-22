@@ -195,11 +195,56 @@ const mockMetrics = {
 
 const mockDashboardData = {
   topPerformers: [
-    { id: '1', name: 'Grand Palace Hotel', city: 'Lagos', revenue: 2850000, occupancy: 85.2, orders: 1247, satisfaction: 4.8 },
-    { id: '2', name: 'Boutique Suites', city: 'Abuja', revenue: 1920000, occupancy: 78.4, orders: 892, satisfaction: 4.6 },
-    { id: '4', name: 'Marina Heights', city: 'Lagos', revenue: 1650000, occupancy: 82.1, orders: 743, satisfaction: 4.7 },
-    { id: '5', name: 'Capital Lodge', city: 'Abuja', revenue: 1420000, occupancy: 76.8, orders: 654, satisfaction: 4.5 },
-    { id: '3', name: 'City Inn Express', city: 'Port Harcourt', revenue: 980000, occupancy: 65.3, orders: 421, satisfaction: 4.2 }
+    { id: '1', name: 'Grand Palace Hotel', city: 'Lagos', revenue: 2850000, occupancy: 85.2, orders: 1247, satisfaction: 4.8, status: 'healthy' },
+    { id: '2', name: 'Boutique Suites', city: 'Abuja', revenue: 1920000, occupancy: 78.4, orders: 892, satisfaction: 4.6, status: 'healthy' },
+    { id: '4', name: 'Marina Heights', city: 'Lagos', revenue: 1650000, occupancy: 82.1, orders: 743, satisfaction: 4.7, status: 'healthy' },
+    { id: '5', name: 'Capital Lodge', city: 'Abuja', revenue: 1420000, occupancy: 76.8, orders: 654, satisfaction: 4.5, status: 'warning' },
+    { id: '3', name: 'City Inn Express', city: 'Port Harcourt', revenue: 980000, occupancy: 65.3, orders: 421, satisfaction: 4.2, status: 'at-risk' }
+  ],
+  churnMetrics: {
+    activeHotels: 142,
+    cancelledThisMonth: 5,
+    churnRate: 3.4,
+    retentionRate: 96.6,
+    newSignups: 14,
+    reactivations: 2,
+    atRiskHotels: 8
+  },
+  revenueForecasting: {
+    currentMRR: 1540000,
+    projectedMRR: 1680000,
+    forecastAccuracy: 92.5,
+    nextMonthProjection: 1720000,
+    atRiskRevenue: 285000
+  },
+  userAnalytics: {
+    totalActiveUsers: 2847,
+    byRole: {
+      frontDesk: 1420,
+      manager: 584,
+      owner: 142,
+      maintenance: 398,
+      guestServices: 303
+    },
+    growthTrend: [
+      { month: 'Jan', active: 2100, new: 156, churned: 23 },
+      { month: 'Feb', active: 2400, new: 320, churned: 18 },
+      { month: 'Mar', active: 2650, new: 285, churned: 35 },
+      { month: 'Apr', active: 2847, new: 223, churned: 26 }
+    ]
+  },
+  templates: [
+    { id: 'luxury', name: 'Luxury Resort', category: 'Resort', features: ['spa', 'concierge', 'valet'], usage: 23 },
+    { id: 'business', name: 'Business Hotel', category: 'Business', features: ['meeting-rooms', 'business-center'], usage: 45 },
+    { id: 'boutique', name: 'Boutique Inn', category: 'Boutique', features: ['personalized-service', 'unique-design'], usage: 34 }
+  ],
+  broadcasts: [
+    { id: '1', title: 'System Maintenance', message: 'Scheduled maintenance on Saturday 2am UTC', status: 'scheduled', recipients: 142, created: '2024-01-20T10:00:00Z' },
+    { id: '2', title: 'New Feature Release', message: 'Room service QR codes now available', status: 'sent', recipients: 142, created: '2024-01-18T14:30:00Z' }
+  ],
+  supportTickets: [
+    { id: '1', tenantName: 'Grand Palace Hotel', subject: 'Payment integration issue', priority: 'high', status: 'open', created: '2024-01-20T09:15:00Z' },
+    { id: '2', tenantName: 'Boutique Suites', subject: 'Staff login problems', priority: 'medium', status: 'in-progress', created: '2024-01-19T16:20:00Z' }
   ],
   healthStatus: [
     { tenantId: '1', name: 'Grand Palace Hotel', status: 'healthy', uptime: 99.8, latency: 142, errors: 0 },
@@ -223,12 +268,18 @@ const mockDashboardData = {
     nextBillingCycle: '2024-02-01'
   },
   regions: [
-    { name: 'Lagos', count: 45, revenue: 8200000 },
-    { name: 'Abuja', count: 38, revenue: 6800000 },
-    { name: 'Port Harcourt', count: 28, revenue: 2100000 },
-    { name: 'Kano', count: 22, revenue: 1900000 },
-    { name: 'Ibadan', count: 23, revenue: 1600000 }
-  ]
+    { name: 'Lagos', count: 45, revenue: 8200000, lat: 6.5244, lng: 3.3792 },
+    { name: 'Abuja', count: 38, revenue: 6800000, lat: 9.0765, lng: 7.3986 },
+    { name: 'Port Harcourt', count: 28, revenue: 2100000, lat: 4.8156, lng: 7.0498 },
+    { name: 'Kano', count: 22, revenue: 1900000, lat: 12.0022, lng: 8.5920 },
+    { name: 'Ibadan', count: 23, revenue: 1600000, lat: 7.3775, lng: 3.9470 }
+  ],
+  emergencyMode: {
+    enabled: false,
+    activatedBy: null,
+    activatedAt: null,
+    reason: null
+  }
 };
 
 // Utility functions
@@ -332,6 +383,62 @@ export const mockApi = {
     return { data: mockDashboardData };
   },
 
+  // Super Admin - Templates
+  async getTemplates() {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch templates');
+    return { data: mockDashboardData.templates };
+  },
+
+  async createTemplate(data: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to create template');
+    const newTemplate = { id: Date.now().toString(), ...data, usage: 0 };
+    mockDashboardData.templates.push(newTemplate);
+    return { data: newTemplate };
+  },
+
+  // Super Admin - Broadcasts
+  async getBroadcasts() {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch broadcasts');
+    return { data: mockDashboardData.broadcasts };
+  },
+
+  async sendBroadcast(data: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to send broadcast');
+    const broadcast = {
+      id: Date.now().toString(),
+      ...data,
+      status: 'sent',
+      recipients: mockTenants.length,
+      created: new Date().toISOString()
+    };
+    mockDashboardData.broadcasts.unshift(broadcast);
+    return { data: broadcast };
+  },
+
+  // Super Admin - Support
+  async getSupportTickets() {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch support tickets');
+    return { data: mockDashboardData.supportTickets };
+  },
+
+  // Super Admin - Emergency Mode
+  async toggleEmergencyMode(enabled: boolean, reason?: string) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to toggle emergency mode');
+    mockDashboardData.emergencyMode = {
+      enabled,
+      activatedBy: enabled ? 'admin' : null,
+      activatedAt: enabled ? new Date().toISOString() : null,
+      reason: enabled ? reason || null : null
+    };
+    return { data: mockDashboardData.emergencyMode };
+  },
+
   // Super Admin - Policies
   async getPolicies() {
     await delay();
@@ -341,6 +448,7 @@ export const mockApi = {
         defaultOfflineWindow: 24,
         maxOfflineWindow: 48,
         minOfflineWindow: 12,
+        emergencyMode: mockDashboardData.emergencyMode,
         tenantOverrides: mockTenants.map(t => ({
           tenantId: t.id,
           tenantName: t.name,

@@ -140,6 +140,99 @@ export const useDashboardData = () => {
   });
 };
 
+export const useTemplates = () => {
+  return useQuery({
+    queryKey: ['sa', 'templates'],
+    queryFn: mockApi.getTemplates,
+  });
+};
+
+export const useCreateTemplate = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: mockApi.createTemplate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'templates'] });
+      toast({
+        title: 'Success',
+        description: 'Template created successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useBroadcasts = () => {
+  return useQuery({
+    queryKey: ['sa', 'broadcasts'],
+    queryFn: mockApi.getBroadcasts,
+  });
+};
+
+export const useSendBroadcast = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: mockApi.sendBroadcast,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'broadcasts'] });
+      toast({
+        title: 'Success',
+        description: 'Broadcast sent successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useSupportTickets = () => {
+  return useQuery({
+    queryKey: ['sa', 'support'],
+    queryFn: mockApi.getSupportTickets,
+  });
+};
+
+export const useToggleEmergencyMode = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ enabled, reason }: { enabled: boolean; reason?: string }) => 
+      mockApi.toggleEmergencyMode(enabled, reason),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'policies'] });
+      queryClient.invalidateQueries({ queryKey: ['sa', 'dashboard'] });
+      toast({
+        title: data.data.enabled ? 'Emergency Mode Activated' : 'Emergency Mode Deactivated',
+        description: data.data.enabled ? 'All hotels are now offline' : 'Normal operations restored',
+        variant: data.data.enabled ? 'destructive' : 'default',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
 export const usePolicies = () => {
   return useQuery({
     queryKey: ['sa', 'policies'],

@@ -12,7 +12,11 @@ import {
   Calendar,
   MapPin,
   Star,
-  Zap
+  Zap,
+  UserCheck,
+  TrendingDown,
+  Target,
+  Shield
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +24,10 @@ import { Progress } from '@/components/ui/progress';
 import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { useDashboardData, useMetrics } from '@/hooks/useApi';
+import BroadcastPanel from '@/components/sa/BroadcastPanel';
+import SupportConsole from '@/components/sa/SupportConsole';
+import EmergencyModeToggle from '@/components/sa/EmergencyModeToggle';
+import TemplateLibrary from '@/components/sa/TemplateLibrary';
 import { 
   LineChart, 
   Line, 
@@ -239,6 +247,96 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+      </motion.div>
+
+      {/* Enhanced Analytics Row */}
+      <motion.div variants={fadeIn} className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Churn & Retention */}
+        <Card className="modern-card bg-gradient-to-br from-warning/5 to-warning/10 border-warning/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <TrendingDown className="h-4 w-4 text-warning" />
+              Churn Rate
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-warning">{dashboard.churnMetrics.churnRate}%</div>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-sm text-muted-foreground">{dashboard.churnMetrics.cancelledThisMonth} this month</span>
+              <Badge className="bg-danger/10 text-danger border-danger/20">
+                {dashboard.churnMetrics.atRiskHotels} at risk
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* User Analytics */}
+        <Card className="modern-card bg-gradient-to-br from-success/5 to-success/10 border-success/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <UserCheck className="h-4 w-4 text-success" />
+              Active Staff
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-success">{dashboard.userAnalytics.totalActiveUsers.toLocaleString()}</div>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-xs text-muted-foreground">
+                Front Desk: {dashboard.userAnalytics.byRole.frontDesk}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Revenue Forecasting */}
+        <Card className="modern-card bg-gradient-to-br from-accent/5 to-accent/10 border-accent/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Target className="h-4 w-4 text-accent" />
+              MRR Forecast
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-accent">
+              ₦{(dashboard.revenueForecasting.projectedMRR / 1000000).toFixed(1)}M
+            </div>
+            <div className="flex items-center gap-2 mt-2">
+              <Progress value={dashboard.revenueForecasting.forecastAccuracy} className="flex-1 h-2" />
+              <span className="text-xs text-muted-foreground">{dashboard.revenueForecasting.forecastAccuracy}% accuracy</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Emergency Status */}
+        <Card className="modern-card bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Shield className="h-4 w-4 text-primary" />
+              System Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-primary">99.8%</div>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-sm text-muted-foreground">Platform Uptime</span>
+              <Badge className="bg-success/10 text-success border-success/20">
+                Healthy
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Management & Control Panels */}
+      <motion.div variants={fadeIn} className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        <div className="space-y-8">
+          <BroadcastPanel />
+          <TemplateLibrary />
+        </div>
+        <div className="space-y-8">
+          <SupportConsole />
+          <EmergencyModeToggle />
+        </div>
       </motion.div>
 
       {/* Charts Section */}

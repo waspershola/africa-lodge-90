@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { mockApi } from '@/lib/api/mockAdapter';
 import { useToast } from '@/hooks/use-toast';
 
-// Super Admin hooks
+// Super Admin hooks - Tenants
 export const useTenants = () => {
   return useQuery({
     queryKey: ['sa', 'tenants'],
@@ -88,6 +88,425 @@ export const useDeleteTenant = () => {
   });
 };
 
+export const useSuspendTenant = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: mockApi.suspendTenant,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'tenants'] });
+      toast({
+        title: 'Success',
+        description: 'Tenant suspended successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useReactivateTenant = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: mockApi.reactivateTenant,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'tenants'] });
+      toast({
+        title: 'Success',
+        description: 'Tenant reactivated successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useImpersonateTenant = () => {
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: mockApi.impersonateTenant,
+    onSuccess: (data) => {
+      toast({
+        title: 'Success',
+        description: 'Impersonation token generated',
+      });
+      // Open tenant dashboard in new tab
+      window.open(data.data.redirectUrl, '_blank');
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+// Templates
+export const useTemplates = () => {
+  return useQuery({
+    queryKey: ['sa', 'templates'],
+    queryFn: mockApi.getTemplates,
+  });
+};
+
+export const useTemplate = (id: string) => {
+  return useQuery({
+    queryKey: ['sa', 'templates', id],
+    queryFn: () => mockApi.getTemplate(id),
+    enabled: !!id,
+  });
+};
+
+export const useCreateTemplate = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: mockApi.createTemplate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'templates'] });
+      toast({
+        title: 'Success',
+        description: 'Template created successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useUpdateTemplate = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => 
+      mockApi.updateTemplate(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'templates'] });
+      toast({
+        title: 'Success',
+        description: 'Template updated successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useDeleteTemplate = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: mockApi.deleteTemplate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'templates'] });
+      toast({
+        title: 'Success',
+        description: 'Template deleted successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+// Roles & Permissions
+export const useRoles = () => {
+  return useQuery({
+    queryKey: ['sa', 'roles'],
+    queryFn: mockApi.getRoles,
+  });
+};
+
+export const useRole = (id: string) => {
+  return useQuery({
+    queryKey: ['sa', 'roles', id],
+    queryFn: () => mockApi.getRole(id),
+    enabled: !!id,
+  });
+};
+
+export const useCreateRole = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: mockApi.createRole,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'roles'] });
+      toast({
+        title: 'Success',
+        description: 'Role created successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useUpdateRole = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => 
+      mockApi.updateRole(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'roles'] });
+      toast({
+        title: 'Success',
+        description: 'Role updated successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useDeleteRole = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: mockApi.deleteRole,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'roles'] });
+      toast({
+        title: 'Success',
+        description: 'Role deleted successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+// Global User Management
+export const useGlobalUsers = () => {
+  return useQuery({
+    queryKey: ['sa', 'global-users'],
+    queryFn: mockApi.getGlobalUsers,
+  });
+};
+
+export const useGlobalUser = (id: string) => {
+  return useQuery({
+    queryKey: ['sa', 'global-users', id],
+    queryFn: () => mockApi.getGlobalUser(id),
+    enabled: !!id,
+  });
+};
+
+export const useCreateGlobalUser = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: mockApi.createGlobalUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'global-users'] });
+      toast({
+        title: 'Success',
+        description: 'Global user created successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useUpdateGlobalUser = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => 
+      mockApi.updateGlobalUser(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'global-users'] });
+      toast({
+        title: 'Success',
+        description: 'Global user updated successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useDeleteGlobalUser = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: mockApi.deleteGlobalUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'global-users'] });
+      toast({
+        title: 'Success',
+        description: 'Global user deleted successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+// Support & Communication
+export const useSupportTickets = () => {
+  return useQuery({
+    queryKey: ['sa', 'support-tickets'],
+    queryFn: mockApi.getSupportTickets,
+  });
+};
+
+export const useSupportTicket = (id: string) => {
+  return useQuery({
+    queryKey: ['sa', 'support-tickets', id],
+    queryFn: () => mockApi.getSupportTicket(id),
+    enabled: !!id,
+  });
+};
+
+export const useUpdateSupportTicket = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => 
+      mockApi.updateSupportTicket(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'support-tickets'] });
+      toast({
+        title: 'Success',
+        description: 'Support ticket updated successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useAnnouncements = () => {
+  return useQuery({
+    queryKey: ['sa', 'announcements'],
+    queryFn: mockApi.getAnnouncements,
+  });
+};
+
+export const useCreateAnnouncement = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: mockApi.createAnnouncement,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'announcements'] });
+      toast({
+        title: 'Success',
+        description: 'Announcement created successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useBroadcastMessage = () => {
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: mockApi.broadcastMessage,
+    onSuccess: (data) => {
+      toast({
+        title: 'Success',
+        description: `Message sent to ${data.data.sentTo} tenants`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+// Super Admin - Plans
 export const usePlans = () => {
   return useQuery({
     queryKey: ['sa', 'plans'],
@@ -160,6 +579,76 @@ export const useUpdatePolicy = () => {
       toast({
         title: 'Success',
         description: 'Policy updated successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useToggleEmergencyMode = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: mockApi.toggleEmergencyMode,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'policies'] });
+      toast({
+        title: 'Success',
+        description: `Emergency mode ${data.data.emergencyModeEnabled ? 'enabled' : 'disabled'} for ${data.data.affectedTenants} tenants`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+// Bulk Operations
+export const useBulkImportTenants = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: mockApi.bulkImportTenants,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'tenants'] });
+      toast({
+        title: 'Success',
+        description: `Imported ${data.data.imported} tenants successfully`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useBulkUpdateTenants = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: mockApi.bulkUpdateTenants,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'tenants'] });
+      toast({
+        title: 'Success',
+        description: `Updated ${data.data.updated} tenants successfully`,
       });
     },
     onError: (error: Error) => {

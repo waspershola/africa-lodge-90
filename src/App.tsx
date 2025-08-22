@@ -13,6 +13,11 @@ import QRExportPage from "./components/QRExportPage";
 import SuperAdminLayout from "./components/layout/SuperAdminLayout";
 import Dashboard from "./pages/sa/Dashboard";
 import Tenants from "./pages/sa/Tenants";
+import Templates from "./pages/sa/Templates";
+import Roles from "./pages/sa/Roles";
+import GlobalUsers from "./pages/sa/GlobalUsers";
+import Support from "./pages/sa/Support";
+import Wizard from "./pages/sa/Wizard";
 import Plans from "./pages/sa/Plans";
 import Policies from "./pages/sa/Policies";
 import Audit from "./pages/sa/Audit";
@@ -39,6 +44,11 @@ const App = () => (
             <Route index element={<Dashboard />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="tenants" element={<Tenants />} />
+            <Route path="templates" element={<Templates />} />
+            <Route path="roles" element={<Roles />} />
+            <Route path="global-users" element={<GlobalUsers />} />
+            <Route path="support" element={<Support />} />
+            <Route path="wizard" element={<Wizard />} />
             <Route path="plans" element={<Plans />} />
             <Route path="policies" element={<Policies />} />
             <Route path="audit" element={<Audit />} />

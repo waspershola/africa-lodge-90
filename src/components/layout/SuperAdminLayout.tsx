@@ -11,7 +11,12 @@ import {
   Menu,
   ArrowLeft,
   Settings,
-  LayoutDashboard
+  LayoutDashboard,
+  Layers,
+  UserCheck,
+  Headphones,
+  AlertTriangle,
+  Wand2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -20,8 +25,13 @@ import { Badge } from '@/components/ui/badge';
 const navigation = [
   { name: 'Dashboard', href: '/sa/dashboard', icon: LayoutDashboard },
   { name: 'Tenants', href: '/sa/tenants', icon: Building2 },
+  { name: 'Templates', href: '/sa/templates', icon: Layers },
+  { name: 'Roles', href: '/sa/roles', icon: Shield },
+  { name: 'Global Users', href: '/sa/global-users', icon: UserCheck },
+  { name: 'Support', href: '/sa/support', icon: Headphones },
   { name: 'Plans', href: '/sa/plans', icon: CreditCard },
-  { name: 'Policies', href: '/sa/policies', icon: Shield },
+  { name: 'Policies', href: '/sa/policies', icon: AlertTriangle },
+  { name: 'Wizard', href: '/sa/wizard', icon: Wand2 },
   { name: 'Audit', href: '/sa/audit', icon: Activity },
   { name: 'Metrics', href: '/sa/metrics', icon: BarChart3 },
 ];

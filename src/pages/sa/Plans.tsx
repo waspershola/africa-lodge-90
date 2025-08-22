@@ -211,7 +211,7 @@ export default function Plans() {
     }
   };
 
-  const overdueTenantsCount = tenants.filter(t => t.billingStatus === 'overdue').length;
+  const overdueTenantsCount = tenants.filter(t => t.billingStatus === 'overdue' && t.status !== 'suspended').length;
 
   return (
     <motion.div 
@@ -826,7 +826,7 @@ export default function Plans() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {tenants.filter(t => t.billingStatus === 'overdue').map((tenant) => (
+                    {tenants.filter(t => t.billingStatus === 'overdue' && t.status !== 'suspended').map((tenant) => (
                       <div key={tenant.id} className="flex items-center justify-between p-4 border border-destructive/20 rounded-lg bg-destructive/5">
                         <div>
                           <h4 className="font-medium">{tenant.name}</h4>
@@ -854,7 +854,7 @@ export default function Plans() {
                       </div>
                     ))}
 
-                    {tenants.filter(t => t.billingStatus === 'active').slice(0, 3).map((tenant) => (
+                    {tenants.filter(t => t.billingStatus === 'active' && t.status !== 'suspended').slice(0, 3).map((tenant) => (
                       <div key={tenant.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
                         <div>
                           <h4 className="font-medium">{tenant.name}</h4>

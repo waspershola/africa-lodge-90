@@ -463,7 +463,12 @@ const Index = () => {
       </section>
 
       {/* Demo Section */}
-      <section className="py-20 px-4 bg-gradient-hero">
+      <section 
+        className="py-20 px-4 relative bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: `linear-gradient(rgba(139, 0, 0, 0.9), rgba(0, 0, 0, 0.7)), url(${heroHotelBg})`
+        }}
+      >
         <div className="container mx-auto">
           <motion.div 
             className="text-center text-white"
@@ -472,10 +477,10 @@ const Index = () => {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="text-3xl md:text-4xl font-bold display-heading mb-6">
+            <h2 className="text-3xl md:text-4xl font-bold display-heading mb-6 text-white drop-shadow-lg">
               Experience the Platform Live
             </h2>
-            <p className="text-lg mb-8 max-w-2xl mx-auto opacity-90">
+            <p className="text-lg mb-8 max-w-2xl mx-auto text-white/90 drop-shadow-md">
               Try our interactive demos and see how LuxuryHotelSaaS can transform your hotel operations.
             </p>
             
@@ -488,30 +493,30 @@ const Index = () => {
             >
               <motion.div variants={fadeIn}>
                 <Link to="/qr-menu">
-                  <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 hover:bg-white/20 transition-all cursor-pointer group modern-card">
-                    <Smartphone className="h-8 w-8 mb-4 mx-auto text-white" />
-                    <h3 className="font-semibold mb-2 text-white">QR Menu Demo</h3>
-                    <p className="text-sm opacity-80 text-white">Try our room service ordering system</p>
+                  <div className="bg-black/40 backdrop-blur-lg rounded-lg p-6 hover:bg-black/60 transition-all cursor-pointer group modern-card border border-white/20">
+                    <Smartphone className="h-8 w-8 mb-4 mx-auto text-yellow-300" />
+                    <h3 className="font-semibold mb-2 text-white text-lg">QR Menu Demo</h3>
+                    <p className="text-sm text-white/90">Try our room service ordering system</p>
                   </div>
                 </Link>
               </motion.div>
               
               <motion.div variants={fadeIn}>
                 <Link to="/front-desk">
-                  <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 hover:bg-white/20 transition-all cursor-pointer group modern-card">
-                    <Users className="h-8 w-8 mb-4 mx-auto text-white" />
-                    <h3 className="font-semibold mb-2 text-white">Front Desk</h3>
-                    <p className="text-sm opacity-80 text-white">Experience our PWA interface</p>
+                  <div className="bg-black/40 backdrop-blur-lg rounded-lg p-6 hover:bg-black/60 transition-all cursor-pointer group modern-card border border-white/20">
+                    <Users className="h-8 w-8 mb-4 mx-auto text-yellow-300" />
+                    <h3 className="font-semibold mb-2 text-white text-lg">Front Desk</h3>
+                    <p className="text-sm text-white/90">Experience our PWA interface</p>
                   </div>
                 </Link>
               </motion.div>
               
               <motion.div variants={fadeIn}>
                 <Link to="/owner-dashboard">
-                  <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 hover:bg-white/20 transition-all cursor-pointer group modern-card">
-                    <BarChart3 className="h-8 w-8 mb-4 mx-auto text-white" />
-                    <h3 className="font-semibold mb-2 text-white">Owner Dashboard</h3>
-                    <p className="text-sm opacity-80 text-white">View comprehensive analytics</p>
+                  <div className="bg-black/40 backdrop-blur-lg rounded-lg p-6 hover:bg-black/60 transition-all cursor-pointer group modern-card border border-white/20">
+                    <BarChart3 className="h-8 w-8 mb-4 mx-auto text-yellow-300" />
+                    <h3 className="font-semibold mb-2 text-white text-lg">Owner Dashboard</h3>
+                    <p className="text-sm text-white/90">View comprehensive analytics</p>
                   </div>
                 </Link>
               </motion.div>

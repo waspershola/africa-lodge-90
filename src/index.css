@@ -76,15 +76,15 @@
     --radius-lg: 1.75rem;
     --radius-xl: 2rem;
     
-    /* Sidebar (for dashboard) */
-    --sidebar-background: 0 65% 51%;
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 51 100% 50%;
-    --sidebar-primary-foreground: 0 0% 13%;
-    --sidebar-accent: 0 45% 65%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 0 55% 45%;
-    --sidebar-ring: 51 100% 50%;
+    /* Unified Luxury Sidebar - Red & Gold Theme */
+    --sidebar-background: 0 75% 27%;           /* Luxury Red #8B0000 */
+    --sidebar-foreground: 0 0% 100%;           /* White text */
+    --sidebar-primary: 51 100% 50%;            /* Gold #FFD700 */
+    --sidebar-primary-foreground: 0 0% 13%;    /* Dark text on gold */
+    --sidebar-accent: 51 85% 65%;              /* Light gold highlights */
+    --sidebar-accent-foreground: 0 0% 100%;    /* White text on accents */
+    --sidebar-border: 0 75% 22%;               /* Darker red border */
+    --sidebar-ring: 51 100% 50%;               /* Gold focus ring */
   }
 
   .dark {

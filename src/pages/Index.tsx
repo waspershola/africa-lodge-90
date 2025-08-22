@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,19 +16,9 @@ import {
   CreditCard,
   Hotel,
   Clock,
-  TrendingUp,
-  Play,
-  ChevronLeft,
-  ChevronRight,
-  Phone,
-  Mail,
-  MapPin,
-  Facebook,
-  Twitter,
-  Instagram,
-  Linkedin
+  TrendingUp
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 
 const Index = () => {
@@ -47,231 +36,253 @@ const Index = () => {
     }
   };
 
-  const showcaseFeatures = [
-    {
-      image: "/api/placeholder/400/300",
-      title: "Smart Check-in",
-      description: "Streamlined guest arrival experience with digital signature and instant room assignment"
-    },
-    {
-      image: "/api/placeholder/400/300", 
-      title: "Room Service QR",
-      description: "Guests scan, order, and track delivery in real-time from their mobile device"
-    },
-    {
-      image: "/api/placeholder/400/300",
-      title: "POS Integration", 
-      description: "Unified payment system connecting restaurant, bar, and room charges seamlessly"
-    }
-  ];
-
-  const carouselFeatures = [
+  const features = [
     {
       icon: Building2,
-      title: "Multi-Property Dashboard",
-      description: "Control multiple locations from one centralized, role-based platform designed for hotel chains and management companies.",
+      title: "Multi-Property Management",
+      description: "Manage multiple hotels from one dashboard with tenant isolation and role-based access.",
       color: "text-primary"
     },
     {
       icon: Smartphone,
-      title: "Mobile-First QR Ordering",
-      description: "Guests scan room QR codes to browse menus, place orders, and track delivery status in real-time.",
+      title: "QR Room Service",
+      description: "Guests scan room QR codes to order food, track delivery, and pay seamlessly.",
       color: "text-accent"
     },
     {
-      icon: Wifi,
-      title: "Offline-Capable Operations",
-      description: "Front desk continues operating during power outages with automatic sync when connection returns.",
+      icon: Users,
+      title: "Front Desk PWA",
+      description: "Offline-capable check-in/out system that works even when internet is unstable.",
       color: "text-primary"
     },
     {
       icon: BarChart3,
-      title: "Power & Fuel Analytics",
-      description: "Track NEPA vs Generator costs, fuel consumption, and operational efficiency with detailed insights.",
+      title: "Power & Fuel Tracking",
+      description: "Monitor NEPA vs Generator costs, diesel consumption, and efficiency analytics.",
       color: "text-accent"
     },
     {
       icon: Shield,
-      title: "Local Payment Methods",
-      description: "Accept POS, Cash, Bank Transfer, and Online payments with automatic ledger reconciliation.",
+      title: "Local Payments",
+      description: "POS, Cash, Transfer, and Online payments with automatic ledger reconciliation.",
       color: "text-primary"
     },
     {
-      icon: CreditCard,
-      title: "Revenue Optimization",
-      description: "Dynamic pricing, upsell recommendations, and detailed financial reporting to maximize profitability.",
+      icon: Zap,
+      title: "Africa-First Design",
+      description: "Built for African markets with WhatsApp integration and unstable power considerations.",
       color: "text-accent"
     }
   ];
 
-  const [currentFeature, setCurrentFeature] = useState(0);
+  const plans = [
+    {
+      name: "Starter",
+      price: "₦35,000",
+      description: "Perfect for boutique hotels up to 25 rooms",
+      features: [
+        "Core bookings & front desk",
+        "Local payments (POS/Cash/Transfer)",
+        "Basic reports & analytics",
+        "Email notifications",
+        "Offline front desk (24hrs)"
+      ],
+      popular: false
+    },
+    {
+      name: "Growth",
+      price: "₦65,000", 
+      description: "Ideal for mid-size hotels 26-75 rooms",
+      features: [
+        "Everything in Starter",
+        "POS & F&B management",
+        "Room Service QR module",
+        "Extended reports & charts",
+        "Power & fuel tracking",
+        "WhatsApp notifications"
+      ],
+      popular: true
+    },
+    {
+      name: "Pro",
+      price: "₦120,000",
+      description: "Full-featured for large hotels 75+ rooms",
+      features: [
+        "Everything in Growth",
+        "Kiosk self check-in",
+        "Multi-property dashboard",
+        "Advanced analytics & AI",
+        "Custom integrations",
+        "Priority support"
+      ],
+      popular: false
+    }
+  ];
 
   const testimonials = [
     {
       name: "Adebayo Okafor",
       role: "General Manager",
-      hotel: "Lagos Grand Hotel", 
+      hotel: "Lagos Grand Hotel",
       content: "LuxuryHotelSaaS transformed our operations. The offline front desk saved us during power outages, and QR room service increased our F&B revenue by 40%.",
-      rating: 5,
-      image: "/api/placeholder/80/80"
+      rating: 5
     },
     {
-      name: "Fatima Al-Hassan", 
-      role: "Hotel Owner",
+      name: "Fatima Al-Hassan",
+      role: "Owner",
       hotel: "Abuja Executive Suites",
       content: "Finally, a hotel system that understands Africa! The fuel tracking alone saves us ₦200,000 monthly, and guests love the seamless QR ordering.",
-      rating: 5,
-      image: "/api/placeholder/80/80"
+      rating: 5
     },
     {
       name: "Chidi Nwosu",
-      role: "Operations Director", 
+      role: "Operations Director",
       hotel: "Victoria Island Resort",
       content: "Best investment we've made. Staff adoption was instant, and the local payment integration works perfectly with our existing POS systems.",
-      rating: 5,
-      image: "/api/placeholder/80/80"
+      rating: 5
     }
   ];
 
-  // Auto-advance carousel
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentFeature((prev) => (prev + 1) % carouselFeatures.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const nextFeature = () => {
-    setCurrentFeature((prev) => (prev + 1) % carouselFeatures.length);
-  };
-
-  const prevFeature = () => {
-    setCurrentFeature((prev) => (prev - 1 + carouselFeatures.length) % carouselFeatures.length);
-  };
-
-  const currentCarouselFeature = carouselFeatures[currentFeature];
-  const CurrentIcon = currentCarouselFeature.icon;
+  const stats = [
+    { number: "500+", label: "Hotels Onboarded", icon: Hotel },
+    { number: "95%", label: "Uptime Guarantee", icon: Clock },
+    { number: "40%", label: "Faster Check-ins", icon: TrendingUp },
+    { number: "₦200k+", label: "Avg Monthly Savings", icon: Star }
+  ];
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gradient-subtle">
       {/* Header */}
       <motion.header 
-        className="absolute top-0 left-0 right-0 z-50 bg-transparent"
+        className="sticky top-0 z-50 bg-card/80 backdrop-blur-lg border-b border-border"
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.6 }}
       >
-        <div className="container mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="h-10 w-10 rounded-full bg-gradient-primary flex items-center justify-center">
-              <Hotel className="h-6 w-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold font-playfair text-white">LuxuryHotelSaaS</span>
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Building2 className="h-8 w-8 text-primary" />
+            <span className="text-xl font-bold display-heading text-gradient">LuxuryHotelSaaS</span>
           </div>
           <nav className="hidden md:flex items-center space-x-8">
-            <a href="#features" className="text-white/90 hover:text-white font-medium transition-colors">Features</a>
-            <a href="#showcase" className="text-white/90 hover:text-white font-medium transition-colors">Showcase</a>
-            <a href="#testimonials" className="text-white/90 hover:text-white font-medium transition-colors">Reviews</a>
-            <Button variant="outline" size="sm" className="border-white/30 text-white hover:bg-white hover:text-primary">
-              Sign In
-            </Button>
-            <Button className="bg-gradient-accent text-accent-foreground shadow-luxury hover:shadow-hover">
-              Get Started Free
-            </Button>
+            <a href="#features" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Features</a>
+            <a href="#pricing" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Pricing</a>
+            <a href="#testimonials" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Reviews</a>
+            <Button variant="outline" size="sm">Sign In</Button>
+            <Button className="bg-gradient-primary shadow-luxury hover:shadow-hover">Get Started</Button>
           </nav>
         </div>
       </motion.header>
 
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        {/* Background Image with Overlay */}
-        <div className="absolute inset-0">
-          <div 
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-            style={{
-              backgroundImage: `url('/api/placeholder/1920/1080')`
-            }}
-          />
-          <div 
-            className="absolute inset-0"
-            style={{
-              background: `linear-gradient(135deg, rgba(139, 0, 0, 0.8) 0%, rgba(255, 215, 0, 0.6) 100%)`
-            }}
-          />
-        </div>
-
-        {/* Hero Content */}
-        <div className="relative z-10 container mx-auto px-6 text-center text-white">
+      <section className="py-20 px-4 modern-pattern">
+        <div className="container mx-auto text-center">
           <motion.div
-            className="max-w-5xl mx-auto"
+            className="max-w-4xl mx-auto"
             variants={staggerChildren}
             initial="initial"
             animate="animate"
           >
             <motion.div variants={fadeIn}>
-              <Badge className="mb-6 bg-white/20 border-white/30 text-white backdrop-blur-sm">
-                <Globe className="h-4 w-4 mr-2" />
+              <Badge variant="secondary" className="mb-4 bg-accent/10 text-accent border-accent/20">
+                <Globe className="h-3 w-3 mr-1" />
                 Built for African Hotels
               </Badge>
             </motion.div>
             
             <motion.h1 
-              className="text-5xl md:text-7xl lg:text-8xl font-bold font-playfair mb-8 leading-tight"
+              className="text-4xl md:text-6xl font-bold display-heading text-gradient mb-6"
               variants={fadeIn}
             >
-              Redefining Hotel
+              Hotel Operations
               <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-white">
-                Management in Africa
-              </span>
+              <span className="text-gradient-accent">Simplified</span>
             </motion.h1>
             
             <motion.p 
-              className="text-xl md:text-2xl mb-12 max-w-3xl mx-auto leading-relaxed text-white/90"
+              className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed"
               variants={fadeIn}
             >
-              The first comprehensive hotel management platform designed specifically for African markets. 
-              Seamlessly handle offline operations, local payments, and guest experiences.
+              The first hotel management SaaS designed for African markets. Handle offline operations, 
+              local payments, fuel tracking, and QR room service in one beautiful platform.
             </motion.p>
             
             <motion.div 
-              className="flex flex-col sm:flex-row gap-6 justify-center items-center"
+              className="flex flex-col sm:flex-row gap-4 justify-center items-center"
               variants={fadeIn}
             >
               <Button 
                 size="lg" 
-                className="bg-gradient-accent text-accent-foreground shadow-luxury hover:shadow-hover text-xl px-12 py-8 rounded-full font-semibold transform hover:scale-105 transition-all duration-300"
+                className="bg-gradient-primary shadow-luxury hover:shadow-hover text-lg px-8 py-6"
+                asChild
               >
-                Get Started Free
-                <ArrowRight className="ml-3 h-6 w-6" />
+                <Link to="/front-desk">
+                  Try Front Desk Demo
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Link>
               </Button>
               <Button 
                 variant="outline" 
                 size="lg"
-                className="text-xl px-12 py-8 rounded-full border-white/30 text-white hover:bg-white hover:text-primary backdrop-blur-sm"
+                className="text-lg px-8 py-6 border-primary/20 hover:bg-primary/10"
+                asChild
               >
-                <Play className="mr-3 h-6 w-6" />
-                Book a Demo
+                <Link to="/qr-menu">
+                  View QR Menu Demo
+                </Link>
               </Button>
+            </motion.div>
+
+            <motion.div 
+              className="mt-12 flex flex-wrap justify-center items-center gap-8 text-muted-foreground"
+              variants={fadeIn}
+            >
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-accent" />
+                <span>No setup fees</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-accent" />
+                <span>30-day free trial</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-accent" />
+                <span>Cancel anytime</span>
+              </div>
             </motion.div>
           </motion.div>
         </div>
-
-        {/* Scroll Indicator */}
-        <motion.div 
-          className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white"
-          animate={{ y: [0, 10, 0] }}
-          transition={{ duration: 2, repeat: Infinity }}
-        >
-          <div className="flex flex-col items-center gap-2">
-            <span className="text-sm">Scroll to explore</span>
-            <ArrowRight className="h-4 w-4 rotate-90" />
-          </div>
-        </motion.div>
       </section>
 
-      {/* Showcase Section */}
-      <section id="showcase" className="py-24 px-6 bg-background">
+      {/* Stats Section */}
+      <section className="py-16 px-4 bg-card">
+        <div className="container mx-auto">
+          <motion.div 
+            className="grid grid-cols-2 md:grid-cols-4 gap-8"
+            variants={staggerChildren}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+          >
+            {stats.map((stat, index) => (
+              <motion.div 
+                key={index}
+                className="text-center"
+                variants={fadeIn}
+              >
+                <div className="flex justify-center mb-3">
+                  <stat.icon className="h-8 w-8 text-primary" />
+                </div>
+                <div className="text-3xl font-bold text-primary mb-1">{stat.number}</div>
+                <div className="text-sm text-muted-foreground">{stat.label}</div>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section id="features" className="py-20 px-4">
         <div className="container mx-auto">
           <motion.div 
             className="text-center mb-16"
@@ -280,40 +291,34 @@ const Index = () => {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="text-4xl md:text-5xl font-bold font-playfair text-primary mb-6">
-              Experience Excellence in Every Detail
+            <h2 className="text-3xl md:text-4xl font-bold display-heading text-gradient mb-4">
+              Built for African Hotels
             </h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              See how our platform transforms hotel operations with intelligent automation, 
-              seamless guest experiences, and powerful insights.
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Every feature designed with local market realities in mind - from power outages to cash payments.
             </p>
           </motion.div>
           
           <motion.div 
-            className="grid md:grid-cols-3 gap-12"
+            className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
             variants={staggerChildren}
             initial="initial"
             whileInView="animate"
             viewport={{ once: true }}
           >
-            {showcaseFeatures.map((feature, index) => (
-              <motion.div key={index} variants={fadeIn} className="group">
-                <Card className="luxury-card overflow-hidden border-0 shadow-luxury hover:shadow-hover transition-all duration-300 transform group-hover:-translate-y-2">
-                  <div className="relative overflow-hidden">
-                    <img 
-                      src={feature.image} 
-                      alt={feature.title}
-                      className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  </div>
-                  <CardContent className="p-8">
-                    <h3 className="text-2xl font-bold font-playfair text-primary mb-4">
-                      {feature.title}
-                    </h3>
-                    <p className="text-muted-foreground leading-relaxed text-lg">
+            {features.map((feature, index) => (
+              <motion.div key={index} variants={fadeIn}>
+                <Card className="modern-card h-full group cursor-pointer">
+                  <CardHeader>
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <feature.icon className={`h-8 w-8 ${feature.color}`} />
+                    </div>
+                    <CardTitle className="text-xl display-heading">{feature.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="text-base leading-relaxed">
                       {feature.description}
-                    </p>
+                    </CardDescription>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -322,37 +327,8 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Luxury Image Banner */}
-      <section className="relative py-32 overflow-hidden">
-        <div className="absolute inset-0">
-          <div 
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-            style={{
-              backgroundImage: `url('/api/placeholder/1920/600')`
-            }}
-          />
-          <div className="absolute inset-0 bg-accent/80" />
-        </div>
-        
-        <div className="relative z-10 container mx-auto px-6 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-          >
-            <h2 className="text-5xl md:text-6xl font-bold font-playfair text-accent-foreground mb-6">
-              Seamless Experience
-            </h2>
-            <h3 className="text-3xl md:text-4xl font-playfair text-accent-foreground/90">
-              for Guests & Staff
-            </h3>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Features Carousel */}
-      <section id="features" className="py-24 px-6 bg-card">
+      {/* Pricing Section */}
+      <section id="pricing" className="py-20 px-4 bg-card">
         <div className="container mx-auto">
           <motion.div 
             className="text-center mb-16"
@@ -361,109 +337,63 @@ const Index = () => {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="text-4xl md:text-5xl font-bold font-playfair text-primary mb-6">
-              Powerful Features Built for Africa
+            <h2 className="text-3xl md:text-4xl font-bold display-heading text-gradient mb-4">
+              Simple, Transparent Pricing
             </h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              Every feature designed with local market realities in mind - from power outages to cash payments.
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Choose the perfect plan for your hotel. All plans include core features with no hidden fees.
             </p>
           </motion.div>
-          
-          <div className="relative max-w-6xl mx-auto">
-            <div className="overflow-hidden rounded-2xl">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentFeature}
-                  initial={{ opacity: 0, x: 300 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -300 }}
-                  transition={{ duration: 0.5 }}
-                  className="grid lg:grid-cols-2 gap-12 items-center p-12 bg-gradient-subtle rounded-2xl"
-                >
-                  <div className="space-y-8">
-                    <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center">
-                      <CurrentIcon className="h-10 w-10 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-3xl font-bold font-playfair text-primary mb-4">
-                        {currentCarouselFeature.title}
-                      </h3>
-                      <p className="text-lg text-muted-foreground leading-relaxed">
-                        {currentCarouselFeature.description}
-                      </p>
-                    </div>
-                    <div className="flex gap-4">
-                      <Button className="bg-gradient-accent text-accent-foreground">
-                        Learn More
-                      </Button>
-                      <Button variant="outline">
-                        View Demo
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="relative">
-                    <div className="aspect-video bg-gradient-primary/10 rounded-xl flex items-center justify-center">
-                      <div className="w-24 h-24 bg-gradient-primary rounded-full flex items-center justify-center">
-                        <CurrentIcon className="h-12 w-12 text-white" />
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              </AnimatePresence>
-            </div>
 
-            {/* Carousel Controls */}
-            <div className="flex items-center justify-between mt-8">
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={prevFeature}
-                className="rounded-full w-14 h-14 p-0"
-              >
-                <ChevronLeft className="h-6 w-6" />
-              </Button>
-              
-              <div className="flex gap-3">
-                {carouselFeatures.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentFeature(index)}
-                    className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                      index === currentFeature 
-                        ? 'bg-primary scale-125' 
-                        : 'bg-muted hover:bg-primary/50'
-                    }`}
-                  />
-                ))}
-              </div>
-              
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={nextFeature}
-                className="rounded-full w-14 h-14 p-0"
-              >
-                <ChevronRight className="h-6 w-6" />
-              </Button>
-            </div>
-          </div>
+          <motion.div 
+            className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto"
+            variants={staggerChildren}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+          >
+            {plans.map((plan, index) => (
+              <motion.div key={index} variants={fadeIn}>
+                <Card className={`modern-card relative h-full ${plan.popular ? 'ring-2 ring-accent shadow-accent' : ''}`}>
+                  {plan.popular && (
+                    <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-accent text-accent-foreground">
+                      Most Popular
+                    </Badge>
+                  )}
+                  <CardHeader>
+                    <CardTitle className="display-heading text-2xl">{plan.name}</CardTitle>
+                    <div className="text-4xl font-bold text-primary">
+                      {plan.price}
+                      <span className="text-lg font-normal text-muted-foreground">/month</span>
+                    </div>
+                    <CardDescription className="text-base">{plan.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-3 mb-8">
+                      {plan.features.map((feature, idx) => (
+                        <li key={idx} className="flex items-center gap-3">
+                          <CheckCircle className="h-5 w-5 text-accent flex-shrink-0" />
+                          <span className="text-sm">{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Button 
+                      className={`w-full ${plan.popular ? 'bg-gradient-primary shadow-luxury hover:shadow-hover' : ''}`}
+                      variant={plan.popular ? "default" : "outline"}
+                    >
+                      {plan.popular ? 'Start Free Trial' : 'Choose Plan'}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </motion.div>
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section id="testimonials" className="relative py-24 overflow-hidden">
-        {/* Background Image with Golden Overlay */}
-        <div className="absolute inset-0">
-          <div 
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-            style={{
-              backgroundImage: `url('/api/placeholder/1920/800')`
-            }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-accent/90 to-accent/70" />
-        </div>
-
-        <div className="relative z-10 container mx-auto px-6">
+      {/* Testimonials */}
+      <section id="testimonials" className="py-20 px-4">
+        <div className="container mx-auto">
           <motion.div 
             className="text-center mb-16"
             initial={{ opacity: 0, y: 20 }}
@@ -471,10 +401,10 @@ const Index = () => {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="text-4xl md:text-5xl font-bold font-playfair text-accent-foreground mb-6">
-              Loved by Hotel Operators Across Africa
+            <h2 className="text-3xl md:text-4xl font-bold display-heading text-gradient mb-4">
+              Loved by Hotel Operators
             </h2>
-            <p className="text-xl text-accent-foreground/90 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               See how African hotels are transforming their operations with LuxuryHotelSaaS.
             </p>
           </motion.div>
@@ -488,28 +418,26 @@ const Index = () => {
           >
             {testimonials.map((testimonial, index) => (
               <motion.div key={index} variants={fadeIn}>
-                <Card className="luxury-card h-full bg-white/95 backdrop-blur-sm border-0 shadow-luxury">
-                  <CardContent className="p-8">
-                    <div className="flex items-center gap-1 mb-6">
+                <Card className="modern-card h-full">
+                  <CardHeader>
+                    <div className="flex items-center gap-1 mb-4">
                       {[...Array(testimonial.rating)].map((_, i) => (
                         <Star key={i} className="h-5 w-5 fill-accent text-accent" />
                       ))}
                     </div>
-                    <blockquote className="text-lg italic leading-relaxed text-foreground mb-8">
+                    <CardDescription className="text-base italic leading-relaxed">
                       "{testimonial.content}"
-                    </blockquote>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
                     <div className="flex items-center gap-4">
-                      <div className="relative">
-                        <img 
-                          src={testimonial.image} 
-                          alt={testimonial.name}
-                          className="h-16 w-16 rounded-full object-cover border-4 border-accent/20"
-                        />
+                      <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center">
+                        <Users className="h-6 w-6 text-primary" />
                       </div>
                       <div>
-                        <div className="font-bold text-primary text-lg">{testimonial.name}</div>
-                        <div className="text-muted-foreground">{testimonial.role}</div>
-                        <div className="text-accent font-medium">{testimonial.hotel}</div>
+                        <div className="font-medium">{testimonial.name}</div>
+                        <div className="text-sm text-muted-foreground">{testimonial.role}</div>
+                        <div className="text-sm text-accent font-medium">{testimonial.hotel}</div>
                       </div>
                     </div>
                   </CardContent>
@@ -520,114 +448,154 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Final Call-to-Action */}
-      <section className="relative py-32 overflow-hidden">
-        {/* Background Image with Sunset Overlay */}
-        <div className="absolute inset-0">
-          <div 
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-            style={{
-              backgroundImage: `url('/api/placeholder/1920/800')`
-            }}
-          />
-          <div 
-            className="absolute inset-0"
-            style={{
-              background: `linear-gradient(135deg, rgba(139, 0, 0, 0.7) 0%, rgba(255, 215, 0, 0.5) 100%)`
-            }}
-          />
-        </div>
-
-        <div className="relative z-10 container mx-auto px-6 text-center">
+      {/* Demo Section */}
+      <section className="py-20 px-4 bg-gradient-hero">
+        <div className="container mx-auto">
           <motion.div 
-            className="text-center text-white max-w-4xl mx-auto"
+            className="text-center text-white"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="text-5xl md:text-6xl font-bold font-playfair mb-8">
-              Ready to Transform Your Hotel?
+            <h2 className="text-3xl md:text-4xl font-bold display-heading mb-6">
+              Experience the Platform Live
             </h2>
-            <p className="text-xl md:text-2xl mb-12 opacity-90 leading-relaxed">
-              Join hundreds of African hotels already revolutionizing their operations with our platform.
+            <p className="text-lg mb-8 max-w-2xl mx-auto opacity-90">
+              Try our interactive demos and see how LuxuryHotelSaaS can transform your hotel operations.
             </p>
             
-            <Button 
-              size="lg"
-              className="bg-gradient-accent text-accent-foreground shadow-luxury hover:shadow-hover text-2xl px-16 py-10 rounded-full font-bold transform hover:scale-105 transition-all duration-300"
+            <motion.div 
+              className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto"
+              variants={staggerChildren}
+              initial="initial"
+              whileInView="animate"
+              viewport={{ once: true }}
             >
-              Start Managing Smarter
-              <ArrowRight className="ml-4 h-8 w-8" />
-            </Button>
+              <motion.div variants={fadeIn}>
+                <Link to="/qr-menu">
+                  <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 hover:bg-white/20 transition-all cursor-pointer group modern-card">
+                    <Smartphone className="h-8 w-8 mb-4 mx-auto text-white" />
+                    <h3 className="font-semibold mb-2 text-white">QR Menu Demo</h3>
+                    <p className="text-sm opacity-80 text-white">Try our room service ordering system</p>
+                  </div>
+                </Link>
+              </motion.div>
+              
+              <motion.div variants={fadeIn}>
+                <Link to="/front-desk">
+                  <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 hover:bg-white/20 transition-all cursor-pointer group modern-card">
+                    <Users className="h-8 w-8 mb-4 mx-auto text-white" />
+                    <h3 className="font-semibold mb-2 text-white">Front Desk</h3>
+                    <p className="text-sm opacity-80 text-white">Experience our PWA interface</p>
+                  </div>
+                </Link>
+              </motion.div>
+              
+              <motion.div variants={fadeIn}>
+                <Link to="/owner-dashboard">
+                  <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 hover:bg-white/20 transition-all cursor-pointer group modern-card">
+                    <BarChart3 className="h-8 w-8 mb-4 mx-auto text-white" />
+                    <h3 className="font-semibold mb-2 text-white">Owner Dashboard</h3>
+                    <p className="text-sm opacity-80 text-white">View comprehensive analytics</p>
+                  </div>
+                </Link>
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 px-4 bg-card">
+        <div className="container mx-auto text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <h2 className="text-3xl md:text-4xl font-bold display-heading text-gradient mb-6">
+              Ready to Transform Your Hotel?
+            </h2>
+            <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+              Join hundreds of African hotels already using LuxuryHotelSaaS to streamline operations and delight guests.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button 
+                size="lg" 
+                className="bg-gradient-primary shadow-luxury hover:shadow-hover text-lg px-8 py-6"
+                asChild
+              >
+                <Link to="/owner-dashboard">
+                  Try Owner Dashboard
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Link>
+              </Button>
+              <Button 
+                variant="outline" 
+                size="lg"
+                className="text-lg px-8 py-6"
+                asChild
+              >
+                <Link to="/reports">
+                  View Reports Demo
+                </Link>
+              </Button>
+            </div>
           </motion.div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-primary py-16 px-6">
+      <footer className="py-16 px-4 bg-muted">
         <div className="container mx-auto">
-          <div className="grid md:grid-cols-4 gap-12">
-            <div className="md:col-span-2">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="h-12 w-12 rounded-full bg-gradient-accent flex items-center justify-center">
-                  <Hotel className="h-7 w-7 text-accent-foreground" />
-                </div>
-                <span className="text-2xl font-bold font-playfair text-white">LuxuryHotelSaaS</span>
+          <div className="grid md:grid-cols-4 gap-8">
+            <div>
+              <div className="flex items-center space-x-2 mb-4">
+                <Building2 className="h-8 w-8 text-primary" />
+                <span className="text-2xl font-bold display-heading text-gradient">
+                  LuxuryHotelSaaS
+                </span>
               </div>
-              <p className="text-white/80 text-lg leading-relaxed mb-8">
-                The first comprehensive hotel management platform designed specifically for African markets. 
-                Transform your operations with offline capabilities, local payments, and seamless guest experiences.
+              <p className="text-muted-foreground leading-relaxed">
+                The Africa-first hotel management platform that understands your unique challenges.
               </p>
-              <div className="flex space-x-6">
-                <a href="#" className="text-accent hover:text-white transition-colors">
-                  <Facebook className="h-6 w-6" />
-                </a>
-                <a href="#" className="text-accent hover:text-white transition-colors">
-                  <Twitter className="h-6 w-6" />
-                </a>
-                <a href="#" className="text-accent hover:text-white transition-colors">
-                  <Instagram className="h-6 w-6" />
-                </a>
-                <a href="#" className="text-accent hover:text-white transition-colors">
-                  <Linkedin className="h-6 w-6" />
-                </a>
-              </div>
             </div>
             
             <div>
-              <h4 className="font-bold text-accent text-lg mb-6">Product</h4>
-              <ul className="space-y-4">
-                <li><a href="#features" className="text-white/80 hover:text-accent transition-colors">Features</a></li>
-                <li><a href="#pricing" className="text-white/80 hover:text-accent transition-colors">Pricing</a></li>
-                <li><a href="#showcase" className="text-white/80 hover:text-accent transition-colors">Showcase</a></li>
-                <li><a href="#" className="text-white/80 hover:text-accent transition-colors">API Docs</a></li>
-                <li><a href="#" className="text-white/80 hover:text-accent transition-colors">Integrations</a></li>
+              <h4 className="font-semibold mb-4">Product</h4>
+              <ul className="space-y-2 text-muted-foreground">
+                <li><a href="#features" className="hover:text-primary transition-colors">Features</a></li>
+                <li><a href="#pricing" className="hover:text-primary transition-colors">Pricing</a></li>
+                <li><a href="#" className="hover:text-primary transition-colors">Integrations</a></li>
+                <li><a href="#" className="hover:text-primary transition-colors">API</a></li>
               </ul>
             </div>
             
             <div>
-              <h4 className="font-bold text-accent text-lg mb-6">Company</h4>
-              <ul className="space-y-4">
-                <li><a href="#" className="text-white/80 hover:text-accent transition-colors">About</a></li>
-                <li><a href="#" className="text-white/80 hover:text-accent transition-colors">Contact</a></li>
-                <li><a href="#" className="text-white/80 hover:text-accent transition-colors">Privacy</a></li>
-                <li><a href="#" className="text-white/80 hover:text-accent transition-colors">Terms</a></li>
-                <li><a href="#" className="text-white/80 hover:text-accent transition-colors">Support</a></li>
+              <h4 className="font-semibold mb-4">Support</h4>
+              <ul className="space-y-2 text-muted-foreground">
+                <li><a href="#" className="hover:text-primary transition-colors">Help Center</a></li>
+                <li><a href="#" className="hover:text-primary transition-colors">Contact Us</a></li>
+                <li><a href="#" className="hover:text-primary transition-colors">Status</a></li>
+                <li><a href="#" className="hover:text-primary transition-colors">Training</a></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold mb-4">Company</h4>
+              <ul className="space-y-2 text-muted-foreground">
+                <li><a href="#" className="hover:text-primary transition-colors">About</a></li>
+                <li><a href="#" className="hover:text-primary transition-colors">Blog</a></li>
+                <li><a href="#" className="hover:text-primary transition-colors">Careers</a></li>
+                <li><a href="#" className="hover:text-primary transition-colors">Privacy</a></li>
               </ul>
             </div>
           </div>
           
-          <div className="border-t border-white/20 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-white/60 text-lg">
-              © 2024 LuxuryHotelSaaS. All rights reserved.
-            </p>
-            <div className="flex items-center space-x-6 mt-6 md:mt-0">
-              <div className="flex items-center gap-2 text-accent">
-                <MapPin className="h-5 w-5" />
-                <span className="font-medium">Made in Nigeria 🇳🇬</span>
-              </div>
-            </div>
+          <div className="border-t border-border mt-12 pt-8 text-center text-muted-foreground">
+            <p>© 2024 LuxuryHotelSaaS. Built for African Hotels.</p>
           </div>
         </div>
       </footer>

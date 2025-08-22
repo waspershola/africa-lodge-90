@@ -525,8 +525,189 @@ const mockDashboardData = {
 const delay = () => new Promise(resolve => setTimeout(resolve, Math.random() * 400 + 200));
 const shouldFail = () => Math.random() < 0.1; // 10% failure rate
 
+// Owner-specific mock data
+const mockHotelProfile = {
+  id: 'hotel-001',
+  name: 'Lagos Grand Hotel',
+  address: 'Victoria Island, Lagos, Nigeria',
+  phone: '+234-1-234-5678',
+  email: 'info@lagosgrand.com',
+  website: 'https://lagosgrand.com',
+  description: 'Luxury hospitality in the heart of Lagos',
+  logo: '/api/placeholder/200/80',
+  banner: '/api/placeholder/1200/400',
+  theme: {
+    primaryColor: '#C41E3A',
+    secondaryColor: '#FFD700',
+    accent: '#8B4513'
+  },
+  businessRegistration: 'RC-123456',
+  taxId: 'TIN-987654321',
+  category: 'Luxury Hotel',
+  starRating: 5,
+  totalRooms: 120,
+  checkInTime: '15:00',
+  checkOutTime: '12:00',
+  timezone: 'Africa/Lagos',
+  currency: 'NGN'
+};
+
+const mockOwnerStaff = [
+  {
+    id: 'staff-001',
+    name: 'Adebayo Johnson',
+    email: 'adebayo@lagosgrand.com',
+    phone: '+234-701-234-5678',
+    role: 'Front Desk Manager',
+    department: 'Front Office',
+    status: 'active',
+    startDate: '2023-01-15',
+    permissions: ['reservations.view', 'reservations.edit', 'guests.view'],
+    avatar: '/api/placeholder/40/40',
+    lastLogin: '2024-01-20T10:30:00Z'
+  },
+  {
+    id: 'staff-002',
+    name: 'Fatima Aliyu',
+    email: 'fatima@lagosgrand.com',
+    phone: '+234-702-345-6789',
+    role: 'Housekeeping Supervisor',
+    department: 'Housekeeping',
+    status: 'active',
+    startDate: '2023-03-20',
+    permissions: ['rooms.view', 'rooms.edit'],
+    avatar: '/api/placeholder/40/40',
+    lastLogin: '2024-01-20T08:15:00Z'
+  }
+];
+
+const mockOwnerAuditLogs = [
+  {
+    id: 'audit-001',
+    action: 'staff.invite',
+    userId: 'owner-001',
+    userName: 'Hotel Owner',
+    details: 'Invited new staff member: Adebayo Johnson',
+    timestamp: '2024-01-20T10:30:00Z',
+    ipAddress: '192.168.1.100'
+  },
+  {
+    id: 'audit-002',
+    action: 'pricing.update',
+    userId: 'owner-001',
+    userName: 'Hotel Owner',
+    details: 'Updated pricing for Deluxe Room category',
+    timestamp: '2024-01-20T09:15:00Z',
+    ipAddress: '192.168.1.100'
+  }
+];
+
+const mockOwnerRoomCategories = [
+  {
+    id: 'cat-001',
+    name: 'Standard Room',
+    description: 'Comfortable accommodation with essential amenities',
+    baseRate: 25000,
+    maxOccupancy: 2,
+    size: 28,
+    amenities: ['Wi-Fi', 'Air Conditioning', 'TV', 'Mini Bar'],
+    totalRooms: 40,
+    availableRooms: 35,
+    images: ['/api/placeholder/300/200']
+  },
+  {
+    id: 'cat-002',
+    name: 'Deluxe Room',
+    description: 'Spacious room with premium amenities and city view',
+    baseRate: 45000,
+    maxOccupancy: 3,
+    size: 42,
+    amenities: ['Wi-Fi', 'Air Conditioning', 'Smart TV', 'Mini Bar', 'City View', 'Coffee Machine'],
+    totalRooms: 50,
+    availableRooms: 42,
+    images: ['/api/placeholder/300/200']
+  }
+];
+
 // API endpoints
 export const mockApi = {
+  // Owner API endpoints
+  getHotelProfile: async (): Promise<{ data: any }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch hotel profile');
+    return { data: mockHotelProfile };
+  },
+
+  updateHotelProfile: async (data: any): Promise<{ data: any }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to update hotel profile');
+    return { data: { ...mockHotelProfile, ...data } };
+  },
+
+  getOwnerStaff: async (): Promise<{ data: any[] }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch staff');
+    return { data: mockOwnerStaff };
+  },
+
+  inviteStaff: async (data: any): Promise<{ data: any }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to invite staff');
+    const newStaff = {
+      id: `staff-${Date.now()}`,
+      ...data,
+      status: 'pending',
+      avatar: '/api/placeholder/40/40'
+    };
+    return { data: newStaff };
+  },
+
+  updateStaffMember: async (id: string, data: any): Promise<{ data: any }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to update staff');
+    return { data: { id, ...data } };
+  },
+
+  deleteStaffMember: async (id: string): Promise<{ data: { success: boolean } }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to delete staff');
+    return { data: { success: true } };
+  },
+
+  getOwnerRoomCategories: async (): Promise<{ data: any[] }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch room categories');
+    return { data: mockOwnerRoomCategories };
+  },
+
+  createRoomCategory: async (data: any): Promise<{ data: any }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to create room category');
+    const newCategory = {
+      id: `cat-${Date.now()}`,
+      ...data,
+      availableRooms: data.totalRooms
+    };
+    return { data: newCategory };
+  },
+
+  updateRoomCategory: async (id: string, data: any): Promise<{ data: any }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to update room category');
+    return { data: { id, ...data } };
+  },
+
+  deleteRoomCategory: async (id: string): Promise<{ data: { success: boolean } }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to delete room category');
+    return { data: { success: true } };
+  },
+
+  getOwnerAuditLogs: async (): Promise<{ data: any[] }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch audit logs');
+    return { data: mockOwnerAuditLogs };
+  },
   // Super Admin - Tenants
   async getTenants() {
     await delay();

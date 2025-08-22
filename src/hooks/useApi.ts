@@ -2,6 +2,201 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { mockApi } from '@/lib/api/mockAdapter';
 import { useToast } from '@/hooks/use-toast';
 
+// Owner Dashboard hooks - Hotel Profile
+export const useHotelProfile = () => {
+  return useQuery({
+    queryKey: ['owner', 'hotel-profile'],
+    queryFn: mockApi.getHotelProfile,
+  });
+};
+
+export const useUpdateHotelProfile = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: mockApi.updateHotelProfile,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['owner', 'hotel-profile'] });
+      toast({
+        title: 'Success',
+        description: 'Hotel profile updated successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+// Owner Dashboard hooks - Staff Management
+export const useOwnerStaff = () => {
+  return useQuery({
+    queryKey: ['owner', 'staff'],
+    queryFn: mockApi.getOwnerStaff,
+  });
+};
+
+export const useInviteStaff = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: mockApi.inviteStaff,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['owner', 'staff'] });
+      toast({
+        title: 'Success',
+        description: 'Staff member invited successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useUpdateStaffMember = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => 
+      mockApi.updateStaffMember(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['owner', 'staff'] });
+      toast({
+        title: 'Success',
+        description: 'Staff member updated successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useDeleteStaffMember = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: mockApi.deleteStaffMember,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['owner', 'staff'] });
+      toast({
+        title: 'Success',
+        description: 'Staff member removed successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+// Owner Dashboard hooks - Room Categories
+export const useOwnerRoomCategories = () => {
+  return useQuery({
+    queryKey: ['owner', 'room-categories'],
+    queryFn: mockApi.getOwnerRoomCategories,
+  });
+};
+
+export const useCreateRoomCategory = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: mockApi.createRoomCategory,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['owner', 'room-categories'] });
+      toast({
+        title: 'Success',
+        description: 'Room category created successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useUpdateRoomCategory = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => 
+      mockApi.updateRoomCategory(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['owner', 'room-categories'] });
+      toast({
+        title: 'Success',
+        description: 'Room category updated successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useDeleteRoomCategory = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: mockApi.deleteRoomCategory,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['owner', 'room-categories'] });
+      toast({
+        title: 'Success',
+        description: 'Room category deleted successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+// Owner Dashboard hooks - Audit Logs
+export const useOwnerAuditLogs = () => {
+  return useQuery({
+    queryKey: ['owner', 'audit-logs'],
+    queryFn: mockApi.getOwnerAuditLogs,
+  });
+};
+
 // Super Admin hooks - Tenants
 export const useTenants = () => {
   return useQuery({

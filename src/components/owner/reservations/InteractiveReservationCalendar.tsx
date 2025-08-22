@@ -146,20 +146,17 @@ export default function InteractiveReservationCalendar({
 
   // Enhanced drag start with visual feedback
   const handleDragStart = (e: React.DragEvent, reservation: any) => {
+    console.log('Drag start:', reservation.id);
     setDraggedReservation(reservation);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', reservation.id);
-    
-    // Add visual feedback
-    const dragImage = e.currentTarget.cloneNode(true) as HTMLElement;
-    dragImage.style.transform = 'rotate(5deg)';
-    dragImage.style.opacity = '0.8';
-    e.dataTransfer.setDragImage(dragImage, 0, 0);
+    e.dataTransfer.setData('application/json', JSON.stringify(reservation));
   };
 
   // Enhanced drag over with visual feedback
   const handleDragOver = (e: React.DragEvent, roomNumber: string, date: Date) => {
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
     
     const cellKey = `${roomNumber}-${date.toISOString()}`;
@@ -167,16 +164,39 @@ export default function InteractiveReservationCalendar({
   };
 
   // Handle drag leave
-  const handleDragLeave = () => {
-    setDragOverCell(null);
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    // Only clear if we're actually leaving this element
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDragOverCell(null);
+    }
   };
 
   // Enhanced drop with conflict detection
   const handleDrop = async (e: React.DragEvent, targetRoom: string, targetDate: Date) => {
     e.preventDefault();
+    e.stopPropagation();
+    console.log('Drop event triggered:', targetRoom, targetDate);
+    
     setDragOverCell(null);
     
-    if (!draggedReservation) return;
+    if (!draggedReservation) {
+      console.log('No dragged reservation found');
+      return;
+    }
+
+    console.log('Processing drop for reservation:', draggedReservation.id, 'to room:', targetRoom);
+
+    // If dropping to the same room, no need to reassign
+    if (draggedReservation.room === targetRoom) {
+      toast({
+        title: 'No Change Needed',
+        description: `Reservation is already in room ${targetRoom}.`,
+        variant: 'default'
+      });
+      setDraggedReservation(null);
+      return;
+    }
 
     try {
       // Check for conflicts before moving
@@ -193,21 +213,27 @@ export default function InteractiveReservationCalendar({
           description: `Room ${targetRoom} has conflicts with existing reservations.`,
           variant: 'destructive'
         });
+        setDraggedReservation(null);
         return;
       }
 
       // Assign room
-      assignRoom.mutate({
+      await assignRoom.mutateAsync({
         reservationId: draggedReservation.id,
         roomNumber: targetRoom
       });
 
-    } catch (error) {
-      console.error('Error checking conflicts:', error);
-      // Show conflict warning but allow the operation
       toast({
-        title: 'Warning',
-        description: 'Unable to verify room conflicts. Please check manually.',
+        title: 'Room Reassigned',
+        description: `Reservation moved to room ${targetRoom} successfully.`,
+        variant: 'default'
+      });
+
+    } catch (error) {
+      console.error('Error during room reassignment:', error);
+      toast({
+        title: 'Assignment Failed',
+        description: 'Unable to reassign room. Please try again.',
         variant: 'destructive'
       });
     }

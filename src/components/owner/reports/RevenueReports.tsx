@@ -275,7 +275,15 @@ export default function RevenueReports({ dateRange, period }: RevenueReportsProp
             <ComposedChart data={monthlyTrends}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
-              <YAxis tickFormatter={(value: number) => `₦${(value / 1000000).toFixed(1)}M`} />
+              <YAxis 
+                yAxisId="left"
+                tickFormatter={(value: number) => `₦${(value / 1000000).toFixed(1)}M`} 
+              />
+              <YAxis 
+                yAxisId="right" 
+                orientation="right"
+                tickFormatter={(value: number) => `${value}%`}
+              />
               <Tooltip 
                 formatter={(value: any, name: string) => [
                   name === 'growth' ? `${value}%` : `₦${((value as number) / 1000000).toFixed(2)}M`,
@@ -283,8 +291,8 @@ export default function RevenueReports({ dateRange, period }: RevenueReportsProp
                   name === 'target' ? 'Target Revenue' : 'Growth %'
                 ]}
               />
-              <Bar dataKey="target" fill="#e0e0e0" name="target" />
-              <Bar dataKey="revenue" fill="#8884d8" name="revenue" />
+              <Bar yAxisId="left" dataKey="target" fill="#e0e0e0" name="target" />
+              <Bar yAxisId="left" dataKey="revenue" fill="#8884d8" name="revenue" />
               <Line 
                 type="monotone" 
                 dataKey="growth" 

@@ -461,7 +461,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {dashboard.resourceUsage.slice(0, 3).map((resource) => (
+              {(dashboard.resourceUsage || []).slice(0, 3).map((resource) => (
                 <div key={resource.tenantId} className="flex items-center gap-4 p-3 rounded-lg bg-muted/30">
                   <div className="flex-1 min-w-0">
                     <div className="font-medium truncate">{resource.name}</div>

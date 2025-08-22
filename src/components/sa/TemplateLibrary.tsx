@@ -178,14 +178,14 @@ export default function TemplateLibrary() {
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-1">
-                      {template.features.slice(0, 3).map((feature: string) => (
+                      {(template.features || []).slice(0, 3).map((feature: string) => (
                         <Badge key={feature} variant="secondary" className="text-xs">
                           {feature.replace('-', ' ')}
                         </Badge>
                       ))}
-                      {template.features.length > 3 && (
+                      {(template.features || []).length > 3 && (
                         <Badge variant="secondary" className="text-xs">
-                          +{template.features.length - 3} more
+                          +{(template.features || []).length - 3} more
                         </Badge>
                       )}
                     </div>

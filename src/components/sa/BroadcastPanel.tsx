@@ -124,7 +124,7 @@ export default function BroadcastPanel() {
               No broadcasts sent yet
             </div>
           ) : (
-            broadcasts.slice(0, 4).map((broadcast: any) => (
+            (broadcasts || []).slice(0, 4).map((broadcast: any) => (
               <motion.div
                 key={broadcast.id}
                 initial={{ opacity: 0, x: -20 }}

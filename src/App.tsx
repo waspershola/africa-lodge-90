@@ -17,6 +17,7 @@ import QRCodes from "./pages/owner/QRCodes";
 import Reports from "./pages/owner/Reports";
 import Reservations from "./pages/owner/Reservations";
 import Guests from "./pages/owner/Guests";
+import Rooms from "./pages/owner/Rooms";
 import ReportsInterface from "./components/ReportsInterface";
 import QRExportPage from "./components/QRExportPage";
 import SuperAdminLayout from "./components/layout/SuperAdminLayout";
@@ -59,6 +60,7 @@ const App = () => (
             <Route path="reports" element={<Reports />} />
             <Route path="reservations" element={<Reservations />} />
             <Route path="guests" element={<Guests />} />
+            <Route path="rooms" element={<Rooms />} />
           </Route>
           <Route path="/qr-export" element={<QRExportPage />} />
           

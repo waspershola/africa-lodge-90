@@ -37,6 +37,18 @@
     --danger: 0 75% 42%;              /* Alert Red #B71C1C */
     --danger-foreground: 0 0% 100%;
     
+    /* Room Status Colors - Rich & Deep */
+    --room-available: 124 54% 24%;        /* Deep Emerald Green #1B5E20 */
+    --room-available-foreground: 0 0% 100%;
+    --room-occupied: 0 75% 42%;           /* Rich Red #B71C1C */  
+    --room-occupied-foreground: 0 0% 100%;
+    --room-reserved: 217 78% 42%;         /* Bold Royal Blue #1565C0 */
+    --room-reserved-foreground: 0 0% 100%;
+    --room-overstay: 276 68% 36%;         /* Deep Purple #6A1B9A */
+    --room-overstay-foreground: 0 0% 100%;
+    --room-oos: 0 0% 26%;                 /* Dark Charcoal #424242 */
+    --room-oos-foreground: 0 0% 100%;
+    
     /* UI Elements */
     --muted: 0 0% 96%;
     --muted-foreground: 0 0% 45%;

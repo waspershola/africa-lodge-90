@@ -74,6 +74,26 @@ export default {
 					DEFAULT: 'hsl(var(--danger))',
 					foreground: 'hsl(var(--danger-foreground))'
 				},
+				'room-available': {
+					DEFAULT: 'hsl(var(--room-available))',
+					foreground: 'hsl(var(--room-available-foreground))'
+				},
+				'room-occupied': {
+					DEFAULT: 'hsl(var(--room-occupied))',
+					foreground: 'hsl(var(--room-occupied-foreground))'
+				},
+				'room-reserved': {
+					DEFAULT: 'hsl(var(--room-reserved))',
+					foreground: 'hsl(var(--room-reserved-foreground))'
+				},
+				'room-overstay': {
+					DEFAULT: 'hsl(var(--room-overstay))',
+					foreground: 'hsl(var(--room-overstay-foreground))'
+				},
+				'room-oos': {
+					DEFAULT: 'hsl(var(--room-oos))',
+					foreground: 'hsl(var(--room-oos-foreground))'
+				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',

@@ -22,43 +22,43 @@ const getStatusConfig = (status: Room['status']) => {
   switch (status) {
     case 'available':
       return {
-        bg: 'bg-success/20 hover:bg-success/30',
-        border: 'border-success/40',
-        text: 'text-success-foreground',
-        badge: 'bg-success text-success-foreground',
-        label: 'Available'
+        bg: 'bg-room-available/20 hover:bg-room-available/30',
+        border: 'border-room-available/40',
+        text: 'text-foreground',
+        badge: 'bg-room-available text-room-available-foreground',
+        label: 'AVAILABLE'
       };
     case 'occupied':
       return {
-        bg: 'bg-destructive/20 hover:bg-destructive/30',
-        border: 'border-destructive/40',
-        text: 'text-destructive-foreground',
-        badge: 'bg-destructive text-destructive-foreground',
-        label: 'Occupied'
+        bg: 'bg-room-occupied/20 hover:bg-room-occupied/30',
+        border: 'border-room-occupied/40',
+        text: 'text-foreground',
+        badge: 'bg-room-occupied text-room-occupied-foreground',
+        label: 'OCCUPIED'
       };
     case 'reserved':
       return {
-        bg: 'bg-blue-500/20 hover:bg-blue-500/30',
-        border: 'border-blue-500/40',
-        text: 'text-blue-900 dark:text-blue-100',
-        badge: 'bg-blue-500 text-white',
-        label: 'Reserved'
+        bg: 'bg-room-reserved/20 hover:bg-room-reserved/30',
+        border: 'border-room-reserved/40',
+        text: 'text-foreground',
+        badge: 'bg-room-reserved text-room-reserved-foreground',
+        label: 'RESERVED'
       };
     case 'oos':
       return {
-        bg: 'bg-orange-500/20 hover:bg-orange-500/30',
-        border: 'border-orange-500/40',
-        text: 'text-orange-900 dark:text-orange-100',
-        badge: 'bg-orange-500 text-white',
-        label: 'Out of Service'
+        bg: 'bg-room-oos/20 hover:bg-room-oos/30',
+        border: 'border-room-oos/40',
+        text: 'text-foreground',
+        badge: 'bg-room-oos text-room-oos-foreground',
+        label: 'OUT OF SERVICE'
       };
     case 'overstay':
       return {
-        bg: 'bg-purple-500/20 hover:bg-purple-500/30',
-        border: 'border-purple-500/40',
-        text: 'text-purple-900 dark:text-purple-100',
-        badge: 'bg-purple-500 text-white',
-        label: 'Overstay'
+        bg: 'bg-room-overstay/20 hover:bg-room-overstay/30',
+        border: 'border-room-overstay/40',
+        text: 'text-foreground',
+        badge: 'bg-room-overstay text-room-overstay-foreground',
+        label: 'OVERSTAY'
       };
     default:
       return {
@@ -66,7 +66,7 @@ const getStatusConfig = (status: Room['status']) => {
         border: 'border-muted',
         text: 'text-muted-foreground',
         badge: 'bg-muted text-muted-foreground',
-        label: 'Unknown'
+        label: 'UNKNOWN'
       };
   }
 };
@@ -88,38 +88,38 @@ export const RoomTile = ({ room, isSelected, onClick }: RoomTileProps) => {
       )}
       onClick={onClick}
     >
-      <CardContent className="p-2 h-full flex flex-col justify-between">
-        {/* Room Number & Type */}
+      <CardContent className="p-3 h-full flex flex-col justify-between">
+        {/* Room Number - Large & Bold */}
         <div className="text-center">
-          <div className={cn("text-base font-bold leading-tight", config.text)}>
+          <div className={cn("text-lg font-bold font-inter leading-none mb-1", config.text)}>
             {room.number}
           </div>
-          <div className={cn("text-[10px] leading-tight truncate", config.text)} title={room.type}>
-            {room.name}
+          <div className={cn("text-xs font-medium uppercase tracking-wide", config.text)}>
+            {room.type}
           </div>
         </div>
 
-        {/* Status Badge */}
-        <div className="flex justify-center my-1">
+        {/* Status Badge - Bold & Prominent */}
+        <div className="flex justify-center my-2">
           <Badge 
-            className={cn("text-[9px] px-1 py-0", config.badge)}
+            className={cn("text-xs font-bold px-2 py-1 tracking-wide", config.badge)}
             variant="secondary"
           >
             {config.label}
           </Badge>
         </div>
 
-        {/* Guest Info */}
+        {/* Guest Info - Regular weight, subtle */}
         {room.guest && (
-          <div className="text-center min-h-[2rem]">
+          <div className="text-center min-h-[2.5rem] space-y-1">
             <div 
-              className={cn("text-[10px] font-medium leading-tight truncate", config.text)}
+              className={cn("text-xs font-normal leading-tight text-muted-foreground")}
               title={room.guest}
             >
-              {room.guest}
+              {room.guest.length > 12 ? room.guest.substring(0, 12) + '...' : room.guest}
             </div>
             {room.checkIn && (
-              <div className={cn("text-[9px] opacity-75 leading-tight", config.text)}>
+              <div className={cn("text-xs text-muted-foreground")}>
                 {new Date(room.checkIn).toLocaleDateString('en-GB', { 
                   day: '2-digit', 
                   month: '2-digit' 

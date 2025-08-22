@@ -264,8 +264,9 @@ const FrontDeskDashboard = () => {
           onViewAll={handleViewAllAlerts}
         />
 
-        {/* Room Status Overview */}
+        {/* Room Status Overview - Priority #1 */}
         <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Room Status Overview</h2>
           <RoomGrid 
             searchQuery={searchQuery}
             activeFilter={activeFilter}
@@ -273,46 +274,49 @@ const FrontDeskDashboard = () => {
           />
         </div>
 
-        {/* Action Bar */}
+        {/* Quick KPIs - Horizontal row under Room Status Overview */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">Quick KPIs</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+            {dashboardCards.map((card, index) => (
+              <Card 
+                key={index} 
+                className={`luxury-card cursor-pointer transition-all duration-200 hover:shadow-md ${
+                  activeFilter === card.filterKey ? 'ring-2 ring-primary shadow-lg' : ''
+                }`}
+                onClick={() => card.filterKey && handleCardClick(card.filterKey)}
+              >
+                <CardContent className="p-3 text-center">
+                  <div className={`h-6 w-6 rounded-full flex items-center justify-center mx-auto mb-2 ${
+                    card.color === 'success' ? 'bg-success/10 text-success' :
+                    card.color === 'primary' ? 'bg-primary/10 text-primary' :
+                    card.color === 'accent' ? 'bg-accent/10 text-accent-foreground' :
+                    card.color === 'warning' ? 'bg-warning/10 text-warning-foreground' :
+                    card.color === 'danger' ? 'bg-danger/10 text-danger' :
+                    'bg-muted/50 text-muted-foreground'
+                  }`}>
+                    {card.icon}
+                  </div>
+                  <div className="text-lg font-bold">{card.value}</div>
+                  <div className="text-xs text-muted-foreground">{card.title}</div>
+                  {activeFilter === card.filterKey && (
+                    <Badge variant="default" className="mt-2 text-xs">
+                      <Filter className="h-2 w-2 mr-1" />
+                      Active
+                    </Badge>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* Action Bar - Always visible under KPIs */}
         <ActionBar 
           onAction={handleAction}
           showKeyboardHelp={showKeyboardHelp}
           onToggleKeyboardHelp={() => setShowKeyboardHelp(!showKeyboardHelp)}
         />
-
-        {/* Quick KPIs Cards - Now under room grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-          {dashboardCards.map((card, index) => (
-            <Card 
-              key={index} 
-              className={`luxury-card cursor-pointer transition-all duration-200 hover:shadow-md ${
-                activeFilter === card.filterKey ? 'ring-2 ring-primary shadow-lg' : ''
-              }`}
-              onClick={() => card.filterKey && handleCardClick(card.filterKey)}
-            >
-              <CardContent className="p-3 text-center">
-                <div className={`h-6 w-6 rounded-full flex items-center justify-center mx-auto mb-2 ${
-                  card.color === 'success' ? 'bg-success/10 text-success' :
-                  card.color === 'primary' ? 'bg-primary/10 text-primary' :
-                  card.color === 'accent' ? 'bg-accent/10 text-accent-foreground' :
-                  card.color === 'warning' ? 'bg-warning/10 text-warning-foreground' :
-                  card.color === 'danger' ? 'bg-danger/10 text-danger' :
-                  'bg-muted/50 text-muted-foreground'
-                }`}>
-                  {card.icon}
-                </div>
-                <div className="text-lg font-bold">{card.value}</div>
-                <div className="text-xs text-muted-foreground">{card.title}</div>
-                {activeFilter === card.filterKey && (
-                  <Badge variant="default" className="mt-2 text-xs">
-                    <Filter className="h-2 w-2 mr-1" />
-                    Active
-                  </Badge>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
 
         {/* Guest Queue Panel */}
         <GuestQueuePanel onGuestAction={handleGuestAction} />

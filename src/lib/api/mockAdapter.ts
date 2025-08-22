@@ -395,13 +395,21 @@ const mockReservations = [
     checkOut: new Date(2024, 7, 25),
     status: 'confirmed',
     guests: 2,
+    adults: 2,
+    children: 0,
     nights: 3,
     amount: 450000,
+    amountPaid: 200000,
+    balanceDue: 250000,
     source: 'Direct Booking',
     paymentStatus: 'partial',
+    paymentMode: 'card',
     specialRequests: 'Early check-in requested',
     createdAt: new Date(2024, 6, 15),
-    updatedAt: new Date(2024, 6, 18)
+    updatedAt: new Date(2024, 6, 18),
+    companyId: null,
+    isOTA: false,
+    otaReference: null
   },
   {
     id: 'RES002', 
@@ -414,13 +422,21 @@ const mockReservations = [
     checkOut: new Date(2024, 7, 26),
     status: 'checked-in',
     guests: 1,
+    adults: 1,
+    children: 0,
     nights: 3,
     amount: 285000,
+    amountPaid: 285000,
+    balanceDue: 0,
     source: 'Booking.com',
     paymentStatus: 'paid',
+    paymentMode: 'ota',
     specialRequests: '',
     createdAt: new Date(2024, 6, 20),
-    updatedAt: new Date(2024, 7, 23)
+    updatedAt: new Date(2024, 7, 23),
+    companyId: null,
+    isOTA: true,
+    otaReference: 'BK123456789'
   },
   {
     id: 'RES003',
@@ -433,18 +449,132 @@ const mockReservations = [
     checkOut: new Date(2024, 7, 27),
     status: 'pending',
     guests: 3,
+    adults: 2,
+    children: 1,
     nights: 3,
     amount: 520000,
+    amountPaid: 0,
+    balanceDue: 520000,
     source: 'Phone Booking',
     paymentStatus: 'pending',
+    paymentMode: 'cash',
     specialRequests: 'Late checkout requested',
     createdAt: new Date(2024, 7, 10),
-    updatedAt: new Date(2024, 7, 20)
+    updatedAt: new Date(2024, 7, 20),
+    companyId: null,
+    isOTA: false,
+    otaReference: null
+  },
+  {
+    id: 'RES004',
+    guestName: 'Alice Johnson',
+    email: 'alice.johnson@techcorp.com',
+    phone: '+234 804 567 8901',
+    room: '401',
+    roomType: 'Executive Suite',
+    checkIn: new Date(2024, 7, 25),
+    checkOut: new Date(2024, 7, 28),
+    status: 'confirmed',
+    guests: 1,
+    adults: 1,
+    children: 0,
+    nights: 3,
+    amount: 375000,
+    amountPaid: 375000,
+    balanceDue: 0,
+    source: 'Corporate',
+    paymentStatus: 'paid',
+    paymentMode: 'transfer',
+    specialRequests: 'Business center access',
+    createdAt: new Date(2024, 7, 1),
+    updatedAt: new Date(2024, 7, 2),
+    companyId: 'CORP001',
+    companyName: 'TechCorp Solutions',
+    isOTA: false,
+    otaReference: null
+  },
+  {
+    id: 'RES005',
+    guestName: 'David Brown',
+    email: 'david.brown@email.com',
+    phone: '+234 805 678 9012',
+    room: '102',
+    roomType: 'Standard Twin',
+    checkIn: new Date(2024, 7, 26),
+    checkOut: new Date(2024, 7, 29),
+    status: 'confirmed',
+    guests: 2,
+    adults: 2,
+    children: 0,
+    nights: 3,
+    amount: 255000,
+    amountPaid: 100000,
+    balanceDue: 155000,
+    source: 'Walk-in',
+    paymentStatus: 'partial',
+    paymentMode: 'cash',
+    specialRequests: 'Ground floor room',
+    createdAt: new Date(2024, 7, 21),
+    updatedAt: new Date(2024, 7, 21),
+    companyId: null,
+    isOTA: false,
+    otaReference: null
+  }
+];
+
+// Mock companies for corporate bookings
+const mockCompanies = [
+  {
+    id: 'CORP001',
+    name: 'TechCorp Solutions',
+    email: 'bookings@techcorp.com',
+    phone: '+234 700 100 2000',
+    address: '123 Victoria Island, Lagos',
+    contactPerson: 'Jane Doe',
+    paymentTerms: 'NET30',
+    discountRate: 15,
+    isActive: true
+  },
+  {
+    id: 'CORP002', 
+    name: 'Global Enterprises',
+    email: 'travel@globalent.com',
+    phone: '+234 700 200 3000',
+    address: '456 Central Business District, Abuja',
+    contactPerson: 'Bob Smith',
+    paymentTerms: 'NET15',
+    discountRate: 10,
+    isActive: true
+  }
+];
+
+// Mock guest profiles for returning guests
+const mockGuestProfiles = [
+  {
+    id: 'GUEST001',
+    name: 'John Smith',
+    email: 'john.smith@email.com',
+    phone: '+234 801 234 5678',
+    preferences: 'High floor, king bed',
+    vipStatus: 'Gold',
+    totalStays: 5,
+    lastStay: '2024-05-15'
+  },
+  {
+    id: 'GUEST002',
+    name: 'Sarah Wilson', 
+    email: 'sarah.wilson@email.com',
+    phone: '+234 802 345 6789',
+    preferences: 'Non-smoking, early check-in',
+    vipStatus: 'Silver',
+    totalStays: 3,
+    lastStay: '2024-06-10'
   }
 ];
 
 // Mock room availability data
 const mockRoomAvailability = [
+  // Floor 1 - Standard Rooms
   {
     roomNumber: '101',
     roomType: 'Standard Twin',
@@ -452,17 +582,83 @@ const mockRoomAvailability = [
     status: 'available',
     capacity: 2,
     price: 85000,
-    amenities: ['WiFi', 'AC', 'TV']
+    amenities: ['WiFi', 'AC', 'TV', 'Work Desk']
   },
   {
     roomNumber: '102',
     roomType: 'Standard Twin',
     floor: 1,
-    status: 'occupied',
+    status: 'reserved',
     capacity: 2,
     price: 85000,
-    amenities: ['WiFi', 'AC', 'TV'],
-    currentGuest: 'RES002'
+    amenities: ['WiFi', 'AC', 'TV', 'Work Desk'],
+    currentGuest: 'RES005'
+  },
+  {
+    roomNumber: '103',
+    roomType: 'Standard Twin',
+    floor: 1,
+    status: 'available',
+    capacity: 2,
+    price: 85000,
+    amenities: ['WiFi', 'AC', 'TV', 'Work Desk']
+  },
+  {
+    roomNumber: '104',
+    roomType: 'Standard Twin',
+    floor: 1,
+    status: 'available',
+    capacity: 2,
+    price: 85000,
+    amenities: ['WiFi', 'AC', 'TV', 'Work Desk']
+  },
+  {
+    roomNumber: '105',
+    roomType: 'Standard King',
+    floor: 1,
+    status: 'out-of-service',
+    capacity: 2,
+    price: 95000,
+    amenities: ['WiFi', 'AC', 'TV', 'Work Desk', 'King Bed'],
+    maintenanceReason: 'Plumbing repair'
+  },
+  
+  // Floor 2 - Deluxe Rooms
+  {
+    roomNumber: '201',
+    roomType: 'Deluxe King',
+    floor: 2,
+    status: 'available',
+    capacity: 2,
+    price: 125000,
+    amenities: ['WiFi', 'AC', 'TV', 'Mini Bar', 'City View']
+  },
+  {
+    roomNumber: '202',
+    roomType: 'Deluxe King',
+    floor: 2,
+    status: 'available',
+    capacity: 2,
+    price: 125000,
+    amenities: ['WiFi', 'AC', 'TV', 'Mini Bar', 'City View']
+  },
+  {
+    roomNumber: '203',
+    roomType: 'Deluxe King',
+    floor: 2,
+    status: 'available',
+    capacity: 2,
+    price: 125000,
+    amenities: ['WiFi', 'AC', 'TV', 'Mini Bar', 'City View']
+  },
+  {
+    roomNumber: '204',
+    roomType: 'Deluxe King',
+    floor: 2,
+    status: 'available',
+    capacity: 2,
+    price: 125000,
+    amenities: ['WiFi', 'AC', 'TV', 'Mini Bar', 'City View']
   },
   {
     roomNumber: '205',
@@ -471,18 +667,67 @@ const mockRoomAvailability = [
     status: 'reserved',
     capacity: 2,
     price: 125000,
-    amenities: ['WiFi', 'AC', 'TV', 'Mini Bar'],
+    amenities: ['WiFi', 'AC', 'TV', 'Mini Bar', 'City View'],
     currentGuest: 'RES001'
   },
+  
+  // Floor 3 - Suites
   {
     roomNumber: '301',
     roomType: 'Family Suite',
     floor: 3,
-    status: 'out-of-service',
+    status: 'available',
     capacity: 4,
     price: 185000,
-    amenities: ['WiFi', 'AC', 'TV', 'Kitchenette'],
-    maintenanceReason: 'AC repair'
+    amenities: ['WiFi', 'AC', 'TV', 'Kitchenette', 'Living Area']
+  },
+  {
+    roomNumber: '302',
+    roomType: 'Family Suite',
+    floor: 3,
+    status: 'available',
+    capacity: 4,
+    price: 185000,
+    amenities: ['WiFi', 'AC', 'TV', 'Kitchenette', 'Living Area']
+  },
+  {
+    roomNumber: '303',
+    roomType: 'Executive Suite',
+    floor: 3,
+    status: 'available',
+    capacity: 3,
+    price: 225000,
+    amenities: ['WiFi', 'AC', 'TV', 'Work Station', 'Balcony', 'Premium View']
+  },
+  {
+    roomNumber: '304',
+    roomType: 'Executive Suite',
+    floor: 3,
+    status: 'available',
+    capacity: 3,
+    price: 225000,
+    amenities: ['WiFi', 'AC', 'TV', 'Work Station', 'Balcony', 'Premium View']
+  },
+  
+  // Floor 4 - Premium Suites
+  {
+    roomNumber: '401',
+    roomType: 'Executive Suite', 
+    floor: 4,
+    status: 'reserved',
+    capacity: 3,
+    price: 225000,
+    amenities: ['WiFi', 'AC', 'TV', 'Work Station', 'Balcony', 'Premium View'],
+    currentGuest: 'RES004'
+  },
+  {
+    roomNumber: '402',
+    roomType: 'Presidential Suite',
+    floor: 4,
+    status: 'available',
+    capacity: 4,
+    price: 350000,
+    amenities: ['WiFi', 'AC', 'TV', 'Full Kitchen', 'Living Room', 'Dining Area', 'Butler Service']
   }
 ];
 
@@ -925,6 +1170,122 @@ export const mockApi = {
     reservation.status = 'checked-out';
     reservation.updatedAt = new Date();
     return { data: reservation };
+  },
+
+  // Company/Corporate booking endpoints
+  getCompanies: async (): Promise<{ data: any[] }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch companies');
+    return { data: mockCompanies };
+  },
+
+  createCompany: async (data: any): Promise<{ data: any }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to create company');
+    const newCompany = {
+      id: `CORP${Date.now()}`,
+      ...data,
+      isActive: true,
+      createdAt: new Date()
+    };
+    mockCompanies.push(newCompany);
+    return { data: newCompany };
+  },
+
+  // Guest profile endpoints
+  getGuestProfiles: async (): Promise<{ data: any[] }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch guest profiles');
+    return { data: mockGuestProfiles };
+  },
+
+  createGuestProfile: async (data: any): Promise<{ data: any }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to create guest profile');
+    const newGuest = {
+      id: `GUEST${Date.now()}`,
+      ...data,
+      totalStays: 0,
+      vipStatus: 'Bronze',
+      createdAt: new Date()
+    };
+    mockGuestProfiles.push(newGuest);
+    return { data: newGuest };
+  },
+
+  // Auto-assignment logic
+  autoAssignRoom: async (reservationData: any): Promise<{ data: any }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to auto-assign room');
+    
+    // Find available rooms matching the criteria
+    const availableRooms = mockRoomAvailability.filter(room => 
+      room.status === 'available' && 
+      room.capacity >= reservationData.guests &&
+      room.roomType.toLowerCase().includes(reservationData.roomType?.toLowerCase() || 'standard')
+    );
+
+    if (availableRooms.length === 0) {
+      throw new Error('No available rooms matching criteria');
+    }
+
+    // Simple assignment logic - pick first available room
+    const assignedRoom = availableRooms[0];
+    
+    return { data: { roomNumber: assignedRoom.roomNumber, roomType: assignedRoom.roomType } };
+  },
+
+  // OTA integration placeholders
+  importOTAReservation: async (otaData: any): Promise<{ data: any }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to import OTA reservation');
+    
+    const newReservation = {
+      id: `OTA${Date.now()}`,
+      ...otaData,
+      source: otaData.source || 'OTA',
+      isOTA: true,
+      paymentMode: 'ota',
+      status: 'confirmed',
+      paymentStatus: 'paid',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    mockReservations.push(newReservation);
+    return { data: newReservation };
+  },
+
+  // Enhanced conflict detection
+  checkRoomConflicts: async (reservationData: any): Promise<{ data: any }> => {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to check room conflicts');
+    
+    const { roomNumber, checkIn, checkOut, reservationId } = reservationData;
+    const conflicts = mockReservations.filter(r => 
+      r.room === roomNumber && 
+      r.id !== reservationId &&
+      r.status !== 'cancelled' &&
+      r.status !== 'checked-out' &&
+      (
+        (new Date(checkIn) >= new Date(r.checkIn) && new Date(checkIn) < new Date(r.checkOut)) ||
+        (new Date(checkOut) > new Date(r.checkIn) && new Date(checkOut) <= new Date(r.checkOut)) ||
+        (new Date(checkIn) <= new Date(r.checkIn) && new Date(checkOut) >= new Date(r.checkOut))
+      )
+    );
+    
+    return { 
+      data: { 
+        hasConflicts: conflicts.length > 0, 
+        conflicts: conflicts.map(c => ({
+          id: c.id,
+          guestName: c.guestName,
+          checkIn: c.checkIn,
+          checkOut: c.checkOut,
+          status: c.status
+        }))
+      }
+    };
   },
   // Super Admin - Tenants
   async getTenants() {

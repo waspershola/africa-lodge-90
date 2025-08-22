@@ -369,6 +369,132 @@ export const useRoomAvailability = (checkIn?: Date, checkOut?: Date) => {
   });
 };
 
+// API hooks for enhanced features
+export const useCompanies = () => {
+  return useQuery({
+    queryKey: ['companies'],
+    queryFn: mockApi.getCompanies,
+    select: (response) => response.data
+  });
+};
+
+export const useCreateCompany = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: (data: any) => mockApi.createCompany(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
+      toast({
+        title: 'Success',
+        description: 'Company created successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useGuestProfiles = () => {
+  return useQuery({
+    queryKey: ['guest-profiles'],
+    queryFn: mockApi.getGuestProfiles,
+    select: (response) => response.data
+  });
+};
+
+export const useCreateGuestProfile = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: (data: any) => mockApi.createGuestProfile(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guest-profiles'] });
+      toast({
+        title: 'Success',
+        description: 'Guest profile created successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useAutoAssignRoom = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: (data: any) => mockApi.autoAssignRoom(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['room-availability'] });
+      toast({
+        title: 'Success',
+        description: 'Room auto-assigned successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useImportOTAReservation = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: (data: any) => mockApi.importOTAReservation(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['room-availability'] });
+      toast({
+        title: 'Success',
+        description: 'OTA reservation imported successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useCheckRoomConflicts = () => {
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: (data: any) => mockApi.checkRoomConflicts(data),
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
 // Super Admin hooks - Tenants
 export const useTenants = () => {
   return useQuery({

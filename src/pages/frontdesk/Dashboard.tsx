@@ -5,7 +5,7 @@ import {
   Hotel, Users, Clock, LogOut, AlertTriangle, CreditCard, 
   Wrench, Zap, Bell, Search, Plus, Keyboard, 
   Bed, CheckCircle, XCircle, Calendar, DollarSign,
-  Wifi, WifiOff, Timer, Play, Pause
+  Wifi, WifiOff, Timer, Play, Pause, Grid3X3, BarChart3
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import { useFrontDeskData, useOfflineQueue } from '@/hooks/useFrontDesk';
 import OfflineBanner from '@/components/frontdesk/OfflineBanner';
 import ActionQueue from '@/components/frontdesk/ActionQueue';
 import QuickActionCard from '@/components/frontdesk/QuickActionCard';
+import RoomGrid from '@/components/frontdesk/RoomGrid';
 
 const fadeIn = {
   initial: { opacity: 0, y: 20 },
@@ -42,6 +43,9 @@ export default function FrontDeskDashboard() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showQueue, setShowQueue] = useState(false);
+  const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
+  const [currentView, setCurrentView] = useState<'grid' | 'dashboard'>('grid');
+  const [dashboardFilter, setDashboardFilter] = useState<string | null>(null);
   
   const { 
     data: frontDeskData, 
@@ -55,6 +59,12 @@ export default function FrontDeskDashboard() {
   
   const { queuedActions, addToQueue, retryQueue, clearQueue } = useOfflineQueue();
 
+  if (isLoading) return <LoadingState message="Loading front desk..." />;
+  if (error) return <ErrorState message="Failed to load front desk data" onRetry={refetch} />;
+
+  const dashboard = frontDeskData?.data;
+  if (!dashboard) return <DataEmpty message="No front desk data available" />;
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -65,26 +75,42 @@ export default function FrontDeskDashboard() {
       switch (event.key.toLowerCase()) {
         case 'a':
           event.preventDefault();
-          handleAssignRoom();
+          if (selectedRoom) {
+            handleRoomAction(selectedRoom, 'assign_room');
+          } else {
+            handleAssignRoom();
+          }
           break;
         case 'i':
           event.preventDefault();
-          handleCheckIn();
+          if (selectedRoom) {
+            handleRoomAction(selectedRoom, 'check_in');
+          } else {
+            handleCheckIn();
+          }
           break;
         case 'o':
           event.preventDefault();
-          handleCheckOut();
+          if (selectedRoom) {
+            handleRoomAction(selectedRoom, 'check_out');
+          } else {
+            handleCheckOut();
+          }
           break;
         case '/':
           event.preventDefault();
           setSearchOpen(true);
+          break;
+        case 'g':
+          event.preventDefault();
+          setCurrentView(currentView === 'grid' ? 'dashboard' : 'grid');
           break;
       }
     };
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [isReadOnly]);
+  }, [isReadOnly, selectedRoom, currentView]);
 
   const handleAssignRoom = useCallback(() => {
     const action = { type: 'assign_room', data: {}, timestamp: Date.now() };
@@ -123,11 +149,27 @@ export default function FrontDeskDashboard() {
     }
   }, [isOffline, addToQueue]);
 
-  if (isLoading) return <LoadingState message="Loading front desk..." />;
-  if (error) return <ErrorState message="Failed to load front desk data" onRetry={refetch} />;
+  const handleRoomAction = useCallback((roomId: string, actionType: string) => {
+    const room = dashboard?.rooms?.find(r => r.id === roomId);
+    const action = { 
+      type: actionType, 
+      data: { roomId, roomNumber: room?.number, guestName: room?.guestName }, 
+      timestamp: Date.now() 
+    };
+    
+    if (isOffline) {
+      addToQueue(action);
+    } else {
+      console.log(`Executing ${actionType} for room ${room?.number}:`, action.data);
+    }
+  }, [isOffline, addToQueue, dashboard]);
 
-  const dashboard = frontDeskData?.data;
-  if (!dashboard) return <DataEmpty message="No front desk data available" />;
+  const handleCardClick = useCallback((filterType: string) => {
+    setDashboardFilter(prev => prev === filterType ? null : filterType);
+    if (currentView === 'dashboard') {
+      setCurrentView('grid');
+    }
+  }, [currentView]);
 
   const cardVariants = {
     idle: { scale: 1 },
@@ -177,6 +219,26 @@ export default function FrontDeskDashboard() {
                 {isOffline ? 'Offline' : 'Online'}
               </Badge>
 
+              {/* View Toggle */}
+              <div className="flex items-center gap-1 border rounded-lg p-1">
+                <Button
+                  variant={currentView === 'grid' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setCurrentView('grid')}
+                  className="h-7 px-2"
+                >
+                  <Grid3X3 className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant={currentView === 'dashboard' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setCurrentView('dashboard')}
+                  className="h-7 px-2"
+                >
+                  <BarChart3 className="h-3 w-3" />
+                </Button>
+              </div>
+
               {/* Queue Status */}
               {queuedActions.length > 0 && (
                 <Button
@@ -215,6 +277,10 @@ export default function FrontDeskDashboard() {
                       <kbd className="px-2 py-1 text-xs bg-muted rounded">O</kbd>
                     </div>
                     <div className="flex justify-between items-center">
+                      <span>Toggle View</span>
+                      <kbd className="px-2 py-1 text-xs bg-muted rounded">G</kbd>
+                    </div>
+                    <div className="flex justify-between items-center">
                       <span>Search</span>
                       <kbd className="px-2 py-1 text-xs bg-muted rounded">/</kbd>
                     </div>
@@ -228,25 +294,159 @@ export default function FrontDeskDashboard() {
 
       {/* Main Dashboard */}
       <main className="container mx-auto px-4 py-6">
-        <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-          variants={staggerChildren}
-          initial="initial"
-          animate="animate"
-        >
-          {/* Rooms Available */}
-          <motion.div variants={fadeIn}>
-            <QuickActionCard
-              title="Rooms Available"
-              value={dashboard.roomsAvailable}
-              icon={Bed}
-              actionLabel="Assign Room"
-              onAction={handleAssignRoom}
-              disabled={isReadOnly}
-              variant="success"
-              subtitle={`${dashboard.totalRooms - dashboard.roomsAvailable} occupied`}
-            />
-          </motion.div>
+        {currentView === 'grid' ? (
+          // Room Grid View
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-12rem)]">
+            {/* Room Grid - Takes 2/3 of the space */}
+            <div className="lg:col-span-2">
+              <Card className="h-full">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Grid3X3 className="h-5 w-5" />
+                      Room Grid
+                      {dashboardFilter && (
+                        <Badge variant="secondary" className="ml-2">
+                          Filtered by {dashboardFilter}
+                        </Badge>
+                      )}
+                    </CardTitle>
+                    {dashboardFilter && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDashboardFilter(null)}
+                      >
+                        Clear Filter
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0 h-[calc(100%-4rem)]">
+                  <RoomGrid
+                    rooms={dashboard?.rooms || []}
+                    selectedRoom={selectedRoom}
+                    onRoomSelect={setSelectedRoom}
+                    onRoomAction={handleRoomAction}
+                    filterBy={dashboardFilter}
+                    isReadOnly={isReadOnly}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* KPI Cards - Takes 1/3 of the space */}
+            <div className="space-y-4">
+              {/* Occupancy Rate */}
+              <Card className="modern-card">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                    <Users className="h-4 w-4 text-primary" />
+                    Occupancy Rate
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="text-3xl font-bold text-primary">
+                    {dashboard?.occupancyRate}%
+                  </div>
+                  <Progress value={dashboard?.occupancyRate} className="h-2" />
+                  <div className="text-xs text-muted-foreground">
+                    {dashboard?.totalRooms - dashboard?.roomsAvailable} / {dashboard?.totalRooms} rooms
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Quick Stats */}
+              <div className="grid grid-cols-1 gap-3">
+                <QuickActionCard
+                  title="Available"
+                  value={dashboard?.roomsAvailable}
+                  icon={Bed}
+                  actionLabel="Assign Room"
+                  onAction={() => handleCardClick('available')}
+                  disabled={isReadOnly}
+                  variant="success"
+                  subtitle="Ready for guests"
+                />
+
+                <QuickActionCard
+                  title="Arrivals Today"
+                  value={dashboard?.arrivalsToday}
+                  icon={CheckCircle}
+                  actionLabel="View Arrivals"
+                  onAction={() => handleCardClick('arrivals')}
+                  disabled={isReadOnly}
+                  variant="primary"
+                  subtitle={`${dashboard?.pendingCheckIns} pending`}
+                />
+
+                <QuickActionCard
+                  title="Departures"
+                  value={dashboard?.departuresToday}
+                  icon={LogOut}
+                  actionLabel="View Departures"
+                  onAction={() => handleCardClick('departures')}
+                  disabled={isReadOnly}
+                  variant="warning"
+                  subtitle={`${dashboard?.pendingCheckOuts} pending`}
+                />
+
+                <QuickActionCard
+                  title="Overstays"
+                  value={dashboard?.overstays}
+                  icon={Clock}
+                  actionLabel="View Overstays"
+                  onAction={() => handleCardClick('overstays')}
+                  disabled={isReadOnly}
+                  variant="destructive"
+                  subtitle="Need attention"
+                />
+
+                <QuickActionCard
+                  title="Out of Service"
+                  value={dashboard?.oosRooms}
+                  icon={Wrench}
+                  actionLabel="View OOS"
+                  onAction={() => handleCardClick('oos')}
+                  disabled={isReadOnly}
+                  variant="warning"
+                  subtitle="Maintenance"
+                />
+
+                <QuickActionCard
+                  title="Pending Payments"
+                  value={`₦${dashboard?.pendingPayments?.toLocaleString()}`}
+                  icon={CreditCard}
+                  actionLabel="View Pending"
+                  onAction={() => handleCardClick('pending_payments')}
+                  disabled={isReadOnly}
+                  variant="destructive"
+                  subtitle={`${dashboard?.pendingPaymentCount} guests`}
+                />
+              </div>
+            </div>
+          </div>
+        ) : (
+          // Dashboard Cards View
+          <motion.div
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+            variants={staggerChildren}
+            initial="initial"
+            animate="animate"
+          >
+            {/* Rooms Available */}
+            <motion.div variants={fadeIn}>
+              <QuickActionCard
+                title="Rooms Available"
+                value={dashboard.roomsAvailable}
+                icon={Bed}
+                actionLabel="Assign Room"
+                onAction={handleAssignRoom}
+                disabled={isReadOnly}
+                variant="success"
+                subtitle={`${dashboard.totalRooms - dashboard.roomsAvailable} occupied`}
+              />
+            </motion.div>
 
           {/* Occupancy Percentage */}
           <motion.div variants={fadeIn}>
@@ -435,7 +635,8 @@ export default function FrontDeskDashboard() {
               </CardContent>
             </Card>
           </motion.div>
-        </motion.div>
+          </motion.div>
+        )}
       </main>
 
       {/* Sticky Footer */}

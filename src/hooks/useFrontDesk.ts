@@ -5,20 +5,76 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 const delay = () => new Promise(resolve => setTimeout(resolve, Math.random() * 1000 + 500));
 const shouldFail = () => Math.random() < 0.1; // 10% failure rate
 
+// Mock room data
+const mockRooms = [
+  // Available Rooms
+  { id: '101', number: '101', name: 'Standard Room', type: 'Standard', status: 'available' as const },
+  { id: '102', number: '102', name: 'Standard Room', type: 'Standard', status: 'available' as const },
+  { id: '103', number: '103', name: 'Deluxe Room', type: 'Deluxe', status: 'available' as const },
+  { id: '104', number: '104', name: 'Standard Room', type: 'Standard', status: 'available' as const },
+  { id: '105', number: '105', name: 'Suite', type: 'Executive Suite', status: 'available' as const },
+  { id: '106', number: '106', name: 'Standard Room', type: 'Standard', status: 'available' as const },
+  { id: '107', number: '107', name: 'Deluxe Room', type: 'Deluxe', status: 'available' as const },
+  { id: '109', number: '109', name: 'Standard Room', type: 'Standard', status: 'available' as const },
+  { id: '110', number: '110', name: 'Deluxe Room', type: 'Deluxe', status: 'available' as const },
+  { id: '111', number: '111', name: 'Standard Room', type: 'Standard', status: 'available' as const },
+  { id: '112', number: '112', name: 'Standard Room', type: 'Standard', status: 'available' as const },
+  { id: '113', number: '113', name: 'Deluxe Room', type: 'Deluxe', status: 'available' as const },
+
+  // Occupied Rooms
+  { id: '201', number: '201', name: 'Standard Room', type: 'Standard', status: 'occupied' as const, guestName: 'John Smith', checkInDate: '2024-08-20', checkOutDate: '2024-08-25', revenue: 45000 },
+  { id: '202', number: '202', name: 'Deluxe Room', type: 'Deluxe', status: 'occupied' as const, guestName: 'Sarah Johnson', checkInDate: '2024-08-19', checkOutDate: '2024-08-22', revenue: 65000, alerts: [{ type: 'deposit_due' as const, message: 'Deposit payment overdue' }] },
+  { id: '203', number: '203', name: 'Suite', type: 'Executive Suite', status: 'occupied' as const, guestName: 'Michael Brown', checkInDate: '2024-08-18', checkOutDate: '2024-08-23', revenue: 120000 },
+  { id: '204', number: '204', name: 'Standard Room', type: 'Standard', status: 'occupied' as const, guestName: 'Emily Davis', checkInDate: '2024-08-21', checkOutDate: '2024-08-22', revenue: 42000 },
+  { id: '206', number: '206', name: 'Deluxe Room', type: 'Deluxe', status: 'occupied' as const, guestName: 'Robert Wilson', checkInDate: '2024-08-20', checkOutDate: '2024-08-24', revenue: 68000 },
+  { id: '207', number: '207', name: 'Standard Room', type: 'Standard', status: 'occupied' as const, guestName: 'Lisa Anderson', checkInDate: '2024-08-19', checkOutDate: '2024-08-22', revenue: 48000 },
+
+  // Reserved Rooms
+  { id: '301', number: '301', name: 'Standard Room', type: 'Standard', status: 'reserved' as const, guestName: 'David Taylor', checkInDate: '2024-08-22', checkOutDate: '2024-08-26' },
+  { id: '302', number: '302', name: 'Deluxe Room', type: 'Deluxe', status: 'reserved' as const, guestName: 'Jennifer Martinez', checkInDate: '2024-08-22', checkOutDate: '2024-08-25' },
+  { id: '303', number: '303', name: 'Suite', type: 'Executive Suite', status: 'reserved' as const, guestName: 'Christopher Lee', checkInDate: '2024-08-22', checkOutDate: '2024-08-27' },
+
+  // Out of Service Rooms
+  { id: '108', number: '108', name: 'Standard Room', type: 'Standard', status: 'oos' as const, alerts: [{ type: 'maintenance' as const, message: 'AC not working - repair scheduled' }] },
+  { id: '209', number: '209', name: 'Deluxe Room', type: 'Deluxe', status: 'oos' as const, alerts: [{ type: 'maintenance' as const, message: 'Plumbing issues - under repair' }] },
+
+  // Overstay
+  { id: '205', number: '205', name: 'Standard Room', type: 'Standard', status: 'overstay' as const, guestName: 'Mark Thompson', checkInDate: '2024-08-15', checkOutDate: '2024-08-20', revenue: 75000, alerts: [{ type: 'id_missing' as const, message: 'Guest ID not provided' }] },
+
+  // Additional occupied rooms for better distribution
+  { id: '208', number: '208', name: 'Deluxe Room', type: 'Deluxe', status: 'occupied' as const, guestName: 'Amanda White', checkInDate: '2024-08-20', checkOutDate: '2024-08-23', revenue: 72000 },
+  { id: '210', number: '210', name: 'Standard Room', type: 'Standard', status: 'occupied' as const, guestName: 'James Garcia', checkInDate: '2024-08-21', checkOutDate: '2024-08-24', revenue: 54000 },
+  { id: '211', number: '211', name: 'Deluxe Room', type: 'Deluxe', status: 'occupied' as const, guestName: 'Nicole Rodriguez', checkInDate: '2024-08-19', checkOutDate: '2024-08-22', revenue: 63000 },
+  { id: '212', number: '212', name: 'Suite', type: 'Executive Suite', status: 'occupied' as const, guestName: 'Kevin Lewis', checkInDate: '2024-08-18', checkOutDate: '2024-08-25', revenue: 180000 },
+  { id: '304', number: '304', name: 'Standard Room', type: 'Standard', status: 'occupied' as const, guestName: 'Rachel Clark', checkInDate: '2024-08-20', checkOutDate: '2024-08-23', revenue: 51000 },
+  { id: '305', number: '305', name: 'Deluxe Room', type: 'Deluxe', status: 'occupied' as const, guestName: 'Daniel Hall', checkInDate: '2024-08-21', checkOutDate: '2024-08-26', revenue: 85000 },
+  { id: '306', number: '306', name: 'Standard Room', type: 'Standard', status: 'occupied' as const, guestName: 'Michelle Young', checkInDate: '2024-08-19', checkOutDate: '2024-08-22', revenue: 48000 },
+  { id: '307', number: '307', name: 'Deluxe Room', type: 'Deluxe', status: 'occupied' as const, guestName: 'Ryan King', checkInDate: '2024-08-20', checkOutDate: '2024-08-24', revenue: 76000 },
+  { id: '308', number: '308', name: 'Suite', type: 'Executive Suite', status: 'occupied' as const, guestName: 'Stephanie Wright', checkInDate: '2024-08-18', checkOutDate: '2024-08-27', revenue: 210000 },
+  { id: '309', number: '309', name: 'Standard Room', type: 'Standard', status: 'occupied' as const, guestName: 'Brian Lopez', checkInDate: '2024-08-21', checkOutDate: '2024-08-25', revenue: 60000 },
+  { id: '310', number: '310', name: 'Deluxe Room', type: 'Deluxe', status: 'occupied' as const, guestName: 'Crystal Hill', checkInDate: '2024-08-19', checkOutDate: '2024-08-23', revenue: 68000 },
+  { id: '311', number: '311', name: 'Standard Room', type: 'Standard', status: 'occupied' as const, guestName: 'Gregory Green', checkInDate: '2024-08-20', checkOutDate: '2024-08-24', revenue: 56000 },
+  { id: '312', number: '312', name: 'Deluxe Room', type: 'Deluxe', status: 'occupied' as const, guestName: 'Tiffany Adams', checkInDate: '2024-08-18', checkOutDate: '2024-08-22', revenue: 64000, alerts: [{ type: 'deposit_due' as const, message: 'Deposit payment overdue' }] },
+  { id: '313', number: '313', name: 'Suite', type: 'Executive Suite', status: 'occupied' as const, guestName: 'Anthony Nelson', checkInDate: '2024-08-19', checkOutDate: '2024-08-26', revenue: 195000 }
+];
+
 // Mock front desk data
 const mockFrontDeskData = {
-  roomsAvailable: 12,
-  totalRooms: 50,
-  occupancyRate: 76,
-  arrivalsToday: 8,
-  departuresToday: 6,
-  pendingCheckIns: 3,
-  pendingCheckOuts: 2,
-  overstays: 1,
-  inHouseGuests: 38,
-  pendingPayments: 125000,
-  pendingPaymentCount: 4,
-  oosRooms: 2,
+  rooms: mockRooms,
+  roomsAvailable: mockRooms.filter(r => r.status === 'available').length,
+  totalRooms: mockRooms.length,
+  occupancyRate: Math.round((mockRooms.filter(r => r.status === 'occupied').length / mockRooms.length) * 100),
+  arrivalsToday: mockRooms.filter(r => r.status === 'reserved' && r.checkInDate === '2024-08-22').length,
+  departuresToday: mockRooms.filter(r => r.status === 'occupied' && r.checkOutDate === '2024-08-22').length,
+  pendingCheckIns: mockRooms.filter(r => r.status === 'reserved').length,
+  pendingCheckOuts: mockRooms.filter(r => r.status === 'occupied' && r.checkOutDate === '2024-08-22').length,
+  overstays: mockRooms.filter(r => r.status === 'overstay').length,
+  inHouseGuests: mockRooms.filter(r => r.status === 'occupied' || r.status === 'overstay').length,
+  pendingPayments: mockRooms
+    .filter(r => r.alerts?.some(a => a.type === 'deposit_due'))
+    .reduce((sum, r) => sum + (r.revenue || 0), 0),
+  pendingPaymentCount: mockRooms.filter(r => r.alerts?.some(a => a.type === 'deposit_due')).length,
+  oosRooms: mockRooms.filter(r => r.status === 'oos').length,
   dieselLevel: 75,
   genRuntime: 4.5,
   alerts: [

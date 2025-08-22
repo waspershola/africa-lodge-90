@@ -10,19 +10,14 @@ import ReservationCalendar from '@/components/owner/reservations/ReservationCale
 import InteractiveReservationCalendar from '@/components/owner/reservations/InteractiveReservationCalendar';
 import ReservationList from '@/components/owner/reservations/ReservationList';
 import NewReservationDialog from '@/components/owner/reservations/NewReservationDialog';
-import QuickBookingForm from '@/components/owner/reservations/QuickBookingForm';
 import ReservationDetails from '@/components/owner/reservations/ReservationDetails';
-import DateRangeFilter from '@/components/owner/reservations/DateRangeFilter';
 import { useReservations } from '@/hooks/useApi';
-import { DateRange } from 'react-day-picker';
 
 export default function ReservationsPage() {
   const [view, setView] = useState('calendar');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [showNewDialog, setShowNewDialog] = useState(false);
-  const [showQuickBooking, setShowQuickBooking] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState(null);
 
   const { data: reservations = [], isLoading, error } = useReservations();
@@ -92,16 +87,10 @@ export default function ReservationsPage() {
           </p>
         </div>
         
-        <div className="flex items-center gap-2">
-          <Button onClick={() => setShowQuickBooking(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Quick Booking
-          </Button>
-          <Button variant="outline" onClick={() => setShowNewDialog(true)}>
-            <Calendar className="h-4 w-4 mr-2" />
-            New Reservation
-          </Button>
-        </div>
+        <Button onClick={() => setShowNewDialog(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          New Reservation
+        </Button>
       </div>
 
       {/* Stats Overview */}
@@ -183,11 +172,6 @@ export default function ReservationsPage() {
                     />
                   </div>
                 </div>
-
-                <DateRangeFilter
-                  dateRange={dateRange}
-                  onDateRangeChange={setDateRange}
-                />
 
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="w-40">
@@ -312,11 +296,6 @@ export default function ReservationsPage() {
         onOpenChange={setShowNewDialog}
       />
 
-      <QuickBookingForm
-        open={showQuickBooking}
-        onOpenChange={setShowQuickBooking}
-      />
-
       {selectedReservation && (
         <ReservationDetails
           reservation={selectedReservation}
@@ -324,18 +303,6 @@ export default function ReservationsPage() {
           onOpenChange={() => setSelectedReservation(null)}
         />
       )}
-
-      {/* Sticky Quick Booking Button */}
-      <div className="fixed bottom-6 right-6 z-50">
-        <Button
-          size="lg"
-          className="rounded-full shadow-lg"
-          onClick={() => setShowQuickBooking(true)}
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          Quick Book
-        </Button>
-      </div>
     </div>
   );
 }

@@ -1322,3 +1322,85 @@ export const useBillingStats = () => {
     select: (response) => response.data
   });
 };
+
+// Guest Management API Hooks
+export const useGuests = () => {
+  return useQuery({
+    queryKey: ['guests'],
+    queryFn: mockApi.getGuests,
+    select: (response) => response.data
+  });
+};
+
+export const useGuest = (id: string) => {
+  return useQuery({
+    queryKey: ['guests', id],
+    queryFn: () => mockApi.getGuest(id),
+    select: (response) => response.data,
+    enabled: !!id
+  });
+};
+
+export const useCreateGuest = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: (data: any) => mockApi.createGuest(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+      queryClient.invalidateQueries({ queryKey: ['guest-stats'] });
+      toast({
+        title: 'Success',
+        description: 'Guest created successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useUpdateGuest = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => mockApi.updateGuest(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+      queryClient.invalidateQueries({ queryKey: ['guests', id] });
+      toast({
+        title: 'Success',
+        description: 'Guest updated successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useGuestStats = () => {
+  return useQuery({
+    queryKey: ['guest-stats'],
+    queryFn: mockApi.getGuestStats,
+    select: (response) => response.data
+  });
+};
+
+export const useCorporateAccounts = () => {
+  return useQuery({
+    queryKey: ['corporate-accounts'],
+    queryFn: mockApi.getCorporateAccounts,
+    select: (response) => response.data
+  });
+};

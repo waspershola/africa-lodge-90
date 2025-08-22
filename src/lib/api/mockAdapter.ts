@@ -1880,6 +1880,194 @@ export const mockApi = {
         }
       }
     };
+  },
+
+  // Guest Management API
+  async getGuests() {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch guests');
+    
+    const mockGuests = [
+      {
+        id: 'GUEST-001',
+        name: 'John Smith',
+        email: 'john.smith@email.com',
+        phone: '+234 802 123 4567',
+        nationality: 'American',
+        company: 'Tech Solutions Inc.',
+        status: 'vip',
+        loyaltyTier: 'gold',
+        totalStays: 15,
+        totalNights: 45,
+        totalSpent: 2500000,
+        avgSpendPerStay: 166667,
+        outstandingBalance: 0,
+        lastStayDate: new Date(2024, 7, 25),
+        avatar: null,
+        notes: 'Prefers executive floor rooms. Vegetarian meals.',
+        preferences: 'Non-smoking rooms, late checkout',
+        tags: ['Corporate', 'VIP', 'Frequent']
+      },
+      {
+        id: 'GUEST-002',
+        name: 'Sarah Wilson',
+        email: 'sarah.wilson@email.com',
+        phone: '+234 803 987 6543',
+        nationality: 'British',
+        company: null,
+        status: 'active',
+        loyaltyTier: 'silver',
+        totalStays: 8,
+        totalNights: 20,
+        totalSpent: 950000,
+        avgSpendPerStay: 118750,
+        outstandingBalance: 0,
+        lastStayDate: new Date(2024, 7, 20),
+        avatar: null,
+        notes: 'Allergic to seafood. Prefers ground floor.',
+        preferences: 'Quiet rooms, early breakfast',
+        tags: ['Leisure', 'Regular']
+      },
+      {
+        id: 'GUEST-003',
+        name: 'Michael Chen',
+        email: 'michael.chen@corp.com',
+        phone: '+234 805 555 1234',
+        nationality: 'Chinese',
+        company: 'Global Industries Ltd.',
+        status: 'active',
+        loyaltyTier: 'bronze',
+        totalStays: 3,
+        totalNights: 12,
+        totalSpent: 520000,
+        avgSpendPerStay: 173333,
+        outstandingBalance: 420000,
+        lastStayDate: new Date(2024, 7, 27),
+        avatar: null,
+        notes: 'Corporate account holder. Extended stays.',
+        preferences: 'Business center access, Wi-Fi',
+        tags: ['Corporate', 'Extended Stay']
+      }
+    ];
+
+    return { data: mockGuests };
+  },
+
+  async getGuest(id: string) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch guest');
+    
+    const guests = (await this.getGuests()).data;
+    const guest = guests.find(g => g.id === id);
+    if (!guest) throw new Error('Guest not found');
+    
+    return { data: guest };
+  },
+
+  async createGuest(data: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to create guest');
+    
+    const newGuest = {
+      id: `GUEST-${Date.now()}`,
+      ...data,
+      totalStays: 0,
+      totalNights: 0,
+      totalSpent: 0,
+      avgSpendPerStay: 0,
+      outstandingBalance: 0,
+      loyaltyTier: data.isVip ? 'gold' : 'bronze',
+      lastStayDate: null,
+      avatar: null,
+      tags: data.isVip ? ['VIP'] : [],
+      createdAt: new Date().toISOString()
+    };
+
+    return { data: newGuest };
+  },
+
+  async updateGuest(id: string, data: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to update guest');
+    
+    return { 
+      data: { 
+        id,
+        ...data,
+        updatedAt: new Date().toISOString()
+      }
+    };
+  },
+
+  async getGuestStats() {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch guest stats');
+    
+    return {
+      data: {
+        totalGuests: 156,
+        vipGuests: 23,
+        corporateAccounts: 12,
+        totalRevenue: 15800000
+      }
+    };
+  },
+
+  async getCorporateAccounts() {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch corporate accounts');
+    
+    const mockAccounts = [
+      {
+        id: 'CORP-001',
+        companyName: 'Tech Solutions Inc.',
+        industry: 'Technology',
+        contactPerson: 'David Johnson',
+        contactPhone: '+234 801 234 5678',
+        contactEmail: 'david.johnson@techsol.com',
+        status: 'active',
+        billingType: 'centralized',
+        totalGuests: 25,
+        activeBookings: 3,
+        totalBookings: 145,
+        totalRevenue: 8500000,
+        outstandingBalance: 0,
+        creditLimit: 2000000,
+        rateType: 'corporate',
+        corporateDiscount: 15,
+        paymentTerms: 30,
+        recentBookings: [
+          { guestName: 'John Smith', room: '205', checkIn: 'Aug 22', amount: 450000 },
+          { guestName: 'Jane Doe', room: '312', checkIn: 'Aug 20', amount: 285000 },
+          { guestName: 'Bob Wilson', room: '108', checkIn: 'Aug 18', amount: 320000 }
+        ]
+      },
+      {
+        id: 'CORP-002',
+        companyName: 'Global Industries Ltd.',
+        industry: 'Manufacturing',
+        contactPerson: 'Lisa Chen',
+        contactPhone: '+234 802 345 6789',
+        contactEmail: 'lisa.chen@global.com',
+        status: 'active',
+        billingType: 'individual',
+        totalGuests: 18,
+        activeBookings: 2,
+        totalBookings: 89,
+        totalRevenue: 4200000,
+        outstandingBalance: 420000,
+        creditLimit: 1500000,
+        rateType: 'corporate',
+        corporateDiscount: 10,
+        paymentTerms: 45,
+        recentBookings: [
+          { guestName: 'Michael Chen', room: '415', checkIn: 'Aug 24', amount: 520000 },
+          { guestName: 'Susan Lee', room: '220', checkIn: 'Aug 19', amount: 180000 }
+        ]
+      }
+    ];
+
+    return { data: mockAccounts };
   }
 };
 

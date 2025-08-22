@@ -23,6 +23,7 @@ import Policies from "./pages/sa/Policies";
 import Advanced from "./pages/sa/Advanced";
 import Audit from "./pages/sa/Audit";
 import Metrics from "./pages/sa/Metrics";
+import HotelDashboard from "./pages/hotel/Dashboard";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,9 @@ const App = () => (
           <Route path="/owner-dashboard" element={<OwnerDashboard />} />
           <Route path="/reports" element={<ReportsInterface />} />
           <Route path="/qr-export" element={<QRExportPage />} />
+          
+          {/* Hotel Dashboard Routes */}
+          <Route path="/hotel/:tenantId/dashboard" element={<HotelDashboard />} />
           
           {/* Super Admin Routes */}
           <Route path="/sa" element={<SuperAdminLayout />}>

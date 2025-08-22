@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { LoadingState } from '@/components/ui/loading-state';
@@ -413,6 +413,9 @@ export default function Tenants() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Bulk Import Tenants</DialogTitle>
+            <DialogDescription>
+              Upload a CSV file to import multiple tenants at once
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>

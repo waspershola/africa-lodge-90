@@ -1,90 +1,90 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* LuxuryHotelSaaS Design System - Modern Light Theme
-   Light + modern, soft gradients (blue/green), rounded corners, subtle shadows
-   Colors are HSL for perfect theming support
+/* LuxuryHotelSaaS Design System - PRD v5.0 Specifications
+   Primary #1A237E, Accent #FFD700, Danger #D32F2F, Background #F9FAFB
+   Fonts: Inter (body), Playfair Display (headings)
 */
 
 @layer base {
   :root {
-    /* Core Brand Colors - Light Modern Blue/Green Theme */
-    --primary: 220 85% 40%;           /* Primary Blue #0044CC */
+    /* PRD Core Brand Colors */
+    --primary: 234 65% 29%;           /* Deep Royal Blue #1A237E */
     --primary-foreground: 0 0% 100%;  /* White text on primary */
-    --primary-light: 220 65% 55%;     /* Lighter blue */
-    --primary-glow: 220 45% 70%;      /* Glow variant */
+    --primary-light: 234 45% 45%;     /* Lighter royal blue */
+    --primary-glow: 234 55% 65%;      /* Glow variant */
     
-    /* Accent Colors - Green Theme */
-    --accent: 140 65% 42%;            /* Accent Green #28A745 */
-    --accent-foreground: 0 0% 100%;   /* White text on green */
-    --accent-light: 140 55% 58%;      /* Light green */
-    --accent-muted: 140 45% 85%;      /* Soft green */
+    /* PRD Accent Colors */
+    --accent: 51 100% 50%;            /* Gold #FFD700 */
+    --accent-foreground: 234 65% 15%; /* Dark text on gold */
+    --accent-light: 51 85% 65%;       /* Light gold */
+    --accent-muted: 51 85% 85%;       /* Soft gold */
     
-    /* Neutral Palette - Soft and Clean */
-    --background: 210 25% 97%;        /* Soft neutral #F4F6F8 */
-    --foreground: 220 15% 15%;        /* Dark charcoal */
+    /* PRD Neutral Palette */
+    --background: 210 20% 98%;        /* #F9FAFB */
+    --foreground: 234 15% 15%;        /* Dark charcoal */
     --card: 0 0% 100%;                /* Pure white cards */
-    --card-foreground: 220 15% 15%;
+    --card-foreground: 234 15% 15%;
     
-    /* Semantic Colors */
-    --success: 140 65% 42%;           /* Same as accent green */
+    /* PRD Semantic Colors */
+    --success: 142 76% 36%;           /* Nigerian green */
     --success-foreground: 0 0% 100%;
     --warning: 43 96% 56%;            /* Warm amber */
-    --warning-foreground: 220 15% 15%;
-    --danger: 0 84% 60%;              /* Crimson red */
+    --warning-foreground: 234 15% 15%;
+    --danger: 0 84% 60%;              /* Crimson red #D32F2F */
     --danger-foreground: 0 0% 100%;
-    
-    /* UI Elements */
-    --muted: 210 25% 94%;
-    --muted-foreground: 220 15% 45%;
-    --border: 210 25% 88%;
-    --input: 210 25% 95%;
-    --ring: 220 85% 40%;
-    
-    /* Secondary & Supporting */
-    --secondary: 210 25% 94%;
-    --secondary-foreground: 220 15% 25%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 15% 15%;
-    --destructive: 0 84% 60%;
+    --destructive: 0 84% 60%;         /* Same as danger */
     --destructive-foreground: 0 0% 100%;
     
-    /* Modern Gradients - Blue/Green Theme */
-    --gradient-primary: linear-gradient(135deg, hsl(220 85% 40%), hsl(220 65% 55%));
-    --gradient-accent: linear-gradient(135deg, hsl(140 65% 42%), hsl(140 55% 58%));
-    --gradient-hero: linear-gradient(135deg, hsl(220 85% 40%) 0%, hsl(140 65% 42%) 100%);
-    --gradient-subtle: linear-gradient(180deg, hsl(210 25% 97%), hsl(210 25% 94%));
-    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(210 25% 97%) 100%);
+    /* UI Elements */
+    --muted: 210 20% 95%;
+    --muted-foreground: 234 15% 45%;
+    --border: 210 20% 90%;
+    --input: 210 20% 96%;
+    --ring: 234 65% 29%;
     
-    /* Subtle Modern Shadows */
-    --shadow-luxury: 0 10px 25px -5px hsl(220 85% 40% / 0.15);
-    --shadow-card: 0 2px 10px -2px hsl(220 15% 15% / 0.08);
-    --shadow-accent: 0 8px 25px -8px hsl(140 65% 42% / 0.25);
-    --shadow-subtle: 0 1px 3px 0 hsl(220 15% 15% / 0.06);
-    --shadow-hover: 0 4px 15px -3px hsl(220 85% 40% / 0.12);
+    /* Secondary & Supporting */
+    --secondary: 210 20% 95%;
+    --secondary-foreground: 234 15% 25%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 234 15% 15%;
+    
+    /* PRD Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(234 65% 29%), hsl(234 55% 45%));
+    --gradient-accent: linear-gradient(135deg, hsl(51 100% 50%), hsl(51 85% 65%));
+    --gradient-hero: linear-gradient(135deg, hsl(234 65% 29%) 0%, hsl(234 55% 45%) 50%, hsl(51 100% 50%) 100%);
+    --gradient-subtle: linear-gradient(180deg, hsl(210 20% 98%), hsl(210 20% 96%));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(210 20% 97%) 100%);
+    
+    /* PRD Shadows */
+    --shadow-luxury: 0 10px 40px -10px hsl(234 65% 29% / 0.3);
+    --shadow-card: 0 4px 20px -2px hsl(234 15% 15% / 0.1);
+    --shadow-accent: 0 8px 30px -8px hsl(51 100% 50% / 0.4);
+    --shadow-subtle: 0 1px 3px 0 hsl(234 15% 15% / 0.06);
+    --shadow-hover: 0 6px 20px -5px hsl(234 65% 29% / 0.2);
     
     /* Smooth Animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     
-    /* Modern Spacing & Layout */
-    --radius: 1rem;
-    --radius-lg: 1.25rem;
-    --radius-xl: 1.5rem;
+    /* PRD Spacing & Layout */
+    --radius: 0.75rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.25rem;
     
     /* Sidebar (for dashboard) */
-    --sidebar-background: 220 85% 40%;
+    --sidebar-background: 234 65% 29%;
     --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 140 65% 42%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 65% 55%;
+    --sidebar-primary: 51 100% 50%;
+    --sidebar-primary-foreground: 234 65% 15%;
+    --sidebar-accent: 234 55% 35%;
     --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 220 75% 35%;
-    --sidebar-ring: 140 65% 42%;
+    --sidebar-border: 234 55% 25%;
+    --sidebar-ring: 51 100% 50%;
   }
 
   .dark {
@@ -126,27 +126,32 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
   
-  /* Typography System - Inter Primary, Poppins Secondary */
+  /* PRD Typography System - Inter (body), Playfair Display (headings) */
+  body {
+    @apply bg-background text-foreground font-inter;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
   h1, h2, h3, h4, h5, h6 {
-    @apply font-inter font-semibold;
+    @apply font-playfair font-semibold;
   }
   
   .font-inter {
     font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
   
-  .font-poppins {
-    font-family: "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  .font-playfair {
+    font-family: "Playfair Display", Georgia, serif;
   }
   
-  /* Display headings can use Poppins for variety */
+  /* Display headings use Playfair */
   .display-heading {
-    @apply font-poppins font-bold;
+    @apply font-playfair font-bold;
   }
 }
 
 @layer components {
-  /* Modern Luxury Component Styles */
+  /* PRD Luxury Component Styles */
   .luxury-card {
     @apply bg-card border border-border rounded-lg shadow-card transition-[var(--transition-smooth)];
   }
@@ -189,11 +194,11 @@
     background-clip: text;
   }
   
-  /* Modern patterns */
-  .modern-pattern {
+  /* PRD patterns */
+  .hotel-pattern {
     background-image: 
-      radial-gradient(circle at 25% 25%, hsl(140 65% 42% / 0.08) 0%, transparent 50%),
-      radial-gradient(circle at 75% 75%, hsl(220 85% 40% / 0.08) 0%, transparent 50%);
+      radial-gradient(circle at 25% 25%, hsl(51 100% 50% / 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 75% 75%, hsl(234 65% 29% / 0.1) 0%, transparent 50%);
   }
   
   /* Offline indicator */
@@ -201,7 +206,7 @@
     @apply bg-warning text-warning-foreground border border-warning/20 rounded-lg;
   }
   
-  /* Modern accents */
+  /* PRD accents */
   .accent-dot {
     @apply w-2 h-2 rounded-full bg-accent;
   }
@@ -221,7 +226,7 @@
 }
 
 @layer utilities {
-  /* Animation utilities */
+  /* PRD Animation utilities */
   .animate-fade-in {
     animation: fadeIn 0.6s ease-out forwards;
   }

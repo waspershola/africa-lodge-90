@@ -1,0 +1,291 @@
+import React, { useState } from 'react';
+import { Calendar, Plus, Search, Filter, Users, Clock, MapPin, Phone } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import ReservationCalendar from '@/components/owner/reservations/ReservationCalendar';
+import ReservationList from '@/components/owner/reservations/ReservationList';
+import NewReservationDialog from '@/components/owner/reservations/NewReservationDialog';
+import ReservationDetails from '@/components/owner/reservations/ReservationDetails';
+
+export default function ReservationsPage() {
+  const [view, setView] = useState('calendar');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [showNewDialog, setShowNewDialog] = useState(false);
+  const [selectedReservation, setSelectedReservation] = useState(null);
+
+  // Mock reservation data
+  const reservationStats = {
+    total: 145,
+    confirmed: 98,
+    pending: 12,
+    checkedIn: 67,
+    checkedOut: 23,
+    cancelled: 8,
+    noShow: 2
+  };
+
+  const todayActivity = [
+    {
+      time: '09:00',
+      type: 'check-out',
+      guest: 'John Smith',
+      room: '205',
+      status: 'completed'
+    },
+    {
+      time: '11:30',
+      type: 'check-in',
+      guest: 'Sarah Wilson',
+      room: '312',
+      status: 'pending'
+    },
+    {
+      time: '14:00',
+      type: 'check-in',
+      guest: 'Michael Chen',
+      room: '108',
+      status: 'pending'
+    },
+    {
+      time: '15:30',
+      type: 'check-out',
+      guest: 'Emily Davis',
+      room: '201',
+      status: 'pending'
+    }
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Reservations</h1>
+          <p className="text-muted-foreground">
+            Manage hotel bookings and guest reservations
+          </p>
+        </div>
+        
+        <Button onClick={() => setShowNewDialog(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          New Reservation
+        </Button>
+      </div>
+
+      {/* Stats Overview */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Reservations</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{reservationStats.total}</div>
+            <p className="text-xs text-muted-foreground">
+              +12 from yesterday
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Confirmed</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{reservationStats.confirmed}</div>
+            <p className="text-xs text-muted-foreground">
+              {((reservationStats.confirmed / reservationStats.total) * 100).toFixed(1)}% of total
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Checked In</CardTitle>
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{reservationStats.checkedIn}</div>
+            <p className="text-xs text-muted-foreground">
+              Currently in house
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pending</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{reservationStats.pending}</div>
+            <p className="text-xs text-muted-foreground">
+              Awaiting confirmation
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-4">
+        {/* Main Content */}
+        <div className="lg:col-span-3">
+          {/* Filters */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Filter className="h-5 w-5" />
+                Filters & Search
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex-1 min-w-[200px]">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search reservations..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="confirmed">Confirmed</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="checked-in">Checked In</SelectItem>
+                    <SelectItem value="checked-out">Checked Out</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant={view === 'calendar' ? 'default' : 'outline'} 
+                    size="sm"
+                    onClick={() => setView('calendar')}
+                  >
+                    Calendar
+                  </Button>
+                  <Button 
+                    variant={view === 'list' ? 'default' : 'outline'} 
+                    size="sm"
+                    onClick={() => setView('list')}
+                  >
+                    List
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Reservations Content */}
+          <Tabs value={view} onValueChange={setView}>
+            <TabsContent value="calendar">
+              <ReservationCalendar 
+                searchTerm={searchTerm}
+                statusFilter={statusFilter}
+                onReservationSelect={setSelectedReservation}
+              />
+            </TabsContent>
+
+            <TabsContent value="list">
+              <ReservationList 
+                searchTerm={searchTerm}
+                statusFilter={statusFilter}
+                onReservationSelect={setSelectedReservation}
+              />
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        {/* Today's Activity Sidebar */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Today's Activity
+              </CardTitle>
+              <CardDescription>
+                Scheduled check-ins and check-outs
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {todayActivity.map((activity, index) => (
+                <div key={index} className="flex items-center gap-3 p-3 rounded-lg border">
+                  <div className="text-sm font-medium text-muted-foreground min-w-[50px]">
+                    {activity.time}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge 
+                        variant={activity.type === 'check-in' ? 'default' : 'secondary'}
+                        className="text-xs"
+                      >
+                        {activity.type === 'check-in' ? 'Check-In' : 'Check-Out'}
+                      </Badge>
+                      <Badge 
+                        variant={activity.status === 'completed' ? 'default' : 'outline'}
+                        className="text-xs"
+                      >
+                        {activity.status}
+                      </Badge>
+                    </div>
+                    <div className="text-sm font-medium">{activity.guest}</div>
+                    <div className="text-xs text-muted-foreground">Room {activity.room}</div>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button variant="outline" size="sm" className="w-full justify-start">
+                <Calendar className="h-4 w-4 mr-2" />
+                Availability Calendar
+              </Button>
+              <Button variant="outline" size="sm" className="w-full justify-start">
+                <Users className="h-4 w-4 mr-2" />
+                Group Bookings
+              </Button>
+              <Button variant="outline" size="sm" className="w-full justify-start">
+                <Phone className="h-4 w-4 mr-2" />
+                Walk-in Registration
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Dialogs */}
+      <NewReservationDialog 
+        open={showNewDialog}
+        onOpenChange={setShowNewDialog}
+      />
+
+      {selectedReservation && (
+        <ReservationDetails
+          reservation={selectedReservation}
+          open={!!selectedReservation}
+          onOpenChange={() => setSelectedReservation(null)}
+        />
+      )}
+    </div>
+  );
+}

@@ -15,6 +15,8 @@ import StaffRoles from "./pages/owner/StaffRoles";
 import Financials from "./pages/owner/Financials";
 import QRCodes from "./pages/owner/QRCodes";
 import Reports from "./pages/owner/Reports";
+import Reservations from "./pages/owner/Reservations";
+import Guests from "./pages/owner/Guests";
 import ReportsInterface from "./components/ReportsInterface";
 import QRExportPage from "./components/QRExportPage";
 import SuperAdminLayout from "./components/layout/SuperAdminLayout";
@@ -55,6 +57,8 @@ const App = () => (
             <Route path="financials" element={<Financials />} />
             <Route path="qr-codes" element={<QRCodes />} />
             <Route path="reports" element={<Reports />} />
+            <Route path="reservations" element={<Reservations />} />
+            <Route path="guests" element={<Guests />} />
           </Route>
           <Route path="/qr-export" element={<QRExportPage />} />
           

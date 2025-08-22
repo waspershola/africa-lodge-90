@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,8 +17,12 @@ import {
   Clock,
   Wrench,
   Battery,
-  DollarSign
+  DollarSign,
+  Filter
 } from "lucide-react";
+import { RoomGrid } from "./frontdesk/RoomGrid";
+import { ActionQueue } from "./frontdesk/ActionQueue";
+import type { Room } from "./frontdesk/RoomGrid";
 
 // Mock data
 const mockData = {
@@ -55,6 +59,32 @@ const FrontDeskDashboard = () => {
   const [isOffline, setIsOffline] = useState(false);
   const [offlineTimeRemaining, setOfflineTimeRemaining] = useState(22); // hours
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState<string | undefined>(undefined);
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  const [showActionQueue, setShowActionQueue] = useState(false);
+
+  // Simulate online/offline status
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Show action queue when offline
+  useEffect(() => {
+    setShowActionQueue(isOffline);
+  }, [isOffline]);
+
+  const handleCardClick = (filterKey: string) => {
+    setActiveFilter(activeFilter === filterKey ? undefined : filterKey);
+  };
 
   const dashboardCards = [
     {
@@ -63,7 +93,8 @@ const FrontDeskDashboard = () => {
       subtitle: "Ready for assignment",
       icon: <BedDouble className="h-6 w-6" />,
       action: "Assign Room",
-      color: "success"
+      color: "success",
+      filterKey: "available"
     },
     {
       title: "Occupancy Rate",
@@ -71,7 +102,8 @@ const FrontDeskDashboard = () => {
       subtitle: "Current occupancy",
       icon: <Users className="h-6 w-6" />,
       action: "View Room Map",
-      color: "primary"
+      color: "primary",
+      filterKey: "occupied"
     },
     {
       title: "Arrivals Today",
@@ -79,7 +111,8 @@ const FrontDeskDashboard = () => {
       subtitle: "Expected check-ins",
       icon: <LogIn className="h-6 w-6" />,
       action: "Start Check-In",
-      color: "accent"
+      color: "accent",
+      filterKey: "arrivals"
     },
     {
       title: "Departures Today",
@@ -87,7 +120,8 @@ const FrontDeskDashboard = () => {
       subtitle: "Expected check-outs",
       icon: <LogOut className="h-6 w-6" />,
       action: "Start Check-Out",
-      color: "warning"
+      color: "warning",
+      filterKey: "departures"
     },
     {
       title: "In-House Guests",
@@ -95,7 +129,8 @@ const FrontDeskDashboard = () => {
       subtitle: "Currently staying",
       icon: <Users className="h-6 w-6" />,
       action: "Open Folio",
-      color: "muted"
+      color: "muted",
+      filterKey: "in-house"
     },
     {
       title: "Pending Payments",
@@ -103,7 +138,8 @@ const FrontDeskDashboard = () => {
       subtitle: "Requires collection",
       icon: <CreditCard className="h-6 w-6" />,
       action: "Collect Now",
-      color: "danger"
+      color: "danger",
+      filterKey: "pending-payments"
     },
     {
       title: "OOS Rooms",
@@ -111,7 +147,8 @@ const FrontDeskDashboard = () => {
       subtitle: "Out of service",
       icon: <Wrench className="h-6 w-6" />,
       action: "Create Work Order",
-      color: "warning"
+      color: "warning",
+      filterKey: "oos"
     },
     {
       title: "Diesel Level",
@@ -119,7 +156,8 @@ const FrontDeskDashboard = () => {
       subtitle: `Gen: ${mockData.generatorRuntime}h today`,
       icon: <Battery className="h-6 w-6" />,
       action: "Open Power Panel",
-      color: mockData.dieselLevel < 30 ? "danger" : "success"
+      color: mockData.dieselLevel < 30 ? "danger" : "success",
+      filterKey: undefined
     }
   ];
 
@@ -179,188 +217,154 @@ const FrontDeskDashboard = () => {
         </div>
       </div>
 
-      {/* Quick Stats Grid */}
-      <div className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {dashboardCards.map((card, index) => (
-            <Card key={index} className="luxury-card group cursor-pointer">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className={`h-12 w-12 rounded-full flex items-center justify-center ${
-                    card.color === 'success' ? 'bg-success/10 text-success' :
-                    card.color === 'primary' ? 'bg-primary/10 text-primary' :
-                    card.color === 'accent' ? 'bg-accent/10 text-accent-foreground' :
-                    card.color === 'warning' ? 'bg-warning/10 text-warning-foreground' :
-                    card.color === 'danger' ? 'bg-danger/10 text-danger' :
-                    'bg-muted/50 text-muted-foreground'
-                  }`}>
-                    {card.icon}
-                  </div>
-                  <div className="text-right">
-                    <div className="text-3xl font-bold">{card.value}</div>
-                    <div className="text-sm text-muted-foreground">{card.subtitle}</div>
-                  </div>
-                </div>
-                
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
-                >
-                  {card.action}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+      {/* Split Screen Layout */}
+      <div className="p-6 space-y-6">
+        {/* Action Queue (when offline) */}
+        {showActionQueue && (
+          <ActionQueue isVisible={showActionQueue} isOnline={!isOffline} />
+        )}
+
+        <div className="grid lg:grid-cols-4 gap-6">
+          {/* Left Panel - Room Grid (3/4 width) */}
+          <div className="lg:col-span-3">
+            <RoomGrid 
+              searchQuery={searchQuery}
+              activeFilter={activeFilter}
+              onRoomSelect={setSelectedRoom}
+            />
+          </div>
+
+          {/* Right Panel - Dashboard Cards (1/4 width) */}
+          <div className="lg:col-span-1 space-y-4">
+            <div className="space-y-3">
+              <h3 className="font-semibold text-lg">Quick KPIs</h3>
+              <div className="space-y-3">
+                {dashboardCards.map((card, index) => (
+                  <Card 
+                    key={index} 
+                    className={`luxury-card cursor-pointer transition-all duration-200 hover:shadow-md ${
+                      activeFilter === card.filterKey ? 'ring-2 ring-primary shadow-lg' : ''
+                    }`}
+                    onClick={() => card.filterKey && handleCardClick(card.filterKey)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                          card.color === 'success' ? 'bg-success/10 text-success' :
+                          card.color === 'primary' ? 'bg-primary/10 text-primary' :
+                          card.color === 'accent' ? 'bg-accent/10 text-accent-foreground' :
+                          card.color === 'warning' ? 'bg-warning/10 text-warning-foreground' :
+                          card.color === 'danger' ? 'bg-danger/10 text-danger' :
+                          'bg-muted/50 text-muted-foreground'
+                        }`}>
+                          {card.icon}
+                        </div>
+                        <div>
+                          <div className="text-xl font-bold">{card.value}</div>
+                          <div className="text-xs text-muted-foreground">{card.title}</div>
+                        </div>
+                      </div>
+                      
+                      {card.filterKey ? (
+                        <Button 
+                          variant={activeFilter === card.filterKey ? "default" : "outline"}
+                          size="sm" 
+                          className="w-full text-xs"
+                        >
+                          {activeFilter === card.filterKey ? (
+                            <>
+                              <Filter className="h-3 w-3 mr-1" />
+                              Filtering
+                            </>
+                          ) : (
+                            'Filter Rooms'
+                          )}
+                        </Button>
+                      ) : (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full text-xs"
+                        >
+                          {card.action}
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid lg:grid-cols-3 gap-6">
+        {/* Quick Activity Overview */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
           {/* Today's Arrivals */}
           <Card className="luxury-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <LogIn className="h-5 w-5 text-success" />
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <LogIn className="h-4 w-4 text-success" />
                 Today's Arrivals
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {mockArrivals.map(arrival => (
-                  <div key={arrival.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                    <div>
-                      <div className="font-medium">{arrival.guest}</div>
-                      <div className="text-sm text-muted-foreground">
-                        Room {arrival.room} • {arrival.time}
-                      </div>
-                    </div>
-                    <Badge 
-                      variant={arrival.status === 'checked-in' ? 'default' : 'secondary'}
-                      className={arrival.status === 'checked-in' ? 'bg-success text-success-foreground' : ''}
-                    >
-                      {arrival.status === 'checked-in' ? 'Checked In' : 'Pending'}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
+            <CardContent className="space-y-2">
+              {mockArrivals.slice(0, 3).map(arrival => (
+                <div key={arrival.id} className="flex items-center justify-between text-sm">
+                  <span className="truncate">{arrival.guest}</span>
+                  <Badge 
+                    variant={arrival.status === 'checked-in' ? 'default' : 'secondary'}
+                    className={arrival.status === 'checked-in' ? 'bg-success text-success-foreground' : ''}
+                  >
+                    {arrival.status === 'checked-in' ? '✓' : '⏱'}
+                  </Badge>
+                </div>
+              ))}
             </CardContent>
           </Card>
 
           {/* Today's Departures */}
           <Card className="luxury-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <LogOut className="h-5 w-5 text-warning" />
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <LogOut className="h-4 w-4 text-warning" />
                 Today's Departures
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {mockDepartures.map(departure => (
-                  <div key={departure.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                    <div>
-                      <div className="font-medium">{departure.guest}</div>
-                      <div className="text-sm text-muted-foreground">
-                        Room {departure.room} • {departure.time}
-                      </div>
-                    </div>
-                    <Badge 
-                      variant={departure.status === 'checked-out' ? 'default' : 'secondary'}
-                      className={departure.status === 'checked-out' ? 'bg-success text-success-foreground' : ''}
-                    >
-                      {departure.status === 'checked-out' ? 'Checked Out' : 'Pending'}
-                    </Badge>
-                  </div>
-                ))}
-                <Button variant="outline" className="w-full">
-                  Process All Check-Outs
-                </Button>
-              </div>
+            <CardContent className="space-y-2">
+              {mockDepartures.slice(0, 3).map(departure => (
+                <div key={departure.id} className="flex items-center justify-between text-sm">
+                  <span className="truncate">{departure.guest}</span>
+                  <Badge 
+                    variant={departure.status === 'checked-out' ? 'default' : 'secondary'}
+                    className={departure.status === 'checked-out' ? 'bg-success text-success-foreground' : ''}
+                  >
+                    {departure.status === 'checked-out' ? '✓' : '⏱'}
+                  </Badge>
+                </div>
+              ))}
             </CardContent>
           </Card>
 
-          {/* Alerts & Notifications */}
+          {/* Active Alerts */}
           <Card className="luxury-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-danger" />
-                Alerts & Issues
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <AlertCircle className="h-4 w-4 text-danger" />
+                Active Alerts
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {mockAlerts.map(alert => (
-                  <div key={alert.id} className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg">
-                    <div className={`h-2 w-2 rounded-full mt-2 ${
-                      alert.priority === 'high' ? 'bg-danger' : 'bg-warning'
-                    }`} />
-                    <div className="flex-1">
-                      <div className="text-sm font-medium">{alert.message}</div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {alert.priority === 'high' ? 'High Priority' : 'Medium Priority'}
-                      </div>
-                    </div>
-                    <Button size="sm" variant="outline">
-                      Resolve
-                    </Button>
-                  </div>
-                ))}
-              </div>
+            <CardContent className="space-y-2">
+              {mockAlerts.slice(0, 3).map(alert => (
+                <div key={alert.id} className="flex items-center gap-2 text-sm">
+                  <div className={`h-2 w-2 rounded-full ${
+                    alert.priority === 'high' ? 'bg-danger' : 'bg-warning'
+                  }`} />
+                  <span className="truncate flex-1">{alert.message}</span>
+                </div>
+              ))}
             </CardContent>
           </Card>
         </div>
-
-        {/* Recent Activity */}
-        <Card className="luxury-card mt-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Recent Activity
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between py-2 border-b">
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full bg-success/10 flex items-center justify-center">
-                    <LogIn className="h-4 w-4 text-success" />
-                  </div>
-                  <div>
-                    <div className="font-medium">Sarah Okonkwo checked in</div>
-                    <div className="text-sm text-muted-foreground">Room 305 • 2 minutes ago</div>
-                  </div>
-                </div>
-                <Badge variant="secondary">Check-In</Badge>
-              </div>
-              
-              <div className="flex items-center justify-between py-2 border-b">
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <DollarSign className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <div className="font-medium">Payment received - ₦15,000</div>
-                    <div className="text-sm text-muted-foreground">Room 201 folio • 5 minutes ago</div>
-                  </div>
-                </div>
-                <Badge variant="secondary">Payment</Badge>
-              </div>
-              
-              <div className="flex items-center justify-between py-2">
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full bg-warning/10 flex items-center justify-center">
-                    <LogOut className="h-4 w-4 text-warning-foreground" />
-                  </div>
-                  <div>
-                    <div className="font-medium">Fatima Al-Hassan checked out</div>
-                    <div className="text-sm text-muted-foreground">Room 401 • 15 minutes ago</div>
-                  </div>
-                </div>
-                <Badge variant="secondary">Check-Out</Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Sticky Footer Actions */}

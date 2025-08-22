@@ -1774,6 +1774,112 @@ export const mockApi = {
         failed: 0
       }
     };
+  },
+
+  // Billing & Payments API
+  async getBills(filters?: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch bills');
+    
+    // Mock bills data linked to reservations
+    const mockBills = [
+      {
+        id: 'BILL-001',
+        reservationId: 'RES-001',
+        guestName: 'John Smith',
+        room: '205',
+        checkIn: new Date(2024, 7, 22),
+        checkOut: new Date(2024, 7, 25),
+        status: 'pending',
+        totalAmount: 450000,
+        paidAmount: 200000,
+        balancedue: 250000,
+        lineItems: [
+          { type: 'Room', description: 'Deluxe Room - 3 nights', quantity: 3, unitPrice: 120000, total: 360000 },
+          { type: 'Tax', description: 'VAT (7.5%)', quantity: 1, unitPrice: 27000, total: 27000 },
+          { type: 'Service', description: 'Service Charge (10%)', quantity: 1, unitPrice: 36000, total: 36000 },
+          { type: 'Extra', description: 'Minibar', quantity: 1, unitPrice: 15000, total: 15000 }
+        ],
+        payments: [
+          { id: 'PAY-001', date: new Date(2024, 7, 22), amount: 200000, method: 'card', reference: 'TXN123456' }
+        ],
+        discounts: [],
+        createdAt: new Date(2024, 7, 22)
+      },
+      {
+        id: 'BILL-002',
+        reservationId: 'RES-002', 
+        guestName: 'Sarah Wilson',
+        room: '312',
+        checkIn: new Date(2024, 7, 23),
+        checkOut: new Date(2024, 7, 26),
+        status: 'paid',
+        totalAmount: 285000,
+        paidAmount: 285000,
+        balancedue: 0,
+        lineItems: [
+          { type: 'Room', description: 'Standard Room - 3 nights', quantity: 3, unitPrice: 80000, total: 240000 },
+          { type: 'Tax', description: 'VAT (7.5%)', quantity: 1, unitPrice: 18000, total: 18000 },
+          { type: 'Service', description: 'Service Charge (10%)', quantity: 1, unitPrice: 24000, total: 24000 }
+        ],
+        payments: [
+          { id: 'PAY-002', date: new Date(2024, 7, 23), amount: 285000, method: 'transfer', reference: 'BANK789' }
+        ],
+        discounts: [],
+        createdAt: new Date(2024, 7, 23)
+      }
+    ];
+
+    return { data: mockBills };
+  },
+
+  async addChargeToBill(billId: string, chargeData: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to add charge to bill');
+    
+    return { 
+      data: { 
+        billId,
+        chargeId: Date.now().toString(),
+        ...chargeData,
+        addedAt: new Date().toISOString()
+      }
+    };
+  },
+
+  async recordPayment(paymentData: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to record payment');
+    
+    return {
+      data: {
+        id: `PAY-${Date.now()}`,
+        ...paymentData,
+        recordedAt: new Date().toISOString(),
+        status: 'completed'
+      }
+    };
+  },
+
+  async getBillingStats() {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch billing stats');
+    
+    return {
+      data: {
+        totalRevenue: 12500000,
+        pendingPayments: 3200000,
+        totalInvoices: 156,
+        outstandingBalance: 850000,
+        todaysCashflow: {
+          cash: 2800000,
+          card: 4200000,
+          transfer: 3500000,
+          pos: 1200000,
+          wallet: 800000
+        }
+      }
+    };
   }
 };
 

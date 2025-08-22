@@ -13,6 +13,7 @@ import OwnerDashboardPage from "./pages/owner/Dashboard";
 import Configuration from "./pages/owner/Configuration";
 import StaffRoles from "./pages/owner/StaffRoles";
 import Financials from "./pages/owner/Financials";
+import Billing from "./pages/owner/Billing";
 import QRCodes from "./pages/owner/QRCodes";
 import Reports from "./pages/owner/Reports";
 import Reservations from "./pages/owner/Reservations";
@@ -57,6 +58,7 @@ const App = () => (
             <Route path="configuration" element={<Configuration />} />
             <Route path="staff" element={<StaffRoles />} />
             <Route path="financials" element={<Financials />} />
+            <Route path="billing" element={<Billing />} />
             <Route path="qr-codes" element={<QRCodes />} />
             <Route path="reports" element={<Reports />} />
             <Route path="reservations" element={<Reservations />} />

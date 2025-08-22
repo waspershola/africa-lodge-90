@@ -1257,3 +1257,68 @@ export const useBulkUpdateTenants = () => {
     },
   });
 };
+
+// Billing API Hooks
+export const useBills = () => {
+  return useQuery({
+    queryKey: ['bills'],
+    queryFn: mockApi.getBills,
+    select: (response) => response.data
+  });
+};
+
+export const useAddChargeToBill = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: ({ billId, chargeData }: { billId: string; chargeData: any }) => 
+      mockApi.addChargeToBill(billId, chargeData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bills'] });
+      toast({
+        title: 'Success',
+        description: 'Charge added successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useRecordPayment = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: (paymentData: any) => mockApi.recordPayment(paymentData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bills'] });
+      queryClient.invalidateQueries({ queryKey: ['billing-stats'] });
+      toast({
+        title: 'Success',
+        description: 'Payment recorded successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useBillingStats = () => {
+  return useQuery({
+    queryKey: ['billing-stats'],
+    queryFn: mockApi.getBillingStats,
+    select: (response) => response.data
+  });
+};

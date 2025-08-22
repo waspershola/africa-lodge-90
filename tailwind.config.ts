@@ -20,9 +20,9 @@ export default {
 		extend: {
 			fontFamily: {
 				inter: ['Inter', 'sans-serif'],
-				playfair: ['Playfair Display', 'serif'],
+				poppins: ['Poppins', 'sans-serif'],
 				sans: ['Inter', 'system-ui', 'sans-serif'],
-				serif: ['Playfair Display', 'Georgia', 'serif'],
+				serif: ['Inter', 'system-ui', 'sans-serif'], // Using Inter for consistency
 			},
 			colors: {
 				border: 'hsl(var(--border))',
@@ -51,6 +51,7 @@ export default {
 				accent: {
 					DEFAULT: 'hsl(var(--accent))',
 					foreground: 'hsl(var(--accent-foreground))',
+					light: 'hsl(var(--accent-light))',
 					muted: 'hsl(var(--accent-muted))'
 				},
 				popover: {
@@ -88,12 +89,15 @@ export default {
 				'gradient-primary': 'var(--gradient-primary)',
 				'gradient-accent': 'var(--gradient-accent)', 
 				'gradient-hero': 'var(--gradient-hero)',
-				'gradient-subtle': 'var(--gradient-subtle)'
+				'gradient-subtle': 'var(--gradient-subtle)',
+				'gradient-card': 'var(--gradient-card)'
 			},
 			boxShadow: {
 				'luxury': 'var(--shadow-luxury)',
 				'card': 'var(--shadow-card)',
-				'accent': 'var(--shadow-accent)'
+				'accent': 'var(--shadow-accent)',
+				'subtle': 'var(--shadow-subtle)',
+				'hover': 'var(--shadow-hover)'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

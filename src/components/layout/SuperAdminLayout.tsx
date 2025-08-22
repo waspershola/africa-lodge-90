@@ -11,13 +11,7 @@ import {
   Menu,
   ArrowLeft,
   Settings,
-  LayoutDashboard,
-  Palette,
-  UserCog,
-  UsersRound,
-  Zap,
-  MessageSquare,
-  Wand2
+  LayoutDashboard
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -28,12 +22,6 @@ const navigation = [
   { name: 'Tenants', href: '/sa/tenants', icon: Building2 },
   { name: 'Plans', href: '/sa/plans', icon: CreditCard },
   { name: 'Policies', href: '/sa/policies', icon: Shield },
-  { name: 'Templates', href: '/sa/templates', icon: Palette },
-  { name: 'Roles & Permissions', href: '/sa/roles', icon: UserCog },
-  { name: 'User Management', href: '/sa/users', icon: UsersRound },
-  { name: 'Support Console', href: '/sa/support', icon: MessageSquare },
-  { name: 'Emergency Control', href: '/sa/emergency', icon: Zap },
-  { name: 'Setup Wizard', href: '/sa/wizard', icon: Wand2 },
   { name: 'Audit', href: '/sa/audit', icon: Activity },
   { name: 'Metrics', href: '/sa/metrics', icon: BarChart3 },
 ];

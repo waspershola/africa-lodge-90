@@ -321,13 +321,13 @@ const QRExportPage = () => {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {(selectedRooms || []).slice(0, 4).map(roomNumber => (
+                  {selectedRooms.slice(0, 4).map(roomNumber => (
                     <QRPreview key={roomNumber} roomNumber={roomNumber} />
                   ))}
-                  {(selectedRooms || []).length > 4 && (
+                  {selectedRooms.length > 4 && (
                     <div className="md:col-span-2 text-center p-8 bg-muted/30 rounded-lg">
                       <p className="text-muted-foreground">
-                        + {(selectedRooms || []).length - 4} more QR codes will be generated
+                        + {selectedRooms.length - 4} more QR codes will be generated
                       </p>
                     </div>
                   )}

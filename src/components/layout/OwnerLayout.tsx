@@ -9,7 +9,8 @@ import {
   Battery, 
   Settings,
   DollarSign,
-  CreditCard
+  CreditCard,
+  Sparkles
 } from 'lucide-react';
 import UnifiedDashboardLayout from './UnifiedDashboardLayout';
 
@@ -19,6 +20,7 @@ const navigation = [
   { name: 'Reservations', href: '/owner-dashboard/reservations', icon: Calendar },
   { name: 'Rooms & Rates', href: '/owner-dashboard/rooms', icon: BedDouble },
   { name: 'Guests', href: '/owner-dashboard/guests', icon: Users },
+  { name: 'Housekeeping', href: '/owner-dashboard/housekeeping', icon: Sparkles },
   { name: 'Billing & Payments', href: '/owner-dashboard/billing', icon: CreditCard },
   { name: 'Room Service QR', href: '/owner-dashboard/qr-codes', icon: QrCode },
   { name: 'Reports', href: '/owner-dashboard/reports', icon: FileText },

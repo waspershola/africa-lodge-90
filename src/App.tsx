@@ -20,6 +20,7 @@ import Reservations from "./pages/owner/Reservations";
 import Guests from "./pages/owner/Guests";
 import Rooms from "./pages/owner/Rooms";
 import Utilities from "./pages/owner/Utilities";
+import Housekeeping from "./pages/owner/Housekeeping";
 import ReportsInterface from "./components/ReportsInterface";
 import QRExportPage from "./components/QRExportPage";
 import SuperAdminLayout from "./components/layout/SuperAdminLayout";
@@ -65,6 +66,7 @@ const App = () => (
             <Route path="guests" element={<Guests />} />
             <Route path="rooms" element={<Rooms />} />
             <Route path="utilities" element={<Utilities />} />
+            <Route path="housekeeping" element={<Housekeeping />} />
           </Route>
           <Route path="/qr-export" element={<QRExportPage />} />
           

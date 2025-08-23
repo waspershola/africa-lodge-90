@@ -66,7 +66,7 @@ export default function GuestProfile({ guest, onClose, onUpdate }: GuestProfileP
                   </div>
                   <div className="flex items-center gap-2 mb-4">
                     <Badge className={getStatusColor(guest.status || 'active')} variant="outline">
-                      {guest.status.toUpperCase()}
+                      {(guest.status || 'active').toUpperCase()}
                     </Badge>
                     {guest.loyaltyTier && (
                       <Badge variant="secondary">

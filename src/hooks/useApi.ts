@@ -1404,3 +1404,124 @@ export const useCorporateAccounts = () => {
     select: (response) => response.data
   });
 };
+
+// Housekeeping Management API Hooks
+export const useHousekeepingStats = () => {
+  return useQuery({
+    queryKey: ['housekeeping-stats'],
+    queryFn: mockApi.getHousekeepingStats,
+    select: (response) => response.data
+  });
+};
+
+export const useHousekeepingTasks = () => {
+  return useQuery({
+    queryKey: ['housekeeping-tasks'],
+    queryFn: mockApi.getHousekeepingTasks,
+    select: (response) => response.data
+  });
+};
+
+export const useCreateHousekeepingTask = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: (data: any) => mockApi.createHousekeepingTask(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['housekeeping-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['housekeeping-stats'] });
+      toast({
+        title: 'Success',
+        description: 'Task created successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useUpdateHousekeepingTask = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => mockApi.updateHousekeepingTask(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['housekeeping-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['housekeeping-stats'] });
+      toast({
+        title: 'Success',
+        description: 'Task updated successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useOOSRooms = () => {
+  return useQuery({
+    queryKey: ['oos-rooms'],
+    queryFn: mockApi.getOOSRooms,
+    select: (response) => response.data
+  });
+};
+
+export const useCreateOOSRoom = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: (data: any) => mockApi.createOOSRoom(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['oos-rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['housekeeping-stats'] });
+      toast({
+        title: 'Success',
+        description: 'OOS room created successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useUpdateOOSRoom = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => mockApi.updateOOSRoom(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['oos-rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['housekeeping-stats'] });
+      toast({
+        title: 'Success',
+        description: 'OOS room updated successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};

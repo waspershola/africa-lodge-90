@@ -2071,6 +2071,137 @@ export const mockApi = {
     ];
 
     return { data: mockAccounts };
+  },
+
+  // Housekeeping Management API
+  async getHousekeepingStats() {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch housekeeping stats');
+    
+    return {
+      data: {
+        totalTasks: 24,
+        pendingTasks: 8,
+        inProgressTasks: 6,
+        completedToday: 18,
+        oosRooms: 3,
+        averageCompletionTime: 42,
+        delayedTasks: 2,
+        activeStaff: 12
+      }
+    };
+  },
+
+  async getHousekeepingTasks() {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch housekeeping tasks');
+    
+    const mockTasks = [
+      {
+        id: 'task-1',
+        roomNumber: '301',
+        type: 'cleaning',
+        status: 'pending',
+        priority: 'high',
+        assignedTo: 'staff-1',
+        assignedStaff: 'Maria Santos',
+        dueDate: new Date(Date.now() + 2 * 60 * 60 * 1000),
+        createdAt: new Date(Date.now() - 30 * 60 * 1000),
+        description: 'Post-checkout cleaning',
+        estimatedDuration: 45
+      },
+      {
+        id: 'task-2',
+        roomNumber: '205',
+        type: 'maintenance',
+        status: 'in-progress',
+        priority: 'medium',
+        assignedTo: 'staff-2',
+        assignedStaff: 'John Doe',
+        dueDate: new Date(Date.now() + 4 * 60 * 60 * 1000),
+        createdAt: new Date(Date.now() - 60 * 60 * 1000),
+        description: 'Fix leaky faucet in bathroom',
+        estimatedDuration: 60
+      }
+    ];
+
+    return { data: mockTasks };
+  },
+
+  async createHousekeepingTask(data: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to create housekeeping task');
+    
+    const newTask = {
+      id: `task-${Date.now()}`,
+      ...data,
+      createdAt: new Date().toISOString(),
+      status: 'pending'
+    };
+
+    return { data: newTask };
+  },
+
+  async updateHousekeepingTask(id: string, data: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to update housekeeping task');
+    
+    return { 
+      data: { 
+        id,
+        ...data,
+        updatedAt: new Date().toISOString()
+      }
+    };
+  },
+
+  async getOOSRooms() {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch OOS rooms');
+    
+    const mockOOSRooms = [
+      {
+        id: 'oos-1',
+        roomNumber: '301',
+        reason: 'maintenance',
+        priority: 'high',
+        status: 'in-progress',
+        reportedBy: 'John Manager',
+        reportedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+        expectedResolution: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
+        description: 'Air conditioning unit needs replacement',
+        assignedTo: 'Tech Services Ltd'
+      }
+    ];
+
+    return { data: mockOOSRooms };
+  },
+
+  async createOOSRoom(data: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to create OOS room');
+    
+    const newOOSRoom = {
+      id: `oos-${Date.now()}`,
+      ...data,
+      reportedAt: new Date().toISOString(),
+      status: 'active'
+    };
+
+    return { data: newOOSRoom };
+  },
+
+  async updateOOSRoom(id: string, data: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to update OOS room');
+    
+    return { 
+      data: { 
+        id,
+        ...data,
+        updatedAt: new Date().toISOString()
+      }
+    };
   }
 };
 

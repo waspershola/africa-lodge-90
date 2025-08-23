@@ -12,7 +12,9 @@ import {
   Calendar,
   Star,
   Eye,
-  Users
+  Users,
+  Filter,
+  SlidersHorizontal
 } from 'lucide-react';
 import { useGuests } from '@/hooks/useApi';
 import { format } from 'date-fns';
@@ -24,12 +26,38 @@ interface GuestDirectoryProps {
 
 export default function GuestDirectory({ onGuestSelect, onNewGuest }: GuestDirectoryProps) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [tierFilter, setTierFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('name');
   const { data: guests = [], isLoading } = useGuests();
 
-  const filteredGuests = guests.filter(guest => 
-    guest.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    guest.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'vip': return 'bg-warning/10 text-warning-foreground border-warning/20';
+      case 'active': return 'bg-success/10 text-success border-success/20';
+      case 'blacklist': return 'bg-destructive/10 text-destructive border-destructive/20';
+      default: return 'bg-muted text-muted-foreground border-border';
+    }
+  };
+
+  const filteredGuests = guests
+    .filter(guest => {
+      const matchesSearch = guest.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        guest.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        guest.phone?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || guest.status === statusFilter;
+      const matchesTier = tierFilter === 'all' || guest.loyaltyTier === tierFilter;
+      return matchesSearch && matchesStatus && matchesTier;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'name': return a.name.localeCompare(b.name);
+        case 'totalSpent': return b.totalSpent - a.totalSpent;
+        case 'totalStays': return b.totalStays - a.totalStays;
+        case 'lastStay': return new Date(b.lastStay || 0).getTime() - new Date(a.lastStay || 0).getTime();
+        default: return 0;
+      }
+    });
 
   if (isLoading) {
     return <div className="text-center py-8">Loading guests...</div>;
@@ -37,16 +65,57 @@ export default function GuestDirectory({ onGuestSelect, onNewGuest }: GuestDirec
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="luxury-card">
         <CardContent className="p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search guests..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex flex-col lg:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, email, or phone..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            
+            <div className="flex gap-2">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="vip">VIP</SelectItem>
+                  <SelectItem value="blacklist">Blacklist</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={tierFilter} onValueChange={setTierFilter}>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Tier" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Tiers</SelectItem>
+                  <SelectItem value="bronze">Bronze</SelectItem>
+                  <SelectItem value="silver">Silver</SelectItem>
+                  <SelectItem value="gold">Gold</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-36">
+                  <SlidersHorizontal className="h-4 w-4 mr-2" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name">Name</SelectItem>
+                  <SelectItem value="totalSpent">Total Spent</SelectItem>
+                  <SelectItem value="totalStays">Total Stays</SelectItem>
+                  <SelectItem value="lastStay">Last Stay</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -61,12 +130,22 @@ export default function GuestDirectory({ onGuestSelect, onNewGuest }: GuestDirec
                     {guest.name.split(' ').map(n => n[0]).join('').toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <div>
-                  <div className="font-semibold flex items-center gap-2">
+                <div className="flex-1">
+                  <div className="font-semibold flex items-center gap-2 mb-1">
                     {guest.name}
-                    {guest.loyaltyTier && <Star className="h-4 w-4 text-yellow-500" />}
+                    {guest.loyaltyTier && <Star className="h-4 w-4 text-warning-foreground" />}
                   </div>
-                  <div className="text-sm text-muted-foreground">{guest.email}</div>
+                  <div className="text-sm text-muted-foreground mb-2">{guest.email}</div>
+                  <div className="flex items-center gap-2">
+                    <Badge className={getStatusColor(guest.status)} variant="outline">
+                      {guest.status.toUpperCase()}
+                    </Badge>
+                    {guest.loyaltyTier && (
+                      <Badge variant="secondary" className="text-xs">
+                        {guest.loyaltyTier.toUpperCase()}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </div>
 

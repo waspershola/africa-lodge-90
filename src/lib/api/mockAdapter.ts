@@ -2448,19 +2448,6 @@ export const mockApi = {
     };
   },
 
-  async updateReservation(id: string, data: any) {
-    await delay();
-    if (shouldFail()) throw new Error('Failed to update reservation');
-    
-    return {
-      data: {
-        id,
-        ...data,
-        updatedAt: new Date().toISOString()
-      }
-    };
-  },
-
   async cancelReservation(id: string) {
     await delay();
     if (shouldFail()) throw new Error('Failed to cancel reservation');

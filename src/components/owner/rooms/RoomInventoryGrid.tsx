@@ -21,6 +21,7 @@ import {
   Bath,
   Wind
 } from "lucide-react";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface Room {
   id: string;
@@ -108,6 +109,7 @@ export default function RoomInventoryGrid() {
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const { formatPrice } = useCurrency();
 
   const filteredRooms = rooms.filter(room => {
     const matchesSearch = room.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -218,12 +220,12 @@ export default function RoomInventoryGrid() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Base Rate</span>
-                <span className="font-medium">${room.baseRate}</span>
+                <span className="font-medium">{formatPrice(room.baseRate)}</span>
               </div>
               
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Current Rate</span>
-                <span className="font-bold text-lg">${room.currentRate}</span>
+                <span className="font-bold text-lg">{formatPrice(room.currentRate)}</span>
               </div>
 
               <div className="space-y-2">
@@ -348,7 +350,7 @@ export default function RoomInventoryGrid() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Base Rate ($)</Label>
+                  <Label>Base Rate</Label>
                   <Input
                     type="number"
                     value={selectedRoom.baseRate}
@@ -360,7 +362,7 @@ export default function RoomInventoryGrid() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label>Current Rate ($)</Label>
+                  <Label>Current Rate</Label>
                   <Input
                     type="number"
                     value={selectedRoom.currentRate}

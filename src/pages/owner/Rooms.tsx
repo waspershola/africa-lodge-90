@@ -3,14 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, BedDouble, DollarSign, Calendar, TrendingUp } from "lucide-react";
+import { Plus, BedDouble, DollarSign, Calendar, TrendingUp, Settings } from "lucide-react";
 import RoomCategoryManager from "@/components/owner/rooms/RoomCategoryManager";
 import RatePlanManager from "@/components/owner/rooms/RatePlanManager";
 import DynamicPricingControls from "@/components/owner/rooms/DynamicPricingControls";
 import RoomInventoryGrid from "@/components/owner/rooms/RoomInventoryGrid";
+import CurrencyTaxSettings from "@/components/owner/financials/CurrencyTaxSettings";
+import { useCurrency } from "@/hooks/useCurrency";
 
 export default function Rooms() {
   const [activeTab, setActiveTab] = useState("rooms");
+  const { formatPrice, updateSettings } = useCurrency();
 
   // Mock data for overview cards
   const roomStats = {
@@ -59,7 +62,7 @@ export default function Rooms() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${roomStats.averageRate}</div>
+            <div className="text-2xl font-bold">{formatPrice(roomStats.averageRate)}</div>
             <p className="text-xs text-muted-foreground">
               <span className="text-green-600">+2.5%</span> from last week
             </p>
@@ -72,7 +75,7 @@ export default function Rooms() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${roomStats.revenueToday.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{formatPrice(roomStats.revenueToday)}</div>
             <p className="text-xs text-muted-foreground">
               <span className="text-green-600">+8.2%</span> from yesterday
             </p>
@@ -97,11 +100,12 @@ export default function Rooms() {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="rooms">Room Inventory</TabsTrigger>
           <TabsTrigger value="categories">Categories</TabsTrigger>
           <TabsTrigger value="rates">Rate Plans</TabsTrigger>
           <TabsTrigger value="pricing">Dynamic Pricing</TabsTrigger>
+          <TabsTrigger value="settings">Currency & Tax</TabsTrigger>
         </TabsList>
 
         <TabsContent value="rooms">
@@ -118,6 +122,10 @@ export default function Rooms() {
 
         <TabsContent value="pricing">
           <DynamicPricingControls />
+        </TabsContent>
+
+        <TabsContent value="settings">
+          <CurrencyTaxSettings onSettingsChange={updateSettings} />
         </TabsContent>
       </Tabs>
     </div>

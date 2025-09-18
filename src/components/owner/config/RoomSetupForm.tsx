@@ -23,6 +23,7 @@ import {
   Image as ImageIcon
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface RoomSetupFormProps {
   onDataChange: () => void;
@@ -51,6 +52,7 @@ interface Amenity {
 }
 
 const RoomSetupForm = ({ onDataChange }: RoomSetupFormProps) => {
+  const { formatPrice, settings } = useCurrency();
   const [roomCategories, setRoomCategories] = useState<RoomCategory[]>([
     {
       id: '1',
@@ -228,7 +230,7 @@ const RoomSetupForm = ({ onDataChange }: RoomSetupFormProps) => {
                 <div>
                   <span className="font-medium">Base Price:</span>
                   <div className="text-lg font-bold text-primary">
-                    ₦{category.basePrice.toLocaleString()}
+                    {formatPrice(category.basePrice)}
                   </div>
                 </div>
                 <div>
@@ -303,7 +305,7 @@ const RoomSetupForm = ({ onDataChange }: RoomSetupFormProps) => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="basePrice">Base Price (₦) *</Label>
+                <Label htmlFor="basePrice">Base Price ({settings.currency.symbol}) *</Label>
                 <Input
                   id="basePrice"
                   type="number"

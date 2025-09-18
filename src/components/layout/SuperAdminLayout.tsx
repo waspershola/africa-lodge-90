@@ -11,7 +11,8 @@ import {
   Headphones,
   AlertTriangle,
   Wand2,
-  Flag
+  Flag,
+  Database
 } from 'lucide-react';
 import UnifiedDashboardLayout from './UnifiedDashboardLayout';
 
@@ -23,7 +24,7 @@ const navigation = [
   { name: 'Global Users', href: '/sa/global-users', icon: UserCheck },
   { name: 'Support', href: '/sa/support', icon: Headphones },
   { name: 'Plans', href: '/sa/plans', icon: CreditCard },
-  { name: 'Feature Flags', href: '/sa/feature-flags', icon: Flag },
+  { name: 'Backups', href: '/sa/backups', icon: Database },
   { name: 'Wizard', href: '/sa/wizard', icon: Wand2 },
   { name: 'Advanced', href: '/sa/advanced', icon: Settings },
   { name: 'Audit', href: '/sa/audit', icon: Activity },

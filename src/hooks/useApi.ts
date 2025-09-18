@@ -1604,3 +1604,81 @@ export const useUpdateFeatureFlag = () => {
     },
   });
 };
+
+// Backup & Restore API hooks
+export const useBackupJobs = () => {
+  return useQuery({
+    queryKey: ['sa', 'backup-jobs'],
+    queryFn: mockApi.getBackupJobs,
+  });
+};
+
+export const useCreateBackup = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: mockApi.createBackup,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'backup-jobs'] });
+      toast({
+        title: 'Success',
+        description: 'Backup job started successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useRestoreBackup = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ backupId, ...options }: { backupId: string; [key: string]: any }) => 
+      mockApi.restoreBackup(backupId, options),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'backup-jobs'] });
+      toast({
+        title: 'Success',
+        description: 'Restore process initiated successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useDeleteBackup = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: mockApi.deleteBackup,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'backup-jobs'] });
+      toast({
+        title: 'Success',
+        description: 'Backup deleted successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};

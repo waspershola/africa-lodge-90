@@ -224,7 +224,7 @@ export default function FeatureFlags() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-success">
-              {flags.filter((f: FeatureFlag) => f.enabled).length}
+              {flags.filter((f: any) => f.enabled).length}
             </div>
           </CardContent>
         </Card>
@@ -235,7 +235,7 @@ export default function FeatureFlags() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-accent">
-              {flags.filter((f: FeatureFlag) => f.enabled && f.rolloutPercentage === 100).length}
+              {flags.filter((f: any) => f.enabled && f.rolloutPercentage === 100).length}
             </div>
           </CardContent>
         </Card>
@@ -246,7 +246,7 @@ export default function FeatureFlags() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-warning">
-              {flags.filter((f: FeatureFlag) => Object.keys(f.tenantOverrides || {}).length > 0).length}
+              {flags.filter((f: any) => Object.keys(f.tenantOverrides || {}).length > 0).length}
             </div>
           </CardContent>
         </Card>
@@ -254,7 +254,7 @@ export default function FeatureFlags() {
 
       {/* Feature Flags Grid */}
       <motion.div variants={fadeIn} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredFlags.map((flag: FeatureFlag) => (
+        {filteredFlags.map((flag: any) => (
           <Card key={flag.id} className="modern-card">
             <CardHeader>
               <div className="flex items-start justify-between">

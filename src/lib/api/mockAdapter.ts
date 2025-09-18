@@ -218,6 +218,82 @@ const mockRoles = [
   }
 ];
 
+const mockBackupJobs = [
+  {
+    id: '1',
+    tenantId: 'tenant-1',
+    tenantName: 'Grand Plaza Hotel',
+    type: 'full',
+    status: 'completed',
+    progress: 100,
+    size: 2500000000, // 2.5GB
+    createdAt: '2024-01-20T10:00:00Z',
+    completedAt: '2024-01-20T10:45:00Z',
+    downloadUrl: '/api/backups/1/download',
+    metadata: {
+      triggeredBy: 'admin@luxuryhotelsaas.com',
+      reason: 'Scheduled monthly backup',
+      includeFiles: true,
+      includeDatabase: true,
+      retention: '90'
+    }
+  },
+  {
+    id: '2',
+    tenantId: 'tenant-2',
+    tenantName: 'Ocean View Resort',
+    type: 'incremental',
+    status: 'running',
+    progress: 65,
+    size: 890000000, // 890MB
+    createdAt: '2024-01-21T08:30:00Z',
+    metadata: {
+      triggeredBy: 'system',
+      reason: 'Auto-incremental backup',
+      includeFiles: true,
+      includeDatabase: true,
+      retention: '30'
+    }
+  },
+  {
+    id: '3',
+    tenantId: 'tenant-3',
+    tenantName: 'City Center Hotel',
+    type: 'database',
+    status: 'failed',
+    progress: 25,
+    size: 450000000, // 450MB
+    createdAt: '2024-01-21T06:00:00Z',
+    errorMessage: 'Database connection timeout',
+    metadata: {
+      triggeredBy: 'admin@luxuryhotelsaas.com',
+      reason: 'Pre-migration backup',
+      includeFiles: false,
+      includeDatabase: true,
+      retention: '365'
+    }
+  },
+  {
+    id: '4',
+    tenantId: 'tenant-1',
+    tenantName: 'Grand Plaza Hotel',
+    type: 'files',
+    status: 'completed',
+    progress: 100,
+    size: 1800000000, // 1.8GB
+    createdAt: '2024-01-19T14:20:00Z',
+    completedAt: '2024-01-19T14:55:00Z',
+    downloadUrl: '/api/backups/4/download',
+    metadata: {
+      triggeredBy: 'manager@grandplaza.com',
+      reason: 'Before system update',
+      includeFiles: true,
+      includeDatabase: false,
+      retention: '30'
+    }
+  }
+];
+
 const mockFeatureFlags = [
   {
     id: '1',
@@ -1459,6 +1535,49 @@ export const mockApi = {
     if (flagIndex === -1) throw new Error('Feature flag not found');
     mockFeatureFlags[flagIndex] = { ...mockFeatureFlags[flagIndex], ...data, updatedAt: new Date().toISOString() };
     return { data: mockFeatureFlags[flagIndex] };
+  },
+
+  // Backup & Restore
+  async getBackupJobs() {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch backup jobs');
+    return { data: mockBackupJobs };
+  },
+
+  async createBackup(data: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to start backup');
+    const newBackup = {
+      id: Date.now().toString(),
+      ...data,
+      status: 'pending',
+      progress: 0,
+      createdAt: new Date().toISOString()
+    };
+    mockBackupJobs.unshift(newBackup);
+    return { data: newBackup };
+  },
+
+  async restoreBackup(backupId: string, options: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to start restore process');
+    return { 
+      data: { 
+        restoreId: `restore_${backupId}_${Date.now()}`,
+        sandboxUrl: `/sandbox/${options.sandboxName || 'default'}`,
+        estimatedTime: '15-30 minutes'
+      }
+    };
+  },
+
+  async deleteBackup(backupId: string) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to delete backup');
+    const index = mockBackupJobs.findIndex(b => b.id === backupId);
+    if (index > -1) {
+      mockBackupJobs.splice(index, 1);
+    }
+    return { data: { success: true } };
   },
 
   // Templates

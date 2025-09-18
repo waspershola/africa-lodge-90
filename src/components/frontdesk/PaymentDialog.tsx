@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CreditCard, Banknote, Building, Smartphone } from "lucide-react";
+import { CreditCard, Banknote, Building, Smartphone, Clock, UserX } from "lucide-react";
 
 interface PaymentDialogProps {
   open: boolean;
@@ -150,10 +150,16 @@ export const PaymentDialog = ({ open, onOpenChange }: PaymentDialogProps) => {
                             Cash
                           </div>
                         </SelectItem>
-                        <SelectItem value="pos">
+                        <SelectItem value="moniepoint-pos">
                           <div className="flex items-center gap-2">
                             <CreditCard className="h-4 w-4" />
-                            POS/Card
+                            Moniepoint POS
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="opay-pos">
+                          <div className="flex items-center gap-2">
+                            <CreditCard className="h-4 w-4" />
+                            Opay POS
                           </div>
                         </SelectItem>
                         <SelectItem value="transfer">
@@ -162,10 +168,22 @@ export const PaymentDialog = ({ open, onOpenChange }: PaymentDialogProps) => {
                             Bank Transfer
                           </div>
                         </SelectItem>
-                        <SelectItem value="mobile">
+                        <SelectItem value="paystack">
                           <div className="flex items-center gap-2">
                             <Smartphone className="h-4 w-4" />
-                            Mobile Money
+                            Paystack Online
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="pay-later">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            Pay Later
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="debtor">
+                          <div className="flex items-center gap-2">
+                            <UserX className="h-4 w-4" />
+                            Debtor Account
                           </div>
                         </SelectItem>
                       </SelectContent>

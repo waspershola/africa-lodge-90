@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Search, Edit, Trash2, Building2, Mail, MapPin, Clock, UserCheck, Pause, Play, Upload, Download, MoreHorizontal } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Building2, Mail, MapPin, Clock, UserCheck, Pause, Play, Upload, Download, MoreHorizontal, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +15,7 @@ import { DataEmpty } from '@/components/ui/data-empty';
 import { useTenants, useDeleteTenant, useSuspendTenant, useReactivateTenant, useImpersonateTenant, useBulkImportTenants } from '@/hooks/useApi';
 import { CreateTenantForm } from '@/components/sa/CreateTenantForm';
 import { EditTenantForm } from '@/components/sa/EditTenantForm';
+import TenantDrawer from '@/components/sa/TenantDrawer';
 import type { Tenant } from '@/lib/api/mockAdapter';
 
 const fadeIn = {
@@ -37,6 +38,8 @@ export default function Tenants() {
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   
   const { data: tenantsData, isLoading, error, refetch } = useTenants();
   const deleteTenant = useDeleteTenant();
@@ -75,6 +78,31 @@ export default function Tenants() {
 
   const handleImpersonate = async (id: string) => {
     impersonateTenant.mutate(id);
+  };
+
+  const handleViewTenant = (tenant: Tenant) => {
+    setSelectedTenant(tenant);
+    setDrawerOpen(true);
+  };
+
+  const handleTenantAction = (action: string, tenantId: string) => {
+    switch (action) {
+      case 'impersonate':
+        handleImpersonate(tenantId);
+        break;
+      case 'suspend':
+        const tenant = tenants.find(t => t.id === tenantId);
+        if (tenant?.status === 'active') {
+          handleSuspend(tenantId);
+        } else {
+          handleReactivate(tenantId);
+        }
+        break;
+      // Add other actions as needed
+      default:
+        console.log('Action not implemented:', action);
+    }
+    setDrawerOpen(false);
   };
 
   const handleBulkImport = () => {
@@ -334,63 +362,72 @@ export default function Tenants() {
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleImpersonate(tenant.id)}>
-                          <UserCheck className="h-4 w-4 mr-2" />
-                          Impersonate
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <Sheet>
-                          <SheetTrigger asChild>
-                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit
+                    <div className="flex gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleViewTenant(tenant)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleImpersonate(tenant.id)}>
+                            <UserCheck className="h-4 w-4 mr-2" />
+                            Impersonate
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <Sheet>
+                            <SheetTrigger asChild>
+                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                            </SheetTrigger>
+                            <SheetContent className="w-full sm:max-w-md">
+                              <SheetHeader>
+                                <SheetTitle>Edit Tenant</SheetTitle>
+                              </SheetHeader>
+                              <EditTenantForm 
+                                tenant={tenant}
+                                onSuccess={() => setEditingTenant(null)}
+                              />
+                            </SheetContent>
+                          </Sheet>
+                          <DropdownMenuSeparator />
+                          {tenant.status === 'active' ? (
+                            <DropdownMenuItem 
+                              onClick={() => handleSuspend(tenant.id)}
+                              className="text-orange-600"
+                            >
+                              <Pause className="h-4 w-4 mr-2" />
+                              Suspend
                             </DropdownMenuItem>
-                          </SheetTrigger>
-                          <SheetContent className="w-full sm:max-w-md">
-                            <SheetHeader>
-                              <SheetTitle>Edit Tenant</SheetTitle>
-                            </SheetHeader>
-                            <EditTenantForm 
-                              tenant={tenant}
-                              onSuccess={() => setEditingTenant(null)}
-                            />
-                          </SheetContent>
-                        </Sheet>
-                        <DropdownMenuSeparator />
-                        {tenant.status === 'active' ? (
+                          ) : (
+                            <DropdownMenuItem 
+                              onClick={() => handleReactivate(tenant.id)}
+                              className="text-green-600"
+                            >
+                              <Play className="h-4 w-4 mr-2" />
+                              Reactivate
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem 
-                            onClick={() => handleSuspend(tenant.id)}
-                            className="text-orange-600"
+                            onClick={() => handleDelete(tenant.id)}
+                            className="text-destructive"
                           >
-                            <Pause className="h-4 w-4 mr-2" />
-                            Suspend
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
                           </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem 
-                            onClick={() => handleReactivate(tenant.id)}
-                            className="text-green-600"
-                          >
-                            <Play className="h-4 w-4 mr-2" />
-                            Reactivate
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          onClick={() => handleDelete(tenant.id)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -444,6 +481,14 @@ export default function Tenants() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Tenant Details Drawer */}
+      <TenantDrawer
+        tenant={selectedTenant}
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onAction={handleTenantAction}
+      />
     </motion.div>
   );
 }

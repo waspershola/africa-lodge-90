@@ -20,6 +20,8 @@ import { Progress } from '@/components/ui/progress';
 import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { useDashboardData, useMetrics } from '@/hooks/useApi';
+import GlobalKPICards from '@/components/sa/GlobalKPICards';
+import LiveEventStream from '@/components/sa/LiveEventStream';
 import { 
   LineChart, 
   Line, 
@@ -95,80 +97,12 @@ export default function Dashboard() {
       </motion.div>
 
       {/* Executive KPIs */}
-      <motion.div variants={fadeIn} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="modern-card bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-primary" />
-              Total Revenue
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-primary">₦{(metrics.overview.totalRevenue / 1000000).toFixed(1)}M</div>
-            <div className="flex items-center gap-2 mt-2">
-              <Badge className="bg-success/10 text-success border-success/20">
-                <TrendingUp className="h-3 w-3 mr-1" />
-                +{metrics.overview.growthRate}%
-              </Badge>
-              <span className="text-xs text-muted-foreground">MoM Growth</span>
-            </div>
-          </CardContent>
-        </Card>
+      <GlobalKPICards 
+        metrics={metrics} 
+        onDrillDown={(metric) => console.log('Drill down to:', metric)} 
+      />
 
-        <Card className="modern-card bg-gradient-to-br from-accent/5 to-accent/10 border-accent/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-accent" />
-              Monthly Recurring Revenue
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-accent">₦{(metrics.overview.mrr / 1000000).toFixed(1)}M</div>
-            <div className="flex items-center gap-2 mt-2">
-              <Progress value={85} className="flex-1 h-2" />
-              <span className="text-xs text-muted-foreground">85% ARR</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="modern-card bg-gradient-to-br from-success/5 to-success/10 border-success/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Users className="h-4 w-4 text-success" />
-              Active Tenants
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-success">{metrics.overview.activeTenants}</div>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="text-sm text-muted-foreground">of {metrics.overview.totalTenants} total</span>
-              <Badge variant="outline" className="border-success/30">
-                {((metrics.overview.activeTenants / metrics.overview.totalTenants) * 100).toFixed(1)}%
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="modern-card bg-gradient-to-br from-danger/5 to-danger/10 border-danger/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Activity className="h-4 w-4 text-danger" />
-              Platform Health
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-danger">{metrics.overview.avgOccupancy}%</div>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="text-xs text-muted-foreground">Avg Occupancy</span>
-              <Badge className="bg-success/10 text-success border-success/20">
-                Optimal
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Top Performers & Health Status */}
+      {/* Top Performers & Live Events */}
       <motion.div variants={fadeIn} className="grid grid-cols-1 xl:grid-cols-2 gap-8">
         {/* Top Performing Hotels */}
         <Card className="modern-card">
@@ -208,37 +142,8 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* System Health Monitor */}
-        <Card className="modern-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-accent" />
-              System Health Monitor
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {dashboard.healthStatus.map((tenant) => (
-                <div key={tenant.tenantId} className="flex items-center gap-4 p-3 rounded-lg border border-border">
-                  <Badge className={getHealthBadge(tenant.status)}>
-                    {tenant.status}
-                  </Badge>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{tenant.name}</div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>Uptime: {tenant.uptime}%</span>
-                      <span>Latency: {tenant.latency}ms</span>
-                      <span>Errors: {tenant.errors}</span>
-                    </div>
-                  </div>
-                  <div className="w-20">
-                    <Progress value={tenant.uptime} className="h-2" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Live Event Stream */}
+        <LiveEventStream />
       </motion.div>
 
       {/* Charts Section */}

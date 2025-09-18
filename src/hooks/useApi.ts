@@ -1605,6 +1605,46 @@ export const useUpdateFeatureFlag = () => {
   });
 };
 
+// Owner Dashboard Hooks  
+export const useOwnerOverview = () => {
+  return useQuery({
+    queryKey: ['owner', 'overview'],
+    queryFn: () => mockApi.getOwnerOverview()
+  });
+};
+
+export const useCancelReservation = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: (id: string) => mockApi.cancelReservation(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      toast({ title: "Reservation cancelled successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to cancel reservation", variant: "destructive" });
+    }
+  });
+};
+
+export const useRefundReservation = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: (id: string) => mockApi.refundReservation(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      toast({ title: "Refund processed successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to process refund", variant: "destructive" });
+    }
+  });
+};
+
 // Backup & Restore API hooks
 export const useBackupJobs = () => {
   return useQuery({

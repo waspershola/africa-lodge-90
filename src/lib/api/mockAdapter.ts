@@ -2410,6 +2410,82 @@ export const mockApi = {
         updatedAt: new Date().toISOString()
       }
     };
+  },
+
+  // Owner Dashboard API
+  async getOwnerOverview() {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch owner overview');
+    
+    return {
+      data: {
+        occupancyRate: 78,
+        adr: 35000,
+        revenueYTD: 125000000,
+        bookingsToday: 42,
+        alerts: [
+          { id: 1, level: "critical", message: "2 rooms overbooked for tonight", type: "overbooking" },
+          { id: 2, level: "warning", message: "Low inventory: Only 3 rooms available tomorrow", type: "inventory" }
+        ],
+        pendingTasks: [
+          { id: 1, task: "Process 3 pending payments", priority: "high", count: 3 },
+          { id: 2, task: "Review maintenance requests", priority: "medium", count: 7 }
+        ],
+        bookingsPipeline: [
+          { stage: "Inquiries", count: 45, color: "#3B82F6" },
+          { stage: "Quotes Sent", count: 28, color: "#F59E0B" },
+          { stage: "Confirmed", count: 18, color: "#10B981" }
+        ],
+        revenueTrend: [
+          { month: 'Jan', revenue: 8500000, bookings: 145 },
+          { month: 'Feb', revenue: 9200000, bookings: 162 },
+          { month: 'Mar', revenue: 10800000, bookings: 189 },
+          { month: 'Apr', revenue: 11500000, bookings: 198 },
+          { month: 'May', revenue: 12200000, bookings: 205 },
+          { month: 'Jun', revenue: 13100000, bookings: 223 }
+        ]
+      }
+    };
+  },
+
+  async updateReservation(id: string, data: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to update reservation');
+    
+    return {
+      data: {
+        id,
+        ...data,
+        updatedAt: new Date().toISOString()
+      }
+    };
+  },
+
+  async cancelReservation(id: string) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to cancel reservation');
+    
+    return {
+      data: {
+        id,
+        status: 'cancelled',
+        cancelledAt: new Date().toISOString()
+      }
+    };
+  },
+
+  async refundReservation(id: string) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to process refund');
+    
+    return {
+      data: {
+        id,
+        refundAmount: 75000,
+        refundStatus: 'processed',
+        refundedAt: new Date().toISOString()
+      }
+    };
   }
 };
 

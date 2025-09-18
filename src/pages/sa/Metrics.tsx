@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion';
-import { TrendingUp, Users, Building2, DollarSign } from 'lucide-react';
+import { TrendingUp, Users, Building2, DollarSign, Database, Shield, HardDrive, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { useMetrics } from '@/hooks/useApi';
@@ -150,6 +152,97 @@ export default function Metrics() {
                 />
               </LineChart>
             </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* System Backup Section */}
+      <motion.div variants={fadeIn}>
+        <Card className="modern-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-primary" />
+              System-Wide Backup & Recovery
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Backup Options Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="border-2 border-dashed border-primary/20 hover:border-primary/40 transition-colors">
+                <CardContent className="p-4 text-center">
+                  <Database className="h-8 w-8 mx-auto mb-3 text-primary" />
+                  <h3 className="font-semibold mb-2">Platform Database</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Complete database backup including schemas, data, and configurations
+                  </p>
+                  <Button className="w-full" variant="outline">
+                    <Download className="h-4 w-4 mr-2" />
+                    Backup DB
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 border-dashed border-accent/20 hover:border-accent/40 transition-colors">
+                <CardContent className="p-4 text-center">
+                  <HardDrive className="h-8 w-8 mx-auto mb-3 text-accent" />
+                  <h3 className="font-semibold mb-2">System Configuration</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Application settings, feature flags, and system configurations
+                  </p>
+                  <Button className="w-full" variant="outline">
+                    <Download className="h-4 w-4 mr-2" />
+                    Backup Config
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 border-dashed border-warning/20 hover:border-warning/40 transition-colors">
+                <CardContent className="p-4 text-center">
+                  <Shield className="h-8 w-8 mx-auto mb-3 text-warning" />
+                  <h3 className="font-semibold mb-2">Full System Snapshot</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Complete platform snapshot including all tenant data
+                  </p>
+                  <Button className="w-full bg-gradient-primary shadow-luxury hover:shadow-hover">
+                    <Download className="h-4 w-4 mr-2" />
+                    Full Backup
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Recent System Backups */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Recent System Backups</h3>
+              <div className="space-y-3">
+                {[
+                  { type: 'Full System', date: '2024-09-18 02:00', size: '2.4 GB', status: 'completed' },
+                  { type: 'Database', date: '2024-09-17 14:30', size: '890 MB', status: 'completed' },
+                  { type: 'Configuration', date: '2024-09-17 09:15', size: '12 MB', status: 'completed' },
+                ].map((backup, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center">
+                        <Database className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <div className="font-medium">{backup.type}</div>
+                        <div className="text-sm text-muted-foreground">{backup.date}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Badge className="bg-success/10 text-success border-success/20">
+                        {backup.status}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">{backup.size}</span>
+                      <Button variant="ghost" size="sm">
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </CardContent>
         </Card>
       </motion.div>

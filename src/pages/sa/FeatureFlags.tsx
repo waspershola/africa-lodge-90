@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Flag, 
-  Toggle, 
+  ToggleLeft, 
   Percent, 
   Users, 
   AlertTriangle, 
@@ -281,7 +281,7 @@ export default function FeatureFlags() {
               {/* Toggle Control */}
               <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
                 <div className="flex items-center gap-2">
-                  <Toggle className="h-4 w-4" />
+                  <ToggleLeft className="h-4 w-4" />
                   <span className="font-medium">Enabled</span>
                 </div>
                 <Switch

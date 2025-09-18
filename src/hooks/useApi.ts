@@ -1548,6 +1548,8 @@ export const useUpdateOOSRoom = () => {
       });
     },
   });
+};
+
 // Feature Flags API hooks
 export const useFeatureFlags = () => {
   return useQuery({

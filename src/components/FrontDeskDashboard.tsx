@@ -32,6 +32,11 @@ import { NewReservationDialog } from "./frontdesk/NewReservationDialog";
 import { SearchDialog } from "./frontdesk/SearchDialog"; 
 import { PaymentDialog } from "./frontdesk/PaymentDialog";
 import { QuickGuestCapture } from "./frontdesk/QuickGuestCapture";
+import { QRCodeManager } from "./frontdesk/QRCodeManager";
+import { StaffOpsPanel } from "./frontdesk/StaffOpsPanel";
+import { BillingOverviewFD } from "./frontdesk/BillingOverviewFD";
+import { HandoverPanel } from "./frontdesk/HandoverPanel";
+import { QRRequestsPanel } from "./frontdesk/QRRequestsPanel";
 import type { Room } from "./frontdesk/RoomGrid";
 
 // Mock data
@@ -87,6 +92,7 @@ const FrontDeskDashboard = () => {
   const [showQuickCapture, setShowQuickCapture] = useState(false);
   const [captureAction, setCaptureAction] = useState<"assign" | "walkin" | "check-in" | "check-out" | "assign-room" | "extend-stay" | "transfer-room" | "add-service" | "work-order" | "housekeeping" | "">("");
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [activePanel, setActivePanel] = useState<'overview' | 'qr-requests' | 'staff-ops' | 'billing' | 'handover' | 'qr-manager'>('overview');
 
   // Simulate online/offline status
   useEffect(() => {
@@ -393,18 +399,89 @@ const FrontDeskDashboard = () => {
           onToggleKeyboardHelp={() => setShowKeyboardHelp(!showKeyboardHelp)}
         />
 
-        {/* Notification Alerts */}
-        <NotificationBanner 
-          alerts={activeAlerts}
-          onDismiss={handleDismissAlert}
-          onViewAll={handleViewAllAlerts}
-        />
+        {/* Panel Navigation */}
+        <div className="flex gap-2 flex-wrap">
+          <Button 
+            variant={activePanel === 'overview' ? 'default' : 'outline'}
+            onClick={() => setActivePanel('overview')}
+            size="sm"
+          >
+            Overview
+          </Button>
+          <Button 
+            variant={activePanel === 'qr-requests' ? 'default' : 'outline'}
+            onClick={() => setActivePanel('qr-requests')}
+            size="sm"
+          >
+            QR Requests
+          </Button>
+          <Button 
+            variant={activePanel === 'staff-ops' ? 'default' : 'outline'}
+            onClick={() => setActivePanel('staff-ops')}
+            size="sm"
+          >
+            Staff Operations
+          </Button>
+          <Button 
+            variant={activePanel === 'billing' ? 'default' : 'outline'}
+            onClick={() => setActivePanel('billing')}
+            size="sm"
+          >
+            Billing Overview
+          </Button>
+          <Button 
+            variant={activePanel === 'handover' ? 'default' : 'outline'}
+            onClick={() => setActivePanel('handover')}
+            size="sm"
+          >
+            Shift Handover
+          </Button>
+          <Button 
+            variant={activePanel === 'qr-manager' ? 'default' : 'outline'}
+            onClick={() => setActivePanel('qr-manager')}
+            size="sm"
+          >
+            QR Manager
+          </Button>
+        </div>
 
-        {/* Guest Queue Panel */}
-        <GuestQueuePanel onGuestAction={handleGuestAction} />
+        {/* Dynamic Panel Content */}
+        {activePanel === 'overview' && (
+          <>
+            {/* Notification Alerts */}
+            <NotificationBanner 
+              alerts={activeAlerts}
+              onDismiss={handleDismissAlert}
+              onViewAll={handleViewAllAlerts}
+            />
 
-        {/* Room Legend */}
-        <RoomLegend />
+            {/* Guest Queue Panel */}
+            <GuestQueuePanel onGuestAction={handleGuestAction} />
+
+            {/* Room Legend */}
+            <RoomLegend />
+          </>
+        )}
+
+        {activePanel === 'qr-requests' && (
+          <QRRequestsPanel />
+        )}
+
+        {activePanel === 'staff-ops' && (
+          <StaffOpsPanel />
+        )}
+
+        {activePanel === 'billing' && (
+          <BillingOverviewFD />
+        )}
+
+        {activePanel === 'handover' && (
+          <HandoverPanel />
+        )}
+
+        {activePanel === 'qr-manager' && (
+          <QRCodeManager />
+        )}
       </div>
 
       {/* Keyboard Shortcuts Helper */}

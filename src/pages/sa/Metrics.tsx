@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { TrendingUp, Users, Building2, DollarSign, Database, Shield, HardDrive, Download } from 'lucide-react';
+import { TrendingUp, Users, Building2, DollarSign, Database, Shield, HardDrive, Download, Upload, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -166,81 +166,177 @@ export default function Metrics() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Backup Options Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="border-2 border-dashed border-primary/20 hover:border-primary/40 transition-colors">
-                <CardContent className="p-4 text-center">
-                  <Database className="h-8 w-8 mx-auto mb-3 text-primary" />
-                  <h3 className="font-semibold mb-2">Platform Database</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Complete database backup including schemas, data, and configurations
-                  </p>
-                  <Button className="w-full" variant="outline">
-                    <Download className="h-4 w-4 mr-2" />
-                    Backup DB
-                  </Button>
-                </CardContent>
-              </Card>
+            {/* Backup & Restore Options Grid */}
+            <div className="space-y-6">
+              {/* Backup Options */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <Download className="h-5 w-5" />
+                  Backup Options
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card className="border-2 border-dashed border-primary/20 hover:border-primary/40 transition-colors">
+                    <CardContent className="p-4 text-center">
+                      <Database className="h-8 w-8 mx-auto mb-3 text-primary" />
+                      <h3 className="font-semibold mb-2">Platform Database</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Complete database backup including schemas, data, and configurations
+                      </p>
+                      <Button className="w-full" variant="outline">
+                        <Download className="h-4 w-4 mr-2" />
+                        Backup DB
+                      </Button>
+                    </CardContent>
+                  </Card>
 
-              <Card className="border-2 border-dashed border-accent/20 hover:border-accent/40 transition-colors">
-                <CardContent className="p-4 text-center">
-                  <HardDrive className="h-8 w-8 mx-auto mb-3 text-accent" />
-                  <h3 className="font-semibold mb-2">System Configuration</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Application settings, feature flags, and system configurations
-                  </p>
-                  <Button className="w-full" variant="outline">
-                    <Download className="h-4 w-4 mr-2" />
-                    Backup Config
-                  </Button>
-                </CardContent>
-              </Card>
+                  <Card className="border-2 border-dashed border-accent/20 hover:border-accent/40 transition-colors">
+                    <CardContent className="p-4 text-center">
+                      <HardDrive className="h-8 w-8 mx-auto mb-3 text-accent" />
+                      <h3 className="font-semibold mb-2">System Configuration</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Application settings, feature flags, and system configurations
+                      </p>
+                      <Button className="w-full" variant="outline">
+                        <Download className="h-4 w-4 mr-2" />
+                        Backup Config
+                      </Button>
+                    </CardContent>
+                  </Card>
 
-              <Card className="border-2 border-dashed border-warning/20 hover:border-warning/40 transition-colors">
-                <CardContent className="p-4 text-center">
-                  <Shield className="h-8 w-8 mx-auto mb-3 text-warning" />
-                  <h3 className="font-semibold mb-2">Full System Snapshot</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Complete platform snapshot including all tenant data
-                  </p>
-                  <Button className="w-full bg-gradient-primary shadow-luxury hover:shadow-hover">
-                    <Download className="h-4 w-4 mr-2" />
-                    Full Backup
-                  </Button>
-                </CardContent>
-              </Card>
+                  <Card className="border-2 border-dashed border-warning/20 hover:border-warning/40 transition-colors">
+                    <CardContent className="p-4 text-center">
+                      <Shield className="h-8 w-8 mx-auto mb-3 text-warning" />
+                      <h3 className="font-semibold mb-2">Full System Snapshot</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Complete platform snapshot including all tenant data
+                      </p>
+                      <Button className="w-full bg-gradient-primary shadow-luxury hover:shadow-hover">
+                        <Download className="h-4 w-4 mr-2" />
+                        Full Backup
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+              {/* Restore Options */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <RefreshCw className="h-5 w-5" />
+                  Restore Options
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card className="border-2 border-dashed border-danger/20 hover:border-danger/40 transition-colors">
+                    <CardContent className="p-4 text-center">
+                      <Database className="h-8 w-8 mx-auto mb-3 text-danger" />
+                      <h3 className="font-semibold mb-2">Database Restore</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Restore database from backup with rollback capabilities
+                      </p>
+                      <Button className="w-full" variant="destructive">
+                        <Upload className="h-4 w-4 mr-2" />
+                        Restore DB
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-2 border-dashed border-warning/20 hover:border-warning/40 transition-colors">
+                    <CardContent className="p-4 text-center">
+                      <HardDrive className="h-8 w-8 mx-auto mb-3 text-warning" />
+                      <h3 className="font-semibold mb-2">Config Restore</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Restore system settings and feature flags from backup
+                      </p>
+                      <Button className="w-full bg-warning hover:bg-warning/90 text-warning-foreground">
+                        <Upload className="h-4 w-4 mr-2" />
+                        Restore Config
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-2 border-dashed border-danger/30 hover:border-danger/50 transition-colors">
+                    <CardContent className="p-4 text-center">
+                      <Shield className="h-8 w-8 mx-auto mb-3 text-danger" />
+                      <h3 className="font-semibold mb-2">Full System Restore</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Complete system restore - requires maintenance mode
+                      </p>
+                      <Button className="w-full bg-gradient-to-r from-danger to-danger/80 shadow-lg hover:shadow-xl">
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Full Restore
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
             </div>
 
-            {/* Recent System Backups */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Recent System Backups</h3>
-              <div className="space-y-3">
-                {[
-                  { type: 'Full System', date: '2024-09-18 02:00', size: '2.4 GB', status: 'completed' },
-                  { type: 'Database', date: '2024-09-17 14:30', size: '890 MB', status: 'completed' },
-                  { type: 'Configuration', date: '2024-09-17 09:15', size: '12 MB', status: 'completed' },
-                ].map((backup, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center">
-                        <Database className="h-5 w-5 text-primary" />
+            {/* Recent Operations */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Recent Backups */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Recent Backups</h3>
+                <div className="space-y-3">
+                  {[
+                    { type: 'Full System', date: '2024-09-18 02:00', size: '2.4 GB', status: 'completed' },
+                    { type: 'Database', date: '2024-09-17 14:30', size: '890 MB', status: 'completed' },
+                    { type: 'Configuration', date: '2024-09-17 09:15', size: '12 MB', status: 'completed' },
+                  ].map((backup, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center">
+                          <Database className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <div className="font-medium">{backup.type}</div>
+                          <div className="text-sm text-muted-foreground">{backup.date}</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="font-medium">{backup.type}</div>
-                        <div className="text-sm text-muted-foreground">{backup.date}</div>
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-success/10 text-success border-success/20">
+                          {backup.status}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">{backup.size}</span>
+                        <Button variant="ghost" size="sm">
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm">
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <Badge className="bg-success/10 text-success border-success/20">
-                        {backup.status}
-                      </Badge>
-                      <span className="text-sm text-muted-foreground">{backup.size}</span>
-                      <Button variant="ghost" size="sm">
-                        <Download className="h-4 w-4" />
-                      </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Recent Restores */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Recent Restores</h3>
+                <div className="space-y-3">
+                  {[
+                    { type: 'Configuration', date: '2024-09-16 11:45', status: 'completed', reason: 'Fix feature flags issue' },
+                    { type: 'Database', date: '2024-09-15 08:30', status: 'completed', reason: 'Rollback migration error' },
+                    { type: 'Full System', date: '2024-09-10 03:15', status: 'completed', reason: 'Major incident recovery' },
+                  ].map((restore, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-warning/10 to-danger/10 flex items-center justify-center">
+                          <RefreshCw className="h-5 w-5 text-warning" />
+                        </div>
+                        <div>
+                          <div className="font-medium">{restore.type} Restore</div>
+                          <div className="text-sm text-muted-foreground">{restore.date}</div>
+                          <div className="text-xs text-muted-foreground">{restore.reason}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-success/10 text-success border-success/20">
+                          {restore.status}
+                        </Badge>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           </CardContent>

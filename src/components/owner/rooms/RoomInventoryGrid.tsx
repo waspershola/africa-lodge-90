@@ -22,6 +22,8 @@ import {
   Wind
 } from "lucide-react";
 import { useCurrency } from "@/hooks/useCurrency";
+import RoomDetailDrawer from "./RoomDetailDrawer";
+import BulkEditModal from "./BulkEditModal";
 
 interface Room {
   id: string;

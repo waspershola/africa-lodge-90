@@ -2473,6 +2473,61 @@ export const mockApi = {
         refundedAt: new Date().toISOString()
       }
     };
+  },
+
+  // Owner Audit & Reports
+  async getOwnerAudit(filters?: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch audit logs');
+    
+    return {
+      data: [
+        {
+          id: 'AUD001',
+          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+          staffName: 'John Doe',
+          role: 'Front Desk Agent',
+          action: 'check-in',
+          resourceType: 'Reservation',
+          resourceId: 'RES001',
+          details: 'Guest checked in to Room 101, payment confirmed via POS'
+        },
+        {
+          id: 'AUD002',
+          timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
+          staffName: 'Jane Smith',
+          role: 'Manager',
+          action: 'payment',
+          resourceType: 'Invoice',
+          resourceId: 'INV002',
+          details: 'Processed payment of ₦150,000 for corporate booking'
+        },
+        {
+          id: 'AUD003',
+          timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
+          staffName: 'Mike Wilson',
+          role: 'Housekeeping',
+          action: 'update',
+          resourceType: 'Room',
+          resourceId: 'Room 205',
+          details: 'Room status updated to clean and ready for next guest'
+        }
+      ]
+    };
+  },
+
+  async getOwnerReports() {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch reports data');
+    
+    return {
+      data: {
+        dailyActivities: 127,
+        paymentEvents: 45,
+        checkins: 23,
+        systemChanges: 8
+      }
+    };
   }
 };
 

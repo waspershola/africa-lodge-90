@@ -1645,6 +1645,21 @@ export const useRefundReservation = () => {
   });
 };
 
+// Owner API hooks continued
+export const useOwnerAudit = (filters?: any) => {
+  return useQuery({
+    queryKey: ['owner', 'audit', filters],
+    queryFn: () => mockApi.getOwnerAudit(filters)
+  });
+};
+
+export const useOwnerReports = () => {
+  return useQuery({
+    queryKey: ['owner', 'reports'],
+    queryFn: mockApi.getOwnerReports
+  });
+};
+
 // Backup & Restore API hooks
 export const useBackupJobs = () => {
   return useQuery({

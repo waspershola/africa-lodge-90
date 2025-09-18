@@ -53,22 +53,22 @@ export default function NewGuestDialog({ onClose, onGuestCreated }: NewGuestDial
           </div>
           
           <div>
-            <Label htmlFor="email">Email Address *</Label>
+            <Label htmlFor="phone">Phone Number *</Label>
             <Input
-              id="email"
-              type="email"
-              value={guestData.email}
-              onChange={(e) => setGuestData({...guestData, email: e.target.value})}
+              id="phone"
+              value={guestData.phone}
+              onChange={(e) => setGuestData({...guestData, phone: e.target.value})}
               required
             />
           </div>
 
           <div>
-            <Label htmlFor="phone">Phone Number</Label>
+            <Label htmlFor="email">Email Address</Label>
             <Input
-              id="phone"
-              value={guestData.phone}
-              onChange={(e) => setGuestData({...guestData, phone: e.target.value})}
+              id="email"
+              type="email"
+              value={guestData.email}
+              onChange={(e) => setGuestData({...guestData, email: e.target.value})}
             />
           </div>
 

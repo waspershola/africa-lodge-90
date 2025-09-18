@@ -46,6 +46,7 @@ import {
   UserCheck
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import type { Room } from "./RoomGrid";
 
 interface QuickGuestCaptureProps {
@@ -130,12 +131,7 @@ const ID_TYPES = [
   { value: 'voters-card', label: "Voter's Card" },
 ];
 
-const PAYMENT_MODES = [
-  { value: 'cash', label: 'Cash' },
-  { value: 'pos', label: 'POS/Card' },
-  { value: 'transfer', label: 'Bank Transfer' },
-  { value: 'credit', label: 'Credit Account' },
-];
+// Payment modes now come from usePaymentMethods hook
 
 export const QuickGuestCapture = ({
   room,
@@ -145,6 +141,7 @@ export const QuickGuestCapture = ({
   onComplete,
 }: QuickGuestCaptureProps) => {
   const { toast } = useToast();
+  const { enabledMethods } = usePaymentMethods();
   const [isProcessing, setIsProcessing] = useState(false);
   const [showOptionalFields, setShowOptionalFields] = useState(false);
   const [guestMode, setGuestMode] = useState<'existing' | 'new'>('existing');
@@ -263,10 +260,10 @@ export const QuickGuestCapture = ({
       return;
     }
 
-    if (!formData.idType || !formData.idNumber.trim()) {
+    if (!formData.phone.trim()) {
       toast({
         title: "Validation Error",
-        description: "ID Type and Number are required",
+        description: "Phone number is required",
         variant: "destructive",
       });
       return;
@@ -474,33 +471,16 @@ export const QuickGuestCapture = ({
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label htmlFor="idType">ID Type *</Label>
-                      <Select value={formData.idType} onValueChange={(value) => handleInputChange('idType', value)}>
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Select ID" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ID_TYPES.map((type) => (
-                            <SelectItem key={type.value} value={type.value}>
-                              {type.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="idNumber">ID Number *</Label>
-                      <Input
-                        id="idNumber"
-                        value={formData.idNumber}
-                        onChange={(e) => handleInputChange('idNumber', e.target.value)}
-                        placeholder="Enter ID number"
-                        className="mt-1"
-                        required
-                      />
-                    </div>
+                  <div>
+                    <Label htmlFor="phone">Phone Number *</Label>
+                    <Input
+                      id="phone"
+                      value={formData.phone}
+                      onChange={(e) => handleInputChange('phone', e.target.value)}
+                      placeholder="080XXXXXXXX"
+                      className="mt-1"
+                      required
+                    />
                   </div>
 
                   {/* Optional Contact Fields */}
@@ -512,20 +492,37 @@ export const QuickGuestCapture = ({
                       onClick={() => setShowOptionalFields(!showOptionalFields)}
                       className="text-xs"
                     >
-                      {showOptionalFields ? 'Hide' : 'Add'} Contact Info (Optional)
+                      {showOptionalFields ? 'Hide' : 'Add'} ID & Contact Info (Optional)
                     </Button>
                     
                     {showOptionalFields && (
-                      <div className="space-y-2 pt-2 border-t">
-                        <div>
-                          <Label htmlFor="phone">Phone Number</Label>
-                          <Input
-                            id="phone"
-                            value={formData.phone}
-                            onChange={(e) => handleInputChange('phone', e.target.value)}
-                            placeholder="080XXXXXXXX"
-                            className="mt-1"
-                          />
+                      <div className="space-y-3 pt-2 border-t">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label htmlFor="idType">ID Type</Label>
+                            <Select value={formData.idType} onValueChange={(value) => handleInputChange('idType', value)}>
+                              <SelectTrigger className="mt-1">
+                                <SelectValue placeholder="Select ID" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {ID_TYPES.map((type) => (
+                                  <SelectItem key={type.value} value={type.value}>
+                                    {type.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label htmlFor="idNumber">ID Number</Label>
+                            <Input
+                              id="idNumber"
+                              value={formData.idNumber}
+                              onChange={(e) => handleInputChange('idNumber', e.target.value)}
+                              placeholder="Enter ID number"
+                              className="mt-1"
+                            />
+                          </div>
                         </div>
                         <div>
                           <Label htmlFor="email">Email Address</Label>
@@ -554,7 +551,9 @@ export const QuickGuestCapture = ({
                   <div className="text-sm text-muted-foreground space-y-1">
                     <div>📱 {selectedGuest.phone}</div>
                     <div>📧 {selectedGuest.email}</div>
-                    <div>🆔 {ID_TYPES.find(t => t.value === selectedGuest.idType)?.label}: {selectedGuest.idNumber}</div>
+                    {selectedGuest.idType && selectedGuest.idNumber && (
+                      <div>🆔 {ID_TYPES.find(t => t.value === selectedGuest.idType)?.label}: {selectedGuest.idNumber}</div>
+                    )}
                     {selectedGuest.lastStay && (
                       <div>🏨 Last stay: {selectedGuest.lastStay} • {selectedGuest.totalStays} stays</div>
                     )}
@@ -580,9 +579,9 @@ export const QuickGuestCapture = ({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {PAYMENT_MODES.map((mode) => (
-                      <SelectItem key={mode.value} value={mode.value}>
-                        {mode.label}
+                    {enabledMethods.map((method) => (
+                      <SelectItem key={method.id} value={method.id}>
+                        {method.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

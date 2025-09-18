@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Edit, Trash2, Users, Mail, Calendar, Shield } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, Mail, Calendar, Shield, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,9 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { useGlobalUsers, useCreateGlobalUser, useUpdateGlobalUser, useDeleteGlobalUser, useTenants } from '@/hooks/useApi';
+import { useGlobalUsers, useCreateGlobalUser, useUpdateGlobalUser, useDeleteGlobalUser, useTenants, useImpersonateUser } from '@/hooks/useApi';
 import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
+import ImpersonationModal from '@/components/sa/ImpersonationModal';
 
 const GlobalUsers = () => {
   const { data: users, isLoading, error } = useGlobalUsers();
@@ -19,9 +20,12 @@ const GlobalUsers = () => {
   const createUser = useCreateGlobalUser();
   const updateUser = useUpdateGlobalUser();
   const deleteUser = useDeleteGlobalUser();
+  const impersonateUser = useImpersonateUser();
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<'create' | 'edit' | 'view'>('create');
+  const [impersonationModalOpen, setImpersonationModalOpen] = useState(false);
+  const [userToImpersonate, setUserToImpersonate] = useState<any>(null);
 
   if (isLoading) return <LoadingState />;
   if (error) return <ErrorState />;
@@ -43,6 +47,24 @@ const GlobalUsers = () => {
     setSelectedUser(user);
     setDialogMode('view');
     setIsDialogOpen(true);
+  };
+
+  const handleImpersonate = (user: any) => {
+    setUserToImpersonate(user);
+    setImpersonationModalOpen(true);
+  };
+
+  const handleImpersonationConfirm = (data: { reason: string; durationMinutes: number }) => {
+    if (!userToImpersonate) return;
+    
+    impersonateUser.mutate({
+      userId: userToImpersonate.id,
+      reason: data.reason,
+      durationMinutes: data.durationMinutes
+    });
+    
+    setImpersonationModalOpen(false);
+    setUserToImpersonate(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -76,7 +98,7 @@ const GlobalUsers = () => {
       'auditor': 'bg-purple-100 text-purple-800',
       'integrator': 'bg-orange-100 text-orange-800'
     };
-    return colors[role] || 'bg-gray-100 text-gray-800';
+    return colors[role as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
 
   const formatLastLogin = (dateString: string) => {
@@ -132,7 +154,7 @@ const GlobalUsers = () => {
                     <div className="flex items-center space-x-3">
                       <Avatar>
                         <AvatarFallback>
-                          {user.name.split(' ').map(n => n[0]).join('')}
+                          {user.name.split(' ').map((n: string) => n[0]).join('')}
                         </AvatarFallback>
                       </Avatar>
                       <div>
@@ -171,6 +193,14 @@ const GlobalUsers = () => {
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => handleCreateEdit(user)}>
                         <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        onClick={() => handleImpersonate(user)}
+                        className="text-warning hover:text-warning"
+                      >
+                        <UserCheck className="h-4 w-4" />
                       </Button>
                       <Button 
                         size="sm" 
@@ -327,6 +357,15 @@ const GlobalUsers = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Impersonation Modal */}
+      <ImpersonationModal
+        user={userToImpersonate}
+        isOpen={impersonationModalOpen}
+        onClose={() => setImpersonationModalOpen(false)}
+        onConfirm={handleImpersonationConfirm}
+        isLoading={impersonateUser.isPending}
+      />
     </div>
   );
 };

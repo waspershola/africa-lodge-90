@@ -218,6 +218,50 @@ const mockRoles = [
   }
 ];
 
+const mockFeatureFlags = [
+  {
+    id: '1',
+    name: 'New Booking Flow',
+    key: 'new_booking_flow',
+    description: 'Enable the redesigned booking flow with improved UX',
+    enabled: true,
+    rolloutPercentage: 75,
+    environment: 'production' as const,
+    tenantOverrides: {
+      'tenant-1': true,
+      'tenant-2': false
+    },
+    createdAt: '2024-01-10T00:00:00Z',
+    updatedAt: '2024-01-15T00:00:00Z'
+  },
+  {
+    id: '2',
+    name: 'Advanced Analytics',
+    key: 'advanced_analytics',
+    description: 'Enable advanced analytics dashboard for power users',
+    enabled: false,
+    rolloutPercentage: 0,
+    environment: 'staging' as const,
+    tenantOverrides: {},
+    createdAt: '2024-01-05T00:00:00Z',
+    updatedAt: '2024-01-05T00:00:00Z'
+  },
+  {
+    id: '3',
+    name: 'Mobile App Integration',
+    key: 'mobile_app_integration',
+    description: 'Enable mobile app deep linking and push notifications',
+    enabled: true,
+    rolloutPercentage: 100,
+    environment: 'production' as const,
+    tenantOverrides: {
+      'tenant-3': false
+    },
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-12T00:00:00Z'
+  }
+];
+
 const mockGlobalUsers = [
   {
     id: 'admin1',
@@ -1360,6 +1404,19 @@ export const mockApi = {
     return { data: tenant };
   },
 
+  async impersonateUser(userId: string, reason: string, durationMinutes: number) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to generate impersonation token');
+    return { 
+      data: { 
+        token: `user_impersonation_${userId}_${Date.now()}`,
+        expiresAt: new Date(Date.now() + (durationMinutes * 60000)).toISOString(),
+        userId,
+        reason
+      }
+    };
+  },
+
   async impersonateTenant(id: string) {
     await delay();
     if (shouldFail()) throw new Error('Failed to generate impersonation token');
@@ -1370,6 +1427,38 @@ export const mockApi = {
         expiresAt: new Date(Date.now() + 3600000).toISOString()
       }
     };
+  },
+
+  // Feature Flags
+  async getFeatureFlags() {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to fetch feature flags');
+    return { data: mockFeatureFlags };
+  },
+
+  async createFeatureFlag(data: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to create feature flag');
+    const newFlag = {
+      id: Date.now().toString(),
+      ...data,
+      enabled: false,
+      rolloutPercentage: 0,
+      tenantOverrides: {},
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    mockFeatureFlags.push(newFlag);
+    return { data: newFlag };
+  },
+
+  async updateFeatureFlag(id: string, data: any) {
+    await delay();
+    if (shouldFail()) throw new Error('Failed to update feature flag');
+    const flagIndex = mockFeatureFlags.findIndex(f => f.id === id);
+    if (flagIndex === -1) throw new Error('Feature flag not found');
+    mockFeatureFlags[flagIndex] = { ...mockFeatureFlags[flagIndex], ...data, updatedAt: new Date().toISOString() };
+    return { data: mockFeatureFlags[flagIndex] };
   },
 
   // Templates

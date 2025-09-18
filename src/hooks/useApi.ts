@@ -627,6 +627,30 @@ export const useReactivateTenant = () => {
   });
 };
 
+export const useImpersonateUser = () => {
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ userId, reason, durationMinutes }: { userId: string; reason: string; durationMinutes: number }) => 
+      mockApi.impersonateUser(userId, reason, durationMinutes),
+    onSuccess: (data) => {
+      toast({
+        title: 'Impersonation Started',
+        description: 'You are now impersonating the user. Session will expire automatically.',
+      });
+      // Here you would typically store the impersonation token and show the banner
+      // For now, we'll just show a success message
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
 export const useImpersonateTenant = () => {
   const { toast } = useToast();
 
@@ -1514,6 +1538,59 @@ export const useUpdateOOSRoom = () => {
       toast({
         title: 'Success',
         description: 'OOS room updated successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+// Feature Flags API hooks
+export const useFeatureFlags = () => {
+  return useQuery({
+    queryKey: ['sa', 'feature-flags'],
+    queryFn: mockApi.getFeatureFlags,
+  });
+};
+
+export const useCreateFeatureFlag = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: mockApi.createFeatureFlag,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'feature-flags'] });
+      toast({
+        title: 'Success',
+        description: 'Feature flag created successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useUpdateFeatureFlag = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => 
+      mockApi.updateFeatureFlag(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'feature-flags'] });
+      toast({
+        title: 'Success',
+        description: 'Feature flag updated successfully',
       });
     },
     onError: (error: Error) => {

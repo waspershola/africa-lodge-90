@@ -30,7 +30,7 @@ import Templates from "./pages/sa/Templates";
 import Roles from "./pages/sa/Roles";
 import GlobalUsers from "./pages/sa/GlobalUsers";
 import Support from "./pages/sa/Support";
-import Wizard from "./pages/sa/Wizard";
+import FeatureFlags from "./pages/sa/FeatureFlags";
 import Plans from "./pages/sa/Plans";
 import Policies from "./pages/sa/Policies";
 import Advanced from "./pages/sa/Advanced";
@@ -87,7 +87,7 @@ const App = () => (
             <Route path="policies" element={<Policies />} />
             <Route path="advanced" element={<Advanced />} />
             <Route path="audit" element={<Audit />} />
-            <Route path="metrics" element={<Metrics />} />
+            <Route path="feature-flags" element={<FeatureFlags />} />
           </Route>
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

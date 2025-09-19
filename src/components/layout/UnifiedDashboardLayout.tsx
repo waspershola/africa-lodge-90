@@ -1,9 +1,10 @@
 import { ReactNode } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Menu } from 'lucide-react';
+import { ArrowLeft, Menu, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import {
   Sidebar,
   SidebarContent,
@@ -120,6 +121,15 @@ export default function UnifiedDashboardLayout({
   headerBadge,
   children
 }: UnifiedDashboardLayoutProps) {
+  const { logout, user } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-gradient-subtle">
@@ -146,6 +156,23 @@ export default function UnifiedDashboardLayout({
                 <div className="text-sm text-muted-foreground">
                   {subtitle}
                 </div>
+                
+                {user && (
+                  <div className="flex items-center gap-3">
+                    <div className="text-xs text-muted-foreground">
+                      {user.email}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleLogout}
+                      className="h-8 px-3"
+                    >
+                      <LogOut className="h-3 w-3 mr-1" />
+                      Logout
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </header>

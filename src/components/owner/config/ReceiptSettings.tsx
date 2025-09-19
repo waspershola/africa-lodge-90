@@ -26,26 +26,74 @@ interface ReceiptTemplate {
   id: string;
   name: string;
   type: 'A4' | 'A5' | '80mm' | '58mm';
-  department: 'front-desk' | 'restaurant' | 'spa' | 'housekeeping' | 'all';
+  department: 'front-desk' | 'restaurant' | 'spa' | 'housekeeping' | 'laundry' | 'minibar' | 'all';
+  transactionTypes: ('check-in' | 'check-out' | 'room-service' | 'restaurant' | 'spa' | 'laundry' | 'minibar' | 'folio' | 'deposit' | 'refund')[];
   isDefault: boolean;
   branding: {
     showLogo: boolean;
     showHotelName: boolean;
     showAddress: boolean;
     showContact: boolean;
+    showWebsite: boolean;
+    showSocialMedia: boolean;
     headerText?: string;
     footerText?: string;
     watermark?: string;
+    colorScheme: 'default' | 'branded' | 'minimal';
   };
   content: {
     showVATBreakdown: boolean;
     showStaffName: boolean;
     showQRCode: boolean;
     showPaymentMethods: boolean;
-    includeTerms: boolean;
+    showGuestSignature: boolean;
+    showTermsConditions: boolean;
+    showRefundPolicy: boolean;
+    showItemizedCharges: boolean;
+    showRoomDetails: boolean;
+    showStayDuration: boolean;
+    showLoyaltyPoints: boolean;
+    showPromotionalOffers: boolean;
+  };
+  departmentSpecific: {
+    frontDesk: {
+      showRoomNumber: boolean;
+      showCheckInOut: boolean;
+      showDepositInfo: boolean;
+      includeKeyCards: boolean;
+    };
+    restaurant: {
+      showTableNumber: boolean;
+      showServerName: boolean;
+      showMenuCategories: boolean;
+      showNutritionalInfo: boolean;
+    };
+    spa: {
+      showTherapistName: boolean;
+      showTreatmentDuration: boolean;
+      showPackageDetails: boolean;
+    };
+  };
+  integration: {
+    connectToReservations: boolean;
+    connectToRoomCharges: boolean;
+    connectToRestaurantPOS: boolean;
+    connectToSpaBooking: boolean;
+    connectToLaundryService: boolean;
+    connectToMinibarSystem: boolean;
+    autoGenerateOnCheckIn: boolean;
+    autoGenerateOnCheckOut: boolean;
+    autoEmailToGuest: boolean;
+    sendToAccountingSystem: boolean;
   };
   language: string;
   currency: string;
+  taxSettings: {
+    includeTax: boolean;
+    taxRate: number;
+    taxLabel: string;
+    showTaxNumber: boolean;
+  };
 }
 
 interface ReceiptSettingsProps {
@@ -57,24 +105,72 @@ const defaultTemplate: ReceiptTemplate = {
   name: 'Standard A4 Receipt',
   type: 'A4',
   department: 'all',
+  transactionTypes: ['check-in', 'check-out', 'room-service', 'restaurant', 'folio'],
   isDefault: true,
   branding: {
     showLogo: true,
     showHotelName: true,
     showAddress: true,
     showContact: true,
+    showWebsite: true,
+    showSocialMedia: false,
     headerText: 'Thank you for staying with us',
     footerText: 'We appreciate your business',
+    colorScheme: 'default',
   },
   content: {
     showVATBreakdown: true,
     showStaffName: true,
     showQRCode: true,
     showPaymentMethods: true,
-    includeTerms: false,
+    showGuestSignature: false,
+    showTermsConditions: true,
+    showRefundPolicy: false,
+    showItemizedCharges: true,
+    showRoomDetails: true,
+    showStayDuration: true,
+    showLoyaltyPoints: false,
+    showPromotionalOffers: false,
+  },
+  departmentSpecific: {
+    frontDesk: {
+      showRoomNumber: true,
+      showCheckInOut: true,
+      showDepositInfo: true,
+      includeKeyCards: false,
+    },
+    restaurant: {
+      showTableNumber: true,
+      showServerName: true,
+      showMenuCategories: false,
+      showNutritionalInfo: false,
+    },
+    spa: {
+      showTherapistName: true,
+      showTreatmentDuration: true,
+      showPackageDetails: true,
+    },
+  },
+  integration: {
+    connectToReservations: true,
+    connectToRoomCharges: true,
+    connectToRestaurantPOS: true,
+    connectToSpaBooking: true,
+    connectToLaundryService: true,
+    connectToMinibarSystem: true,
+    autoGenerateOnCheckIn: true,
+    autoGenerateOnCheckOut: true,
+    autoEmailToGuest: true,
+    sendToAccountingSystem: false,
   },
   language: 'en',
   currency: 'NGN',
+  taxSettings: {
+    includeTax: true,
+    taxRate: 7.5,
+    taxLabel: 'VAT',
+    showTaxNumber: true,
+  },
 };
 
 export default function ReceiptSettings({ onDataChange }: ReceiptSettingsProps) {
@@ -91,10 +187,31 @@ export default function ReceiptSettings({ onDataChange }: ReceiptSettingsProps) 
 
   const departments = [
     { value: 'all', label: 'All Departments' },
-    { value: 'front-desk', label: 'Front Desk' },
-    { value: 'restaurant', label: 'Restaurant' },
+    { value: 'front-desk', label: 'Front Desk & Reception' },
+    { value: 'restaurant', label: 'Restaurant & F&B' },
     { value: 'spa', label: 'Spa & Wellness' },
     { value: 'housekeeping', label: 'Housekeeping' },
+    { value: 'laundry', label: 'Laundry Services' },
+    { value: 'minibar', label: 'Minibar & Room Service' },
+  ];
+
+  const transactionTypes = [
+    { value: 'check-in', label: 'Check-In Receipt' },
+    { value: 'check-out', label: 'Check-Out Invoice' },
+    { value: 'room-service', label: 'Room Service Bill' },
+    { value: 'restaurant', label: 'Restaurant Bill' },
+    { value: 'spa', label: 'Spa Treatment Invoice' },
+    { value: 'laundry', label: 'Laundry Service Bill' },
+    { value: 'minibar', label: 'Minibar Charges' },
+    { value: 'folio', label: 'Guest Folio' },
+    { value: 'deposit', label: 'Deposit Receipt' },
+    { value: 'refund', label: 'Refund Receipt' },
+  ];
+
+  const colorSchemes = [
+    { value: 'default', label: 'Default Theme' },
+    { value: 'branded', label: 'Hotel Brand Colors' },
+    { value: 'minimal', label: 'Minimal B&W' },
   ];
 
   const languages = [
@@ -219,6 +336,8 @@ export default function ReceiptSettings({ onDataChange }: ReceiptSettingsProps) 
           <TabsTrigger value="template">Template Settings</TabsTrigger>
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="content">Content Options</TabsTrigger>
+          <TabsTrigger value="department">Department Config</TabsTrigger>
+          <TabsTrigger value="integration">System Integration</TabsTrigger>
           <TabsTrigger value="preview">Preview</TabsTrigger>
         </TabsList>
 
@@ -548,8 +667,8 @@ export default function ReceiptSettings({ onDataChange }: ReceiptSettingsProps) 
                       <Label htmlFor="include-terms">Include Terms & Conditions</Label>
                       <Switch
                         id="include-terms"
-                        checked={selectedTemplate.content.includeTerms}
-                        onCheckedChange={(checked) => handleContentChange('includeTerms', checked)}
+                        checked={selectedTemplate.content.showTermsConditions}
+                        onCheckedChange={(checked) => handleContentChange('showTermsConditions', checked)}
                       />
                     </div>
                   </div>
@@ -557,6 +676,426 @@ export default function ReceiptSettings({ onDataChange }: ReceiptSettingsProps) 
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="department" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  Front Desk Settings
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Transaction Types</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {transactionTypes.slice(0, 4).map((type) => (
+                      <div key={type.value} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`transaction-${type.value}`}
+                          checked={selectedTemplate.transactionTypes.includes(type.value as any)}
+                          onChange={(e) => {
+                            const types = e.target.checked
+                              ? [...selectedTemplate.transactionTypes, type.value]
+                              : selectedTemplate.transactionTypes.filter(t => t !== type.value);
+                            handleTemplateChange('transactionTypes', types);
+                          }}
+                          className="rounded"
+                        />
+                        <Label htmlFor={`transaction-${type.value}`} className="text-sm">
+                          {type.label}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>Show Room Number</Label>
+                    <Switch
+                      checked={selectedTemplate.departmentSpecific.frontDesk.showRoomNumber}
+                      onCheckedChange={(checked) => 
+                        setSelectedTemplate(prev => ({
+                          ...prev,
+                          departmentSpecific: {
+                            ...prev.departmentSpecific,
+                            frontDesk: { ...prev.departmentSpecific.frontDesk, showRoomNumber: checked }
+                          }
+                        }))
+                      }
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <Label>Show Check-in/Check-out Dates</Label>
+                    <Switch
+                      checked={selectedTemplate.departmentSpecific.frontDesk.showCheckInOut}
+                      onCheckedChange={(checked) => 
+                        setSelectedTemplate(prev => ({
+                          ...prev,
+                          departmentSpecific: {
+                            ...prev.departmentSpecific,
+                            frontDesk: { ...prev.departmentSpecific.frontDesk, showCheckInOut: checked }
+                          }
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Label>Show Deposit Information</Label>
+                    <Switch
+                      checked={selectedTemplate.departmentSpecific.frontDesk.showDepositInfo}
+                      onCheckedChange={(checked) => 
+                        setSelectedTemplate(prev => ({
+                          ...prev,
+                          departmentSpecific: {
+                            ...prev.departmentSpecific,
+                            frontDesk: { ...prev.departmentSpecific.frontDesk, showDepositInfo: checked }
+                          }
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Label>Include Key Card Info</Label>
+                    <Switch
+                      checked={selectedTemplate.departmentSpecific.frontDesk.includeKeyCards}
+                      onCheckedChange={(checked) => 
+                        setSelectedTemplate(prev => ({
+                          ...prev,
+                          departmentSpecific: {
+                            ...prev.departmentSpecific,
+                            frontDesk: { ...prev.departmentSpecific.frontDesk, includeKeyCards: checked }
+                          }
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Restaurant & F&B Settings
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>Show Table Number</Label>
+                    <Switch
+                      checked={selectedTemplate.departmentSpecific.restaurant.showTableNumber}
+                      onCheckedChange={(checked) => 
+                        setSelectedTemplate(prev => ({
+                          ...prev,
+                          departmentSpecific: {
+                            ...prev.departmentSpecific,
+                            restaurant: { ...prev.departmentSpecific.restaurant, showTableNumber: checked }
+                          }
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Label>Show Server Name</Label>
+                    <Switch
+                      checked={selectedTemplate.departmentSpecific.restaurant.showServerName}
+                      onCheckedChange={(checked) => 
+                        setSelectedTemplate(prev => ({
+                          ...prev,
+                          departmentSpecific: {
+                            ...prev.departmentSpecific,
+                            restaurant: { ...prev.departmentSpecific.restaurant, showServerName: checked }
+                          }
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Label>Show Menu Categories</Label>
+                    <Switch
+                      checked={selectedTemplate.departmentSpecific.restaurant.showMenuCategories}
+                      onCheckedChange={(checked) => 
+                        setSelectedTemplate(prev => ({
+                          ...prev,
+                          departmentSpecific: {
+                            ...prev.departmentSpecific,
+                            restaurant: { ...prev.departmentSpecific.restaurant, showMenuCategories: checked }
+                          }
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Label>Show Nutritional Info</Label>
+                    <Switch
+                      checked={selectedTemplate.departmentSpecific.restaurant.showNutritionalInfo}
+                      onCheckedChange={(checked) => 
+                        setSelectedTemplate(prev => ({
+                          ...prev,
+                          departmentSpecific: {
+                            ...prev.departmentSpecific,
+                            restaurant: { ...prev.departmentSpecific.restaurant, showNutritionalInfo: checked }
+                          }
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+
+                <Separator />
+
+                <Card className="p-3 bg-muted/50">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Tax Configuration</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label htmlFor="tax-rate" className="text-xs">Tax Rate (%)</Label>
+                        <Input
+                          id="tax-rate"
+                          type="number"
+                          step="0.1"
+                          value={selectedTemplate.taxSettings.taxRate}
+                          onChange={(e) => 
+                            setSelectedTemplate(prev => ({
+                              ...prev,
+                              taxSettings: { ...prev.taxSettings, taxRate: parseFloat(e.target.value) || 0 }
+                            }))
+                          }
+                          className="h-8"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="tax-label" className="text-xs">Tax Label</Label>
+                        <Input
+                          id="tax-label"
+                          value={selectedTemplate.taxSettings.taxLabel}
+                          onChange={(e) => 
+                            setSelectedTemplate(prev => ({
+                              ...prev,
+                              taxSettings: { ...prev.taxSettings, taxLabel: e.target.value }
+                            }))
+                          }
+                          placeholder="VAT, GST, etc."
+                          className="h-8"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="integration" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  System Connections
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Connect to Reservations</Label>
+                      <p className="text-xs text-muted-foreground">Link with booking system</p>
+                    </div>
+                    <Switch
+                      checked={selectedTemplate.integration.connectToReservations}
+                      onCheckedChange={(checked) => 
+                        setSelectedTemplate(prev => ({
+                          ...prev,
+                          integration: { ...prev.integration, connectToReservations: checked }
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Connect to Room Charges</Label>
+                      <p className="text-xs text-muted-foreground">Include room service charges</p>
+                    </div>
+                    <Switch
+                      checked={selectedTemplate.integration.connectToRoomCharges}
+                      onCheckedChange={(checked) => 
+                        setSelectedTemplate(prev => ({
+                          ...prev,
+                          integration: { ...prev.integration, connectToRoomCharges: checked }
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Connect to Restaurant POS</Label>
+                      <p className="text-xs text-muted-foreground">Link F&B transactions</p>
+                    </div>
+                    <Switch
+                      checked={selectedTemplate.integration.connectToRestaurantPOS}
+                      onCheckedChange={(checked) => 
+                        setSelectedTemplate(prev => ({
+                          ...prev,
+                          integration: { ...prev.integration, connectToRestaurantPOS: checked }
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Connect to Spa Booking</Label>
+                      <p className="text-xs text-muted-foreground">Include spa treatments</p>
+                    </div>
+                    <Switch
+                      checked={selectedTemplate.integration.connectToSpaBooking}
+                      onCheckedChange={(checked) => 
+                        setSelectedTemplate(prev => ({
+                          ...prev,
+                          integration: { ...prev.integration, connectToSpaBooking: checked }
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Connect to Minibar System</Label>
+                      <p className="text-xs text-muted-foreground">Track minibar consumption</p>
+                    </div>
+                    <Switch
+                      checked={selectedTemplate.integration.connectToMinibarSystem}
+                      onCheckedChange={(checked) => 
+                        setSelectedTemplate(prev => ({
+                          ...prev,
+                          integration: { ...prev.integration, connectToMinibarSystem: checked }
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Globe className="h-4 w-4" />
+                  Automation Settings
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Auto-generate on Check-in</Label>
+                      <p className="text-xs text-muted-foreground">Create receipt automatically</p>
+                    </div>
+                    <Switch
+                      checked={selectedTemplate.integration.autoGenerateOnCheckIn}
+                      onCheckedChange={(checked) => 
+                        setSelectedTemplate(prev => ({
+                          ...prev,
+                          integration: { ...prev.integration, autoGenerateOnCheckIn: checked }
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Auto-generate on Check-out</Label>
+                      <p className="text-xs text-muted-foreground">Create final invoice automatically</p>
+                    </div>
+                    <Switch
+                      checked={selectedTemplate.integration.autoGenerateOnCheckOut}
+                      onCheckedChange={(checked) => 
+                        setSelectedTemplate(prev => ({
+                          ...prev,
+                          integration: { ...prev.integration, autoGenerateOnCheckOut: checked }
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Auto-email to Guest</Label>
+                      <p className="text-xs text-muted-foreground">Send receipts via email</p>
+                    </div>
+                    <Switch
+                      checked={selectedTemplate.integration.autoEmailToGuest}
+                      onCheckedChange={(checked) => 
+                        setSelectedTemplate(prev => ({
+                          ...prev,
+                          integration: { ...prev.integration, autoEmailToGuest: checked }
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Send to Accounting System</Label>
+                      <p className="text-xs text-muted-foreground">Export to external accounting</p>
+                    </div>
+                    <Switch
+                      checked={selectedTemplate.integration.sendToAccountingSystem}
+                      onCheckedChange={(checked) => 
+                        setSelectedTemplate(prev => ({
+                          ...prev,
+                          integration: { ...prev.integration, sendToAccountingSystem: checked }
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+
+                <Separator />
+
+                <Card className="p-3 bg-muted/50">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Advanced Content</Label>
+                    <div className="space-y-2">
+                      {[
+                        { key: 'showLoyaltyPoints', label: 'Show Loyalty Points' },
+                        { key: 'showPromotionalOffers', label: 'Show Promotional Offers' },
+                        { key: 'showGuestSignature', label: 'Include Guest Signature Line' },
+                        { key: 'showRefundPolicy', label: 'Show Refund Policy' },
+                      ].map((item) => (
+                        <div key={item.key} className="flex items-center justify-between">
+                          <Label className="text-xs">{item.label}</Label>
+                          <Switch
+                            checked={selectedTemplate.content[item.key as keyof typeof selectedTemplate.content] as boolean}
+                            onCheckedChange={(checked) => handleContentChange(item.key, checked)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </Card>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="preview" className="space-y-4">

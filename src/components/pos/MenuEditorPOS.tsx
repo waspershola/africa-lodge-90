@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { usePOSApi, type MenuItem } from '@/hooks/usePOSApi';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/useMultiTenantAuth';
 import RoleGuard, { ProtectedButton } from './RoleGuard';
 import ApprovalDialog, { type ApprovalRequest } from './ApprovalDialog';
 

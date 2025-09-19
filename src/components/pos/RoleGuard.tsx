@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Shield, AlertTriangle, Lock } from 'lucide-react';
-import { useAuth, UserRole } from '@/hooks/useAuth';
+import { useAuth, UserRole } from '@/hooks/useMultiTenantAuth';
 
 interface RoleGuardProps {
   children: ReactNode;
@@ -20,10 +20,10 @@ export default function RoleGuard({
   fallback,
   showMessage = true 
 }: RoleGuardProps) {
-  const { user, canAccess, hasPermission } = useAuth();
+  const { user, hasAccess, hasPermission } = useAuth();
 
   // Check role access
-  const hasRoleAccess = requiredRole ? canAccess(requiredRole) : true;
+  const hasRoleAccess = requiredRole ? hasAccess(Array.isArray(requiredRole) ? requiredRole[0] : requiredRole) : true;
   
   // Check permission access
   const hasPermissionAccess = requiredPermission ? 
@@ -32,7 +32,7 @@ export default function RoleGuard({
       hasPermission(requiredPermission)
     ) : true;
 
-  const hasAccess = hasRoleAccess && hasPermissionAccess;
+  const hasAccessToFeature = hasRoleAccess && hasPermissionAccess;
 
   if (!user) {
     return (
@@ -46,7 +46,7 @@ export default function RoleGuard({
     );
   }
 
-  if (!hasAccess) {
+  if (!hasAccessToFeature) {
     if (fallback) {
       return <>{fallback}</>;
     }
@@ -99,13 +99,13 @@ export function ProtectedButton({
   onClick, 
   ...buttonProps 
 }: ProtectedButtonProps) {
-  const { canAccess, hasPermission } = useAuth();
+  const { hasAccess, hasPermission } = useAuth();
 
-  const hasRoleAccess = requiredRole ? canAccess(requiredRole) : true;
+  const hasRoleAccess = requiredRole ? hasAccess(Array.isArray(requiredRole) ? requiredRole[0] : requiredRole) : true;
   const hasPermissionAccess = requiredPermission ? hasPermission(requiredPermission) : true;
-  const hasAccess = hasRoleAccess && hasPermissionAccess;
+  const hasAccessToFeature = hasRoleAccess && hasPermissionAccess;
 
-  if (!hasAccess) {
+  if (!hasAccessToFeature) {
     return null;
   }
 

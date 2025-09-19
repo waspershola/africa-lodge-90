@@ -1,14 +1,20 @@
-import { useState, useEffect, createContext, useContext } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 
 export interface User {
   id: string;
   email: string;
+  name?: string;
   role: 'SUPER_ADMIN' | 'OWNER' | 'MANAGER' | 'STAFF' | 'FRONT_DESK' | 'HOUSEKEEPING' | 'MAINTENANCE' | 'POS';
   tenant_id?: string;
   force_reset?: boolean;
   temp_password?: string;
   temp_expires?: string;
 }
+
+// Add UserRole type for backward compatibility
+export type UserRole = User['role'];
 
 export interface Tenant {
   tenant_id: string;
@@ -31,61 +37,26 @@ export interface TrialStatus {
 export interface UseMultiTenantAuthReturn {
   user: User | null;
   tenant: Tenant | null;
+  session: Session | null;
   isLoading: boolean;
   error: string | null;
   trialStatus: TrialStatus | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   hasAccess: (requiredRole: string) => boolean;
+  hasPermission: (permission: string) => boolean;
   refreshAuth: () => Promise<void>;
 }
-
-// Mock data for development
-const mockUsers: User[] = [
-  {
-    id: '1',
-    email: 'owner@hotel.com',
-    role: 'OWNER',
-    tenant_id: 'tenant-1'
-  },
-  {
-    id: '2', 
-    email: 'manager@hotel.com',
-    role: 'MANAGER',
-    tenant_id: 'tenant-1'
-  },
-  {
-    id: '3',
-    email: 'frontdesk@hotel.com',
-    role: 'FRONT_DESK',
-    tenant_id: 'tenant-1'
-  },
-  {
-    id: '4',
-    email: 'admin@system.com',
-    role: 'SUPER_ADMIN'
-  }
-];
-
-const mockTenants: Tenant[] = [
-  {
-    tenant_id: 'tenant-1',
-    hotel_name: 'Lagos Grand Hotel',
-    plan_id: 'growth',
-    subscription_status: 'trialing',
-    trial_start: '2025-09-05T00:00:00Z',
-    trial_end: '2025-09-19T23:59:59Z',
-    created_at: '2025-09-05T00:00:00Z',
-    updated_at: '2025-09-05T00:00:00Z'
-  }
-];
 
 export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
   const [user, setUser] = useState<User | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [trialStatus, setTrialStatus] = useState<TrialStatus | null>(null);
+
+  // ... keep existing code ...
 
   // Check if onboarding is required
   const checkOnboardingRequired = (user: User, tenant: Tenant) => {
@@ -126,30 +97,70 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
     };
   };
 
+  // Load user profile from database
+  const loadUserProfile = async (authUser: SupabaseUser) => {
+    try {
+      const { data: userProfile, error: userError } = await supabase
+        .from('users')
+        .select('*, tenants(*)')
+        .eq('id', authUser.id)
+        .single();
+
+      if (userError) {
+        console.error('Error loading user profile:', userError);
+        return;
+      }
+
+      if (userProfile) {
+        const userData: User = {
+          id: userProfile.id,
+          email: userProfile.email,
+          name: userProfile.name,
+          role: userProfile.role as User['role'],
+          tenant_id: userProfile.tenant_id,
+          force_reset: userProfile.force_reset,
+          temp_password: userProfile.temp_password_hash,
+          temp_expires: userProfile.temp_expires,
+        };
+
+        setUser(userData);
+
+        // Load tenant data if user has tenant_id
+        if (userProfile.tenant_id && userProfile.tenants) {
+          const tenantData: Tenant = {
+            tenant_id: userProfile.tenants.tenant_id,
+            hotel_name: userProfile.tenants.hotel_name,
+            plan_id: userProfile.tenants.plan_id,
+            subscription_status: userProfile.tenants.subscription_status as Tenant['subscription_status'],
+            trial_start: userProfile.tenants.trial_start,
+            trial_end: userProfile.tenants.trial_end,
+            created_at: userProfile.tenants.created_at,
+            updated_at: userProfile.tenants.updated_at,
+          };
+
+          setTenant(tenantData);
+          setTrialStatus(calculateTrialStatus(tenantData));
+
+          // Check if onboarding is required for new login
+          checkOnboardingRequired(userData, tenantData);
+        }
+      }
+    } catch (err) {
+      console.error('Error in loadUserProfile:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load user profile');
+    }
+  };
+
   // Load auth state
   const loadAuthState = async () => {
     try {
       setIsLoading(true);
       
-      // Simulate loading from localStorage/session
-      const storedUserId = localStorage.getItem('current_user_id');
-      if (storedUserId) {
-        const mockUser = mockUsers.find(u => u.id === storedUserId);
-        if (mockUser) {
-          setUser(mockUser);
-          
-      // Load tenant if user has tenant_id
-      if (mockUser.tenant_id) {
-        const mockTenant = mockTenants.find(t => t.tenant_id === mockUser.tenant_id);
-        if (mockTenant) {
-          setTenant(mockTenant);
-          setTrialStatus(calculateTrialStatus(mockTenant));
-          
-          // Check if onboarding is required for new login
-          checkOnboardingRequired(mockUser, mockTenant);
-        }
-      }
-        }
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+
+      if (session?.user) {
+        await loadUserProfile(session.user);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Auth loading failed');
@@ -164,28 +175,18 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
       setIsLoading(true);
       setError(null);
 
-      // Mock authentication - in real app, this would call Supabase
-      const mockUser = mockUsers.find(u => u.email === email);
-      if (!mockUser) {
-        throw new Error('Invalid credentials');
+      const { data, error: loginError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (loginError) {
+        throw loginError;
       }
 
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      setUser(mockUser);
-      localStorage.setItem('current_user_id', mockUser.id);
-
-      // Load tenant if user has tenant_id
-      if (mockUser.tenant_id) {
-        const mockTenant = mockTenants.find(t => t.tenant_id === mockUser.tenant_id);
-        if (mockTenant) {
-          setTenant(mockTenant);
-          setTrialStatus(calculateTrialStatus(mockTenant));
-          
-          // Check if onboarding is required (after setting state)
-          setTimeout(() => checkOnboardingRequired(mockUser, mockTenant), 100);
-        }
+      if (data.session) {
+        setSession(data.session);
+        await loadUserProfile(data.user);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
@@ -198,10 +199,11 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
   // Logout function
   const logout = async () => {
     try {
+      await supabase.auth.signOut();
       setUser(null);
       setTenant(null);
+      setSession(null);
       setTrialStatus(null);
-      localStorage.removeItem('current_user_id');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Logout failed');
     }
@@ -226,14 +228,49 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
     return userRoles.includes(requiredRole);
   };
 
+  // Check if user has specific permission (for backward compatibility)
+  const hasPermission = (permission: string): boolean => {
+    if (!user) return false;
+    
+    // Map permissions to roles
+    const permissionRoleMap = {
+      'pos:view_orders': ['POS', 'MANAGER', 'OWNER'],
+      'pos:accept_orders': ['POS', 'MANAGER', 'OWNER'], 
+      'pos:update_status': ['POS', 'MANAGER', 'OWNER'],
+      'kds:view_tickets': ['POS', 'MANAGER', 'OWNER'],
+      'kds:claim_tickets': ['POS', 'MANAGER', 'OWNER'],
+      'kds:complete_tickets': ['POS', 'MANAGER', 'OWNER'],
+    };
+
+    const requiredRoles = permissionRoleMap[permission] || [];
+    return requiredRoles.includes(user.role) || user.role === 'SUPER_ADMIN' || user.role === 'OWNER';
+  };
+
   // Refresh auth state
   const refreshAuth = async () => {
     await loadAuthState();
   };
 
-  // Load auth state on mount
+  // Set up auth state listener
   useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setSession(session);
+      
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (session?.user) {
+          await loadUserProfile(session.user);
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setTenant(null);
+        setTrialStatus(null);
+      }
+    });
+
+    // Load initial auth state
     loadAuthState();
+
+    return () => subscription.unsubscribe();
   }, []);
 
   // Update trial status when tenant changes
@@ -246,12 +283,17 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
   return {
     user,
     tenant,
+    session,
     isLoading,
     error,
     trialStatus,
     login,
     logout,
     hasAccess,
+    hasPermission,
     refreshAuth
   };
 }
+
+// Export useAuth as an alias for backward compatibility
+export const useAuth = useMultiTenantAuth;

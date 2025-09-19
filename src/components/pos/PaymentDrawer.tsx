@@ -17,7 +17,7 @@ import {
   CheckCircle,
   Settings
 } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/useMultiTenantAuth';
 import RoleGuard, { ProtectedButton } from './RoleGuard';
 import { usePOSApi, type Order } from '@/hooks/usePOSApi';
 import { useToast } from '@/hooks/use-toast';
@@ -199,7 +199,7 @@ export default function PaymentDrawer({ order, trigger }: PaymentDrawerProps) {
                 </div>
               </RadioGroup>
 
-              <RoleGuard requiredRole={['manager', 'owner']}>
+              <RoleGuard requiredRole={['MANAGER', 'OWNER']}>
                 <div className="mt-4 pt-4 border-t">
                   <Button variant="outline" className="w-full">
                     <Settings className="h-4 w-4 mr-2" />

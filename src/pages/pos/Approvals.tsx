@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ApprovalDialog, { type ApprovalRequest } from '@/components/pos/ApprovalDialog';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/useMultiTenantAuth';
 import RoleGuard from '@/components/pos/RoleGuard';
 import { 
   AlertTriangle, 
@@ -101,7 +101,7 @@ export default function ApprovalsPage() {
   };
 
   return (
-    <RoleGuard requiredRole={['staff', 'chef', 'manager', 'owner']}>
+    <RoleGuard requiredRole={['STAFF', 'POS', 'MANAGER', 'OWNER']}>
       <div className="p-6 space-y-6">
         {/* Header */}
         <div>

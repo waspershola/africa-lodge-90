@@ -24,7 +24,7 @@ import { usePOSApi, type Order } from '@/hooks/usePOSApi';
 import { useToast } from '@/hooks/use-toast';
 import OrderModal from './OrderModal';
 import PaymentDrawer from './PaymentDrawer';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/useMultiTenantAuth';
 import RoleGuard, { ProtectedButton } from './RoleGuard';
 
 export default function PosLiveFeed() {

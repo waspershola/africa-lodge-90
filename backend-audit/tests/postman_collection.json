@@ -1,0 +1,913 @@
+{
+  "info": {
+    "name": "Hotel Management System API",
+    "description": "Comprehensive API test collection for hotel management system with multi-tenant architecture",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://cwamveqcwccpaiwrzifk.supabase.co",
+      "type": "string"
+    },
+    {
+      "key": "tenant_id",
+      "value": "{{$randomUUID}}",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login - Owner",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Login successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Access token received', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.access_token).to.be.a('string');",
+                  "    pm.collectionVariables.set('access_token', jsonData.access_token);",
+                  "    pm.collectionVariables.set('user_id', jsonData.user.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"owner@hotel.com\",\n  \"password\": \"secure_password_123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/v1/token?grant_type=password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "v1", "token"],
+              "query": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Profile retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('User has tenant_id', function () {",
+                  "    const user = pm.response.json();",
+                  "    pm.expect(user.user_metadata.tenant_id).to.be.a('string');",
+                  "    pm.collectionVariables.set('tenant_id', user.user_metadata.tenant_id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/v1/user",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "v1", "user"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/v1/logout",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "v1", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Super Admin",
+      "item": [
+        {
+          "name": "System Overview",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('System overview retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Contains required metrics', function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('total_tenants');",
+                  "    pm.expect(data).to.have.property('active_trials');",
+                  "    pm.expect(data).to.have.property('system_health');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{base_url}}/rest/v1/rpc/super_admin_overview",
+              "host": ["{{base_url}}"],
+              "path": ["rest", "v1", "rpc", "super_admin_overview"]
+            }
+          }
+        },
+        {
+          "name": "Create Tenant",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Tenant created successfully', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Tenant has required fields', function () {",
+                  "    const tenant = pm.response.json();",
+                  "    pm.expect(tenant).to.have.property('tenant_id');",
+                  "    pm.expect(tenant).to.have.property('hotel_name');",
+                  "    pm.expect(tenant.subscription_status).to.equal('trialing');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hotel_name\": \"Test Hotel {{$randomInt}}\",\n  \"owner_email\": \"test{{$randomInt}}@hotel.com\",\n  \"plan_id\": \"growth\",\n  \"timezone\": \"Africa/Lagos\",\n  \"currency\": \"NGN\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/rest/v1/tenants",
+              "host": ["{{base_url}}"],
+              "path": ["rest", "v1", "tenants"]
+            }
+          }
+        },
+        {
+          "name": "Start Impersonation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Impersonation token received', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Token contains impersonation claim', function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.impersonation_token).to.be.a('string');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"reason\": \"Testing impersonation flow\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/rest/v1/rpc/start_impersonation",
+              "host": ["{{base_url}}"],
+              "path": ["rest", "v1", "rpc", "start_impersonation"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hotel Operations",
+      "item": [
+        {
+          "name": "Room Management",
+          "item": [
+            {
+              "name": "Get All Rooms",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Rooms retrieved successfully', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Rooms have required fields', function () {",
+                      "    const rooms = pm.response.json();",
+                      "    if (rooms.length > 0) {",
+                      "        const room = rooms[0];",
+                      "        pm.expect(room).to.have.property('room_number');",
+                      "        pm.expect(room).to.have.property('status');",
+                      "        pm.expect(room).to.have.property('room_type');",
+                      "    }",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/rest/v1/rooms?select=*,room_type(*)",
+                  "host": ["{{base_url}}"],
+                  "path": ["rest", "v1", "rooms"],
+                  "query": [
+                    {
+                      "key": "select",
+                      "value": "*,room_type(*)"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Create Room",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Room created successfully', function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"room_number\": \"{{$randomInt}}\",\n  \"room_type_id\": \"standard\",\n  \"floor\": 1,\n  \"status\": \"available\",\n  \"housekeeping_status\": \"clean\",\n  \"tenant_id\": \"{{tenant_id}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/rest/v1/rooms",
+                  "host": ["{{base_url}}"],
+                  "path": ["rest", "v1", "rooms"]
+                }
+              }
+            },
+            {
+              "name": "Update Room Status",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"occupied\",\n  \"guest_id\": \"{{$randomUUID}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/rest/v1/rooms?room_number=eq.101",
+                  "host": ["{{base_url}}"],
+                  "path": ["rest", "v1", "rooms"],
+                  "query": [
+                    {
+                      "key": "room_number",
+                      "value": "eq.101"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reservations",
+          "item": [
+            {
+              "name": "Create Reservation",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Reservation created', function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test('Reservation has confirmation number', function () {",
+                      "    const reservation = pm.response.json();",
+                      "    pm.expect(reservation).to.have.property('confirmation_number');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"guest_name\": \"John Doe\",\n  \"guest_email\": \"john.doe@email.com\",\n  \"guest_phone\": \"+234{{$randomInt}}\",\n  \"room_type_id\": \"standard\",\n  \"check_in_date\": \"2024-12-01\",\n  \"check_out_date\": \"2024-12-03\",\n  \"adults\": 2,\n  \"children\": 0,\n  \"special_requests\": \"Late check-in\",\n  \"tenant_id\": \"{{tenant_id}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/rest/v1/reservations",
+                  "host": ["{{base_url}}"],
+                  "path": ["rest", "v1", "reservations"]
+                }
+              }
+            },
+            {
+              "name": "Get Reservations by Date Range",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/rest/v1/reservations?check_in_date=gte.2024-12-01&check_out_date=lte.2024-12-31&select=*,room_type(*)",
+                  "host": ["{{base_url}}"],
+                  "path": ["rest", "v1", "reservations"],
+                  "query": [
+                    {
+                      "key": "check_in_date",
+                      "value": "gte.2024-12-01"
+                    },
+                    {
+                      "key": "check_out_date",
+                      "value": "lte.2024-12-31"
+                    },
+                    {
+                      "key": "select",
+                      "value": "*,room_type(*)"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Billing & Payments",
+          "item": [
+            {
+              "name": "Get Guest Folio",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Folio retrieved', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Folio has charges and balance', function () {",
+                      "    const folio = pm.response.json();",
+                      "    if (folio.length > 0) {",
+                      "        pm.expect(folio[0]).to.have.property('total_charges');",
+                      "        pm.expect(folio[0]).to.have.property('balance');",
+                      "    }",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/rest/v1/folios?room_id=eq.{{$randomUUID}}&select=*,folio_charges(*)",
+                  "host": ["{{base_url}}"],
+                  "path": ["rest", "v1", "folios"],
+                  "query": [
+                    {
+                      "key": "room_id",
+                      "value": "eq.{{$randomUUID}}"
+                    },
+                    {
+                      "key": "select",
+                      "value": "*,folio_charges(*)"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Add Folio Charge",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"folio_id\": \"{{$randomUUID}}\",\n  \"description\": \"Room Service\",\n  \"amount\": 2500.00,\n  \"charge_type\": \"service\",\n  \"quantity\": 1,\n  \"unit_price\": 2500.00,\n  \"tenant_id\": \"{{tenant_id}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/rest/v1/folio_charges",
+                  "host": ["{{base_url}}"],
+                  "path": ["rest", "v1", "folio_charges"]
+                }
+              }
+            },
+            {
+              "name": "Record Payment",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"folio_id\": \"{{$randomUUID}}\",\n  \"amount\": 5000.00,\n  \"payment_method\": \"cash\",\n  \"reference_number\": \"CASH{{$randomInt}}\",\n  \"notes\": \"Cash payment at checkout\",\n  \"tenant_id\": \"{{tenant_id}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/rest/v1/payments",
+                  "host": ["{{base_url}}"],
+                  "path": ["rest", "v1", "payments"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "QR Services",
+      "item": [
+        {
+          "name": "Generate QR Code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('QR code generated', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('QR code has token', function () {",
+                  "    const qr = pm.response.json();",
+                  "    pm.expect(qr).to.have.property('qr_token');",
+                  "    pm.expect(qr).to.have.property('qr_url');",
+                  "    pm.collectionVariables.set('qr_token', qr.qr_token);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"room_id\": \"{{$randomUUID}}\",\n  \"room_number\": \"101\",\n  \"services_enabled\": [\"housekeeping\", \"maintenance\", \"room_service\"],\n  \"expires_at\": \"2024-12-31T23:59:59Z\",\n  \"tenant_id\": \"{{tenant_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/rest/v1/qr_codes",
+              "host": ["{{base_url}}"],
+              "path": ["rest", "v1", "qr_codes"]
+            }
+          }
+        },
+        {
+          "name": "Scan QR Code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('QR scan successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Services available', function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('services_enabled');",
+                  "    pm.expect(data.services_enabled).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/rest/v1/qr_codes/{{qr_token}}",
+              "host": ["{{base_url}}"],
+              "path": ["rest", "v1", "qr_codes", "{{qr_token}}"]
+            }
+          }
+        },
+        {
+          "name": "Submit QR Service Request",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Service request created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Request has tracking ID', function () {",
+                  "    const order = pm.response.json();",
+                  "    pm.expect(order).to.have.property('id');",
+                  "    pm.expect(order).to.have.property('status');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service_type\": \"housekeeping\",\n  \"request_details\": {\n    \"type\": \"cleaning\",\n    \"priority\": \"normal\",\n    \"notes\": \"Please clean the bathroom\",\n    \"items\": [\"towels\", \"toiletries\"]\n  },\n  \"guest_session_id\": \"guest_{{$randomInt}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/rest/v1/qr_codes/{{qr_token}}/scan",
+              "host": ["{{base_url}}"],
+              "path": ["rest", "v1", "qr_codes", "{{qr_token}}", "scan"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Staff Operations",
+      "item": [
+        {
+          "name": "Housekeeping Tasks",
+          "item": [
+            {
+              "name": "Get Pending Tasks",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/rest/v1/housekeeping_tasks?status=eq.pending&select=*,room(*)",
+                  "host": ["{{base_url}}"],
+                  "path": ["rest", "v1", "housekeeping_tasks"],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "eq.pending"
+                    },
+                    {
+                      "key": "select",
+                      "value": "*,room(*)"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Assign Task",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"assigned\",\n  \"assigned_to\": \"{{user_id}}\",\n  \"assigned_at\": \"{{$isoTimestamp}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/rest/v1/housekeeping_tasks?id=eq.{{$randomUUID}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["rest", "v1", "housekeeping_tasks"],
+                  "query": [
+                    {
+                      "key": "id",
+                      "value": "eq.{{$randomUUID}}"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "POS Orders",
+          "item": [
+            {
+              "name": "Create POS Order",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('POS order created', function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test('Order has number', function () {",
+                      "    const order = pm.response.json();",
+                      "    pm.expect(order).to.have.property('order_number');",
+                      "    pm.expect(order).to.have.property('total_amount');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"room_id\": \"{{$randomUUID}}\",\n  \"order_type\": \"room_service\",\n  \"items\": [\n    {\n      \"menu_item_id\": \"{{$randomUUID}}\",\n      \"name\": \"Club Sandwich\",\n      \"quantity\": 2,\n      \"unit_price\": 1500.00,\n      \"total_price\": 3000.00,\n      \"modifications\": [\"No onions\"]\n    }\n  ],\n  \"total_amount\": 3000.00,\n  \"special_instructions\": \"Extra mayo on the side\",\n  \"tenant_id\": \"{{tenant_id}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/rest/v1/pos_orders",
+                  "host": ["{{base_url}}"],
+                  "path": ["rest", "v1", "pos_orders"]
+                }
+              }
+            },
+            {
+              "name": "Update Order Status",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"preparing\",\n  \"assigned_chef\": \"{{user_id}}\",\n  \"estimated_completion\": \"{{$isoTimestamp}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/rest/v1/pos_orders?id=eq.{{$randomUUID}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["rest", "v1", "pos_orders"],
+                  "query": [
+                    {
+                      "key": "id",
+                      "value": "eq.{{$randomUUID}}"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Webhooks",
+      "item": [
+        {
+          "name": "Paystack Webhook",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Webhook processed', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-paystack-signature",
+                "value": "{{paystack_signature}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"charge.success\",\n  \"data\": {\n    \"id\": 302961,\n    \"domain\": \"live\",\n    \"status\": \"success\",\n    \"reference\": \"qTPrJoy9Bx\",\n    \"amount\": 10000,\n    \"message\": null,\n    \"gateway_response\": \"Successful\",\n    \"paid_at\": \"2023-01-01T10:00:00.000Z\",\n    \"created_at\": \"2023-01-01T09:45:00.000Z\",\n    \"channel\": \"card\",\n    \"currency\": \"NGN\",\n    \"metadata\": {\n      \"tenant_id\": \"{{tenant_id}}\",\n      \"subscription_id\": \"{{$randomUUID}}\",\n      \"plan_id\": \"growth\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/functions/v1/paystack-webhook",
+              "host": ["{{base_url}}"],
+              "path": ["functions", "v1", "paystack-webhook"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Offline Sync",
+      "item": [
+        {
+          "name": "Sync Actions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Sync completed', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Results provided for all actions', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('results');",
+                  "    pm.expect(response).to.have.property('sync_token');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"last_sync_token\": \"{{$randomUUID}}\",\n  \"actions\": [\n    {\n      \"id\": \"{{$randomUUID}}\",\n      \"table_name\": \"pos_orders\",\n      \"operation\": \"INSERT\",\n      \"data\": {\n        \"room_id\": \"{{$randomUUID}}\",\n        \"order_type\": \"room_service\",\n        \"total_amount\": 2500.00,\n        \"status\": \"pending\"\n      },\n      \"idempotency_key\": \"order_{{$randomInt}}\",\n      \"created_at\": {{$timestamp}}\n    }\n  ],\n  \"device_id\": \"device_{{$randomInt}}\",\n  \"sync_timestamp\": {{$timestamp}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/rest/v1/rpc/offline_sync",
+              "host": ["{{base_url}}"],
+              "path": ["rest", "v1", "rpc", "offline_sync"]
+            }
+          }
+        },
+        {
+          "name": "Get Last Sync Token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/rest/v1/rpc/get_last_sync_token",
+              "host": ["{{base_url}}"],
+              "path": ["rest", "v1", "rpc", "get_last_sync_token"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Generate test data",
+          "pm.globals.set('test_email', 'test' + Math.floor(Math.random() * 10000) + '@hotel.com');",
+          "pm.globals.set('test_phone', '+234' + Math.floor(Math.random() * 1000000000));"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Global test for response time",
+          "pm.test('Response time is less than 5000ms', function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+          "});",
+          "",
+          "// Log response for debugging",
+          "if (pm.response.code >= 400) {",
+          "    console.log('Error Response:', pm.response.json());",
+          "}"
+        ]
+      }
+    }
+  ]
+}

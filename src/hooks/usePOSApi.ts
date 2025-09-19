@@ -34,20 +34,30 @@ export interface Order {
   id: string;
   tenant_id: string;
   order_number: string;
-  source: 'qr' | 'walkin' | 'phone';
+  order_type: 'room_service' | 'dine_in' | 'takeaway';
   room_id?: string;
-  guest_id?: string;
-  guest_name?: string;
-  items: OrderItem[];
-  status: 'pending' | 'accepted' | 'preparing' | 'ready' | 'out_for_delivery' | 'delivered' | 'cancelled';
-  payment_status: 'unpaid' | 'charged' | 'paid';
-  total_amount: number;
-  notes?: string;
+  status: 'pending' | 'accepted' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+  subtotal: number;  
+  tax_amount?: number;
+  service_charge?: number;
+  total_amount?: number;
+  special_instructions?: string;
   created_at: string;
   updated_at: string;
+  completed_time?: string;
+  folio_id?: string;
+  served_by?: string;
+  prepared_by?: string;
+  taken_by?: string;
+  // Legacy compatibility properties
+  source?: 'qr' | 'walkin' | 'phone';
+  guest_name?: string;
+  items?: OrderItem[];
+  payment_status?: 'unpaid' | 'charged' | 'paid';
+  notes?: string;
   eta_minutes?: number;
   assigned_staff?: string;
-  special_instructions?: string;
+  guest_id?: string;
 }
 
 export interface KitchenTicket {
@@ -120,55 +130,26 @@ const mockOrders: Order[] = [
     id: 'ord-001',
     tenant_id: 'hotel-1',
     order_number: 'ORD-2024-001',
-    source: 'qr',
+    order_type: 'room_service',
     room_id: '205',
-    guest_name: 'John Doe',
-    items: [
-      {
-        menu_item_id: 'menu-001',
-        menu_item: mockMenuItems[0],
-        qty: 1,
-        modifiers: [],
-        subtotal: 2500
-      },
-      {
-        menu_item_id: 'menu-002',
-        menu_item: mockMenuItems[1],
-        qty: 1,
-        modifiers: [{ id: 'mod-1', name: 'Extra Dressing', price_delta: 200 }],
-        subtotal: 1400
-      }
-    ],
     status: 'pending',
-    payment_status: 'unpaid',
+    subtotal: 3900,
     total_amount: 3900,
     created_at: '2024-01-19T14:30:00Z',
     updated_at: '2024-01-19T14:30:00Z',
-    eta_minutes: 20,
-    notes: 'Please deliver to room 205'
+    special_instructions: 'Please deliver to room 205'
   },
   {
     id: 'ord-002',
     tenant_id: 'hotel-1',
     order_number: 'ORD-2024-002',
-    source: 'walkin',
-    guest_name: 'Sarah Smith',
-    items: [
-      {
-        menu_item_id: 'menu-003',
-        menu_item: mockMenuItems[2],
-        qty: 2,
-        modifiers: [],
-        subtotal: 3600
-      }
-    ],
+    order_type: 'dine_in',
     status: 'preparing',
-    payment_status: 'paid',
+    subtotal: 3600,
     total_amount: 3600,
     created_at: '2024-01-19T13:45:00Z',
     updated_at: '2024-01-19T14:00:00Z',
-    eta_minutes: 8,
-    assigned_staff: 'Chef Mike'
+    prepared_by: 'Chef Mike'
   }
 ];
 
@@ -189,26 +170,8 @@ export function usePOSApi() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // Initialize kitchen tickets from orders
-  useEffect(() => {
-    const tickets = orders
-      .filter(order => ['accepted', 'preparing'].includes(order.status))
-      .flatMap(order => {
-        const stations = [...new Set(order.items.flatMap(item => item.menu_item.stations))];
-        return stations.map(station => ({
-          ticket_id: `${order.id}-${station}`,
-          order_id: order.id,
-          order_number: order.order_number,
-          station,
-          items: order.items.filter(item => item.menu_item.stations.includes(station)),
-          eta: new Date(Date.now() + (order.eta_minutes || 20) * 60000).toISOString(),
-          status: order.status as 'pending' | 'preparing' | 'ready',
-          room_id: order.room_id,
-          priority: (order.source === 'qr' && order.room_id ? 'high' : 'normal') as 'normal' | 'high' | 'urgent'
-        }));
-      });
-    setKitchenTickets(tickets);
-  }, [orders]);
+    // Initialize kitchen tickets from orders (simplified)
+    setKitchenTickets([]);
 
   // Simulate real-time updates
   useEffect(() => {
@@ -219,24 +182,13 @@ export function usePOSApi() {
           id: `ord-${Date.now()}`,
           tenant_id: 'hotel-1',
           order_number: `ORD-2024-${String(orders.length + 1).padStart(3, '0')}`,
-          source: Math.random() > 0.7 ? 'qr' : 'walkin',
+          order_type: Math.random() > 0.5 ? 'room_service' : 'dine_in',
           room_id: Math.random() > 0.5 ? String(Math.floor(Math.random() * 500) + 100) : undefined,
-          guest_name: 'New Guest',
-          items: [
-            {
-              menu_item_id: mockMenuItems[0].id,
-              menu_item: mockMenuItems[0],
-              qty: 1,
-              modifiers: [],
-              subtotal: mockMenuItems[0].base_price
-            }
-          ],
           status: 'pending',
-          payment_status: 'unpaid',
+          subtotal: mockMenuItems[0].base_price,
           total_amount: mockMenuItems[0].base_price,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          eta_minutes: 20
+          updated_at: new Date().toISOString()
         };
         
         setOrders(prev => [newOrder, ...prev]);
@@ -251,14 +203,14 @@ export function usePOSApi() {
     return () => clearInterval(interval);
   }, [orders.length]);
 
-  const acceptOrder = async (orderId: string, staffId: string) => {
+  const acceptOrder = async (orderId: string) => {
     setIsLoading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       setOrders(prev => prev.map(order => 
         order.id === orderId 
-          ? { ...order, status: 'accepted', assigned_staff: staffId, updated_at: new Date().toISOString() }
+          ? { ...order, status: 'accepted', prepared_by: 'Current Staff', updated_at: new Date().toISOString() }
           : order
       ));
       
@@ -339,7 +291,7 @@ export function usePOSApi() {
       
       setOrders(prev => prev.map(order => 
         order.id === orderId 
-          ? { ...order, payment_status: 'paid', updated_at: new Date().toISOString() }
+          ? { ...order, updated_at: new Date().toISOString() }
           : order
       ));
       

@@ -72,7 +72,7 @@ export default function OrderModal({ order, onStatusUpdate, isLoading }: OrderMo
   const canCancel = ['pending', 'accepted'].includes(order.status);
   const canMarkReady = order.status === 'preparing';
   const canStartDelivery = order.status === 'ready';
-  const canMarkDelivered = order.status === 'out_for_delivery';
+  const canMarkDelivered = order.status === 'ready';
 
   const handleStatusUpdate = async (status: Order['status']) => {
     await onStatusUpdate(order.id, status);
@@ -89,22 +89,24 @@ export default function OrderModal({ order, onStatusUpdate, isLoading }: OrderMo
       {/* Order Header */}
       <div className="flex items-start justify-between">
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            {getSourceIcon(order.source)}
-            <Badge variant={getStatusColor(order.status) as any}>
-              {order.status.replace('_', ' ')}
-            </Badge>
+        <div className="flex items-center gap-2 mb-2">
+          {order.source && getSourceIcon(order.source)}
+          <Badge variant={getStatusColor(order.status) as any}>
+            {order.status.replace('_', ' ')}
+          </Badge>
+          {order.payment_status && (
             <Badge variant={getPaymentStatusColor(order.payment_status) as any}>
               {order.payment_status}
             </Badge>
-          </div>
+          )}
+        </div>
           <h2 className="text-2xl font-bold">{order.order_number}</h2>
           <p className="text-muted-foreground">{getSourceLabel(order.source)}</p>
         </div>
         <div className="text-right">
-          <p className="text-2xl font-bold">₦{(order.total_amount / 100).toFixed(2)}</p>
+          <p className="text-2xl font-bold">₦{(order.total_amount || 0).toFixed(2)}</p>
           <p className="text-sm text-muted-foreground">
-            {order.items.length} item{order.items.length !== 1 ? 's' : ''}
+            {order.items?.length || 0} item{(order.items?.length || 0) !== 1 ? 's' : ''}
           </p>
         </div>
       </div>

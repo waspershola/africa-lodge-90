@@ -230,7 +230,7 @@ export function useMaintenanceApi() {
     return () => clearInterval(interval);
   }, []);
 
-  const acceptWorkOrder = async (workOrderId: string, staffId: string) => {
+  const acceptWorkOrder = async (workOrderId: string) => {
     setIsLoading(true);
     try {
       // Simulate API call
@@ -238,7 +238,7 @@ export function useMaintenanceApi() {
       
       setWorkOrders(prev => prev.map(wo => 
         wo.id === workOrderId 
-          ? { ...wo, status: 'in-progress', assignedTo: staffId, updatedAt: new Date().toISOString() }
+          ? { ...wo, status: 'in-progress', assigned_to: 'Current User', updated_at: new Date().toISOString() }
           : wo
       ));
       
@@ -261,10 +261,8 @@ export function useMaintenanceApi() {
     workOrderId: string, 
     completionData: {
       notes?: string;
-      partsUsed?: Array<{ partId: string; partName: string; quantity: number; cost: number }>;
-      photos?: string[];
-      actualTime?: number;
-      rootCause?: string;
+      actualHours?: number;
+      actualCost?: number;
     }
   ) => {
     setIsLoading(true);
@@ -276,23 +274,14 @@ export function useMaintenanceApi() {
           ? { 
               ...wo, 
               status: 'completed',
-              completedAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              ...completionData
+              completed_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              completion_notes: completionData.notes,
+              actual_hours: completionData.actualHours,
+              actual_cost: completionData.actualCost
             }
           : wo
       ));
-
-      // Update supply inventory if parts were used
-      if (completionData.partsUsed && completionData.partsUsed.length > 0) {
-        setSupplies(prev => prev.map(supply => {
-          const usedPart = completionData.partsUsed?.find(part => part.partId === supply.id);
-          if (usedPart) {
-            return { ...supply, currentStock: supply.currentStock - usedPart.quantity };
-          }
-          return supply;
-        }));
-      }
 
       setStats(prev => ({
         ...prev,

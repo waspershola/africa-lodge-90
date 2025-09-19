@@ -621,3 +621,56 @@ export const useBroadcastMessage = () => {
   });
 };
 
+// SA Support hooks
+export const useCreateAnnouncement = () => {
+  return useMutation({
+    mutationFn: (data: any) => Promise.resolve(),
+  });
+};
+
+export const useAnnouncements = () => {
+  return useQuery({
+    queryKey: ['sa', 'announcements'],
+    queryFn: () => Promise.resolve([]),
+  });
+};
+
+// SA Templates hooks  
+export const useTemplates = () => {
+  return useQuery({
+    queryKey: ['sa', 'templates'], 
+    queryFn: () => Promise.resolve([]),
+  });
+};
+
+export const useCreateTemplate = () => {
+  return useMutation({
+    mutationFn: (data: any) => Promise.resolve(),
+  });
+};
+
+export const useUpdateTemplate = () => {
+  return useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: any }) => Promise.resolve(),
+  });
+};
+
+export const useDeleteTemplate = () => {
+  return useMutation({
+    mutationFn: ({ id }: { id: string }) => Promise.resolve(),
+  });
+};
+
+// Additional SA hooks needed
+export const useToggleFlag = () => {
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => Promise.resolve(),
+  });
+};
+
+export const useUpdateRollout = () => {
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => Promise.resolve(),
+  });
+};
+

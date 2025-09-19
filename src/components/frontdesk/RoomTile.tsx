@@ -114,9 +114,9 @@ export const RoomTile = ({ room, isSelected, onClick }: RoomTileProps) => {
           <div className="text-center min-h-[2.5rem] space-y-1">
             <div 
               className={cn("text-xs font-normal leading-tight text-muted-foreground")}
-              title={room.guest.name}
+              title={room.guest}
             >
-              {room.guest.name.length > 12 ? room.guest.name.substring(0, 12) + '...' : room.guest.name}
+              {room.guest.length > 12 ? room.guest.substring(0, 12) + '...' : room.guest}
             </div>
             {room.checkIn && (
               <div className={cn("text-xs text-muted-foreground")}>

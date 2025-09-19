@@ -1,6 +1,6 @@
 import { createContext, useContext, ReactNode } from 'react';
 import { useMultiTenantAuth, UseMultiTenantAuthReturn } from '@/hooks/useMultiTenantAuth';
-import { useAuditLog } from '@/hooks/useAuditLog';
+import { supabase } from '@/integrations/supabase/client';
 
 const MultiTenantAuthContext = createContext<UseMultiTenantAuthReturn | undefined>(undefined);
 
@@ -10,7 +10,30 @@ interface MultiTenantAuthProviderProps {
 
 export function MultiTenantAuthProvider({ children }: MultiTenantAuthProviderProps) {
   const auth = useMultiTenantAuth();
-  const auditLog = useAuditLog();
+
+  // Create audit logging function without circular dependency
+  const logAuditEvent = async (action: string, description: string, metadata?: Record<string, any>) => {
+    try {
+      const auditEntry = {
+        action,
+        resource_type: 'AUTH',
+        description,
+        actor_id: auth.user?.id,
+        actor_email: auth.user?.email,
+        actor_role: auth.user?.role,
+        tenant_id: auth.tenant?.tenant_id,
+        user_agent: navigator.userAgent,
+        metadata: {
+          timestamp: new Date().toISOString(),
+          ...metadata
+        }
+      };
+
+      await supabase.from('audit_log').insert([auditEntry]);
+    } catch (err) {
+      console.error('Error logging audit event:', err);
+    }
+  };
 
   // Enhanced auth object with audit logging
   const enhancedAuth = {
@@ -20,9 +43,15 @@ export function MultiTenantAuthProvider({ children }: MultiTenantAuthProviderPro
     login: async (email: string, password: string) => {
       try {
         await auth.login(email, password);
-        await auditLog.logLogin('email');
+        await logAuditEvent('LOGIN', `User logged in via email`, {
+          login_method: 'email',
+          session_start: new Date().toISOString()
+        });
       } catch (error: any) {
-        await auditLog.logFailedLogin(email, error.message || 'Unknown error');
+        await logAuditEvent('LOGIN_FAILED', `Login failed: ${error.message || 'Unknown error'}`, {
+          attempted_email: email,
+          failure_reason: error.message || 'Unknown error'
+        });
         throw error;
       }
     },
@@ -30,7 +59,9 @@ export function MultiTenantAuthProvider({ children }: MultiTenantAuthProviderPro
     // Override logout to add audit logging
     logout: async () => {
       try {
-        await auditLog.logLogout();
+        await logAuditEvent('LOGOUT', 'User logged out', {
+          session_end: new Date().toISOString()
+        });
         await auth.logout();
       } catch (error) {
         console.error('Logout error:', error);

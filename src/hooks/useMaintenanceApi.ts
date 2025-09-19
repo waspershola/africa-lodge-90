@@ -307,7 +307,7 @@ export function useMaintenanceApi() {
       
       const newWorkOrder: WorkOrder = {
         id: `wo-${Date.now()}`,
-        workOrderNumber: `WO${workOrderData.roomId || 'FAC'}-${String(workOrders.length + 1).padStart(2, '0')}`,
+        work_order_number: `WO${workOrderData.roomId || 'FAC'}-${String(workOrders.length + 1).padStart(2, '0')}`,
         title: workOrderData.title || 'New Work Order',
         description: workOrderData.description,
         category: workOrderData.category || 'general',
@@ -315,7 +315,7 @@ export function useMaintenanceApi() {
         status: 'pending',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        estimatedTime: workOrderData.estimatedTime,
+        estimated_hours: workOrderData.estimatedTime,
         ...workOrderData
       };
       

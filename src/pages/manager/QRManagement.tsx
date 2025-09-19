@@ -22,7 +22,8 @@ import {
   Coffee,
   Utensils,
   Bed,
-  Car
+  Car,
+  Plus
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -32,10 +33,60 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
+import { useToast } from '@/components/ui/use-toast';
+
+// Import our functional dialogs
+import { QRCodeGenerationDialog } from '@/components/manager/qr/QRCodeGenerationDialog';
+import { QRCodePreviewDialog } from '@/components/manager/qr/QRCodePreviewDialog';
+import { ServiceConfigDialog } from '@/components/manager/qr/ServiceConfigDialog';
+import { FraudAlertDialog } from '@/components/manager/qr/FraudAlertDialog';
 
 const QRManagement = () => {
   const [selectedFloor, setSelectedFloor] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [serviceSettings, setServiceSettings] = useState([
+    {
+      service: 'Room Service',
+      icon: Utensils,
+      enabled: true,
+      pricing: 'Dynamic',
+      availability: '24/7',
+      surcharge: 'Late night +20%'
+    },
+    {
+      service: 'Housekeeping',
+      icon: Bed,
+      enabled: true,
+      pricing: 'Free',
+      availability: '8AM - 6PM',
+      surcharge: 'None'
+    },
+    {
+      service: 'Concierge',
+      icon: Users,
+      enabled: true,
+      pricing: 'Free',
+      availability: '24/7',
+      surcharge: 'None'
+    },
+    {
+      service: 'Transport',
+      icon: Car,
+      enabled: true,
+      pricing: 'Fixed Rate',
+      availability: '6AM - 11PM',
+      surcharge: 'Airport +50%'
+    },
+    {
+      service: 'Spa',
+      icon: Coffee,
+      enabled: false,
+      pricing: 'Premium',
+      availability: '10AM - 8PM',
+      surcharge: 'Weekend +15%'
+    }
+  ]);
+  const { toast } = useToast();
 
   const roomQRCodes = [
     {
@@ -127,49 +178,6 @@ const QRManagement = () => {
     }
   ];
 
-  const serviceSettings = [
-    {
-      service: 'Room Service',
-      icon: Utensils,
-      enabled: true,
-      pricing: 'Dynamic',
-      availability: '24/7',
-      surcharge: 'Late night +20%'
-    },
-    {
-      service: 'Housekeeping',
-      icon: Bed,
-      enabled: true,
-      pricing: 'Free',
-      availability: '8AM - 6PM',
-      surcharge: 'None'
-    },
-    {
-      service: 'Concierge',
-      icon: Users,
-      enabled: true,
-      pricing: 'Free',
-      availability: '24/7',
-      surcharge: 'None'
-    },
-    {
-      service: 'Transport',
-      icon: Car,
-      enabled: true,
-      pricing: 'Fixed Rate',
-      availability: '6AM - 11PM',
-      surcharge: 'Airport +50%'
-    },
-    {
-      service: 'Spa',
-      icon: Coffee,
-      enabled: false,
-      pricing: 'Premium',
-      availability: '10AM - 8PM',
-      surcharge: 'Weekend +15%'
-    }
-  ];
-
   const auditLogs = [
     {
       id: 1,
@@ -243,8 +251,14 @@ const QRManagement = () => {
             Live Monitor
           </Button>
           <Button>
-            <QrCode className="h-4 w-4 mr-2" />
-            Generate Batch QR
+            <QRCodeGenerationDialog 
+              trigger={
+                <>
+                  <QrCode className="h-4 w-4 mr-2" />
+                  Generate Batch QR
+                </>
+              }
+            />
           </Button>
         </div>
       </motion.div>
@@ -427,19 +441,51 @@ const QRManagement = () => {
 
                         {/* Actions */}
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline" className="flex-1">
-                            <Eye className="h-4 w-4 mr-1" />
-                            Preview
-                          </Button>
-                          <Button size="sm" variant="outline" className="flex-1">
+                          <QRCodePreviewDialog
+                            trigger={
+                              <Button size="sm" variant="outline" className="flex-1">
+                                <Eye className="h-4 w-4 mr-1" />
+                                Preview
+                              </Button>
+                            }
+                            room={room.room}
+                            services={room.services}
+                            pricing={room.pricing}
+                            scans={room.scans}
+                            revenue={room.revenue}
+                          />
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="flex-1"
+                            onClick={() => toast({
+                              title: `Room ${room.room} Configuration`,
+                              description: "QR code settings updated successfully.",
+                            })}
+                          >
                             <Settings className="h-4 w-4 mr-1" />
                             Configure
                           </Button>
-                          <Button size="sm" variant="outline">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => toast({
+                              title: `Room ${room.room} QR Regenerated`,
+                              description: "New QR code generated. Previous code deactivated.",
+                            })}
+                          >
                             <RefreshCw className="h-4 w-4" />
                           </Button>
                           {room.status === 'active' && (
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => toast({
+                                title: `Room ${room.room} QR Deactivated`,
+                                description: "QR code has been temporarily disabled.",
+                                variant: "destructive"
+                              })}
+                            >
                               <XCircle className="h-4 w-4" />
                             </Button>
                           )}
@@ -503,7 +549,14 @@ const QRManagement = () => {
                           <Button size="sm" variant="outline">
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button size="sm" variant="outline">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => toast({
+                              title: "Request Override",
+                              description: `Manager override applied to request ${request.id}`,
+                            })}
+                          >
                             Override
                           </Button>
                         </div>
@@ -548,10 +601,34 @@ const QRManagement = () => {
                       </div>
                       
                       <div className="flex items-center gap-4">
-                        <Switch checked={service.enabled} />
-                        <Button size="sm" variant="outline">
-                          Configure
-                        </Button>
+                        <Switch 
+                          checked={service.enabled} 
+                          onCheckedChange={(checked) => {
+                            setServiceSettings(prev => prev.map(s => 
+                              s.service === service.service 
+                                ? { ...s, enabled: checked }
+                                : s
+                            ));
+                            toast({
+                              title: `${service.service} ${checked ? 'Enabled' : 'Disabled'}`,
+                              description: `Service availability updated across all QR codes.`,
+                            });
+                          }}
+                        />
+                        <ServiceConfigDialog
+                          trigger={
+                            <Button size="sm" variant="outline">
+                              Configure
+                            </Button>
+                          }
+                          serviceName={service.service}
+                          currentConfig={{
+                            enabled: service.enabled,
+                            pricing: service.pricing,
+                            availability: service.availability,
+                            surcharge: service.surcharge
+                          }}
+                        />
                       </div>
                     </motion.div>
                   ))}
@@ -582,6 +659,47 @@ const QRManagement = () => {
                   <Button>
                     Configure Pricing Rules
                   </Button>
+                  
+                  {/* Fraud Detection Alerts */}
+                  <div className="mt-8">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-medium">Security & Fraud Detection</h3>
+                      <FraudAlertDialog 
+                        trigger={
+                          <Button variant="outline">
+                            <Shield className="h-4 w-4 mr-2" />
+                            View Fraud Alerts
+                          </Button>
+                        }
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <Card className="border-orange-200 bg-orange-50">
+                        <CardContent className="p-4 text-center">
+                          <AlertTriangle className="h-8 w-8 text-orange-600 mx-auto mb-2" />
+                          <div className="text-2xl font-bold text-orange-600">3</div>
+                          <div className="text-sm text-orange-700">Active Fraud Alerts</div>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card>
+                        <CardContent className="p-4 text-center">
+                          <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                          <div className="text-2xl font-bold text-green-600">97.9%</div>
+                          <div className="text-sm text-muted-foreground">System Integrity</div>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card>
+                        <CardContent className="p-4 text-center">
+                          <Clock className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                          <div className="text-2xl font-bold text-blue-600">8.2 mins</div>
+                          <div className="text-sm text-muted-foreground">Avg Response Time</div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>

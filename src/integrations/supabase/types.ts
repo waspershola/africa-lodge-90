@@ -142,6 +142,107 @@ export type Database = {
           },
         ]
       }
+      menu_categories: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          id: string
+          is_active: boolean | null
+          name: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_categories_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
+      menu_items: {
+        Row: {
+          category_id: string
+          created_at: string | null
+          description: string | null
+          dietary_info: string[] | null
+          id: string
+          image_url: string | null
+          is_available: boolean | null
+          name: string
+          preparation_time: number | null
+          price: number
+          tags: string[] | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          category_id: string
+          created_at?: string | null
+          description?: string | null
+          dietary_info?: string[] | null
+          id?: string
+          image_url?: string | null
+          is_available?: boolean | null
+          name: string
+          preparation_time?: number | null
+          price: number
+          tags?: string[] | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          category_id?: string
+          created_at?: string | null
+          description?: string | null
+          dietary_info?: string[] | null
+          id?: string
+          image_url?: string | null
+          is_available?: boolean | null
+          name?: string
+          preparation_time?: number | null
+          price?: number
+          tags?: string[] | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "menu_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number

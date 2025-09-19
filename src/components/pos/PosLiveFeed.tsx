@@ -21,10 +21,13 @@ import {
   Users
 } from 'lucide-react';
 import { usePOSApi, type Order } from '@/hooks/usePOSApi';
+import { useToast } from '@/hooks/use-toast';
 import OrderModal from './OrderModal';
+import PaymentDrawer from './PaymentDrawer';
 
 export default function PosLiveFeed() {
   const { orders, stats, isLoading, acceptOrder, updateOrderStatus } = usePOSApi();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -319,6 +322,17 @@ export default function PosLiveFeed() {
                             >
                               Mark Delivered
                             </Button>
+                          )}
+
+                          {order.status === 'delivered' && order.payment_status === 'unpaid' && (
+                            <PaymentDrawer
+                              order={order}
+                              trigger={
+                                <Button size="sm" variant="default">
+                                  Process Payment
+                                </Button>
+                              }
+                            />
                           )}
 
                           <Dialog>

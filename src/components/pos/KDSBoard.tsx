@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { 
   Clock, 
@@ -191,131 +190,132 @@ export default function KDSBoard() {
       </div>
 
       {/* Station Boards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
         {Object.entries(stationGroups).map(([station, tickets]) => (
-          <Card key={station} className={`${getStationColor(station)} border-2`}>
-            <CardHeader>
+          <Card key={station} className={`${getStationColor(station)} border-2 h-fit`}>
+            <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg capitalize">
                 {getStationIcon(station)}
                 {station}
                 <Badge variant="outline">{tickets.length}</Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[600px]">
-                <div className="space-y-4">
-                  {tickets.map(ticket => {
-                    const priority = getTicketPriority(ticket);
-                    const timeRemaining = getTimeRemaining(ticket);
-                    const timeElapsed = getTimeElapsed(ticket);
-                    
-                    return (
-                      <Card key={ticket.ticket_id} className={`border-2 ${
-                        priority === 'urgent' ? 'border-red-500 bg-red-50' :
-                        priority === 'high' ? 'border-orange-500 bg-orange-50' :
-                        'border-gray-200'
-                      }`}>
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between mb-3">
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <Badge variant={getPriorityColor(priority) as any}>
-                                  {priority}
-                                </Badge>
-                                <Badge variant={getStatusColor(ticket.status) as any}>
-                                  {ticket.status}
-                                </Badge>
-                              </div>
-                              <h4 className="font-bold">{ticket.order_number}</h4>
-                              {ticket.room_id && (
-                                <p className="text-sm text-muted-foreground">Room {ticket.room_id}</p>
-                              )}
+            <CardContent className="pt-0">
+              <div className="space-y-3 max-h-[70vh] overflow-y-auto">
+                {tickets.map(ticket => {
+                  const priority = getTicketPriority(ticket);
+                  const timeRemaining = getTimeRemaining(ticket);
+                  const timeElapsed = getTimeElapsed(ticket);
+                  
+                  return (
+                    <Card key={ticket.ticket_id} className={`border ${
+                      priority === 'urgent' ? 'border-red-400 bg-red-50' :
+                      priority === 'high' ? 'border-orange-400 bg-orange-50' :
+                      'border-border bg-card'
+                    }`}>
+                      <CardContent className="p-3">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <Badge variant={getPriorityColor(priority) as any}>
+                                {priority}
+                              </Badge>
+                              <Badge variant={getStatusColor(ticket.status) as any}>
+                                {ticket.status}
+                              </Badge>
                             </div>
-                            <div className="text-right">
-                              <p className="text-sm font-medium">
-                                {timeRemaining > 0 ? `${timeRemaining}m left` : 'OVERDUE'}
-                              </p>
-                              {ticket.status === 'preparing' && (
-                                <p className="text-xs text-muted-foreground">
-                                  {timeElapsed}m elapsed
-                                </p>
-                              )}
-                            </div>
+                            <h4 className="font-bold">{ticket.order_number}</h4>
+                            {ticket.room_id && (
+                              <p className="text-sm text-muted-foreground">Room {ticket.room_id}</p>
+                            )}
                           </div>
+                          <div className="text-right">
+                            <p className="text-sm font-medium">
+                              {timeRemaining > 0 ? `${timeRemaining}m left` : 'OVERDUE'}
+                            </p>
+                            {ticket.status === 'preparing' && (
+                              <p className="text-xs text-muted-foreground">
+                                {timeElapsed}m elapsed
+                              </p>
+                            )}
+                          </div>
+                        </div>
 
-                          {/* Progress Bar */}
-                          {ticket.status === 'preparing' && (
-                            <div className="mb-3">
-                              <Progress 
-                                value={Math.min(100, (timeElapsed / 15) * 100)} 
-                                className="h-2"
-                              />
-                            </div>
-                          )}
+                        {/* Progress Bar */}
+                        {ticket.status === 'preparing' && (
+                          <div className="mb-3">
+                            <Progress 
+                              value={Math.min(100, (timeElapsed / 15) * 100)} 
+                              className="h-2"
+                            />
+                          </div>
+                        )}
 
-                          {/* Items */}
-                          <div className="space-y-2 mb-4">
-                            {ticket.items.map((item, index) => (
-                              <div key={index} className="flex justify-between items-center p-2 bg-white/50 rounded">
-                                <div>
-                                  <span className="font-medium">{item.qty}x {item.menu_item.name}</span>
+                        {/* Items */}
+                        <div className="space-y-2 mb-4">
+                          {ticket.items.map((item, index) => (
+                            <div key={index} className="p-2 bg-muted/30 rounded border">
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <span className="font-medium text-sm">{item.qty}x {item.menu_item.name}</span>
                                   {item.modifiers.length > 0 && (
                                     <div className="flex flex-wrap gap-1 mt-1">
                                       {item.modifiers.map((mod, modIndex) => (
-                                        <Badge key={modIndex} variant="outline" className="text-xs">
+                                        <Badge key={modIndex} variant="secondary" className="text-xs h-5">
                                           {mod.name}
                                         </Badge>
                                       ))}
                                     </div>
                                   )}
                                   {item.notes && (
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      Note: {item.notes}
+                                    <p className="text-xs text-muted-foreground mt-1 italic">
+                                      "{item.notes}"
                                     </p>
                                   )}
                                 </div>
                               </div>
-                            ))}
-                          </div>
+                            </div>
+                          ))}
+                        </div>
 
-                          {/* Actions */}
-                          <div className="space-y-2">
-                            {ticket.status === 'pending' && (
-                              <Button 
-                                className="w-full" 
-                                size="sm"
-                                onClick={() => handleClaimTicket(ticket.ticket_id)}
-                                disabled={isLoading}
-                              >
-                                <User className="h-4 w-4 mr-2" />
-                                Start Prep
-                              </Button>
-                            )}
-                            
-                            {ticket.status === 'preparing' && (
-                              <Button 
-                                className="w-full" 
-                                size="sm"
-                                onClick={() => handleCompleteTicket(ticket.ticket_id)}
-                                disabled={isLoading}
-                              >
-                                <CheckCircle className="h-4 w-4 mr-2" />
-                                Mark Ready
-                              </Button>
-                            )}
+                        {/* Actions */}
+                        <div className="space-y-2">
+                          {ticket.status === 'pending' && (
+                            <Button 
+                              className="w-full" 
+                              size="sm"
+                              onClick={() => handleClaimTicket(ticket.ticket_id)}
+                              disabled={isLoading}
+                            >
+                              <User className="h-4 w-4 mr-1" />
+                              Start Prep
+                            </Button>
+                          )}
+                          
+                          {ticket.status === 'preparing' && (
+                            <Button 
+                              className="w-full" 
+                              size="sm"
+                              variant="default"
+                              onClick={() => handleCompleteTicket(ticket.ticket_id)}
+                              disabled={isLoading}
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Mark Ready
+                            </Button>
+                          )}
 
-                            {ticket.assigned_chef && (
-                              <p className="text-xs text-muted-foreground text-center">
-                                Chef: {ticket.assigned_chef}
-                              </p>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </ScrollArea>
+                          {ticket.assigned_chef && (
+                            <p className="text-xs text-muted-foreground text-center">
+                              Chef: {ticket.assigned_chef}
+                            </p>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
             </CardContent>
           </Card>
         ))}

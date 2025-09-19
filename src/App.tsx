@@ -16,6 +16,8 @@ import Configuration from "./pages/owner/Configuration";
 import StaffRoles from "./pages/owner/StaffRoles";
 import Financials from "./pages/owner/Financials";
 import Billing from "./pages/owner/Billing";
+import EnhancedBilling from "./pages/owner/EnhancedBilling";
+import StaffManagement from "./pages/owner/StaffManagement";
 import QRManager from "./pages/owner/QRManager";
 import Reports from "./pages/owner/Reports";
 import Reservations from "./pages/owner/Reservations";
@@ -23,39 +25,21 @@ import Guests from "./pages/owner/Guests";
 import Rooms from "./pages/owner/Rooms";
 import Utilities from "./pages/owner/Utilities";
 import Housekeeping from "./pages/owner/Housekeeping";
-import ReportsInterface from "./components/ReportsInterface";
 import QRExportPage from "./components/QRExportPage";
-import SuperAdminLayout from "./components/layout/SuperAdminLayout";
+import ReportsInterface from "./components/ReportsInterface";
 import ManagerLayout from "./components/layout/ManagerLayout";
-import HousekeepingLayout from "./components/layout/HousekeepingLayout";
-import Dashboard from "./pages/sa/Dashboard";
-import Tenants from "./pages/sa/Tenants";
-import Templates from "./pages/sa/Templates";
-import Roles from "./pages/sa/Roles";
-import GlobalUsers from "./pages/sa/GlobalUsers";
-import Support from "./pages/sa/Support";
-import Wizard from "./pages/sa/Wizard";
-import Backups from "./pages/sa/Backups";
-import Plans from "./pages/sa/Plans";
-import Policies from "./pages/sa/Policies";
-import Advanced from "./pages/sa/Advanced";
-import Audit from "./pages/sa/Audit";
-import Metrics from "./pages/sa/Metrics";
-import Services from "./pages/sa/Services";
-import PricingConfig from "./pages/sa/PricingConfig";
-import DemoConfig from "./pages/sa/DemoConfig";
-import HotelDashboard from "./pages/hotel/Dashboard";
 import ManagerDashboard from "./pages/manager/Dashboard";
 import ManagerOperations from "./pages/manager/Operations";
+import ManagerApprovals from "./pages/manager/Approvals";
+import ManagerRoomStatus from "./pages/manager/RoomStatus";
 import ManagerServiceRequests from "./pages/manager/ServiceRequests";
 import ManagerStaffManagement from "./pages/manager/StaffManagement";
-import ManagerRoomStatus from "./pages/manager/RoomStatus";
+import ManagerQRManagement from "./pages/manager/QRManagement";
 import ManagerDepartmentFinance from "./pages/manager/DepartmentFinance";
 import ManagerReceiptControl from "./pages/manager/ReceiptControl";
 import ManagerEventsPackages from "./pages/manager/EventsPackages";
 import ManagerCompliance from "./pages/manager/Compliance";
-import ManagerQRManagement from "./pages/manager/QRManagement";
-import ManagerApprovals from "./pages/manager/Approvals";
+import HousekeepingLayout from "./components/layout/HousekeepingLayout";
 import HousekeepingDashboard from "./pages/housekeeping/Dashboard";
 import HousekeepingTasks from "./pages/housekeeping/Tasks";
 import HousekeepingAmenities from "./pages/housekeeping/Amenities";
@@ -74,9 +58,28 @@ import POSDashboard from "./pages/pos/Dashboard";
 import POSKds from "./pages/pos/KDS";
 import POSMenu from "./pages/pos/Menu";
 import POSPayment from "./pages/pos/Payment";
+import POSApprovals from "./pages/pos/Approvals";
 import POSReports from "./pages/pos/Reports";
 import POSSettings from "./pages/pos/Settings";
-import POSApprovals from "./pages/pos/Approvals";
+import HotelDashboard from "./pages/hotel/Dashboard";
+import SuperAdminLayout from "./components/layout/SuperAdminLayout";
+import Dashboard from "./pages/sa/Dashboard";
+import Tenants from "./pages/sa/Tenants";
+import Services from "./pages/sa/Services";
+import PricingConfig from "./pages/sa/PricingConfig";
+import DemoConfig from "./pages/sa/DemoConfig";
+import Templates from "./pages/sa/Templates";
+import Roles from "./pages/sa/Roles";
+import GlobalUsers from "./pages/sa/GlobalUsers";
+import Support from "./pages/sa/Support";
+import Wizard from "./pages/sa/Wizard";
+import Plans from "./pages/sa/Plans";
+import Policies from "./pages/sa/Policies";
+import Advanced from "./pages/sa/Advanced";
+import Audit from "./pages/sa/Audit";
+import AuditLogs from "./pages/sa/AuditLogs";
+import Metrics from "./pages/sa/Metrics";
+import Backups from "./pages/sa/Backups";
 
 const queryClient = new QueryClient();
 
@@ -107,9 +110,9 @@ const App = () => (
             <Route index element={<OwnerDashboardPage />} />
             <Route path="dashboard" element={<OwnerDashboardPage />} />
             <Route path="configuration" element={<Configuration />} />
-            <Route path="staff" element={<StaffRoles />} />
+            <Route path="staff-management" element={<StaffManagement />} />
             <Route path="financials" element={<Financials />} />
-            <Route path="billing" element={<Billing />} />
+            <Route path="billing" element={<EnhancedBilling />} />
             <Route path="qr-manager" element={<QRManager />} />
             <Route path="reports" element={<Reports />} />
             <Route path="reservations" element={<Reservations />} />
@@ -141,7 +144,11 @@ const App = () => (
           </Route>
 
           {/* Housekeeping Dashboard Routes */}
-          <Route path="/housekeeping-dashboard" element={<HousekeepingLayout />}>
+          <Route path="/housekeeping-dashboard" element={
+            <TenantAwareLayout requiredRole="HOUSEKEEPING">
+              <HousekeepingLayout />
+            </TenantAwareLayout>
+          }>
             <Route index element={<HousekeepingDashboard />} />
             <Route path="dashboard" element={<HousekeepingDashboard />} />
             <Route path="tasks" element={<HousekeepingTasks />} />
@@ -153,7 +160,11 @@ const App = () => (
           </Route>
 
           {/* Maintenance Dashboard Routes */}
-          <Route path="/maintenance-dashboard" element={<MaintenanceLayout />}>
+          <Route path="/maintenance-dashboard" element={
+            <TenantAwareLayout requiredRole="MAINTENANCE">
+              <MaintenanceLayout />
+            </TenantAwareLayout>
+          }>
             <Route index element={<MaintenanceDashboard />} />
             <Route path="dashboard" element={<MaintenanceDashboard />} />
             <Route path="work-orders" element={<MaintenanceWorkOrders />} />
@@ -163,7 +174,11 @@ const App = () => (
           </Route>
 
           {/* POS Dashboard Routes */}
-          <Route path="/pos" element={<POSLayout />}>
+          <Route path="/pos" element={
+            <TenantAwareLayout requiredRole="POS">
+              <POSLayout />
+            </TenantAwareLayout>
+          }>
             <Route index element={<POSDashboard />} />
             <Route path="dashboard" element={<POSDashboard />} />
             <Route path="kds" element={<POSKds />} />
@@ -178,7 +193,11 @@ const App = () => (
           <Route path="/hotel/:tenantId/dashboard" element={<HotelDashboard />} />
           
           {/* Super Admin Routes */}
-          <Route path="/sa" element={<SuperAdminLayout />}>
+          <Route path="/sa" element={
+            <TenantAwareLayout requiredRole="SUPER_ADMIN">
+              <SuperAdminLayout />
+            </TenantAwareLayout>
+          }>
             <Route index element={<Dashboard />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="tenants" element={<Tenants />} />
@@ -193,7 +212,7 @@ const App = () => (
             <Route path="plans" element={<Plans />} />
             <Route path="policies" element={<Policies />} />
             <Route path="advanced" element={<Advanced />} />
-            <Route path="audit" element={<Audit />} />
+            <Route path="audit-logs" element={<AuditLogs />} />
             <Route path="metrics" element={<Metrics />} />
             <Route path="backups" element={<Backups />} />
           </Route>

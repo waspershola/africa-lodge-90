@@ -28,6 +28,7 @@ import { useTenantManagement } from '@/hooks/useTenantManagement';
 import { Tenant, SubscriptionStatus } from '@/types/tenant';
 import { CreateTenantDialog } from './CreateTenantDialog';
 import { TenantDetailsDrawer } from './TenantDetailsDrawer';
+import { TenantControlsDialog } from './TenantControlsDialog';
 
 const getStatusColor = (status: SubscriptionStatus) => {
   switch (status) {
@@ -54,6 +55,7 @@ export function TenantManagementDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<SubscriptionStatus | 'all'>('all');
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
+  const [showTenantControls, setShowTenantControls] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   
   const { 
@@ -96,8 +98,10 @@ export function TenantManagementDashboard() {
           await suspendTenant(tenant.tenant_id, 'Administrative suspension');
           break;
         case 'extend-trial':
-          const newDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-          await extendTrial(tenant.tenant_id, newDate, '7-day extension granted');
+        case 'suspend':
+        case 'change-plan':
+          setSelectedTenant(tenant);
+          setShowTenantControls(true);
           break;
         case 'upgrade-pro':
           await changePlan(tenant.tenant_id, 'plan-pro');
@@ -331,6 +335,18 @@ export function TenantManagementDashboard() {
         plans={plans}
       />
       
+      {/* Tenant Controls Dialog */}
+      <TenantControlsDialog
+        open={showTenantControls}
+        onOpenChange={setShowTenantControls}
+        tenant={selectedTenant}
+        onTenantUpdate={(updatedTenant) => {
+          console.log('Tenant updated:', updatedTenant);
+          setSelectedTenant(null);
+          setShowTenantControls(false);
+        }}
+      />
+
       {selectedTenant && (
         <TenantDetailsDrawer
           tenant={selectedTenant}

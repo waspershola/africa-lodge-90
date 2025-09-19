@@ -6,7 +6,7 @@ import { AlertTriangle, Lock } from 'lucide-react';
 
 interface TenantAwareLayoutProps {
   children: ReactNode;
-  requiredRole?: 'OWNER' | 'MANAGER' | 'STAFF' | 'FRONT_DESK' | 'HOUSEKEEPING' | 'MAINTENANCE' | 'POS';
+  requiredRole?: 'SUPER_ADMIN' | 'OWNER' | 'MANAGER' | 'STAFF' | 'FRONT_DESK' | 'HOUSEKEEPING' | 'MAINTENANCE' | 'POS';
 }
 
 export default function TenantAwareLayout({ children, requiredRole }: TenantAwareLayoutProps) {

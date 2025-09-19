@@ -19,6 +19,7 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   
   const { login } = useAuth();
 
@@ -106,7 +107,11 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
       
       {!compact && (
         <div className="text-center space-y-2">
-          <Button variant="link" className="text-sm">
+          <Button 
+            variant="link" 
+            className="text-sm"
+            onClick={() => setForgotPasswordOpen(true)}
+          >
             Forgot password?
           </Button>
           <div className="text-sm text-muted-foreground">
@@ -125,13 +130,20 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl display-heading">Welcome Back</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {form}
-      </CardContent>
-    </Card>
+    <>
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl display-heading">Welcome Back</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {form}
+        </CardContent>
+      </Card>
+      
+      <ForgotPasswordDialog 
+        open={forgotPasswordOpen}
+        onOpenChange={setForgotPasswordOpen}
+      />
+    </>
   );
 }

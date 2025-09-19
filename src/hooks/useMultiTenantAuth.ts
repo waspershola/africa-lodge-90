@@ -313,11 +313,16 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
 
   // Set up auth state listener
   useEffect(() => {
+    let initialLoadDone = false;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state change event:', event, session ? 'Session exists' : 'No session');
       setSession(session);
       
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      // Only load profile for auth events after initial load to prevent duplicates
+      if (initialLoadDone && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
         if (session?.user) {
+          console.log('Auth event triggered profile load for:', session.user.email);
           await loadUserProfile(session.user);
         }
       } else if (event === 'SIGNED_OUT') {
@@ -327,8 +332,11 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
       }
     });
 
-    // Load initial auth state
-    loadAuthState();
+    // Load initial auth state only once
+    loadAuthState().finally(() => {
+      initialLoadDone = true;
+      console.log('Initial auth state loading completed');
+    });
 
     return () => subscription.unsubscribe();
   }, []);

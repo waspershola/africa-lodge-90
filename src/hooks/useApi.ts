@@ -138,9 +138,13 @@ export const useTenants = () => {
     queryFn: () => Promise.resolve({ 
       data: [
         {
+          id: '1',
           tenant_id: '1',
+          name: 'Hotel Paradise',
           hotel_name: 'Hotel Paradise',
+          slug: 'hotel-paradise',
           email: 'admin@hotelparadise.com',
+          contactEmail: 'admin@hotelparadise.com',
           address: '123 Beach Road',
           city: 'Miami',
           country: 'USA',
@@ -149,6 +153,12 @@ export const useTenants = () => {
           logo_url: null,
           brand_colors: {},
           onboarding_step: 'completed',
+          status: 'active',
+          billingStatus: 'current',
+          plan: 'Premium',
+          totalRooms: 50,
+          activeUsers: 12,
+          monthlyRevenue: 25000,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }
@@ -853,42 +863,7 @@ export const useDeleteTenant = () => {
   });
 };
 
-export const useSuspendTenant = () => {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  
-  return useMutation({
-    mutationFn: ({ id }: { id: string }) => Promise.resolve(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sa', 'tenants'] });
-      toast({ title: 'Tenant suspended successfully' });
-    },
-  });
-};
-
-export const useReactivateTenant = () => {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  
-  return useMutation({
-    mutationFn: ({ id }: { id: string }) => Promise.resolve(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sa', 'tenants'] });
-      toast({ title: 'Tenant reactivated successfully' });
-    },
-  });
-};
-
-export const useImpersonateTenant = () => {
-  const { toast } = useToast();
-  
-  return useMutation({
-    mutationFn: ({ tenantId }: { tenantId: string }) => Promise.resolve(),
-    onSuccess: () => {
-      toast({ title: 'Impersonating tenant' });
-    },
-  });
-};
+// Remove duplicate declarations - these hooks are already defined above
 
 // Other missing SA hooks
 export const usePolicies = () => {

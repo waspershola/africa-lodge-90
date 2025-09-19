@@ -155,8 +155,14 @@ export default function Plans() {
   const handleEdit = (plan: Plan) => {
     setEditingPlan(plan.id);
     editForm.reset({
-      ...plan,
-      billingCycle: plan.billingCycle as 'monthly' | 'yearly'
+      currency: 'USD',
+      name: plan.name,
+      description: plan.description || '',
+      price: plan.price || plan.price_monthly,
+      maxRooms: plan.maxRooms || plan.max_rooms,
+      trialDays: plan.trialDays || plan.trial_days || 0,
+      billingCycle: (plan.billingCycle || 'monthly') as 'monthly' | 'yearly',
+      features: typeof plan.features === 'object' ? plan.features as any : {}
     });
   };
 
@@ -167,7 +173,7 @@ export default function Plans() {
       const data = editForm.getValues();
       await updatePlan.mutateAsync({
         id: editingPlan,
-        data
+        ...data
       });
       setEditingPlan(null);
     } catch (error) {
@@ -202,7 +208,7 @@ export default function Plans() {
       try {
         await updateTenant.mutateAsync({
           id: tenantId,
-          data: { status: 'suspended' }
+          status: 'suspended'
         });
         refetchTenants();
       } catch (error) {

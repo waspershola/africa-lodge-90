@@ -1551,6 +1551,10 @@ export type Database = {
         Args: { tenant_uuid: string }
         Returns: boolean
       }
+      custom_access_token_hook: {
+        Args: { event: Json }
+        Returns: Json
+      }
       get_user_id: {
         Args: Record<PropertyKey, never>
         Returns: string

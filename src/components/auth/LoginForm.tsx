@@ -7,6 +7,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, LogIn, Mail, Lock } from 'lucide-react';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { ForgotPasswordDialog } from '@/components/auth/ForgotPasswordDialog';
+import { supabaseApi } from '@/lib/supabase-api';
+import { useAuditLog } from '@/hooks/useAuditLog';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -17,33 +19,55 @@ interface LoginFormProps {
 export function LoginForm({ onSuccess, showCard = true, compact = false }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
-  
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+
   const { login } = useAuth();
+  const auditLog = useAuditLog();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!email || !password) {
-      setError('Please fill in all fields');
+      setError('Please enter both email and password');
       return;
     }
 
-    setLoading(true);
+    setIsLoading(true);
     setError('');
 
     try {
+      // Use the enhanced login function from auth provider (includes audit logging)
       await login(email, password);
+      
+      // Clear form
+      setEmail('');
+      setPassword('');
+      
+      // Call success callback
       onSuccess?.();
       
-      // Role-based redirect will be handled by the auth system
-      // For now, redirect to appropriate dashboard based on mock role
-    } catch (err) {
-      setError('Invalid email or password');
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setError(err.message || 'Failed to sign in. Please check your credentials.');
+      
+      // Log failed attempt is handled in MultiTenantAuthProvider
     } finally {
-      setLoading(false);
+      setIsLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (email: string) => {
+    try {
+      await supabaseApi.auth.resetPassword(email);
+      await auditLog.logPasswordReset(email);
+      return { success: true };
+    } catch (error: any) {
+      console.error('Password reset error:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Failed to send password reset email' 
+      };
     }
   };
 
@@ -56,46 +80,55 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
       )}
       
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email" className="text-sm font-medium">
+          Email Address
+        </Label>
         <div className="relative">
-          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
             id="email"
             type="email"
-            placeholder="Enter your email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="pl-10"
-            disabled={loading}
+            placeholder="Enter your email"
+            required
+            disabled={isLoading}
+            className="pl-9"
+            autoComplete="email"
           />
         </div>
       </div>
-      
+
       <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password" className="text-sm font-medium">
+          Password
+        </Label>
         <div className="relative">
-          <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
             id="password"
             type="password"
-            placeholder="Enter your password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="pl-10"
-            disabled={loading}
+            placeholder="Enter your password"
+            required
+            disabled={isLoading}
+            className="pl-9"
+            autoComplete="current-password"
           />
         </div>
       </div>
-      
+
       <Button 
         type="submit" 
-        className="w-full bg-gradient-primary shadow-luxury hover:shadow-hover"
-        disabled={loading}
+        className="w-full" 
+        disabled={isLoading}
+        size={compact ? "sm" : "default"}
       >
-        {loading ? (
+        {isLoading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Signing In...
+            Signing in...
           </>
         ) : (
           <>
@@ -104,19 +137,22 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
           </>
         )}
       </Button>
-      
+
       {!compact && (
         <div className="text-center space-y-2">
-          <Button 
-            variant="link" 
-            className="text-sm"
-            onClick={() => setForgotPasswordOpen(true)}
+          <Button
+            type="button"
+            variant="link"
+            size="sm"
+            onClick={() => setShowForgotPassword(true)}
+            disabled={isLoading}
+            className="text-xs"
           >
-            Forgot password?
+            Forgot your password?
           </Button>
           <div className="text-sm text-muted-foreground">
             Don't have an account?{' '}
-            <Button variant="link" className="p-0 h-auto">
+            <Button variant="link" className="p-0 h-auto text-xs">
               Request a demo
             </Button>
           </div>
@@ -130,20 +166,16 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
   }
 
   return (
-    <>
-      <Card className="w-full max-w-md mx-auto">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl display-heading">Welcome Back</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {form}
-        </CardContent>
-      </Card>
-      
-      <ForgotPasswordDialog 
-        open={forgotPasswordOpen}
-        onOpenChange={setForgotPasswordOpen}
-      />
-    </>
+    <Card className="w-full max-w-md mx-auto">
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-2xl text-center">Welcome Back</CardTitle>
+        <p className="text-sm text-muted-foreground text-center">
+          Sign in to your account to continue
+        </p>
+      </CardHeader>
+      <CardContent>
+        {form}
+      </CardContent>
+    </Card>
   );
 }

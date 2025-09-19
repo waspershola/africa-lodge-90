@@ -57,6 +57,12 @@ import HousekeepingSupplies from "./pages/housekeeping/Supplies";
 import HousekeepingOOSRooms from "./pages/housekeeping/OOSRooms";
 import HousekeepingStaffAssignments from "./pages/housekeeping/StaffAssignments";
 import HousekeepingAuditLogs from "./pages/housekeeping/AuditLogs";
+import MaintenanceLayout from "./components/layout/MaintenanceLayout";
+import MaintenanceDashboard from "./pages/maintenance/Dashboard";
+import MaintenanceWorkOrders from "./pages/maintenance/WorkOrders";
+import MaintenancePreventive from "./pages/maintenance/Preventive";
+import MaintenanceSupplies from "./pages/maintenance/Supplies";
+import MaintenanceAudit from "./pages/maintenance/Audit";
 
 const queryClient = new QueryClient();
 
@@ -115,6 +121,16 @@ const App = () => (
             <Route path="oos-rooms" element={<HousekeepingOOSRooms />} />
             <Route path="staff" element={<HousekeepingStaffAssignments />} />
             <Route path="audit" element={<HousekeepingAuditLogs />} />
+          </Route>
+
+          {/* Maintenance Dashboard Routes */}
+          <Route path="/maintenance-dashboard" element={<MaintenanceLayout />}>
+            <Route index element={<MaintenanceDashboard />} />
+            <Route path="dashboard" element={<MaintenanceDashboard />} />
+            <Route path="work-orders" element={<MaintenanceWorkOrders />} />
+            <Route path="preventive" element={<MaintenancePreventive />} />
+            <Route path="supplies" element={<MaintenanceSupplies />} />
+            <Route path="audit" element={<MaintenanceAudit />} />
           </Route>
 
           {/* Hotel Dashboard Routes */}

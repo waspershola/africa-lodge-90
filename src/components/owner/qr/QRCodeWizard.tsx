@@ -14,6 +14,7 @@ interface QRCodeWizardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (qrData: Omit<QRCodeData, 'id' | 'createdAt' | 'createdBy' | 'pendingRequests'>) => void;
+  defaultServices?: string[];
 }
 
 const availableServices = [
@@ -34,11 +35,11 @@ const presetLocations = [
   { id: 'spa', name: 'Spa & Wellness', services: ['Wi-Fi', 'Room Service'] }
 ];
 
-export const QRCodeWizard = ({ open, onOpenChange, onSave }: QRCodeWizardProps) => {
+export const QRCodeWizard = ({ open, onOpenChange, onSave, defaultServices = [] }: QRCodeWizardProps) => {
   const [step, setStep] = useState(1);
   const [scope, setScope] = useState<'Room' | 'Location'>('Room');
   const [assignedTo, setAssignedTo] = useState('');
-  const [services, setServices] = useState<string[]>([]);
+  const [services, setServices] = useState<string[]>(defaultServices);
   const [roomRange, setRoomRange] = useState({ from: '', to: '' });
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
 
@@ -46,7 +47,7 @@ export const QRCodeWizard = ({ open, onOpenChange, onSave }: QRCodeWizardProps) 
     setStep(1);
     setScope('Room');
     setAssignedTo('');
-    setServices([]);
+    setServices(defaultServices);
     setRoomRange({ from: '', to: '' });
     setSelectedPreset(null);
   };

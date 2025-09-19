@@ -8,12 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { QRCodePreview } from '@/components/owner/qr/QRCodePreview';
 import type { QRCodeData } from '@/pages/owner/QRManager';
+import type { BrandingSettings } from './GlobalSettingsDialog';
 
 interface QRCodeDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   qrCode: QRCodeData | null;
   onUpdate: (qrCode: QRCodeData) => void;
+  branding?: BrandingSettings;
 }
 
 const availableServices = [
@@ -53,7 +55,7 @@ const mockAuditLogs = [
   }
 ];
 
-export const QRCodeDrawer = ({ open, onOpenChange, qrCode, onUpdate }: QRCodeDrawerProps) => {
+export const QRCodeDrawer = ({ open, onOpenChange, qrCode, onUpdate, branding }: QRCodeDrawerProps) => {
   const [services, setServices] = useState<string[]>([]);
 
   useEffect(() => {
@@ -95,7 +97,7 @@ export const QRCodeDrawer = ({ open, onOpenChange, qrCode, onUpdate }: QRCodeDra
               <CardTitle className="text-lg">QR Code Preview</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <QRCodePreview qrId={qrCode.id} assignedTo={qrCode.assignedTo} />
+              <QRCodePreview qrId={qrCode.id} assignedTo={qrCode.assignedTo} branding={branding} />
               
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1">

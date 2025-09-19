@@ -1,13 +1,15 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import type { BrandingSettings } from './GlobalSettingsDialog';
 
 interface QRCodePreviewProps {
   qrId: string;
   assignedTo: string;
   size?: number;
+  branding?: BrandingSettings;
 }
 
-export const QRCodePreview = ({ qrId, assignedTo, size = 200 }: QRCodePreviewProps) => {
+export const QRCodePreview = ({ qrId, assignedTo, size = 200, branding }: QRCodePreviewProps) => {
   // Generate a visual representation of QR code (placeholder)
   const generateQRPattern = (id: string) => {
     const patterns = [];
@@ -36,7 +38,14 @@ export const QRCodePreview = ({ qrId, assignedTo, size = 200 }: QRCodePreviewPro
         <CardContent className="p-0 flex flex-col items-center space-y-3">
           {/* Hotel Branding */}
           <div className="text-center">
-            <h3 className="font-semibold text-lg">Grand Hotel</h3>
+            {branding?.showLogo && (
+              <div className="w-12 h-12 mx-auto mb-2 bg-primary/10 rounded-full flex items-center justify-center">
+                <span className="text-primary font-bold text-xl">🏨</span>
+              </div>
+            )}
+            <h3 className="font-semibold text-lg" style={{ color: branding?.primaryColor || '#000' }}>
+              {branding?.hotelName || 'Grand Hotel'}
+            </h3>
             <p className="text-sm text-muted-foreground">{assignedTo}</p>
           </div>
           

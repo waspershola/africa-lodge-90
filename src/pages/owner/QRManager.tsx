@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { QRCodeTable } from '@/components/owner/qr/QRCodeTable';
 import { QRCodeDrawer } from '@/components/owner/qr/QRCodeDrawer';
 import { QRCodeWizard } from '@/components/owner/qr/QRCodeWizard';
+import { GlobalSettingsDialog, type BrandingSettings } from '@/components/owner/qr/GlobalSettingsDialog';
+import { BulkExportDialog } from '@/components/owner/qr/BulkExportDialog';
 import { useToast } from '@/hooks/use-toast';
 
 export interface QRCodeData {
@@ -21,7 +23,17 @@ export default function QRManagerPage() {
   const [selectedQR, setSelectedQR] = useState<QRCodeData | null>(null);
   const [showWizard, setShowWizard] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
+  const [showGlobalSettings, setShowGlobalSettings] = useState(false);
+  const [showBulkExport, setShowBulkExport] = useState(false);
   const { toast } = useToast();
+
+  const [brandingSettings, setBrandingSettings] = useState<BrandingSettings>({
+    hotelName: 'Grand Hotel',
+    showLogo: true,
+    primaryColor: '#2563eb',
+    secondaryColor: '#64748b',
+    defaultServices: ['Wi-Fi', 'Room Service', 'Housekeeping']
+  });
 
   const [qrCodes, setQRCodes] = useState<QRCodeData[]>([
     {
@@ -82,16 +94,33 @@ export default function QRManagerPage() {
   };
 
   const handleBulkExport = () => {
-    toast({
-      title: "Bulk Export Started",
-      description: `Generating ${qrCodes.length} QR codes as ZIP file...`
-    });
+    setShowBulkExport(true);
   };
 
   const handleGlobalSettings = () => {
+    setShowGlobalSettings(true);
+  };
+
+  const handleBrandingUpdate = (settings: BrandingSettings) => {
+    setBrandingSettings(settings);
     toast({
-      title: "Global Settings",
-      description: "Opening branding and default service settings..."
+      title: "Settings Updated",
+      description: "Global branding settings have been saved successfully"
+    });
+  };
+
+  const handleExportSelected = (selectedIds: string[], format: string, size: number) => {
+    const selectedQRs = qrCodes.filter(qr => selectedIds.includes(qr.id));
+    
+    // Simulate file download
+    selectedQRs.forEach(qr => {
+      const fileName = `${qr.id}_${qr.assignedTo.replace(/\s+/g, '_')}.${format.toLowerCase()}`;
+      console.log(`Downloading: ${fileName}`);
+    });
+
+    toast({
+      title: "Export Complete",
+      description: `Successfully exported ${selectedIds.length} QR codes as ${format} files`
     });
   };
 
@@ -162,6 +191,7 @@ export default function QRManagerPage() {
         onOpenChange={setShowDrawer}
         qrCode={selectedQR}
         onUpdate={handleUpdateQR}
+        branding={brandingSettings}
       />
 
       {/* QR Creation Wizard */}
@@ -169,6 +199,23 @@ export default function QRManagerPage() {
         open={showWizard}
         onOpenChange={setShowWizard}
         onSave={handleCreateQR}
+        defaultServices={brandingSettings.defaultServices}
+      />
+
+      {/* Global Settings Dialog */}
+      <GlobalSettingsDialog
+        open={showGlobalSettings}
+        onOpenChange={setShowGlobalSettings}
+        settings={brandingSettings}
+        onSave={handleBrandingUpdate}
+      />
+
+      {/* Bulk Export Dialog */}
+      <BulkExportDialog
+        open={showBulkExport}
+        onOpenChange={setShowBulkExport}
+        qrCodes={qrCodes}
+        onExport={handleExportSelected}
       />
     </div>
   );

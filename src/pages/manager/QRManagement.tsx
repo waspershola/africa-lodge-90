@@ -40,6 +40,8 @@ import { QRCodeGenerationDialog } from '@/components/manager/qr/QRCodeGeneration
 import { QRCodePreviewDialog } from '@/components/manager/qr/QRCodePreviewDialog';
 import { ServiceConfigDialog } from '@/components/manager/qr/ServiceConfigDialog';
 import { FraudAlertDialog } from '@/components/manager/qr/FraudAlertDialog';
+import { EnhancedPricingControl } from '@/components/manager/pricing/EnhancedPricingControl';
+import type { ServicePricing, PricingChange } from '@/types/pricing';
 
 const QRManagement = () => {
   const [selectedFloor, setSelectedFloor] = useState('all');
@@ -213,6 +215,105 @@ const QRManagement = () => {
     avgResponseTime: '12 mins',
     issueCount: 3
   };
+
+  // Mock pricing data - will be integrated with existing data structure
+  const mockServicePricing = [];
+  const mockPendingChanges = [];
+
+  // Mock data for enhanced pricing control
+  const mockServicePricing: ServicePricing[] = [
+    {
+      id: 'rs-1',
+      serviceType: 'room-service',
+      itemName: 'Club Sandwich',
+      basePrice: 4000,
+      currentPrice: 4500,
+      currency: 'NGN',
+      pricingModel: 'dynamic',
+      surchargeRules: [
+        {
+          type: 'time-based',
+          name: 'Night Premium',
+          percentage: 20,
+          active: true,
+          conditions: {
+            timeRange: { start: '22:00', end: '06:00' }
+          }
+        }
+      ],
+      availability: {
+        enabled: true,
+        timeRestrictions: {
+          enabled: false,
+          startTime: '00:00',
+          endTime: '23:59',
+          days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+        },
+        seasonalAvailability: {
+          enabled: false,
+          seasons: []
+        },
+        roomTypeAvailability: ['standard', 'deluxe', 'suite'],
+        maxRequestsPerDay: 0,
+        advanceNoticeRequired: 0,
+        staffApprovalRequired: false
+      },
+      roomTypeRestrictions: ['standard', 'deluxe', 'suite'],
+      lastUpdated: '2024-01-15T10:30:00Z',
+      updatedBy: 'Manager Ahmed',
+      status: 'active'
+    },
+    {
+      id: 'hk-1',
+      serviceType: 'housekeeping',
+      itemName: 'Extra Towels',
+      basePrice: 0,
+      currentPrice: 0,
+      currency: 'NGN',
+      pricingModel: 'free',
+      surchargeRules: [],
+      availability: {
+        enabled: true,
+        timeRestrictions: {
+          enabled: true,
+          startTime: '08:00',
+          endTime: '18:00',
+          days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+        },
+        seasonalAvailability: {
+          enabled: false,
+          seasons: []
+        },
+        roomTypeAvailability: ['standard', 'deluxe', 'suite'],
+        maxRequestsPerDay: 3,
+        advanceNoticeRequired: 15,
+        staffApprovalRequired: false
+      },
+      roomTypeRestrictions: [],
+      lastUpdated: '2024-01-14T15:45:00Z',
+      updatedBy: 'Manager Sarah',
+      status: 'active'
+    }
+  ];
+
+  const mockPendingChanges: PricingChange[] = [
+    {
+      id: 'PC-2024-001',
+      serviceType: 'room-service',
+      itemName: 'Premium Steak Dinner',
+      currentPrice: 12000,
+      proposedPrice: 14500,
+      changePercentage: 20.83,
+      changeAmount: 2500,
+      reason: 'Increased cost of imported beef and seasonal demand surge',
+      requestedBy: 'Manager Ahmed',
+      requestedAt: '2024-01-15T14:20:00Z',
+      status: 'pending',
+      effectiveDate: '2024-01-16',
+      hotelId: 'hotel-1',
+      roomType: ['deluxe', 'suite']
+    }
+  ];
 
   const getStatusColor = (status: string) => {
     switch (status) {

@@ -19,6 +19,7 @@ import UnifiedDashboardLayout from './UnifiedDashboardLayout';
 const navigation = [
   { name: 'Dashboard', href: '/sa/dashboard', icon: LayoutDashboard },
   { name: 'Tenants', href: '/sa/tenants', icon: Building2 },
+  { name: 'Services', href: '/sa/services', icon: Layers },
   { name: 'Templates', href: '/sa/templates', icon: Layers },
   { name: 'Roles', href: '/sa/roles', icon: Shield },
   { name: 'Global Users', href: '/sa/global-users', icon: UserCheck },

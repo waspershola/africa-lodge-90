@@ -30,7 +30,7 @@ import {
   isSameDay,
   parseISO
 } from 'date-fns';
-import { useReservations, useRoomAvailability, useAssignRoom, useCheckInGuest, useCheckOutGuest, useCheckRoomConflicts } from '@/hooks/useApi';
+import { useReservations, useRooms } from '@/hooks/useRooms';
 import ReservationContextMenu from './ReservationContextMenu';
 import QuickBookingForm from './QuickBookingForm';
 import { useToast } from '@/hooks/use-toast';
@@ -54,12 +54,13 @@ export default function InteractiveReservationCalendar({
   const [showQuickBooking, setShowQuickBooking] = useState(false);
 
   const { toast } = useToast();
-  const { data: reservations = [], isLoading } = useReservations();
-  const { data: roomAvailability = [] } = useRoomAvailability();
-  const assignRoom = useAssignRoom();
-  const checkInGuest = useCheckInGuest();
-  const checkOutGuest = useCheckOutGuest();
-  const checkConflicts = useCheckRoomConflicts();
+  const { reservations = [], loading: isLoading } = useReservations();
+  const { rooms } = useRooms();
+  // Remove unused functions for now - these will be implemented later
+  // const assignRoom = useAssignRoom();
+  // const checkInGuest = useCheckInGuest();
+  // const checkOutGuest = useCheckOutGuest();
+  // const checkConflicts = useCheckRoomConflicts();
 
   // Get date range based on view type
   const dateRange = useMemo(() => {

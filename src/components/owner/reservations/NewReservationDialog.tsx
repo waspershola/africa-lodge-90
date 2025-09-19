@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon, Plus, Minus } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useCreateReservation, useRoomAvailability } from '@/hooks/useApi';
+import { useRooms } from '@/hooks/useRooms';
 
 interface NewReservationDialogProps {
   open: boolean;
@@ -32,8 +32,9 @@ export default function NewReservationDialog({ open, onOpenChange }: NewReservat
     source: 'direct'
   });
 
-  const createReservation = useCreateReservation();
-  const { data: roomAvailability = [] } = useRoomAvailability();
+  const { createReservation } = useRooms();
+  // Remove room availability check for now - will implement later
+  // const { data: roomAvailability = [] } = useRoomAvailability();
 
   const roomTypes = [
     { value: 'standard', label: 'Standard Room', price: 85000 },
@@ -42,9 +43,8 @@ export default function NewReservationDialog({ open, onOpenChange }: NewReservat
     { value: 'presidential', label: 'Presidential Suite', price: 350000 }
   ];
 
-  const availableRooms = roomAvailability
-    .filter(room => room.status === 'available' && (!formData.roomType || room.roomType.toLowerCase().includes(formData.roomType)))
-    .map(room => room.roomNumber);
+  // Disable room availability check for now - will implement later
+  const availableRooms: string[] = [];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

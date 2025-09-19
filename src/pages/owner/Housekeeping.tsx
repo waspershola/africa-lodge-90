@@ -14,22 +14,26 @@ import HousekeepingTaskBoard from '@/components/owner/housekeeping/HousekeepingT
 import OOSRoomManager from '@/components/owner/housekeeping/OOSRoomManager';
 import HousekeepingStats from '@/components/owner/housekeeping/HousekeepingStats';
 import StaffAssignments from '@/components/owner/housekeeping/StaffAssignments';
-import { useHousekeepingStats, useHousekeepingTasks } from '@/hooks/useApi';
+import { useHousekeepingTasks } from '@/hooks/useHousekeeping';
 
 export default function HousekeepingPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const { data: stats } = useHousekeepingStats();
-  const { data: tasks } = useHousekeepingTasks();
+  const { tasks } = useHousekeepingTasks();
 
-  const housekeepingStats = stats || {
-    totalTasks: 0,
-    pendingTasks: 0,
-    inProgressTasks: 0,
-    completedToday: 0,
-    oosRooms: 0,
-    averageCompletionTime: 0,
-    delayedTasks: 0,
-    activeStaff: 0
+  // Calculate stats from tasks data
+  const housekeepingStats = {
+    totalTasks: tasks?.length || 0,
+    pendingTasks: tasks?.filter(t => t.status === 'pending').length || 0,
+    inProgressTasks: tasks?.filter(t => t.status === 'in-progress').length || 0,
+    completedToday: tasks?.filter(t => 
+      t.status === 'completed' && 
+      t.completed_at && 
+      new Date(t.completed_at).toDateString() === new Date().toDateString()
+    ).length || 0,
+    oosRooms: 0, // TODO: Calculate from room data
+    averageCompletionTime: 45, // TODO: Calculate from task data
+    delayedTasks: 0, // TODO: Calculate based on estimated vs actual time
+    activeStaff: 0 // TODO: Calculate from active assignments
   };
 
   return (

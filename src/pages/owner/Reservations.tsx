@@ -28,7 +28,7 @@ export default function ReservationsPage() {
     confirmed: reservations.filter(r => r.status === 'confirmed').length,
     pending: reservations.filter(r => r.status === 'confirmed').length, // No pending status in new schema
     checked_in: reservations.filter(r => r.status === 'checked_in').length,
-    checkedOut: reservations.filter(r => r.status === 'checked-out').length,
+    checkedOut: reservations.filter(r => r.status === 'checked_out').length,
     cancelled: reservations.filter(r => r.status === 'cancelled').length,
     noShow: 0
   };
@@ -53,7 +53,7 @@ export default function ReservationsPage() {
           time: '14:00',
           type: 'check-in',
           guest: r.guest_name,
-          room: r.rooms?.room_number || 'N/A',
+          room: r.room_id || 'N/A',
           status: r.status === 'confirmed' ? 'pending' : 'completed'
         };
       }
@@ -62,8 +62,8 @@ export default function ReservationsPage() {
           time: '12:00',
           type: 'check-out',
           guest: r.guest_name,
-          room: r.rooms?.room_number || 'N/A',
-          status: r.status === 'checked-out' ? 'completed' : 'pending'
+          room: r.room_id || 'N/A',
+          status: r.status === 'checked_out' ? 'completed' : 'pending'
         };
       }
     })
@@ -74,7 +74,7 @@ export default function ReservationsPage() {
   }
 
   if (error) {
-    return <div className="p-6 text-destructive">Error loading reservations: {error.message}</div>;
+    return <div className="p-6 text-destructive">Error loading reservations: {error}</div>;
   }
 
   return (

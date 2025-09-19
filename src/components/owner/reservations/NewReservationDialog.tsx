@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,34 +7,41 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Plus, Minus } from 'lucide-react';
-import { format, differenceInDays } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { CalendarIcon, User, Phone, Mail } from 'lucide-react';
+import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 import { useRooms } from '@/hooks/useRooms';
 
 interface NewReservationDialogProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onClose: () => void;
+  selectedDate?: Date;
+  selectedRoom?: string;
 }
 
-export default function NewReservationDialog({ open, onOpenChange }: NewReservationDialogProps) {
+export default function NewReservationDialog({
+  open,
+  onClose,
+  selectedDate,
+  selectedRoom
+}: NewReservationDialogProps) {
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     guestName: '',
     email: '',
     phone: '',
-    checkIn: undefined as Date | undefined,
-    checkOut: undefined as Date | undefined,
-    roomType: '',
-    room: '',
+    idNumber: '',
+    checkIn: selectedDate || new Date(),
+    checkOut: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
     adults: 1,
     children: 0,
+    roomType: '',
     specialRequests: '',
     source: 'direct'
   });
 
-  const { createReservation } = useRooms();
-  // Remove room availability check for now - will implement later
-  // const { data: roomAvailability = [] } = useRoomAvailability();
+  const { createReservation, rooms } = useRooms();
+  const { toast } = useToast();
 
   const roomTypes = [
     { value: 'standard', label: 'Standard Room', price: 85000 },
@@ -43,287 +50,268 @@ export default function NewReservationDialog({ open, onOpenChange }: NewReservat
     { value: 'presidential', label: 'Presidential Suite', price: 350000 }
   ];
 
-  // Disable room availability check for now - will implement later
-  const availableRooms: string[] = [];
+  const calculateNights = () => {
+    const diffTime = Math.abs(formData.checkOut.getTime() - formData.checkIn.getTime());
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.checkIn || !formData.checkOut || !formData.guestName || !formData.email || !formData.roomType) {
+    if (!formData.guestName || !formData.checkIn || !formData.checkOut) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
       return;
     }
 
-    const nights = calculateNights();
-    const roomTypeData = roomTypes.find(r => r.value === formData.roomType);
-    const amount = nights * (roomTypeData?.price || 0);
+    setIsLoading(true);
 
-    createReservation.mutate({
-      guest_name: formData.guestName,
-      guest_email: formData.email,
-      guest_phone: formData.phone,
-      check_in_date: formData.checkIn.toISOString().split('T')[0],
-      check_out_date: formData.checkOut.toISOString().split('T')[0],
-      room_id: 'default-room-id',
-      adults: formData.adults,
-      children: formData.children,
-      room_rate: roomTypeData?.price || 0,
-      total_amount: amount,
-      status: 'confirmed',
-      reservation_number: `RES-${Date.now()}`,
-      tenant_id: 'current',
-      checked_in_at: null,
-      checked_in_by: null,
-      checked_out_at: null,
-      checked_out_by: null,
-      guest_id_number: null,
-      created_by: null
-    });
-  };
+    try {
+      const nights = calculateNights();
+      const roomTypeData = roomTypes.find(r => r.value === formData.roomType);
+      
+      // Find an available room of the selected type or use first available room
+      const availableRoom = rooms?.find(room => 
+        room.status === 'available' && 
+        room.room_type?.name.toLowerCase().includes(formData.roomType)
+      ) || rooms?.find(room => room.status === 'available');
 
-  const calculateNights = () => {
-    if (formData.checkIn && formData.checkOut) {
-      return differenceInDays(formData.checkOut, formData.checkIn);
+      if (!availableRoom) {
+        toast({
+          title: "No Rooms Available",
+          description: "No rooms are available for the selected dates",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await createReservation({
+        guest_name: formData.guestName,
+        guest_email: formData.email,
+        guest_phone: formData.phone,
+        guest_id_number: formData.idNumber,
+        check_in_date: formData.checkIn.toISOString().split('T')[0],
+        check_out_date: formData.checkOut.toISOString().split('T')[0],
+        room_id: availableRoom.id,
+        adults: formData.adults,
+        children: formData.children,
+        room_rate: roomTypeData?.price || 85000,
+        status: 'confirmed' as const
+      });
+      
+      toast({
+        title: "Success",
+        description: "Reservation created successfully",
+      });
+      
+      // Reset form
+      setFormData({
+        guestName: '',
+        email: '',
+        phone: '',
+        idNumber: '',
+        checkIn: selectedDate || new Date(),
+        checkOut: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        adults: 1,
+        children: 0,
+        roomType: '',
+        specialRequests: '',
+        source: 'direct'
+      });
+      
+      onClose();
+    } catch (error) {
+      toast({
+        title: "Error", 
+        description: "Failed to create reservation",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
-    return 0;
-  };
-
-  const calculateTotal = () => {
-    const nights = calculateNights();
-    const roomType = roomTypes.find(r => r.value === formData.roomType);
-    if (nights && roomType) {
-      return nights * roomType.price;
-    }
-    return 0;
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>New Reservation</DialogTitle>
           <DialogDescription>
-            Create a new hotel reservation for a guest
+            Create a new reservation for your hotel
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Guest Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Guest Information</h3>
-            
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="guestName">Guest Name *</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="guestName">Guest Name *</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="guestName"
+                  className="pl-10"
                   value={formData.guestName}
                   onChange={(e) => setFormData({ ...formData, guestName: e.target.value })}
                   required
                 />
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address *</Label>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="email"
                   type="email"
+                  className="pl-10"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
                 />
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number *</Label>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone</Label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="phone"
+                  className="pl-10"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  required
                 />
               </div>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="source">Booking Source</Label>
-                <Select value={formData.source} onValueChange={(value) => setFormData({ ...formData, source: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="direct">Direct Booking</SelectItem>
-                    <SelectItem value="phone">Phone Booking</SelectItem>
-                    <SelectItem value="booking.com">Booking.com</SelectItem>
-                    <SelectItem value="expedia">Expedia</SelectItem>
-                    <SelectItem value="walk-in">Walk-in</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="idNumber">ID Number</Label>
+              <Input
+                id="idNumber"
+                value={formData.idNumber}
+                onChange={(e) => setFormData({ ...formData, idNumber: e.target.value })}
+              />
             </div>
           </div>
 
-          {/* Stay Details */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Stay Details</h3>
-            
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Check-in Date *</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !formData.checkIn && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.checkIn ? format(formData.checkIn, "PPP") : "Select date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={formData.checkIn}
-                      onSelect={(date) => setFormData({ ...formData, checkIn: date })}
-                      initialFocus
-                      className="pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Check-out Date *</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !formData.checkOut && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.checkOut ? format(formData.checkOut, "PPP") : "Select date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={formData.checkOut}
-                      onSelect={(date) => setFormData({ ...formData, checkOut: date })}
-                      initialFocus
-                      className="pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
+          {/* Reservation Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Check-in Date *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.checkIn ? format(formData.checkIn, "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={formData.checkIn}
+                    onSelect={(date) => date && setFormData({ ...formData, checkIn: date })}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Room Type *</Label>
-                <Select value={formData.roomType} onValueChange={(value) => setFormData({ ...formData, roomType: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select room type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {roomTypes.map(room => (
-                      <SelectItem key={room.value} value={room.value}>
-                        <div className="flex justify-between w-full">
-                          <span>{room.label}</span>
-                          <span className="text-muted-foreground ml-4">₦{room.price.toLocaleString()}/night</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Specific Room</Label>
-                <Select value={formData.room} onValueChange={(value) => setFormData({ ...formData, room: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Auto-assign or select room" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableRooms.map(room => (
-                      <SelectItem key={room} value={room}>
-                        Room {room}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label>Check-out Date *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.checkOut ? format(formData.checkOut, "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={formData.checkOut}
+                    onSelect={(date) => date && setFormData({ ...formData, checkOut: date })}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
 
-            {/* Guest Count */}
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Adults</Label>
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setFormData({ ...formData, adults: Math.max(1, formData.adults - 1) })}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                  <span className="w-12 text-center">{formData.adults}</span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setFormData({ ...formData, adults: formData.adults + 1 })}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Children</Label>
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setFormData({ ...formData, children: Math.max(0, formData.children - 1) })}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                  <span className="w-12 text-center">{formData.children}</span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setFormData({ ...formData, children: formData.children + 1 })}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="adults">Adults</Label>
+              <Select value={formData.adults.toString()} onValueChange={(value) => setFormData({ ...formData, adults: parseInt(value) })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[1, 2, 3, 4, 5, 6].map(num => (
+                    <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="children">Children</Label>
+              <Select value={formData.children.toString()} onValueChange={(value) => setFormData({ ...formData, children: parseInt(value) })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[0, 1, 2, 3, 4].map(num => (
+                    <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Room Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="roomType">Room Type</Label>
+            <Select value={formData.roomType} onValueChange={(value) => setFormData({ ...formData, roomType: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select room type" />
+              </SelectTrigger>
+              <SelectContent>
+                {roomTypes.map(room => (
+                  <SelectItem key={room.value} value={room.value}>
+                    {room.label} - ₦{room.price.toLocaleString()}/night
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Special Requests */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Additional Information</h3>
-            
-            <div className="space-y-2">
-              <Label htmlFor="specialRequests">Special Requests</Label>
-              <Textarea
-                id="specialRequests"
-                value={formData.specialRequests}
-                onChange={(e) => setFormData({ ...formData, specialRequests: e.target.value })}
-                placeholder="Any special requests or notes..."
-                rows={3}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="specialRequests">Special Requests</Label>
+            <Textarea
+              id="specialRequests"
+              value={formData.specialRequests}
+              onChange={(e) => setFormData({ ...formData, specialRequests: e.target.value })}
+              rows={3}
+            />
+          </div>
+
+          {/* Booking Source */}
+          <div className="space-y-2">
+            <Label htmlFor="source">Booking Source</Label>
+            <Select value={formData.source} onValueChange={(value) => setFormData({ ...formData, source: value })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="direct">Direct Booking</SelectItem>
+                <SelectItem value="phone">Phone Booking</SelectItem>
+                <SelectItem value="booking.com">Booking.com</SelectItem>
+                <SelectItem value="expedia">Expedia</SelectItem>
+                <SelectItem value="walk-in">Walk-in</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Summary */}
@@ -331,28 +319,24 @@ export default function NewReservationDialog({ open, onOpenChange }: NewReservat
             <div className="p-4 bg-muted rounded-lg">
               <h4 className="font-semibold mb-2">Reservation Summary</h4>
               <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span>Nights:</span>
-                  <span>{calculateNights()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Room Rate:</span>
-                  <span>₦{roomTypes.find(r => r.value === formData.roomType)?.price.toLocaleString()}/night</span>
-                </div>
-                <div className="flex justify-between font-semibold">
-                  <span>Total Amount:</span>
-                  <span>₦{calculateTotal().toLocaleString()}</span>
+                <div>Guest: {formData.guestName}</div>
+                <div>Dates: {format(formData.checkIn, "PPP")} - {format(formData.checkOut, "PPP")}</div>
+                <div>Duration: {calculateNights()} nights</div>
+                <div>Guests: {formData.adults} adults{formData.children > 0 && `, ${formData.children} children`}</div>
+                <div className="font-semibold">
+                  Total: ₦{(calculateNights() * (roomTypes.find(r => r.value === formData.roomType)?.price || 0)).toLocaleString()}
                 </div>
               </div>
             </div>
           )}
 
-          <div className="flex gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
+          {/* Actions */}
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" className="flex-1">
-              Create Reservation
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Creating..." : "Create Reservation"}
             </Button>
           </div>
         </form>

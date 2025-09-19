@@ -210,11 +210,10 @@ export default function ReservationsPage() {
           {/* Reservations Content */}
           <Tabs value={view} onValueChange={setView}>
             <TabsContent value="calendar">
-              <InteractiveReservationCalendar 
-                searchTerm={searchTerm}
-                statusFilter={statusFilter}
-                onReservationSelect={setSelectedReservation}
-              />
+          <InteractiveReservationCalendar
+            currentDate={new Date()}
+            onReservationSelect={setSelectedReservation}
+          />
             </TabsContent>
 
             <TabsContent value="list">
@@ -291,9 +290,9 @@ export default function ReservationsPage() {
       </div>
 
       {/* Dialogs */}
-      <NewReservationDialog 
+      <NewReservationDialog
         open={showNewDialog}
-        onOpenChange={setShowNewDialog}
+        onClose={() => setShowNewDialog(false)}
       />
 
       {selectedReservation && (

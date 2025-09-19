@@ -24,6 +24,7 @@ import Housekeeping from "./pages/owner/Housekeeping";
 import ReportsInterface from "./components/ReportsInterface";
 import QRExportPage from "./components/QRExportPage";
 import SuperAdminLayout from "./components/layout/SuperAdminLayout";
+import ManagerLayout from "./components/layout/ManagerLayout";
 import Dashboard from "./pages/sa/Dashboard";
 import Tenants from "./pages/sa/Tenants";
 import Templates from "./pages/sa/Templates";
@@ -38,6 +39,10 @@ import Advanced from "./pages/sa/Advanced";
 import Audit from "./pages/sa/Audit";
 import Metrics from "./pages/sa/Metrics";
 import HotelDashboard from "./pages/hotel/Dashboard";
+import ManagerDashboard from "./pages/manager/Dashboard";
+import ManagerOperations from "./pages/manager/Operations";
+import ManagerServiceRequests from "./pages/manager/ServiceRequests";
+import ManagerStaffManagement from "./pages/manager/StaffManagement";
 
 const queryClient = new QueryClient();
 
@@ -71,6 +76,20 @@ const App = () => (
           </Route>
           <Route path="/qr-export" element={<QRExportPage />} />
           
+          {/* Manager Dashboard Routes */}
+          <Route path="/manager-dashboard" element={<ManagerLayout />}>
+            <Route index element={<ManagerDashboard />} />
+            <Route path="dashboard" element={<ManagerDashboard />} />
+            <Route path="operations" element={<ManagerOperations />} />
+            <Route path="requests" element={<ManagerServiceRequests />} />
+            <Route path="staff" element={<ManagerStaffManagement />} />
+            <Route path="rooms" element={<div className="p-6"><h1>Room Status Board - Coming Soon</h1></div>} />
+            <Route path="financials" element={<div className="p-6"><h1>Department Financials - Coming Soon</h1></div>} />
+            <Route path="receipts" element={<div className="p-6"><h1>Receipt Control - Coming Soon</h1></div>} />
+            <Route path="events" element={<div className="p-6"><h1>Events & Packages - Coming Soon</h1></div>} />
+            <Route path="compliance" element={<div className="p-6"><h1>Compliance & Security - Coming Soon</h1></div>} />
+          </Route>
+
           {/* Hotel Dashboard Routes */}
           <Route path="/hotel/:tenantId/dashboard" element={<HotelDashboard />} />
           

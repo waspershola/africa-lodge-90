@@ -24,7 +24,7 @@ import {
   useGuestProfiles, 
   useCompanies, 
   useImportOTAReservation,
-  useAssignRoom as autoAssignRoom,
+  useAssignRoom as useAutoAssignRoom,
   useRoomAvailability
 } from '@/hooks/useApi';
 import { Calendar } from '@/components/ui/calendar';
@@ -70,6 +70,7 @@ export default function QuickBookingForm({ onClose }: QuickBookingFormProps) {
   // API hooks
   const createReservation = useCreateReservation();
   const importOTAReservation = useImportOTAReservation();
+  const autoAssignRoom = useAutoAssignRoom();
   // Note: autoAssignRoom is imported as alias from useAssignRoom
   const { data: guestProfiles = [] } = useGuestProfiles();
   const { data: companies = [] } = useCompanies();

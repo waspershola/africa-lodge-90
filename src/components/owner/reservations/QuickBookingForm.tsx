@@ -183,9 +183,37 @@ export default function QuickBookingForm({ onClose }: QuickBookingFormProps) {
 
     try {
       if (formData.isOTA) {
-        await importOTAReservation.mutateAsync(reservationData);
+        await importOTAReservation.mutateAsync({
+          guest_name: formData.guestName,
+          guest_email: formData.email,
+          guest_phone: formData.phone,
+          check_in_date: formData.checkIn.toISOString().split('T')[0],
+          check_out_date: formData.checkOut.toISOString().split('T')[0],
+          room_id: 'default-room-id',
+          adults: formData.adults,
+          children: formData.children,
+          room_rate: formData.amount,
+          total_amount: formData.amount,
+          status: 'confirmed',
+          reservation_number: `OTA-${Date.now()}`,
+          tenant_id: 'current'
+        });
       } else {
-        await createReservation.mutateAsync(reservationData);
+        await createReservation.mutateAsync({
+          guest_name: formData.guestName,
+          guest_email: formData.email,
+          guest_phone: formData.phone,
+          check_in_date: formData.checkIn.toISOString().split('T')[0],
+          check_out_date: formData.checkOut.toISOString().split('T')[0],
+          room_id: 'default-room-id',
+          adults: formData.adults,
+          children: formData.children,
+          room_rate: formData.amount,
+          total_amount: formData.amount,
+          status: 'confirmed',
+          reservation_number: `RES-${Date.now()}`,
+          tenant_id: 'current'
+        });
       }
       
       onClose?.();

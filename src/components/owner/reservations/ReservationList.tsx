@@ -23,8 +23,8 @@ export default function ReservationList({
 
   const filteredReservations = reservations.filter(reservation => {
     const matchesSearch = searchTerm === '' || 
-      reservation.guestName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      reservation.room.includes(searchTerm) ||
+      reservation.guest_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      reservation.rooms?.room_number?.includes(searchTerm) ||
       reservation.id.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || reservation.status === statusFilter;

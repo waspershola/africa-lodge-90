@@ -108,9 +108,9 @@ export default function InteractiveReservationCalendar({
   // Get reservations for a specific date and room
   const getReservationsForDateAndRoom = (date: Date, roomNumber: string) => {
     return filteredReservations.filter(reservation => {
-      const checkIn = new Date(reservation.checkIn);
-      const checkOut = new Date(reservation.checkOut);
-      return reservation.room === roomNumber && date >= checkIn && date < checkOut;
+      const checkIn = new Date(reservation.check_in_date);
+      const checkOut = new Date(reservation.check_out_date);
+      return reservation.rooms?.room_number === roomNumber && date >= checkIn && date < checkOut;
     });
   };
 
@@ -207,7 +207,7 @@ export default function InteractiveReservationCalendar({
         reservationId: draggedReservation.id
       });
 
-      if (conflictResult.data.hasConflicts) {
+      if (conflictResult?.hasConflicts) {
         toast({
           title: 'Room Assignment Conflict',
           description: `Room ${targetRoom} has conflicts with existing reservations.`,
@@ -442,7 +442,7 @@ export default function InteractiveReservationCalendar({
                                   >
                                     <div className="flex items-center justify-between mb-1">
                                       <div className="text-xs font-medium truncate">
-                                        {reservation.guestName}
+                                        {reservation.guest_name}
                                       </div>
                                       <Grip className="h-3 w-3 text-muted-foreground opacity-60" />
                                     </div>
@@ -493,16 +493,16 @@ export default function InteractiveReservationCalendar({
                                 </TooltipTrigger>
                                 <TooltipContent side="top" className="max-w-xs bg-white border shadow-lg">
                                   <div className="space-y-1 p-1">
-                                    <div className="font-medium">{reservation.guestName}</div>
+                                    <div className="font-medium">{reservation.guest_name}</div>
                                     <div className="text-xs">Booking ID: {reservation.id}</div>
                                     <div className="text-xs">
-                                      Check-in: {format(new Date(reservation.checkIn), 'MMM d, yyyy')}
+                                      Check-in: {format(new Date(reservation.check_in_date), 'MMM d, yyyy')}
                                     </div>
                                     <div className="text-xs">
-                                      Check-out: {format(new Date(reservation.checkOut), 'MMM d, yyyy')}
+                                      Check-out: {format(new Date(reservation.check_out_date), 'MMM d, yyyy')}
                                     </div>
                                     <div className="text-xs">
-                                      Total: ₦{reservation.amount.toLocaleString()}
+                                      Total: ₦{reservation.total_amount?.toLocaleString() || '0'}
                                     </div>
                                     <div className="text-xs">
                                       Paid: ₦{(reservation.amountPaid || 0).toLocaleString()}

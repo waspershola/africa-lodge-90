@@ -58,35 +58,19 @@ export default function NewReservationDialog({ open, onOpenChange }: NewReservat
     const amount = nights * (roomTypeData?.price || 0);
 
     createReservation.mutate({
-      guestName: formData.guestName,
-      email: formData.email,
-      phone: formData.phone,
-      checkIn: formData.checkIn,
-      checkOut: formData.checkOut,
-      roomType: roomTypeData?.label || formData.roomType,
-      room: formData.room || 'Auto-assign',
-      guests: formData.adults + formData.children,
-      nights,
-      amount,
-      source: formData.source,
-      specialRequests: formData.specialRequests
-    }, {
-      onSuccess: () => {
-        onOpenChange(false);
-        setFormData({
-          guestName: '',
-          email: '',
-          phone: '',
-          checkIn: undefined,
-          checkOut: undefined,
-          roomType: '',
-          room: '',
-          adults: 1,
-          children: 0,
-          specialRequests: '',
-          source: 'direct'
-        });
-      }
+      guest_name: formData.guestName,
+      guest_email: formData.email,
+      guest_phone: formData.phone,
+      check_in_date: formData.checkIn.toISOString().split('T')[0],
+      check_out_date: formData.checkOut.toISOString().split('T')[0],
+      room_id: 'default-room-id',
+      adults: formData.adults,
+      children: formData.children,
+      room_rate: roomTypeData?.price || 0,
+      total_amount: amount,
+      status: 'confirmed',
+      reservation_number: `RES-${Date.now()}`,
+      tenant_id: 'current'
     });
   };
 

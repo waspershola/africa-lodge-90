@@ -1,145 +1,122 @@
 import React, { useState } from 'react';
-import { QrCode, Plus, Download, Eye, ToggleLeft, ToggleRight } from 'lucide-react';
+import { QrCode, Plus, Download, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { QRServiceCard } from '@/components/owner/qr/QRServiceCard';
-import { QRGeneratorModal } from '@/components/owner/qr/QRGeneratorModal';
-import { AuditLogsPanel } from '@/components/owner/qr/AuditLogsPanel';
+import { QRCodeTable } from '@/components/owner/qr/QRCodeTable';
+import { QRCodeDrawer } from '@/components/owner/qr/QRCodeDrawer';
+import { QRCodeWizard } from '@/components/owner/qr/QRCodeWizard';
 import { useToast } from '@/hooks/use-toast';
 
-interface QRService {
+export interface QRCodeData {
   id: string;
-  name: string;
-  icon: string;
-  active: boolean;
-  scope: 'GLOBAL' | 'PER_ROOM';
-  requestCount: number;
-  description: string;
-  color: string;
+  scope: 'Room' | 'Location';
+  assignedTo: string;
+  servicesEnabled: string[];
+  status: 'Active' | 'Inactive';
+  pendingRequests: number;
+  createdAt: string;
+  createdBy: string;
 }
 
 export default function QRManagerPage() {
-  const [showGenerator, setShowGenerator] = useState(false);
-  const [selectedService, setSelectedService] = useState<QRService | null>(null);
+  const [selectedQR, setSelectedQR] = useState<QRCodeData | null>(null);
+  const [showWizard, setShowWizard] = useState(false);
+  const [showDrawer, setShowDrawer] = useState(false);
   const { toast } = useToast();
 
-  const [services, setServices] = useState<QRService[]>([
+  const [qrCodes, setQRCodes] = useState<QRCodeData[]>([
     {
-      id: 'wifi',
-      name: 'Guest Wi-Fi',
-      icon: '📶',
-      active: true,
-      scope: 'GLOBAL',
-      requestCount: 0,
-      description: 'Instant Wi-Fi access for guests',
-      color: 'bg-blue-100 text-blue-700'
+      id: 'QR_101',
+      scope: 'Room',
+      assignedTo: 'Room 101',
+      servicesEnabled: ['Wi-Fi', 'Room Service', 'Housekeeping', 'Maintenance', 'Menu'],
+      status: 'Active',
+      pendingRequests: 3,
+      createdAt: '2025-09-18T22:39:00Z',
+      createdBy: 'John Manager'
     },
     {
-      id: 'room-service',
-      name: 'Room Service',
-      icon: '🍽️',
-      active: true,
-      scope: 'PER_ROOM',
-      requestCount: 12,
-      description: 'Order food and beverages to room',
-      color: 'bg-green-100 text-green-700'
+      id: 'QR_102',
+      scope: 'Room',
+      assignedTo: 'Room 102',
+      servicesEnabled: ['Wi-Fi', 'Room Service', 'Housekeeping'],
+      status: 'Active',
+      pendingRequests: 0,
+      createdAt: '2025-09-18T22:40:00Z',
+      createdBy: 'John Manager'
     },
     {
-      id: 'housekeeping',
-      name: 'Housekeeping',
-      icon: '🧹',
-      active: true,
-      scope: 'PER_ROOM',
-      requestCount: 8,
-      description: 'Request cleaning and amenities',
-      color: 'bg-purple-100 text-purple-700'
+      id: 'QR_POOL',
+      scope: 'Location',
+      assignedTo: 'Poolside Bar',
+      servicesEnabled: ['Menu', 'Events'],
+      status: 'Active',
+      pendingRequests: 6,
+      createdAt: '2025-09-18T22:41:00Z',
+      createdBy: 'Sarah Admin'
     },
     {
-      id: 'maintenance',
-      name: 'Maintenance',
-      icon: '🔧',
-      active: true,
-      scope: 'PER_ROOM',
-      requestCount: 3,
-      description: 'Report room issues and repairs',
-      color: 'bg-orange-100 text-orange-700'
-    },
-    {
-      id: 'feedback',
-      name: 'Feedback',
-      icon: '📋',
-      active: true,
-      scope: 'GLOBAL',
-      requestCount: 0,
-      description: 'Guest reviews and comments',
-      color: 'bg-pink-100 text-pink-700'
-    },
-    {
-      id: 'menu',
-      name: 'Digital Menu',
-      icon: '📖',
-      active: false,
-      scope: 'GLOBAL',
-      requestCount: 0,
-      description: 'Restaurant and bar menus',
-      color: 'bg-amber-100 text-amber-700'
-    },
-    {
-      id: 'events',
-      name: 'Events',
-      icon: '🎉',
-      active: false,
-      scope: 'GLOBAL',
-      requestCount: 0,
-      description: 'Hotel events and packages',
-      color: 'bg-indigo-100 text-indigo-700'
+      id: 'QR_LOBBY',
+      scope: 'Location',
+      assignedTo: 'Lobby',
+      servicesEnabled: ['Wi-Fi', 'Feedback'],
+      status: 'Active',
+      pendingRequests: 0,
+      createdAt: '2025-09-18T22:42:00Z',
+      createdBy: 'John Manager'
     }
   ]);
 
+  const handleViewQR = (qr: QRCodeData) => {
+    setSelectedQR(qr);
+    setShowDrawer(true);
+  };
+
+  const handleEditQR = (qr: QRCodeData) => {
+    setSelectedQR(qr);
+    setShowDrawer(true);
+  };
+
   const handleNewQRCode = () => {
-    setSelectedService(null);
-    setShowGenerator(true);
-  };
-
-  const handleEditService = (service: QRService) => {
-    setSelectedService(service);
-    setShowGenerator(true);
-  };
-
-  const handleToggleService = (serviceId: string) => {
-    setServices(prev => prev.map(service => 
-      service.id === serviceId 
-        ? { ...service, active: !service.active }
-        : service
-    ));
-    
-    const service = services.find(s => s.id === serviceId);
-    toast({
-      title: `Service ${service?.active ? 'Deactivated' : 'Activated'}`,
-      description: `${service?.name} QR codes are now ${service?.active ? 'inactive' : 'active'}`
-    });
+    setSelectedQR(null);
+    setShowWizard(true);
   };
 
   const handleBulkExport = () => {
     toast({
-      title: "Export Started",
-      description: "Generating QR code package for all rooms..."
+      title: "Bulk Export Started",
+      description: `Generating ${qrCodes.length} QR codes as ZIP file...`
     });
   };
 
-  const handleViewAllCodes = (serviceId: string) => {
-    const service = services.find(s => s.id === serviceId);
+  const handleGlobalSettings = () => {
     toast({
-      title: "View All Codes",
-      description: `Showing all QR codes for ${service?.name}`
+      title: "Global Settings",
+      description: "Opening branding and default service settings..."
     });
   };
 
-  const handlePrintExport = (serviceId: string) => {
-    const service = services.find(s => s.id === serviceId);
+  const handleUpdateQR = (updatedQR: QRCodeData) => {
+    setQRCodes(prev => prev.map(qr => 
+      qr.id === updatedQR.id ? updatedQR : qr
+    ));
     toast({
-      title: "Print/Export",
-      description: `Preparing ${service?.name} QR codes for printing`
+      title: "QR Code Updated",
+      description: `${updatedQR.assignedTo} QR code has been updated successfully`
+    });
+  };
+
+  const handleCreateQR = (newQRData: Omit<QRCodeData, 'id' | 'createdAt' | 'createdBy' | 'pendingRequests'>) => {
+    const newQR: QRCodeData = {
+      ...newQRData,
+      id: `QR_${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      createdBy: 'Current User',
+      pendingRequests: 0
+    };
+    setQRCodes(prev => [...prev, newQR]);
+    toast({
+      title: "QR Code Created",
+      description: `QR code for ${newQR.assignedTo} has been generated successfully`
     });
   };
 
@@ -153,69 +130,45 @@ export default function QRManagerPage() {
             QR Code Manager
           </h1>
           <p className="text-muted-foreground mt-1">
-            Generate and manage branded QR codes for hotel services
+            Generate and manage per-room and per-location QR codes with unified service access
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={handleGlobalSettings}>
+            <Settings className="h-4 w-4 mr-2" />
+            Global Settings
+          </Button>
           <Button variant="outline" onClick={handleBulkExport}>
             <Download className="h-4 w-4 mr-2" />
             Bulk Export
           </Button>
           <Button onClick={handleNewQRCode}>
             <Plus className="h-4 w-4 mr-2" />
-            New QR Code
+            Generate New QR
           </Button>
         </div>
       </div>
 
-      {/* Services Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {services.map((service) => (
-          <QRServiceCard
-            key={service.id}
-            service={service}
-            onToggle={() => handleToggleService(service.id)}
-            onEdit={() => handleEditService(service)}
-            onViewAll={() => handleViewAllCodes(service.id)}
-            onPrintExport={() => handlePrintExport(service.id)}
-          />
-        ))}
-      </div>
+      {/* QR Codes Table */}
+      <QRCodeTable 
+        qrCodes={qrCodes}
+        onView={handleViewQR}
+        onEdit={handleEditQR}
+      />
 
-      {/* Audit Logs */}
-      <AuditLogsPanel />
+      {/* QR Details Drawer */}
+      <QRCodeDrawer
+        open={showDrawer}
+        onOpenChange={setShowDrawer}
+        qrCode={selectedQR}
+        onUpdate={handleUpdateQR}
+      />
 
-      {/* QR Generator Modal */}
-      <QRGeneratorModal
-        open={showGenerator}
-        onOpenChange={setShowGenerator}
-        service={selectedService}
-        onSave={(serviceData) => {
-          if (selectedService) {
-            // Update existing service
-            setServices(prev => prev.map(s => 
-              s.id === selectedService.id ? { ...s, ...serviceData } : s
-            ));
-            toast({
-              title: "Service Updated",
-              description: `${serviceData.name} has been updated successfully`
-            });
-          } else {
-            // Create new service
-            const newService: QRService = {
-              id: `service_${Date.now()}`,
-              requestCount: 0,
-              ...serviceData
-            };
-            setServices(prev => [...prev, newService]);
-            toast({
-              title: "Service Created",
-              description: `${serviceData.name} QR codes generated successfully`
-            });
-          }
-          setShowGenerator(false);
-          setSelectedService(null);
-        }}
+      {/* QR Creation Wizard */}
+      <QRCodeWizard
+        open={showWizard}
+        onOpenChange={setShowWizard}
+        onSave={handleCreateQR}
       />
     </div>
   );

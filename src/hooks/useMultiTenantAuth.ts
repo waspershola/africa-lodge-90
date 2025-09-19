@@ -9,7 +9,7 @@ export interface User {
   role: 'SUPER_ADMIN' | 'OWNER' | 'MANAGER' | 'STAFF' | 'FRONT_DESK' | 'HOUSEKEEPING' | 'MAINTENANCE' | 'POS';
   tenant_id?: string;
   force_reset?: boolean;
-  temp_password?: string;
+  temp_password_hash?: string;
   temp_expires?: string;
 }
 
@@ -142,7 +142,7 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
         role: roleFromJWT || 'STAFF',
         tenant_id: tenantIdFromJWT,
         force_reset: userProfile?.force_reset || false,
-        temp_password: userProfile?.temp_password_hash,
+        temp_password_hash: userProfile?.temp_password_hash,
         temp_expires: userProfile?.temp_expires,
       };
 
@@ -226,6 +226,7 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
   // Login function
   const login = async (email: string, password: string) => {
     try {
+      console.log('Starting login for:', email);
       setIsLoading(true);
       setError(null);
 
@@ -235,17 +236,22 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
       });
 
       if (loginError) {
+        console.error('Login error:', loginError);
         throw loginError;
       }
 
+      console.log('Login successful, loading user profile...');
       if (data.session) {
         setSession(data.session);
         await loadUserProfile(data.user);
+        console.log('Login completed successfully');
       }
     } catch (err) {
+      console.error('Login failed:', err);
       setError(err instanceof Error ? err.message : 'Login failed');
       throw err;
     } finally {
+      console.log('Login function finished, setting loading to false');
       setIsLoading(false);
     }
   };

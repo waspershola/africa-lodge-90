@@ -28,7 +28,8 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { TrialSignupFlow } from "@/components/auth/TrialSignupFlow";
@@ -45,6 +46,7 @@ const Index = () => {
   const [password, setPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const { user, login } = useAuth();
+  const navigate = useNavigate();
 
   const getUserDashboardPath = (role: string) => {
     switch (role) {
@@ -65,9 +67,21 @@ const Index = () => {
   };
 
   // Redirect authenticated users to appropriate dashboard
+  useEffect(() => {
+    if (user) {
+      console.log('User authenticated, redirecting to:', getUserDashboardPath(user.role));
+      navigate(getUserDashboardPath(user.role), { replace: true });
+    }
+  }, [user, navigate]);
+
+  // Don't render the page content if user is authenticated (will redirect)
   if (user) {
-    window.location.href = getUserDashboardPath(user.role);
-    return <div>Redirecting...</div>;
+    return <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+        <p>Redirecting to your dashboard...</p>
+      </div>
+    </div>;
   }
   const fadeIn = {
     initial: { opacity: 0, y: 20 },
@@ -128,10 +142,13 @@ const Index = () => {
     
     setLoginLoading(true);
     try {
+      console.log('Quick login attempt for:', email);
       await login(email, password);
-      // Redirect will be handled by the auth system's onboarding check
+      console.log('Quick login successful');
+      // Navigation will be handled by the useEffect above
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error('Quick login failed:', error);
+      // The error is already handled by the login function
     } finally {
       setLoginLoading(false);
     }

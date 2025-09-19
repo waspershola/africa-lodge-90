@@ -43,6 +43,11 @@ import ManagerDashboard from "./pages/manager/Dashboard";
 import ManagerOperations from "./pages/manager/Operations";
 import ManagerServiceRequests from "./pages/manager/ServiceRequests";
 import ManagerStaffManagement from "./pages/manager/StaffManagement";
+import ManagerRoomStatus from "./pages/manager/RoomStatus";
+import ManagerDepartmentFinance from "./pages/manager/DepartmentFinance";
+import ManagerReceiptControl from "./pages/manager/ReceiptControl";
+import ManagerEventsPackages from "./pages/manager/EventsPackages";
+import ManagerCompliance from "./pages/manager/Compliance";
 
 const queryClient = new QueryClient();
 
@@ -81,13 +86,13 @@ const App = () => (
             <Route index element={<ManagerDashboard />} />
             <Route path="dashboard" element={<ManagerDashboard />} />
             <Route path="operations" element={<ManagerOperations />} />
+            <Route path="rooms" element={<ManagerRoomStatus />} />
             <Route path="requests" element={<ManagerServiceRequests />} />
             <Route path="staff" element={<ManagerStaffManagement />} />
-            <Route path="rooms" element={<div className="p-6"><h1>Room Status Board - Coming Soon</h1></div>} />
-            <Route path="financials" element={<div className="p-6"><h1>Department Financials - Coming Soon</h1></div>} />
-            <Route path="receipts" element={<div className="p-6"><h1>Receipt Control - Coming Soon</h1></div>} />
-            <Route path="events" element={<div className="p-6"><h1>Events & Packages - Coming Soon</h1></div>} />
-            <Route path="compliance" element={<div className="p-6"><h1>Compliance & Security - Coming Soon</h1></div>} />
+            <Route path="financials" element={<ManagerDepartmentFinance />} />
+            <Route path="receipts" element={<ManagerReceiptControl />} />
+            <Route path="events" element={<ManagerEventsPackages />} />
+            <Route path="compliance" element={<ManagerCompliance />} />
           </Route>
 
           {/* Hotel Dashboard Routes */}

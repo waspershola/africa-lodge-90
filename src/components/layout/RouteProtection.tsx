@@ -53,7 +53,7 @@ export function RouteProtection({
 function getUserDashboardPath(role: string): string {
   switch (role) {
     case 'SUPER_ADMIN':
-      return '/super-admin/dashboard';
+      return '/sa/dashboard';
     case 'OWNER':
       return '/owner-dashboard';
     case 'MANAGER':

@@ -240,7 +240,6 @@ export default function SettingsPage() {
                         <div>
                           <Label className="text-xs">Printer Name</Label>
                           <Input 
-                            size="sm" 
                             value={config.printer}
                             onChange={(e) => {
                               const updatedStations = {
@@ -257,7 +256,6 @@ export default function SettingsPage() {
                         <div>
                           <Label className="text-xs">IP Address</Label>
                           <Input 
-                            size="sm" 
                             value={config.ip}
                             onChange={(e) => {
                               const updatedStations = {

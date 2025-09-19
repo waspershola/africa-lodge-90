@@ -37,23 +37,23 @@ export default function ReservationsPage() {
   const today = new Date();
   const todayActivity = reservations
     .filter(r => {
-      const checkIn = new Date(r.checkIn);
-      const checkOut = new Date(r.checkOut);
+      const checkIn = new Date(r.check_in_date);
+      const checkOut = new Date(r.check_out_date);
       return (
         (checkIn.toDateString() === today.toDateString()) ||
         (checkOut.toDateString() === today.toDateString())
       );
     })
     .map(r => {
-      const checkIn = new Date(r.checkIn);
-      const checkOut = new Date(r.checkOut);
+      const checkIn = new Date(r.check_in_date);
+      const checkOut = new Date(r.check_out_date);
       
       if (checkIn.toDateString() === today.toDateString()) {
         return {
           time: '14:00',
           type: 'check-in',
-          guest: r.guestName,
-          room: r.room,
+          guest: r.guest_name,
+          room: r.rooms?.room_number || 'N/A',
           status: r.status === 'confirmed' ? 'pending' : 'completed'
         };
       }
@@ -61,8 +61,8 @@ export default function ReservationsPage() {
         return {
           time: '12:00',
           type: 'check-out',
-          guest: r.guestName,
-          room: r.room,
+          guest: r.guest_name,
+          room: r.rooms?.room_number || 'N/A',
           status: r.status === 'checked-out' ? 'completed' : 'pending'
         };
       }

@@ -33,7 +33,7 @@ export default function NewReservationDialog({ open, onOpenChange }: NewReservat
   });
 
   const createReservation = useCreateReservation();
-  const { data: roomAvailability = [] } = useRoomAvailability(formData.checkIn, formData.checkOut);
+  const { data: roomAvailability = [] } = useRoomAvailability();
 
   const roomTypes = [
     { value: 'standard', label: 'Standard Room', price: 85000 },
@@ -70,7 +70,13 @@ export default function NewReservationDialog({ open, onOpenChange }: NewReservat
       total_amount: amount,
       status: 'confirmed',
       reservation_number: `RES-${Date.now()}`,
-      tenant_id: 'current'
+      tenant_id: 'current',
+      checked_in_at: null,
+      checked_in_by: null,
+      checked_out_at: null,
+      checked_out_by: null,
+      guest_id_number: null,
+      created_by: null
     });
   };
 

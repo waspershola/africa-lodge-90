@@ -201,9 +201,9 @@ export default function InteractiveReservationCalendar({
     try {
       // Check for conflicts before moving
       const conflictResult = await checkConflicts.mutateAsync({
-        roomNumber: targetRoom,
-        checkIn: draggedReservation.checkIn,
-        checkOut: draggedReservation.checkOut,
+        roomId: targetRoom,
+        checkIn: draggedReservation.check_in_date,
+        checkOut: draggedReservation.check_out_date,
         reservationId: draggedReservation.id
       });
 
@@ -217,11 +217,10 @@ export default function InteractiveReservationCalendar({
         return;
       }
 
-      // Assign room
-      await assignRoom.mutateAsync({
-        reservationId: draggedReservation.id,
-        roomNumber: targetRoom
-      });
+        await assignRoom.mutateAsync({
+          reservationId: draggedReservation.id,
+          roomId: targetRoom
+        });
 
       toast({
         title: 'Room Reassigned',
@@ -454,15 +453,15 @@ export default function InteractiveReservationCalendar({
                                     <div className="flex items-center justify-between mt-1">
                                       <div className="flex items-center gap-1 text-xs">
                                         <Users className="h-3 w-3" />
-                                        <span>{reservation.guests}</span>
+                                        <span>{(reservation.adults || 0) + (reservation.children || 0)}</span>
                                       </div>
                                       
-                                      {reservation.balanceDue > 0 && (
+                                      {(reservation.total_amount || 0) > 0 && reservation.status !== 'checked-out' && (
                                         <div className="flex items-center gap-1 text-xs">
                                           <AlertTriangle className="h-3 w-3 text-amber-600" />
-                                          <span className="text-amber-600 font-medium">
-                                            ₦{reservation.balanceDue.toLocaleString()}
-                                          </span>
+                                           <span className="text-amber-600 font-medium">
+                                             ₦{(reservation.total_amount || 0).toLocaleString()}
+                                           </span>
                                         </div>
                                       )}
                                       
@@ -504,22 +503,17 @@ export default function InteractiveReservationCalendar({
                                     <div className="text-xs">
                                       Total: ₦{reservation.total_amount?.toLocaleString() || '0'}
                                     </div>
-                                    <div className="text-xs">
-                                      Paid: ₦{(reservation.amountPaid || 0).toLocaleString()}
-                                    </div>
-                                    <div className={`text-xs font-medium ${
-                                      reservation.balanceDue > 0 ? 'text-red-600' : 'text-green-600'
-                                    }`}>
-                                      Balance Due: ₦{(reservation.balanceDue || 0).toLocaleString()}
-                                    </div>
-                                    <div className="text-xs">
-                                      Payment: <span className="capitalize">{reservation.paymentMode}</span>
-                                    </div>
-                                    {reservation.source && (
-                                      <div className="text-xs">
-                                        Source: {reservation.source}
-                                      </div>
-                                    )}
+                                     <div className="text-xs">
+                                       Paid: ₦{(reservation.total_amount || 0).toLocaleString()}
+                                     </div>
+                                     <div className={`text-xs font-medium ${
+                                       reservation.status !== 'checked-out' ? 'text-red-600' : 'text-green-600'
+                                     }`}>
+                                       Status: {reservation.status}
+                                     </div>
+                                     <div className="text-xs">
+                                       Rate: ₦{(reservation.room_rate || 0).toLocaleString()}
+                                     </div>
                                   </div>
                                 </TooltipContent>
                               </Tooltip>

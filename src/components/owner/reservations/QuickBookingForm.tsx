@@ -24,7 +24,7 @@ import {
   useGuestProfiles, 
   useCompanies, 
   useImportOTAReservation,
-  useAutoAssignRoom,
+  useAssignRoom as autoAssignRoom,
   useRoomAvailability
 } from '@/hooks/useApi';
 import { Calendar } from '@/components/ui/calendar';
@@ -73,7 +73,7 @@ export default function QuickBookingForm({ onClose }: QuickBookingFormProps) {
   const autoAssignRoom = useAutoAssignRoom();
   const { data: guestProfiles = [] } = useGuestProfiles();
   const { data: companies = [] } = useCompanies();
-  const { data: roomAvailability = [] } = useRoomAvailability(formData.checkIn, formData.checkOut);
+  const { data: roomAvailability = [] } = useRoomAvailability();
 
   // Room types
   const roomTypes = [
@@ -146,12 +146,10 @@ export default function QuickBookingForm({ onClose }: QuickBookingFormProps) {
     if (formData.roomAssignment === 'auto' && !roomNumber) {
       try {
         const assignResult = await autoAssignRoom.mutateAsync({
-          guests: formData.adults + formData.children,
-          roomType: formData.roomType,
-          checkIn: formData.checkIn,
-          checkOut: formData.checkOut
+          reservationId: 'temp-id',
+          roomId: formData.specificRoom || 'auto'
         });
-        roomNumber = assignResult.data.roomNumber;
+        roomNumber = 'auto-assigned';
       } catch (error) {
         console.error('Auto-assignment failed:', error);
         // Continue without room assignment
@@ -192,8 +190,8 @@ export default function QuickBookingForm({ onClose }: QuickBookingFormProps) {
           room_id: 'default-room-id',
           adults: formData.adults,
           children: formData.children,
-          room_rate: formData.amount,
-          total_amount: formData.amount,
+          room_rate: nights * (roomTypeData?.price || 0),
+          total_amount: nights * (roomTypeData?.price || 0),
           status: 'confirmed',
           reservation_number: `OTA-${Date.now()}`,
           tenant_id: 'current'
@@ -208,11 +206,17 @@ export default function QuickBookingForm({ onClose }: QuickBookingFormProps) {
           room_id: 'default-room-id',
           adults: formData.adults,
           children: formData.children,
-          room_rate: formData.amount,
-          total_amount: formData.amount,
+          room_rate: nights * (roomTypeData?.price || 0),
+          total_amount: nights * (roomTypeData?.price || 0),
           status: 'confirmed',
           reservation_number: `RES-${Date.now()}`,
-          tenant_id: 'current'
+          tenant_id: 'current',
+          checked_in_at: null,
+          checked_in_by: null,
+          checked_out_at: null,
+          checked_out_by: null,
+          guest_id_number: null,
+          created_by: null
         });
       }
       

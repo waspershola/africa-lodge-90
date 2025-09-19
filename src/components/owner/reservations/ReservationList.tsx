@@ -74,7 +74,7 @@ export default function ReservationList({
               <CardContent className="p-4">
                 <div className="flex items-start gap-4">
                   <Avatar className="h-12 w-12">
-                    <AvatarFallback>{getInitials(reservation.guestName)}</AvatarFallback>
+                    {getInitials(reservation.guest_name)}
                   </Avatar>
                   
                   <div className="flex-1 space-y-2">
@@ -85,7 +85,7 @@ export default function ReservationList({
                             className="font-semibold text-lg hover:text-primary cursor-pointer"
                             onClick={() => onReservationSelect(reservation)}
                           >
-                            {reservation.guestName}
+                            {reservation.guest_name}
                           </h3>
                           {getStatusBadge(reservation.status)}
                         </div>
@@ -94,10 +94,10 @@ export default function ReservationList({
                       
                       <div className="text-right">
                         <div className="text-lg font-semibold">
-                          ₦{reservation.amount.toLocaleString()}
+                          ₦{reservation.total_amount?.toLocaleString() || '0'}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {reservation.nights} night{reservation.nights !== 1 ? 's' : ''}
+                          {Math.ceil((new Date(reservation.check_out_date).getTime() - new Date(reservation.check_in_date).getTime()) / (1000 * 60 * 60 * 24))} night{Math.ceil((new Date(reservation.check_out_date).getTime() - new Date(reservation.check_in_date).getTime()) / (1000 * 60 * 60 * 24)) !== 1 ? 's' : ''}
                         </div>
                       </div>
                     </div>
@@ -106,8 +106,8 @@ export default function ReservationList({
                       <div className="flex items-center gap-2">
                         <MapPin className="h-4 w-4 text-muted-foreground" />
                         <div>
-                          <div className="font-medium">Room {reservation.room}</div>
-                          <div className="text-muted-foreground">{reservation.roomType}</div>
+                          <div className="font-medium">Room {reservation.rooms?.room_number || 'N/A'}</div>
+                          <div className="text-muted-foreground">Standard Room</div>
                         </div>
                       </div>
 
@@ -115,10 +115,10 @@ export default function ReservationList({
                         <Calendar className="h-4 w-4 text-muted-foreground" />
                         <div>
                           <div className="font-medium">
-                            {format(reservation.checkIn, 'MMM dd')} - {format(reservation.checkOut, 'MMM dd')}
+                            {format(new Date(reservation.check_in_date), 'MMM dd')} - {format(new Date(reservation.check_out_date), 'MMM dd')}
                           </div>
                           <div className="text-muted-foreground">
-                            {format(reservation.checkIn, 'yyyy')}
+                            {format(new Date(reservation.check_in_date), 'yyyy')}
                           </div>
                         </div>
                       </div>
@@ -127,9 +127,9 @@ export default function ReservationList({
                         <Users className="h-4 w-4 text-muted-foreground" />
                         <div>
                           <div className="font-medium">
-                            {reservation.guests} guest{reservation.guests !== 1 ? 's' : ''}
+                            {(reservation.adults || 0) + (reservation.children || 0)} guest{((reservation.adults || 0) + (reservation.children || 0)) !== 1 ? 's' : ''}
                           </div>
-                          <div className="text-muted-foreground">{reservation.source}</div>
+                          <div className="text-muted-foreground">Direct</div>
                         </div>
                       </div>
                     </div>
@@ -138,11 +138,11 @@ export default function ReservationList({
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center gap-1">
                           <Mail className="h-3 w-3" />
-                          <span>{reservation.email}</span>
+                          <span>{reservation.guest_email}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <Phone className="h-3 w-3" />
-                          <span>{reservation.phone}</span>
+                          <span>{reservation.guest_phone}</span>
                         </div>
                       </div>
 

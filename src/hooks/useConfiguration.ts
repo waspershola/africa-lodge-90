@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { HotelConfiguration, ConfigurationAuditLog } from '@/types/configuration';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 
-// Mock default configuration
+// Default configuration template
 const defaultConfiguration: HotelConfiguration = {
   general: {
     hotel_name: 'Grand Palace Lagos',
@@ -117,40 +119,198 @@ const mockAuditLogs: ConfigurationAuditLog[] = [
 
 export const useConfiguration = () => {
   const [configuration, setConfiguration] = useState<HotelConfiguration>(defaultConfiguration);
-  const [auditLogs, setAuditLogs] = useState<ConfigurationAuditLog[]>(mockAuditLogs);
+  const [auditLogs, setAuditLogs] = useState<ConfigurationAuditLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
   // Load configuration on mount
   useEffect(() => {
-    loadConfiguration();
-  }, []);
+    if (user?.tenant_id) {
+      loadConfiguration();
+    }
+  }, [user?.tenant_id]);
 
   const loadConfiguration = async () => {
+    if (!user?.tenant_id) return;
+
     setLoading(true);
     setError(null);
     
     try {
-      // Mock API call - replace with Supabase
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      // Configuration would be loaded here
-      setConfiguration(defaultConfiguration);
-    } catch (err) {
-      setError('Failed to load configuration');
+      // Get tenant configuration
+      const { data: tenant, error: tenantError } = await supabase
+        .from('tenants')
+        .select('*')
+        .eq('tenant_id', user.tenant_id)
+        .single();
+
+      if (tenantError) throw tenantError;
+
+      // Transform tenant data to HotelConfiguration format
+      const config: HotelConfiguration = {
+        general: {
+          hotel_name: tenant.hotel_name,
+          address: {
+            street: tenant.address || '',
+            city: tenant.city || '',
+            state: '',
+            country: tenant.country,
+            postal_code: ''
+          },
+          contact: {
+            phone: tenant.phone || '',
+            email: tenant.email || '',
+            website: ''
+          },
+          timezone: tenant.timezone || 'Africa/Lagos',
+          date_format: 'DD/MM/YYYY',
+          time_format: '24h'
+        },
+        currency: {
+          default_currency: tenant.currency,
+          currency_symbol: tenant.currency === 'NGN' ? '₦' : '$',
+          symbol_position: 'before',
+          decimal_places: 2,
+          thousand_separator: ',',
+          decimal_separator: '.'
+        },
+        tax: {
+          vat_rate: 7.5,
+          service_charge_rate: 10,
+          tax_inclusive: false,
+          service_charge_inclusive: false
+        },
+        branding: {
+          primary_color: (tenant.brand_colors as any)?.primary || '#2563eb',
+          secondary_color: (tenant.brand_colors as any)?.secondary || '#64748b',
+          accent_color: (tenant.brand_colors as any)?.accent || '#f59e0b',
+          logo_url: tenant.logo_url,
+          receipt_header_text: `Thank you for choosing ${tenant.hotel_name}`,
+          receipt_footer_text: 'We hope to see you again soon!'
+        },
+        documents: {
+          default_receipt_template: (tenant.receipt_template as 'A4' | 'thermal_80mm' | 'thermal_58mm' | 'half_page') || 'A4',
+          invoice_prefix: 'INV',
+          receipt_prefix: 'RCP',
+          digital_signature_enabled: true,
+          include_qr_code: true
+        },
+        guest_experience: {
+          checkin_slip_fields: {
+            guest_id_required: true,
+            phone_required: true,
+            email_required: false,
+            address_required: false
+          },
+          qr_defaults: {
+            include_logo: true,
+            include_hotel_name: true,
+            qr_size: 'medium',
+            default_services: ['wifi', 'room_service', 'housekeeping', 'maintenance']
+          }
+        },
+        permissions: {
+          pricing_changes_require_approval: true,
+          discount_approval_threshold: 10000,
+          refund_approval_threshold: 50000,
+          service_price_edits_require_approval: true,
+          manager_can_override_rates: false
+        }
+      };
+
+      setConfiguration(config);
+
+      // Load audit logs
+      const { data: logs, error: logsError } = await supabase
+        .from('audit_log')
+        .select('*')
+        .eq('tenant_id', user.tenant_id)
+        .eq('resource_type', 'tenant')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (logsError) throw logsError;
+
+      const auditLogs: ConfigurationAuditLog[] = logs.map(log => ({
+        id: log.id,
+        timestamp: log.created_at || '',
+        user_id: log.actor_id || '',
+        user_name: log.actor_email || 'Unknown',
+        user_role: log.actor_role || 'unknown',
+        action: 'update',
+        section: 'general',
+        field: 'configuration',
+        old_value: log.old_values,
+        new_value: log.new_values,
+        description: log.description || ''
+      }));
+
+      setAuditLogs(auditLogs);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load configuration');
     } finally {
       setLoading(false);
     }
   };
 
   const updateConfiguration = async (section: keyof HotelConfiguration, updates: Partial<HotelConfiguration[keyof HotelConfiguration]>) => {
+    if (!user?.tenant_id) return false;
+
     setLoading(true);
     setError(null);
 
     try {
-      // Mock API call - replace with Supabase
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const oldConfiguration = { ...configuration };
+      let tenantUpdates: any = {};
 
-      const oldValue = configuration[section];
+      // Map configuration sections to tenant fields
+      switch (section) {
+        case 'general':
+          const generalUpdates = updates as Partial<HotelConfiguration['general']>;
+          if (generalUpdates.hotel_name) tenantUpdates.hotel_name = generalUpdates.hotel_name;
+          if (generalUpdates.address?.city) tenantUpdates.city = generalUpdates.address.city;
+          if (generalUpdates.address?.country) tenantUpdates.country = generalUpdates.address.country;
+          if (generalUpdates.contact?.phone) tenantUpdates.phone = generalUpdates.contact.phone;
+          if (generalUpdates.contact?.email) tenantUpdates.email = generalUpdates.contact.email;
+          if (generalUpdates.timezone) tenantUpdates.timezone = generalUpdates.timezone;
+          break;
+        case 'currency':
+          const currencyUpdates = updates as Partial<HotelConfiguration['currency']>;
+          if (currencyUpdates.default_currency) tenantUpdates.currency = currencyUpdates.default_currency;
+          break;
+        case 'branding':
+          const brandingUpdates = updates as Partial<HotelConfiguration['branding']>;
+          const currentBrandColors = (await supabase
+            .from('tenants')
+            .select('brand_colors')
+            .eq('tenant_id', user.tenant_id)
+            .single()).data?.brand_colors as any || {};
+          
+          tenantUpdates.brand_colors = {
+            ...currentBrandColors,
+            ...(brandingUpdates.primary_color && { primary: brandingUpdates.primary_color }),
+            ...(brandingUpdates.secondary_color && { secondary: brandingUpdates.secondary_color }),
+            ...(brandingUpdates.accent_color && { accent: brandingUpdates.accent_color })
+          };
+          
+          if (brandingUpdates.logo_url) tenantUpdates.logo_url = brandingUpdates.logo_url;
+          break;
+        case 'documents':
+          const docUpdates = updates as Partial<HotelConfiguration['documents']>;
+          if (docUpdates.default_receipt_template) tenantUpdates.receipt_template = docUpdates.default_receipt_template;
+          break;
+      }
+
+      // Update tenant record
+      const { error: updateError } = await supabase
+        .from('tenants')
+        .update(tenantUpdates)
+        .eq('tenant_id', user.tenant_id);
+
+      if (updateError) throw updateError;
+
+      // Update local configuration
       const newConfiguration = {
         ...configuration,
         [section]: {
@@ -158,29 +318,30 @@ export const useConfiguration = () => {
           ...updates
         }
       };
-
       setConfiguration(newConfiguration);
 
       // Create audit log entry
-      const auditEntry: ConfigurationAuditLog = {
-        id: Date.now().toString(),
-        timestamp: new Date().toISOString(),
-        user_id: 'current-user',
-        user_name: 'Current User',
-        user_role: 'owner',
-        action: 'update',
-        section,
-        field: Object.keys(updates)[0],
-        old_value: oldValue,
-        new_value: updates,
-        description: `Updated ${section} configuration`
-      };
+      await supabase
+        .from('audit_log')
+        .insert([{
+          action: 'configuration_updated',
+          resource_type: 'tenant',
+          resource_id: user.tenant_id,
+          actor_id: user.id,
+          actor_email: user.email,
+          actor_role: user.role,
+          tenant_id: user.tenant_id,
+          description: `Updated ${section} configuration`,
+          old_values: oldConfiguration[section],
+          new_values: updates
+        }]);
 
-      setAuditLogs(prev => [auditEntry, ...prev]);
+      // Reload audit logs
+      await loadConfiguration();
 
       return true;
-    } catch (err) {
-      setError('Failed to update configuration');
+    } catch (err: any) {
+      setError(err.message || 'Failed to update configuration');
       return false;
     } finally {
       setLoading(false);
@@ -188,23 +349,36 @@ export const useConfiguration = () => {
   };
 
   const uploadLogo = async (file: File) => {
+    if (!user?.tenant_id) throw new Error('No tenant ID available');
+
     setLoading(true);
     setError(null);
 
     try {
-      // Mock file upload - replace with actual upload to Supabase storage
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Upload file to Supabase Storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.tenant_id}-logo-${Date.now()}.${fileExt}`;
       
-      const logoUrl = URL.createObjectURL(file); // Mock URL
-      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('tenant_assets')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('tenant_assets')
+        .getPublicUrl(fileName);
+
+      // Update tenant record with logo URL
       await updateConfiguration('branding', {
         ...configuration.branding,
-        logo_url: logoUrl
+        logo_url: publicUrl
       });
 
-      return logoUrl;
-    } catch (err) {
-      setError('Failed to upload logo');
+      return publicUrl;
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload logo');
       throw err;
     } finally {
       setLoading(false);
@@ -212,39 +386,49 @@ export const useConfiguration = () => {
   };
 
   const resetToDefaults = async (section?: keyof HotelConfiguration) => {
+    if (!user?.tenant_id) return false;
+
     setLoading(true);
     setError(null);
 
     try {
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
       if (section) {
         await updateConfiguration(section, defaultConfiguration[section]);
       } else {
+        // Reset entire configuration
+        const tenantUpdates = {
+          brand_colors: {},
+          logo_url: null,
+          receipt_template: 'A4'
+        };
+
+        await supabase
+          .from('tenants')
+          .update(tenantUpdates)
+          .eq('tenant_id', user.tenant_id);
+
         setConfiguration(defaultConfiguration);
         
         // Create audit log for full reset
-        const auditEntry: ConfigurationAuditLog = {
-          id: Date.now().toString(),
-          timestamp: new Date().toISOString(),
-          user_id: 'current-user',
-          user_name: 'Current User',
-          user_role: 'owner',
-          action: 'update',
-          section: 'general', // Represents full reset
-          field: 'all',
-          old_value: 'custom_configuration',
-          new_value: 'default_configuration',
-          description: 'Reset all configuration to defaults'
-        };
+        await supabase
+          .from('audit_log')
+          .insert([{
+            action: 'configuration_reset',
+            resource_type: 'tenant',
+            resource_id: user.tenant_id,
+            actor_id: user.id,
+            actor_email: user.email,
+            actor_role: user.role,
+            tenant_id: user.tenant_id,
+            description: 'Reset all configuration to defaults'
+          }]);
 
-        setAuditLogs(prev => [auditEntry, ...prev]);
+        await loadConfiguration();
       }
 
       return true;
-    } catch (err) {
-      setError('Failed to reset configuration');
+    } catch (err: any) {
+      setError(err.message || 'Failed to reset configuration');
       return false;
     } finally {
       setLoading(false);

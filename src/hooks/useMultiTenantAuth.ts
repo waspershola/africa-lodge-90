@@ -97,52 +97,73 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
     };
   };
 
-  // Load user profile from database
+  // Load user profile from JWT claims and database
   const loadUserProfile = async (authUser: SupabaseUser) => {
     try {
+      // Extract role and tenant_id from JWT claims for security
+      const { data: { session } } = await supabase.auth.getSession();
+      const claims = session?.access_token ? 
+        JSON.parse(atob(session.access_token.split('.')[1])) : {};
+      
+      const roleFromJWT = claims.role as User['role'];
+      const tenantIdFromJWT = claims.tenant_id ? claims.tenant_id : null;
+
+      // Load additional user profile data from database
       const { data: userProfile, error: userError } = await supabase
         .from('users')
-        .select('*, tenants(*)')
+        .select('name, force_reset, temp_password_hash, temp_expires')
         .eq('id', authUser.id)
-        .single();
+        .maybeSingle();
 
-      if (userError) {
+      if (userError && userError.code !== 'PGRST116') {
         console.error('Error loading user profile:', userError);
         return;
       }
 
-      if (userProfile) {
-        const userData: User = {
-          id: userProfile.id,
-          email: userProfile.email,
-          name: userProfile.name,
-          role: userProfile.role as User['role'],
-          tenant_id: userProfile.tenant_id,
-          force_reset: userProfile.force_reset,
-          temp_password: userProfile.temp_password_hash,
-          temp_expires: userProfile.temp_expires,
-        };
+      // Build user data with JWT claims as source of truth for security
+      const userData: User = {
+        id: authUser.id,
+        email: authUser.email || '',
+        name: userProfile?.name || authUser.user_metadata?.name,
+        role: roleFromJWT || 'STAFF',
+        tenant_id: tenantIdFromJWT,
+        force_reset: userProfile?.force_reset || false,
+        temp_password: userProfile?.temp_password_hash,
+        temp_expires: userProfile?.temp_expires,
+      };
 
-        setUser(userData);
+      setUser(userData);
 
-        // Load tenant data if user has tenant_id
-        if (userProfile.tenant_id && userProfile.tenants) {
-          const tenantData: Tenant = {
-            tenant_id: userProfile.tenants.tenant_id,
-            hotel_name: userProfile.tenants.hotel_name,
-            plan_id: userProfile.tenants.plan_id,
-            subscription_status: userProfile.tenants.subscription_status as Tenant['subscription_status'],
-            trial_start: userProfile.tenants.trial_start,
-            trial_end: userProfile.tenants.trial_end,
-            created_at: userProfile.tenants.created_at,
-            updated_at: userProfile.tenants.updated_at,
+      // Load tenant data if user has tenant_id from JWT
+      if (tenantIdFromJWT) {
+        const { data: tenantData, error: tenantError } = await supabase
+          .from('tenants')
+          .select('*')
+          .eq('tenant_id', tenantIdFromJWT)
+          .maybeSingle();
+
+        if (tenantError && tenantError.code !== 'PGRST116') {
+          console.error('Error loading tenant:', tenantError);
+          return;
+        }
+
+        if (tenantData) {
+          const tenant: Tenant = {
+            tenant_id: tenantData.tenant_id,
+            hotel_name: tenantData.hotel_name,
+            plan_id: tenantData.plan_id,
+            subscription_status: tenantData.subscription_status as Tenant['subscription_status'],
+            trial_start: tenantData.trial_start,
+            trial_end: tenantData.trial_end,
+            created_at: tenantData.created_at,
+            updated_at: tenantData.updated_at,
           };
 
-          setTenant(tenantData);
-          setTrialStatus(calculateTrialStatus(tenantData));
+          setTenant(tenant);
+          setTrialStatus(calculateTrialStatus(tenant));
 
           // Check if onboarding is required for new login
-          checkOnboardingRequired(userData, tenantData);
+          checkOnboardingRequired(userData, tenant);
         }
       }
     } catch (err) {

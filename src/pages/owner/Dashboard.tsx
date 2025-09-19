@@ -24,10 +24,28 @@ import {
 } from "lucide-react";
 import { useOwnerOverview } from "@/hooks/useApi";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { WelcomeBanner } from '@/components/onboarding/WelcomeBanner';
+import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
+import { useEffect } from 'react';
 
 export default function OwnerDashboardPage() {
   const [selectedPeriod, setSelectedPeriod] = useState("This Month");
+  const [showWelcome, setShowWelcome] = useState(false);
   const { data: overviewData, isLoading, error } = useOwnerOverview();
+  const { user } = useAuth();
+
+  // Check if user just completed onboarding
+  useEffect(() => {
+    if (user) {
+      const dismissed = localStorage.getItem(`welcome_banner_dismissed_${user.id}`);
+      const justCompleted = localStorage.getItem(`onboarding_${user.id}`);
+      
+      if (justCompleted && !dismissed) {
+        const progress = JSON.parse(justCompleted);
+        setShowWelcome(progress.completed);
+      }
+    }
+  }, [user]);
 
   if (isLoading) {
     return <div className="p-6">Loading dashboard...</div>;
@@ -147,6 +165,14 @@ export default function OwnerDashboardPage() {
 
   return (
     <div className="space-y-8">
+      {/* Welcome Banner - Show after onboarding completion */}
+      {showWelcome && (
+        <WelcomeBanner 
+          onDismiss={() => setShowWelcome(false)}
+          className="mb-6"
+        />
+      )}
+      
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

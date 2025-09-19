@@ -87,6 +87,27 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
   const [error, setError] = useState<string | null>(null);
   const [trialStatus, setTrialStatus] = useState<TrialStatus | null>(null);
 
+  // Check if onboarding is required
+  const checkOnboardingRequired = (user: User, tenant: Tenant) => {
+    if (user.role === 'OWNER' && tenant.subscription_status === 'trialing') {
+      // Check if setup is completed (mock check via localStorage)
+      const onboardingData = localStorage.getItem(`onboarding_${user.id}`);
+      if (!onboardingData) {
+        // First-time owner login - redirect to onboarding
+        window.location.href = '/onboarding';
+        return true;
+      } else {
+        const progress = JSON.parse(onboardingData);
+        if (!progress.completed) {
+          // Incomplete onboarding - redirect to continue
+          window.location.href = '/onboarding';
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
   // Calculate trial status
   const calculateTrialStatus = (tenant: Tenant | null): TrialStatus | null => {
     if (!tenant || tenant.subscription_status !== 'trialing' || !tenant.trial_end) {
@@ -117,14 +138,17 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
         if (mockUser) {
           setUser(mockUser);
           
-          // Load tenant if user has tenant_id
-          if (mockUser.tenant_id) {
-            const mockTenant = mockTenants.find(t => t.tenant_id === mockUser.tenant_id);
-            if (mockTenant) {
-              setTenant(mockTenant);
-              setTrialStatus(calculateTrialStatus(mockTenant));
-            }
-          }
+      // Load tenant if user has tenant_id
+      if (mockUser.tenant_id) {
+        const mockTenant = mockTenants.find(t => t.tenant_id === mockUser.tenant_id);
+        if (mockTenant) {
+          setTenant(mockTenant);
+          setTrialStatus(calculateTrialStatus(mockTenant));
+          
+          // Check if onboarding is required for new login
+          checkOnboardingRequired(mockUser, mockTenant);
+        }
+      }
         }
       }
     } catch (err) {
@@ -158,6 +182,9 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
         if (mockTenant) {
           setTenant(mockTenant);
           setTrialStatus(calculateTrialStatus(mockTenant));
+          
+          // Check if onboarding is required (after setting state)
+          setTimeout(() => checkOnboardingRequired(mockUser, mockTenant), 100);
         }
       }
     } catch (err) {

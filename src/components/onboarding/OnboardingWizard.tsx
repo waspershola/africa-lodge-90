@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,8 @@ import { PermissionsStep } from './steps/PermissionsStep';
 import { AuditTransparencyStep } from './steps/AuditTransparencyStep';
 import { ReviewConfirmStep } from './steps/ReviewConfirmStep';
 import { useToast } from '@/hooks/use-toast';
+import { useOnboarding } from '@/hooks/useOnboarding';
+import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 
 export interface OnboardingData {
   hotelInfo: {
@@ -87,48 +89,59 @@ const steps = [
 export function OnboardingWizard() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, tenant } = useAuth();
+  const { saveProgress, completeOnboarding, getSavedData } = useOnboarding();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const [onboardingData, setOnboardingData] = useState<OnboardingData>({
-    hotelInfo: {
-      name: '',
-      address: '',
-      city: '',
-      country: 'Nigeria',
-      timezone: 'Africa/Lagos',
-      phone: '',
-      supportEmail: '',
-      currency: 'NGN',
-    },
-    template: null,
-    plan: null,
-    owner: {
-      name: '',
-      email: '',
-      phone: '',
-    },
-    branding: {
-      primaryColor: '#2563eb',
-      secondaryColor: '#1e40af',
-      receiptFormat: 'both',
-    },
-    documents: {
-      policies: [],
-      termsAccepted: false,
-    },
-    permissions: {
-      staffInvite: ['OWNER'],
-      pricingApproval: ['OWNER', 'MANAGER'],
-      qrMenuManagement: ['OWNER', 'MANAGER'],
-    },
-    auditAccepted: false,
+  // Initialize with saved data or defaults
+  const [onboardingData, setOnboardingData] = useState<OnboardingData>(() => {
+    const savedData = getSavedData();
+    return savedData || {
+      hotelInfo: {
+        name: tenant?.hotel_name || '',
+        address: '',
+        city: '',
+        country: 'Nigeria',
+        timezone: 'Africa/Lagos',
+        phone: '',
+        supportEmail: user?.email || '',
+        currency: 'NGN',
+      },
+      template: null,
+      plan: null,
+      owner: {
+        name: user?.email?.split('@')[0] || '', // Use email prefix as name fallback
+        email: user?.email || '',
+        phone: '',
+      },
+      branding: {
+        primaryColor: '#2563eb',
+        secondaryColor: '#1e40af',
+        receiptFormat: 'both',
+      },
+      documents: {
+        policies: [],
+        termsAccepted: false,
+      },
+      permissions: {
+        staffInvite: ['OWNER'],
+        pricingApproval: ['OWNER', 'MANAGER'],
+        qrMenuManagement: ['OWNER', 'MANAGER'],
+      },
+      auditAccepted: false,
+    };
   });
 
   const progress = ((currentStep + 1) / steps.length) * 100;
 
   const updateData = (stepData: Partial<OnboardingData>) => {
-    setOnboardingData(prev => ({ ...prev, ...stepData }));
+    const newData = { ...onboardingData, ...stepData };
+    setOnboardingData(newData);
+    
+    // Auto-save progress
+    const stepId = steps[currentStep].id;
+    saveProgress(stepId, newData);
   };
 
   const canProceed = () => {
@@ -173,16 +186,14 @@ export function OnboardingWizard() {
   const handleComplete = async () => {
     setIsSubmitting(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const result = await completeOnboarding(onboardingData);
       
-      toast({
-        title: "Setup Complete! 🎉",
-        description: "Your hotel has been successfully configured.",
-      });
-      
-      // Redirect to owner dashboard
-      navigate('/owner-dashboard');
+      if (result?.success) {
+        // Success handled by useOnboarding hook (toast + redirect)
+        return;
+      } else {
+        throw new Error('Setup failed');
+      }
     } catch (error) {
       toast({
         title: "Setup Failed",
@@ -225,7 +236,7 @@ export function OnboardingWizard() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            Welcome to Your Hotel Management System
+            Welcome to {tenant?.hotel_name || 'Your Hotel Management System'}
           </h1>
           <p className="text-muted-foreground">
             Let's get your hotel set up in just a few minutes

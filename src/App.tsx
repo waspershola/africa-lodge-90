@@ -8,6 +8,8 @@ import NotFound from "./pages/NotFound";
 import { QRPortal } from "./components/qr-portal/QRPortal";
 import FrontDeskDashboard from "./components/FrontDeskDashboard";
 import OwnerDashboard from "./components/OwnerDashboard";
+import { MultiTenantAuthProvider } from "./components/auth/MultiTenantAuthProvider";
+import TenantAwareLayout from "./components/layout/TenantAwareLayout";
 import OwnerLayout from "./components/layout/OwnerLayout";
 import OwnerDashboardPage from "./pages/owner/Dashboard";
 import Configuration from "./pages/owner/Configuration";
@@ -81,18 +83,27 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
+      <MultiTenantAuthProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/qr/:sessionId" element={<QRPortal />} />
           <Route path="/qr-portal" element={<QRPortal />} />
-          <Route path="/front-desk" element={<FrontDeskDashboard />} />
+          <Route path="/front-desk" element={
+            <TenantAwareLayout requiredRole="FRONT_DESK">
+              <FrontDeskDashboard />
+            </TenantAwareLayout>
+          } />
           <Route path="/reports" element={<ReportsInterface />} />
           
           {/* Owner Dashboard Routes */}
-          <Route path="/owner-dashboard" element={<OwnerLayout />}>
+          <Route path="/owner-dashboard" element={
+            <TenantAwareLayout requiredRole="OWNER">
+              <OwnerLayout />
+            </TenantAwareLayout>
+          }>
             <Route index element={<OwnerDashboardPage />} />
             <Route path="dashboard" element={<OwnerDashboardPage />} />
             <Route path="configuration" element={<Configuration />} />
@@ -110,7 +121,11 @@ const App = () => (
           <Route path="/qr-export" element={<QRExportPage />} />
           
           {/* Manager Dashboard Routes */}
-          <Route path="/manager-dashboard" element={<ManagerLayout />}>
+          <Route path="/manager-dashboard" element={
+            <TenantAwareLayout requiredRole="MANAGER">
+              <ManagerLayout />
+            </TenantAwareLayout>
+          }>
             <Route index element={<ManagerDashboard />} />
             <Route path="dashboard" element={<ManagerDashboard />} />
             <Route path="operations" element={<ManagerOperations />} />
@@ -187,6 +202,7 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
+      </MultiTenantAuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

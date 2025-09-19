@@ -1,5 +1,5 @@
-import TasksBoard from '@/components/housekeeping/TasksBoard';
+import ProductionTasksBoard from '@/components/housekeeping/ProductionTasksBoard';
 
 export default function HousekeepingTasksPage() {
-  return <TasksBoard />;
+  return <ProductionTasksBoard />;
 }

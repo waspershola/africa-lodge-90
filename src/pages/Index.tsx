@@ -34,6 +34,7 @@ import { LoginForm } from "@/components/auth/LoginForm";
 import { TrialSignupFlow } from "@/components/auth/TrialSignupFlow";
 import { PricingSection } from "@/components/pricing/PricingSection";
 import { DemoVideoSection } from "@/components/demo/DemoVideoSection";
+import { InitialUserCreator } from "@/components/admin/InitialUserCreator";
 import heroHotelBg from "@/assets/hero-hotel-bg.jpg";
 import sunsetHotelBg from "@/assets/sunset-hotel-bg.jpg";
 import diningHotelBg from "@/assets/dining-hotel-bg.jpg";
@@ -357,6 +358,38 @@ const Index = () => {
                 <div className="text-sm text-muted-foreground">{stat.label}</div>
               </motion.div>
             ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Initial User Setup Section - For Development/Setup */}
+      <section className="py-16 px-4 bg-muted/30">
+        <div className="container mx-auto">
+          <motion.div 
+            className="text-center mb-12"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <Badge variant="outline" className="mb-4">
+              System Setup
+            </Badge>
+            <h2 className="text-2xl md:text-3xl font-bold display-heading mb-4">
+              Phase 2: Backend Integration
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Create initial system users to complete the backend integration and enable authentication.
+            </p>
+          </motion.div>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            <InitialUserCreator />
           </motion.div>
         </div>
       </section>

@@ -20,18 +20,25 @@ import {
   Package,
   Filter,
   Search,
-  ChefHat
+  ChefHat,
+  AlertTriangle
 } from 'lucide-react';
 import { usePOSApi, type MenuItem } from '@/hooks/usePOSApi';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import RoleGuard, { ProtectedButton } from './RoleGuard';
+import ApprovalDialog, { type ApprovalRequest } from './ApprovalDialog';
 
 export default function MenuEditorPOS() {
   const { menuItems, isLoading, updateMenuItem } = usePOSApi();
   const { toast } = useToast();
+  const { user, hasPermission } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [approvalRequests, setApprovalRequests] = useState<ApprovalRequest[]>([]);
+  const [selectedApproval, setSelectedApproval] = useState<ApprovalRequest | null>(null);
 
   // Filter menu items
   const filteredItems = menuItems.filter(item => {
@@ -45,6 +52,32 @@ export default function MenuEditorPOS() {
   const categories = Array.from(new Set(menuItems.map(item => item.category))).filter(Boolean);
 
   const handleToggleAvailability = async (itemId: string, available: boolean) => {
+    // Check if user can modify availability
+    if (!hasPermission('menu:modify_availability')) {
+      // Create approval request
+      const approvalRequest: ApprovalRequest = {
+        id: `req-${Date.now()}`,
+        type: 'menu_availability',
+        requestor_id: user?.id || '',
+        requestor_name: user?.name || '',
+        entity_id: itemId,
+        entity_name: menuItems.find(item => item.id === itemId)?.name || '',
+        current_value: !available,
+        requested_value: available,
+        reason: `Staff request to ${available ? 'enable' : 'disable'} menu item`,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        urgency: 'medium'
+      };
+      
+      setApprovalRequests(prev => [...prev, approvalRequest]);
+      toast({
+        title: "Approval Required",
+        description: "Your request has been sent to a manager for approval.",
+      });
+      return;
+    }
+
     try {
       await updateMenuItem(itemId, { available });
       toast({
@@ -111,10 +144,10 @@ export default function MenuEditorPOS() {
             Manage menu items, availability, and pricing
           </p>
         </div>
-        <Button>
+        <ProtectedButton requiredRole={['manager', 'owner']}>
           <Plus className="h-4 w-4 mr-2" />
           Add New Item
-        </Button>
+        </ProtectedButton>
       </div>
 
       {/* Stats */}
@@ -250,14 +283,15 @@ export default function MenuEditorPOS() {
                     disabled={isLoading}
                   />
                 </div>
-                <Button 
+                <ProtectedButton 
                   variant="outline" 
                   size="sm"
                   onClick={() => handleEditItem(item)}
+                  requiredPermission="menu:edit_items"
                 >
                   <Edit3 className="h-4 w-4 mr-1" />
                   Edit
-                </Button>
+                </ProtectedButton>
               </div>
 
               {item.inventory_tracked && (
@@ -270,6 +304,38 @@ export default function MenuEditorPOS() {
           </Card>
         ))}
       </div>
+
+      {/* Approval Requests */}
+      {approvalRequests.length > 0 && hasPermission('menu:approve_changes') && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-500" />
+              Pending Approval Requests ({approvalRequests.filter(r => r.status === 'pending').length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {approvalRequests.filter(r => r.status === 'pending').map(request => (
+                <div key={request.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div>
+                    <p className="font-medium">{request.entity_name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Requested by {request.requestor_name} • {request.type.replace('_', ' ')}
+                    </p>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    onClick={() => setSelectedApproval(request)}
+                  >
+                    Review
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -381,6 +447,36 @@ export default function MenuEditorPOS() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Approval Dialog */}
+      {selectedApproval && (
+        <ApprovalDialog
+          isOpen={!!selectedApproval}
+          onClose={() => setSelectedApproval(null)}
+          request={selectedApproval}
+          canApprove={hasPermission('menu:approve_changes')}
+          onApprove={async (requestId) => {
+            // Handle approval logic here
+            setApprovalRequests(prev => 
+              prev.map(r => r.id === requestId ? {...r, status: 'approved' as const} : r)
+            );
+            toast({
+              title: "Request Approved",
+              description: "The approval request has been processed.",
+            });
+          }}
+          onReject={async (requestId, reason) => {
+            // Handle rejection logic here
+            setApprovalRequests(prev => 
+              prev.map(r => r.id === requestId ? {...r, status: 'rejected' as const} : r)
+            );
+            toast({
+              title: "Request Rejected",
+              description: "The request has been rejected.",
+            });
+          }}
+        />
+      )}
     </div>
   );
 }

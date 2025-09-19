@@ -24,10 +24,13 @@ import { usePOSApi, type Order } from '@/hooks/usePOSApi';
 import { useToast } from '@/hooks/use-toast';
 import OrderModal from './OrderModal';
 import PaymentDrawer from './PaymentDrawer';
+import { useAuth } from '@/hooks/useAuth';
+import RoleGuard, { ProtectedButton } from './RoleGuard';
 
 export default function PosLiveFeed() {
   const { orders, stats, isLoading, acceptOrder, updateOrderStatus } = usePOSApi();
   const { toast } = useToast();
+  const { user, hasPermission } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -82,7 +85,15 @@ export default function PosLiveFeed() {
   };
 
   const handleAcceptOrder = async (orderId: string) => {
-    await acceptOrder(orderId, 'Current Staff'); // In production, get from auth
+    if (!hasPermission('pos:accept_orders')) {
+      toast({
+        title: "Permission Denied",
+        description: "You don't have permission to accept orders.",
+        variant: "destructive",
+      });
+      return;
+    }
+    await acceptOrder(orderId, user?.name || 'Current Staff');
   };
 
   const priorityOrders = orders.filter(order => 

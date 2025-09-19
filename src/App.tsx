@@ -70,6 +70,7 @@ import POSMenu from "./pages/pos/Menu";
 import POSPayment from "./pages/pos/Payment";
 import POSReports from "./pages/pos/Reports";
 import POSSettings from "./pages/pos/Settings";
+import POSApprovals from "./pages/pos/Approvals";
 
 const queryClient = new QueryClient();
 
@@ -147,6 +148,7 @@ const App = () => (
             <Route path="kds" element={<POSKds />} />
             <Route path="menu" element={<POSMenu />} />
             <Route path="payment" element={<POSPayment />} />
+            <Route path="approvals" element={<POSApprovals />} />
             <Route path="reports" element={<POSReports />} />
             <Route path="settings" element={<POSSettings />} />
           </Route>

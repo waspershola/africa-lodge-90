@@ -16,6 +16,7 @@ const navigation = [
   { name: 'Kitchen Display', href: '/pos/kds', icon: ChefHat },
   { name: 'Menu Management', href: '/pos/menu', icon: Menu },
   { name: 'Payment & Billing', href: '/pos/payment', icon: CreditCard },
+  { name: 'Approvals', href: '/pos/approvals', icon: Clock },
   { name: 'Reports', href: '/pos/reports', icon: BarChart3 },
   { name: 'Settings', href: '/pos/settings', icon: Settings },
 ];

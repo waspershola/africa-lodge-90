@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import QRMenu from "./components/QRMenu";
 import { QRPortal } from "./components/qr-portal/QRPortal";
 import FrontDeskDashboard from "./components/FrontDeskDashboard";
 import OwnerDashboard from "./components/OwnerDashboard";
@@ -84,7 +83,6 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/qr-menu" element={<QRMenu />} />
           <Route path="/qr/:sessionId" element={<QRPortal />} />
           <Route path="/qr-portal" element={<QRPortal />} />
           <Route path="/front-desk" element={<FrontDeskDashboard />} />

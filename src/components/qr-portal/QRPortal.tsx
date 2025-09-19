@@ -9,6 +9,8 @@ import { MaintenanceFlow } from './services/MaintenanceFlow';
 import { WifiFlow } from './services/WifiFlow';
 import { useQRSession } from '@/hooks/useQRSession';
 import { useRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
+import { QRSecurity } from '@/lib/qr-security';
+import { QRPortalErrorBoundary } from './ErrorBoundary';
 
 export type QRStep = 
   | 'landing' 
@@ -33,9 +35,13 @@ export interface QRRequest {
   assigned_staff?: string;
 }
 
-export const QRPortal = () => {
+const QRPortalWithErrorBoundary = () => {
+  // Rest of component logic stays the same...
   const [currentStep, setCurrentStep] = useState<QRStep>('landing');
   const [selectedRequest, setSelectedRequest] = useState<QRRequest | null>(null);
+  
+  // Extract token from URL for production-ready token handling
+  const urlToken = QRSecurity.extractTokenFromUrl();
   
   const { 
     session, 
@@ -44,7 +50,7 @@ export const QRPortal = () => {
     isLoading,
     createRequest,
     updateRequest 
-  } = useQRSession();
+  } = useQRSession(urlToken);
   
   const { isConnected } = useRealTimeUpdates(session?.id, requests);
 
@@ -53,7 +59,22 @@ export const QRPortal = () => {
   };
 
   const handleRequestCreate = async (type: string, data: any) => {
+    // Security: Rate limiting and audit logging
+    if (session && !QRSecurity.checkRateLimit(session.id, 'create_request')) {
+      throw new Error('Too many requests. Please wait before submitting another request.');
+    }
+    
     const request = await createRequest(type, data);
+    
+    // Audit log the request creation
+    if (session) {
+      QRSecurity.logAction(session.id, 'request_created', {
+        type,
+        request_id: request.id,
+        room_id: session.room_id
+      });
+    }
+    
     setCurrentStep('tracking');
     return request;
   };
@@ -187,3 +208,10 @@ export const QRPortal = () => {
       );
   }
 };
+
+// Export with error boundary wrapper for production safety
+export const QRPortal = () => (
+  <QRPortalErrorBoundary>
+    <QRPortalWithErrorBoundary />
+  </QRPortalErrorBoundary>
+);

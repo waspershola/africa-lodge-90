@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { QRSession, HotelConfig } from '@/hooks/useQRSession';
 import { QRRequest } from './QRPortal';
+import { QRServiceStatus } from './QRServiceStatus';
 
 interface QRServicesProps {
   session: QRSession;
@@ -141,6 +142,14 @@ export const QRServices = ({
       </div>
 
       <div className="p-4 pb-24 max-w-md mx-auto">
+        {/* Connection Status */}
+        <div className="mb-4">
+          <QRServiceStatus 
+            isOnline={isConnected}
+            lastSync={new Date().toISOString()}
+            pendingRequests={activeRequests.length}
+          />
+        </div>
         {/* Active Requests Summary */}
         {activeRequests.length > 0 && (
           <Card className="mb-6 border-orange-200 bg-orange-50">

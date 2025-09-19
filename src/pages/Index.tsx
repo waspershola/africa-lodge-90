@@ -238,7 +238,7 @@ const Index = () => {
                 className="bg-yellow-500 hover:bg-red-700 text-black hover:text-white text-lg px-8 py-6 font-semibold shadow-2xl hover:shadow-red-500/50 transition-all duration-300 border-0"
                 asChild
               >
-                <Link to="/qr-menu">
+                <Link to="/qr-portal">
                   Book a Demo
                 </Link>
               </Button>
@@ -500,11 +500,11 @@ const Index = () => {
                   className="bg-yellow-500 hover:bg-red-700 text-black hover:text-white text-lg px-8 py-6 font-semibold shadow-2xl hover:shadow-red-500/50 transition-all duration-300 w-full h-auto flex flex-col gap-3"
                   asChild
                 >
-                  <Link to="/qr-menu">
+                  <Link to="/qr-portal">
                     <Smartphone className="h-8 w-8" />
                     <div className="text-center">
-                      <div className="font-bold text-lg mb-1">QR Menu Demo</div>
-                      <div className="text-sm opacity-80">Try our room service ordering system</div>
+                      <div className="font-bold text-lg mb-1">QR Portal Demo</div>
+                      <div className="text-sm opacity-80">Try our unified guest services system</div>
                     </div>
                   </Link>
                 </Button>

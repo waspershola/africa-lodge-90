@@ -48,6 +48,7 @@ import ManagerDepartmentFinance from "./pages/manager/DepartmentFinance";
 import ManagerReceiptControl from "./pages/manager/ReceiptControl";
 import ManagerEventsPackages from "./pages/manager/EventsPackages";
 import ManagerCompliance from "./pages/manager/Compliance";
+import ManagerQRManagement from "./pages/manager/QRManagement";
 
 const queryClient = new QueryClient();
 
@@ -89,6 +90,7 @@ const App = () => (
             <Route path="rooms" element={<ManagerRoomStatus />} />
             <Route path="requests" element={<ManagerServiceRequests />} />
             <Route path="staff" element={<ManagerStaffManagement />} />
+            <Route path="qr-codes" element={<ManagerQRManagement />} />
             <Route path="financials" element={<ManagerDepartmentFinance />} />
             <Route path="receipts" element={<ManagerReceiptControl />} />
             <Route path="events" element={<ManagerEventsPackages />} />

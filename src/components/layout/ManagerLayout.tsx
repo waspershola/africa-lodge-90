@@ -8,7 +8,8 @@ import {
   Activity,
   Bell,
   Bed,
-  Settings
+  Settings,
+  QrCode
 } from 'lucide-react';
 import UnifiedDashboardLayout from './UnifiedDashboardLayout';
 
@@ -18,6 +19,7 @@ const navigation = [
   { name: 'Room Status', href: '/manager-dashboard/rooms', icon: Bed },
   { name: 'Service Requests', href: '/manager-dashboard/requests', icon: Bell },
   { name: 'Staff Management', href: '/manager-dashboard/staff', icon: Users },
+  { name: 'QR Management', href: '/manager-dashboard/qr-codes', icon: QrCode },
   { name: 'Department Finance', href: '/manager-dashboard/financials', icon: DollarSign },
   { name: 'Receipt Control', href: '/manager-dashboard/receipts', icon: Receipt },
   { name: 'Events & Packages', href: '/manager-dashboard/events', icon: Calendar },

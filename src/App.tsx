@@ -63,6 +63,13 @@ import MaintenanceWorkOrders from "./pages/maintenance/WorkOrders";
 import MaintenancePreventive from "./pages/maintenance/Preventive";
 import MaintenanceSupplies from "./pages/maintenance/Supplies";
 import MaintenanceAudit from "./pages/maintenance/Audit";
+import POSLayout from "./components/layout/POSLayout";
+import POSDashboard from "./pages/pos/Dashboard";
+import POSKds from "./pages/pos/KDS";
+import POSMenu from "./pages/pos/Menu";
+import POSPayment from "./pages/pos/Payment";
+import POSReports from "./pages/pos/Reports";
+import POSSettings from "./pages/pos/Settings";
 
 const queryClient = new QueryClient();
 
@@ -131,6 +138,17 @@ const App = () => (
             <Route path="preventive" element={<MaintenancePreventive />} />
             <Route path="supplies" element={<MaintenanceSupplies />} />
             <Route path="audit" element={<MaintenanceAudit />} />
+          </Route>
+
+          {/* POS Dashboard Routes */}
+          <Route path="/pos" element={<POSLayout />}>
+            <Route index element={<POSDashboard />} />
+            <Route path="dashboard" element={<POSDashboard />} />
+            <Route path="kds" element={<POSKds />} />
+            <Route path="menu" element={<POSMenu />} />
+            <Route path="payment" element={<POSPayment />} />
+            <Route path="reports" element={<POSReports />} />
+            <Route path="settings" element={<POSSettings />} />
           </Route>
 
           {/* Hotel Dashboard Routes */}

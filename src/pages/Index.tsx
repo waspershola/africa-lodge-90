@@ -18,7 +18,8 @@ import {
   Clock,
   TrendingUp,
   Activity,
-  Settings
+  Settings,
+  UtensilsCrossed
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
@@ -584,6 +585,21 @@ const Index = () => {
                     <div className="text-center">
                       <div className="font-bold text-lg mb-1">Maintenance</div>
                       <div className="text-sm opacity-80">Work orders & facility management</div>
+                    </div>
+                  </Link>
+                </Button>
+              </motion.div>
+              <motion.div variants={fadeIn}>
+                <Button 
+                  size="lg" 
+                  className="bg-yellow-500 hover:bg-red-700 text-black hover:text-white text-lg px-8 py-6 font-semibold shadow-2xl hover:shadow-red-500/50 transition-all duration-300 w-full h-auto flex flex-col gap-3"
+                  asChild
+                >
+                  <Link to="/pos/dashboard">
+                    <UtensilsCrossed className="h-8 w-8" />
+                    <div className="text-center">
+                      <div className="font-bold text-lg mb-1">Restaurant POS</div>
+                      <div className="text-sm opacity-80">Food & beverage operations</div>
                     </div>
                   </Link>
                 </Button>

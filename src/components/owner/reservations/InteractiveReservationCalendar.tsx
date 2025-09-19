@@ -96,8 +96,8 @@ export default function InteractiveReservationCalendar({
   const filteredReservations = useMemo(() => {
     return reservations.filter(reservation => {
       const matchesSearch = searchTerm === '' || 
-        reservation.guestName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        reservation.room.includes(searchTerm);
+        reservation.guest_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        reservation.rooms?.room_number?.includes(searchTerm);
       
       const matchesStatus = statusFilter === 'all' || reservation.status === statusFilter;
       

@@ -42,19 +42,19 @@ export default function GuestDirectory({ onGuestSelect, onNewGuest }: GuestDirec
 
   const filteredGuests = guests
     .filter(guest => {
-      const matchesSearch = guest.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        guest.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      const matchesSearch = guest.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        guest.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         guest.phone?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || guest.status === statusFilter;
-      const matchesTier = tierFilter === 'all' || guest.loyaltyTier === tierFilter;
+      const matchesStatus = statusFilter === 'all' || guest.is_active;
+      const matchesTier = tierFilter === 'all'; // Always true since no loyalty tier in user schema
       return matchesSearch && matchesStatus && matchesTier;
     })
     .sort((a, b) => {
       switch (sortBy) {
-        case 'name': return a.name.localeCompare(b.name);
-        case 'totalSpent': return b.totalSpent - a.totalSpent;
-        case 'totalStays': return b.totalStays - a.totalStays;
-        case 'lastStay': return new Date(b.lastStay || 0).getTime() - new Date(a.lastStay || 0).getTime();
+        case 'name': return a.name?.localeCompare(b.name || '') || 0;
+        case 'totalSpent': return 0; // No spending data in user schema
+        case 'totalStays': return 0; // No stays data in user schema  
+        case 'lastStay': return 0; // No stay data in user schema
         default: return 0;
       }
     });
@@ -133,33 +133,33 @@ export default function GuestDirectory({ onGuestSelect, onNewGuest }: GuestDirec
                 <div className="flex-1">
                   <div className="font-semibold flex items-center gap-2 mb-1">
                     {guest.name}
-                    {guest.loyaltyTier && <Star className="h-4 w-4 text-warning-foreground" />}
                   </div>
                   <div className="text-sm text-muted-foreground mb-2">{guest.email}</div>
                   <div className="flex items-center gap-2">
-                    <Badge className={getStatusColor(guest.status)} variant="outline">
-                      {guest.status.toUpperCase()}
+                    <Badge 
+                      variant={guest.is_active ? "default" : "secondary"} 
+                      className={guest.is_active ? "bg-success/10 text-success border-success/20" : ""}
+                    >
+                      {guest.is_active ? 'Active' : 'Inactive'}
                     </Badge>
-                    {guest.loyaltyTier && (
-                      <Badge variant="secondary" className="text-xs">
-                        {guest.loyaltyTier.toUpperCase()}
-                      </Badge>
-                    )}
+                    <Badge variant="secondary" className="text-xs">
+                      {guest.role.toUpperCase()}
+                    </Badge>
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-center text-sm">
                 <div>
-                  <div className="font-bold">{guest.totalStays}</div>
+                  <div className="font-bold">0</div>
                   <div className="text-xs text-muted-foreground">Stays</div>
                 </div>
                 <div>
-                  <div className="font-bold">{guest.totalNights}</div>
+                  <div className="font-bold">0</div>
                   <div className="text-xs text-muted-foreground">Nights</div>
                 </div>
                 <div>
-                  <div className="font-bold">₦{(guest.totalSpent / 1000).toFixed(0)}K</div>
+                  <div className="font-bold">₦0</div>
                   <div className="text-xs text-muted-foreground">Spent</div>
                 </div>
               </div>

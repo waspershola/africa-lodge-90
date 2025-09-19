@@ -25,6 +25,7 @@ import ReportsInterface from "./components/ReportsInterface";
 import QRExportPage from "./components/QRExportPage";
 import SuperAdminLayout from "./components/layout/SuperAdminLayout";
 import ManagerLayout from "./components/layout/ManagerLayout";
+import HousekeepingLayout from "./components/layout/HousekeepingLayout";
 import Dashboard from "./pages/sa/Dashboard";
 import Tenants from "./pages/sa/Tenants";
 import Templates from "./pages/sa/Templates";
@@ -49,6 +50,13 @@ import ManagerReceiptControl from "./pages/manager/ReceiptControl";
 import ManagerEventsPackages from "./pages/manager/EventsPackages";
 import ManagerCompliance from "./pages/manager/Compliance";
 import ManagerQRManagement from "./pages/manager/QRManagement";
+import HousekeepingDashboard from "./pages/housekeeping/Dashboard";
+import HousekeepingTasks from "./pages/housekeeping/Tasks";
+import HousekeepingAmenities from "./pages/housekeeping/Amenities";
+import HousekeepingSupplies from "./pages/housekeeping/Supplies";
+import HousekeepingOOSRooms from "./pages/housekeeping/OOSRooms";
+import HousekeepingStaffAssignments from "./pages/housekeeping/StaffAssignments";
+import HousekeepingAuditLogs from "./pages/housekeeping/AuditLogs";
 
 const queryClient = new QueryClient();
 
@@ -95,6 +103,18 @@ const App = () => (
             <Route path="receipts" element={<ManagerReceiptControl />} />
             <Route path="events" element={<ManagerEventsPackages />} />
             <Route path="compliance" element={<ManagerCompliance />} />
+          </Route>
+
+          {/* Housekeeping Dashboard Routes */}
+          <Route path="/housekeeping-dashboard" element={<HousekeepingLayout />}>
+            <Route index element={<HousekeepingDashboard />} />
+            <Route path="dashboard" element={<HousekeepingDashboard />} />
+            <Route path="tasks" element={<HousekeepingTasks />} />
+            <Route path="amenities" element={<HousekeepingAmenities />} />
+            <Route path="supplies" element={<HousekeepingSupplies />} />
+            <Route path="oos-rooms" element={<HousekeepingOOSRooms />} />
+            <Route path="staff" element={<HousekeepingStaffAssignments />} />
+            <Route path="audit" element={<HousekeepingAuditLogs />} />
           </Route>
 
           {/* Hotel Dashboard Routes */}

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Calendar, Clock, CheckCircle, AlertTriangle, Plus } from 'lucide-react';
-import { useMaintenanceApi } from '@/hooks/useMaintenanceApi';
+import { useMaintenanceApi } from '@/hooks/useMaintenance';
 
 export default function PreventiveSchedulePage() {
   const { preventiveTasks, completePreventiveTask, isLoading } = useMaintenanceApi();

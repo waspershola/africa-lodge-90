@@ -25,7 +25,7 @@ import {
   Upload,
   X
 } from 'lucide-react';
-import { useMaintenanceApi, type WorkOrder } from '@/hooks/useMaintenanceApi';
+import { useMaintenanceApi, type WorkOrder } from '@/hooks/useMaintenance';
 
 export default function WorkOrdersBoard() {
   const { workOrders, isLoading, acceptWorkOrder, completeWorkOrder, createWorkOrder } = useMaintenanceApi();

@@ -20,7 +20,7 @@ import {
   Package,
   Filter
 } from 'lucide-react';
-import { usePOSApi, type MenuItem } from '@/hooks/usePOSApi';
+import { usePOSApi, type MenuItem } from '@/hooks/usePOS';
 
 export default function MenuManagementPage() {
   const { menuItems, isLoading, updateMenuItem } = usePOSApi();

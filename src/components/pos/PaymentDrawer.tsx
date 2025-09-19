@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import RoleGuard, { ProtectedButton } from './RoleGuard';
-import { usePOSApi, type Order } from '@/hooks/usePOSApi';
+import { usePOSApi, type Order } from '@/hooks/usePOS';
 import { useToast } from '@/hooks/use-toast';
 
 interface PaymentDrawerProps {

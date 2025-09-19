@@ -12,7 +12,7 @@ import {
   MapPin,
   RefreshCw
 } from 'lucide-react';
-import { useMaintenanceApi } from '@/hooks/useMaintenanceApi';
+import { useMaintenanceApi } from '@/hooks/useMaintenance';
 
 // This component demonstrates how QR requests integrate with maintenance
 export default function QRIntegration() {

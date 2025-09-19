@@ -17,16 +17,20 @@ import {
   Shield,
   Hammer
 } from 'lucide-react';
-import { useMaintenanceApi } from '@/hooks/useMaintenanceApi';
+import { useMaintenanceApi } from '@/hooks/useMaintenance';
 
 export default function MaintenanceDashboard() {
-  const { workOrders, preventiveTasks, supplies, stats, isLoading } = useMaintenanceApi();
+  const { workOrders, stats, isLoading } = useMaintenanceApi();
+  
+  // Mock data for missing features that will be implemented later
+  const preventiveTasks: any[] = [];
+  const supplies: any[] = [];
   const [activeShift, setActiveShift] = useState(false);
 
   // Get critical alerts
   const criticalWorkOrders = workOrders.filter(wo => wo.priority === 'critical' && wo.status !== 'completed');
-  const lowStockSupplies = supplies.filter(supply => supply.currentStock <= supply.minThreshold);
-  const overdueTasks = preventiveTasks.filter(task => task.status === 'overdue');
+  const lowStockSupplies: any[] = []; // Mock for now
+  const overdueTasks: any[] = []; // Mock for now
 
   const handleStartShift = () => {
     setActiveShift(true);

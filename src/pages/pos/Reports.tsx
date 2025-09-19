@@ -17,7 +17,7 @@ import {
   Download,
   RefreshCw
 } from 'lucide-react';
-import { usePOSApi } from '@/hooks/usePOSApi';
+import { usePOSApi } from '@/hooks/usePOS';
 import { format } from 'date-fns';
 
 export default function ReportsPage() {

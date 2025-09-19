@@ -17,7 +17,7 @@ import {
   Users,
   X
 } from 'lucide-react';
-import { type Order } from '@/hooks/usePOSApi';
+import { type Order } from '@/hooks/usePOS';
 
 interface OrderModalProps {
   order: Order;

@@ -2,7 +2,7 @@ import { forwardRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { type Order } from '@/hooks/usePOSApi';
+import { type Order } from '@/hooks/usePOS';
 
 interface ReceiptTemplateProps {
   order: Order;

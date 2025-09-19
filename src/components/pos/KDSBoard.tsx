@@ -15,7 +15,7 @@ import {
   Coffee,
   UtensilsCrossed
 } from 'lucide-react';
-import { usePOSApi, type KitchenTicket } from '@/hooks/usePOSApi';
+import { usePOSApi, type KitchenTicket } from '@/hooks/usePOS';
 
 export default function KDSBoard() {
   const { kitchenTickets, isLoading, claimKitchenTicket, completeKitchenTicket } = usePOSApi();

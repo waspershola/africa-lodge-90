@@ -18,7 +18,7 @@ import {
   Clock,
   AlertCircle
 } from 'lucide-react';
-import { usePOSApi, type Order } from '@/hooks/usePOSApi';
+import { usePOSApi, type Order } from '@/hooks/usePOS';
 
 export default function PaymentPage() {
   const { orders, isLoading, processPayment } = usePOSApi();

@@ -23,7 +23,7 @@ import {
   ChefHat,
   AlertTriangle
 } from 'lucide-react';
-import { usePOSApi, type MenuItem } from '@/hooks/usePOSApi';
+import { usePOSApi, type MenuItem } from '@/hooks/usePOS';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import RoleGuard, { ProtectedButton } from './RoleGuard';

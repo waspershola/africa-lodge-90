@@ -20,7 +20,7 @@ import {
   Phone,
   Users
 } from 'lucide-react';
-import { usePOSApi, type Order } from '@/hooks/usePOSApi';
+import { usePOSApi, type Order } from '@/hooks/usePOS';
 import { useToast } from '@/hooks/use-toast';
 import OrderModal from './OrderModal';
 import PaymentDrawer from './PaymentDrawer';

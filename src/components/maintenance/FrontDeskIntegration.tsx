@@ -12,7 +12,7 @@ import {
   MapPin,
   Wrench
 } from 'lucide-react';
-import { useMaintenanceApi } from '@/hooks/useMaintenanceApi';
+import { useMaintenanceApi } from '@/hooks/useMaintenance';
 
 // This component shows how maintenance updates integrate with Front Desk operations
 export default function FrontDeskIntegration() {

@@ -17,7 +17,7 @@ import {
   Droplets,
   Shield
 } from 'lucide-react';
-import { useMaintenanceApi } from '@/hooks/useMaintenanceApi';
+import { useMaintenanceApi } from '@/hooks/useMaintenance';
 
 export default function MaintenanceSuppliesPage() {
   const { supplies, updateSupplyStock, isLoading } = useMaintenanceApi();

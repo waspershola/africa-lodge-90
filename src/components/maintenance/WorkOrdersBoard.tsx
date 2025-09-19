@@ -1,14 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Search, 
   Filter, 
@@ -21,7 +21,9 @@ import {
   FileText,
   Camera,
   Wrench,
-  Calendar
+  Calendar,
+  Upload,
+  X
 } from 'lucide-react';
 import { useMaintenanceApi, type WorkOrder } from '@/hooks/useMaintenanceApi';
 
@@ -31,7 +33,12 @@ export default function WorkOrdersBoard() {
   const [activeTab, setActiveTab] = useState('room-issues');
   const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkOrder | null>(null);
   const [completionNotes, setCompletionNotes] = useState('');
+  const [rootCause, setRootCause] = useState('');
+  const [partsUsed, setPartsUsed] = useState<Array<{partName: string; quantity: number; cost: number}>>([]);
+  const [newPart, setNewPart] = useState({ partName: '', quantity: 1, cost: 0 });
+  const [uploadedPhotos, setUploadedPhotos] = useState<string[]>([]);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [newWorkOrder, setNewWorkOrder] = useState({
     roomId: '',
     facility: '',
@@ -108,10 +115,43 @@ export default function WorkOrdersBoard() {
   const handleCompleteWorkOrder = async (workOrderId: string) => {
     await completeWorkOrder(workOrderId, {
       notes: completionNotes,
+      rootCause: rootCause,
+      partsUsed: partsUsed.map(part => ({
+        partId: `part-${Date.now()}-${Math.random()}`,
+        partName: part.partName,
+        quantity: part.quantity,
+        cost: part.cost
+      })),
+      photos: uploadedPhotos,
       actualTime: 60 // This would be calculated from accept to complete time
     });
     setSelectedWorkOrder(null);
     setCompletionNotes('');
+    setRootCause('');
+    setPartsUsed([]);
+    setUploadedPhotos([]);
+    setShowCompleteDialog(false);
+  };
+
+  const addPart = () => {
+    if (newPart.partName.trim()) {
+      setPartsUsed([...partsUsed, { ...newPart }]);
+      setNewPart({ partName: '', quantity: 1, cost: 0 });
+    }
+  };
+
+  const removePart = (index: number) => {
+    setPartsUsed(partsUsed.filter((_, i) => i !== index));
+  };
+
+  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      // In production, you would upload to a cloud service like AWS S3, Cloudinary, etc.
+      // For now, we'll simulate with placeholder URLs
+      const newPhotos = Array.from(files).map(file => URL.createObjectURL(file));
+      setUploadedPhotos([...uploadedPhotos, ...newPhotos]);
+    }
   };
 
   const handleCreateWorkOrder = async () => {
@@ -309,42 +349,143 @@ export default function WorkOrdersBoard() {
                           </Button>
                         )}
                         {workOrder.status === 'in-progress' && (
-                          <Dialog>
+                          <Dialog open={showCompleteDialog} onOpenChange={setShowCompleteDialog}>
                             <DialogTrigger asChild>
-                              <Button size="sm" onClick={() => setSelectedWorkOrder(workOrder)}>
+                              <Button size="sm" onClick={() => {
+                                setSelectedWorkOrder(workOrder);
+                                setShowCompleteDialog(true);
+                              }}>
                                 <CheckCircle className="h-4 w-4 mr-1" />
                                 Complete
                               </Button>
                             </DialogTrigger>
-                            <DialogContent>
+                            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                               <DialogHeader>
-                                <DialogTitle>Complete Work Order</DialogTitle>
+                                <DialogTitle>Complete Work Order - {selectedWorkOrder?.workOrderNumber}</DialogTitle>
                               </DialogHeader>
-                              <div className="space-y-4">
+                              <div className="space-y-6">
                                 <div>
-                                  <Label>Work Order: {selectedWorkOrder?.workOrderNumber}</Label>
-                                  <p className="text-sm text-muted-foreground">
-                                    {selectedWorkOrder?.issue}
-                                  </p>
+                                  <Label>Work Order Details</Label>
+                                  <div className="bg-muted p-3 rounded-lg text-sm">
+                                    <p><strong>Issue:</strong> {selectedWorkOrder?.issue}</p>
+                                    <p><strong>Location:</strong> {selectedWorkOrder?.roomId ? `Room ${selectedWorkOrder?.roomId}` : selectedWorkOrder?.facility}</p>
+                                    <p><strong>Priority:</strong> {selectedWorkOrder?.priority}</p>
+                                  </div>
                                 </div>
+
                                 <div>
-                                  <Label htmlFor="notes">Completion Notes</Label>
+                                  <Label htmlFor="completionNotes">Work Performed</Label>
                                   <Textarea
-                                    id="notes"
-                                    placeholder="Describe the work performed, parts used, etc."
+                                    id="completionNotes"
+                                    placeholder="Describe the work performed..."
                                     value={completionNotes}
                                     onChange={(e) => setCompletionNotes(e.target.value)}
+                                    rows={3}
                                   />
                                 </div>
-                                <div className="flex justify-end gap-2">
-                                  <Button variant="outline" onClick={() => setSelectedWorkOrder(null)}>
+
+                                <div>
+                                  <Label htmlFor="rootCause">Root Cause Analysis</Label>
+                                  <Textarea
+                                    id="rootCause"
+                                    placeholder="Identify the root cause of the issue..."
+                                    value={rootCause}
+                                    onChange={(e) => setRootCause(e.target.value)}
+                                    rows={2}
+                                  />
+                                </div>
+
+                                {/* Parts Used Section */}
+                                <div>
+                                  <Label>Parts/Materials Used</Label>
+                                  <div className="space-y-3">
+                                    {partsUsed.map((part, index) => (
+                                      <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded">
+                                        <span className="flex-1">{part.partName}</span>
+                                        <span className="text-sm">Qty: {part.quantity}</span>
+                                        <span className="text-sm">${part.cost.toFixed(2)}</span>
+                                        <Button size="sm" variant="ghost" onClick={() => removePart(index)}>
+                                          <X className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    ))}
+                                    
+                                    <div className="flex gap-2">
+                                      <Input
+                                        placeholder="Part name"
+                                        value={newPart.partName}
+                                        onChange={(e) => setNewPart({...newPart, partName: e.target.value})}
+                                        className="flex-1"
+                                      />
+                                      <Input
+                                        type="number"
+                                        placeholder="Qty"
+                                        value={newPart.quantity}
+                                        onChange={(e) => setNewPart({...newPart, quantity: Number(e.target.value)})}
+                                        className="w-20"
+                                      />
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        placeholder="Cost"
+                                        value={newPart.cost}
+                                        onChange={(e) => setNewPart({...newPart, cost: Number(e.target.value)})}
+                                        className="w-24"
+                                      />
+                                      <Button size="sm" onClick={addPart}>
+                                        <Plus className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Photo Upload Section */}
+                                <div>
+                                  <Label>Photo Evidence (Before/After)</Label>
+                                  <div className="space-y-3">
+                                    <div className="flex flex-wrap gap-2">
+                                      {uploadedPhotos.map((photo, index) => (
+                                        <div key={index} className="relative">
+                                          <img src={photo} alt={`Evidence ${index + 1}`} className="w-20 h-20 object-cover rounded" />
+                                          <Button
+                                            size="sm"
+                                            variant="destructive"
+                                            className="absolute -top-2 -right-2 w-6 h-6 p-0"
+                                            onClick={() => setUploadedPhotos(uploadedPhotos.filter((_, i) => i !== index))}
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <div>
+                                      <input
+                                        type="file"
+                                        multiple
+                                        accept="image/*"
+                                        onChange={handlePhotoUpload}
+                                        className="hidden"
+                                        id="photo-upload"
+                                      />
+                                      <Label htmlFor="photo-upload" className="cursor-pointer">
+                                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors">
+                                          <Camera className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                                          <p className="text-sm text-gray-600">Click to upload photos</p>
+                                        </div>
+                                      </Label>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex justify-end gap-2 pt-4 border-t">
+                                  <Button variant="outline" onClick={() => setShowCompleteDialog(false)}>
                                     Cancel
                                   </Button>
                                   <Button 
                                     onClick={() => selectedWorkOrder && handleCompleteWorkOrder(selectedWorkOrder.id)}
-                                    disabled={isLoading}
+                                    disabled={isLoading || !completionNotes.trim()}
                                   >
-                                    Mark Complete
+                                    Complete Work Order
                                   </Button>
                                 </div>
                               </div>

@@ -22,7 +22,7 @@ const navigation = [
   { name: 'Guests', href: '/owner-dashboard/guests', icon: Users },
   { name: 'Housekeeping', href: '/owner-dashboard/housekeeping', icon: Sparkles },
   { name: 'Billing & Payments', href: '/owner-dashboard/billing', icon: CreditCard },
-  { name: 'Room Service QR', href: '/owner-dashboard/qr-codes', icon: QrCode },
+  { name: 'QR Manager', href: '/owner-dashboard/qr-manager', icon: QrCode },
   { name: 'Reports', href: '/owner-dashboard/reports', icon: FileText },
   { name: 'Staff & Roles', href: '/owner-dashboard/staff', icon: UserCircle },
   { name: 'Financials', href: '/owner-dashboard/financials', icon: DollarSign },

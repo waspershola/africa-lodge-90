@@ -14,7 +14,7 @@ import Configuration from "./pages/owner/Configuration";
 import StaffRoles from "./pages/owner/StaffRoles";
 import Financials from "./pages/owner/Financials";
 import Billing from "./pages/owner/Billing";
-import QRCodes from "./pages/owner/QRCodes";
+import QRManager from "./pages/owner/QRManager";
 import Reports from "./pages/owner/Reports";
 import Reservations from "./pages/owner/Reservations";
 import Guests from "./pages/owner/Guests";
@@ -61,7 +61,7 @@ const App = () => (
             <Route path="staff" element={<StaffRoles />} />
             <Route path="financials" element={<Financials />} />
             <Route path="billing" element={<Billing />} />
-            <Route path="qr-codes" element={<QRCodes />} />
+            <Route path="qr-manager" element={<QRManager />} />
             <Route path="reports" element={<Reports />} />
             <Route path="reservations" element={<Reservations />} />
             <Route path="guests" element={<Guests />} />

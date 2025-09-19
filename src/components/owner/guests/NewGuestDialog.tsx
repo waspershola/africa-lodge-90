@@ -24,8 +24,22 @@ export default function NewGuestDialog({ onClose, onGuestCreated }: NewGuestDial
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const result = await createGuest.mutateAsync(guestData);
-      onGuestCreated(result.data);
+      const result = await createGuest.mutateAsync({
+        name: guestData.name,
+        email: guestData.email,
+        phone: guestData.phone,
+        role: 'guest',
+        department: 'guest',
+        tenant_id: 'current', // Will be set by backend
+        is_active: true,
+        force_reset: false,
+        shift_start: '',
+        shift_end: '',
+        temp_password_hash: '',
+        temp_expires: '',
+        last_login: ''
+      });
+      onGuestCreated(result);
     } catch (error) {
       console.error('Error creating guest:', error);
     }

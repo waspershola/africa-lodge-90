@@ -30,9 +30,9 @@ export default function RoleManagement() {
   const { data: rolesData, isLoading, error } = useRoles();
   const deleteRoleMutation = useDeleteRole();
 
-  const roles = rolesData?.data || [];
+  const roles = rolesData || [];
 
-  const filteredRoles = roles.filter((role: any) =>
+  const filteredRoles = (roles as any[]).filter((role: any) =>
     role.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     role.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -45,7 +45,7 @@ export default function RoleManagement() {
   const handleDeleteRole = async (roleId: string) => {
     if (window.confirm('Are you sure you want to delete this role?')) {
       try {
-        await deleteRoleMutation.mutateAsync(roleId);
+        await deleteRoleMutation.mutateAsync({ id: roleId });
       } catch (error) {
         toast.error('Failed to delete role');
       }

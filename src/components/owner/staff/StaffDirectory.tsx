@@ -29,11 +29,11 @@ export default function StaffDirectory() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
-  const { data: staffData, isLoading, error } = useOwnerStaff();
+  const { data: staffData, isLoading, error } = useStaff();
   const deleteStaffMutation = useDeleteStaffMember();
   const updateStaffMutation = useUpdateStaffMember();
 
-  const staff = staffData?.data || [];
+  const staff = staffData || [];
 
   const filteredStaff = staff.filter((member: Staff) =>
     member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -57,7 +57,7 @@ export default function StaffDirectory() {
   const handleDeleteStaff = async (staffId: string) => {
     if (window.confirm('Are you sure you want to remove this staff member?')) {
       try {
-        await deleteStaffMutation.mutateAsync(staffId);
+        await deleteStaffMutation.mutateAsync({ id: staffId });
       } catch (error) {
         toast.error('Failed to remove staff member');
       }

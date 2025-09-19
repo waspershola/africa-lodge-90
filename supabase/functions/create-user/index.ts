@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
     console.log('Auth user created:', authUser.user?.id)
 
     // The trigger function should automatically create the user record
-    // Let's verify it was created correctly
+    // Let's verify it was created correctly and update the name if needed
     const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('*')
@@ -145,6 +145,34 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       )
+    }
+
+    // Update the name if it's missing from the trigger
+    if (!userData.name && name) {
+      console.log('Updating user name:', name)
+      const { data: updatedUser, error: updateError } = await supabaseAdmin
+        .from('users')
+        .update({ name })
+        .eq('id', authUser.user!.id)
+        .select()
+        .single()
+
+      if (updateError) {
+        console.error('Name update error:', updateError)
+      } else {
+        console.log('User name updated:', updatedUser)
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            user: updatedUser,
+            message: 'User created successfully' 
+          }),
+          { 
+            status: 201, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
     }
 
     console.log('User record verified:', userData)

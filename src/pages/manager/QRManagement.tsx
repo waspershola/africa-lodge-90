@@ -736,71 +736,24 @@ const QRManagement = () => {
         </TabsContent>
 
         <TabsContent value="pricing" className="space-y-6">
-          {/* Pricing Control */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5" />
-                  Dynamic Pricing & Availability Control
-                </CardTitle>
-                <CardDescription>Adjust pricing and time-based service availability</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12">
-                  <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Pricing Controls Coming Soon</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Dynamic pricing rules, time-based availability, and surcharge management.
-                  </p>
-                  <Button>
-                    Configure Pricing Rules
-                  </Button>
-                  
-                  {/* Fraud Detection Alerts */}
-                  <div className="mt-8">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-medium">Security & Fraud Detection</h3>
-                      <FraudAlertDialog 
-                        trigger={
-                          <Button variant="outline">
-                            <Shield className="h-4 w-4 mr-2" />
-                            View Fraud Alerts
-                          </Button>
-                        }
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <Card className="border-orange-200 bg-orange-50">
-                        <CardContent className="p-4 text-center">
-                          <AlertTriangle className="h-8 w-8 text-orange-600 mx-auto mb-2" />
-                          <div className="text-2xl font-bold text-orange-600">3</div>
-                          <div className="text-sm text-orange-700">Active Fraud Alerts</div>
-                        </CardContent>
-                      </Card>
-                      
-                      <Card>
-                        <CardContent className="p-4 text-center">
-                          <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                          <div className="text-2xl font-bold text-green-600">97.9%</div>
-                          <div className="text-sm text-muted-foreground">System Integrity</div>
-                        </CardContent>
-                      </Card>
-                      
-                      <Card>
-                        <CardContent className="p-4 text-center">
-                          <Clock className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                          <div className="text-2xl font-bold text-blue-600">8.2 mins</div>
-                          <div className="text-sm text-muted-foreground">Avg Response Time</div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+          <EnhancedPricingControl
+            services={mockServicePricing}
+            pendingChanges={mockPendingChanges}
+            onPriceChange={(change) => {
+              toast({
+                title: "Price Change Submitted",
+                description: change.status === 'auto-approved' 
+                  ? "Change applied immediately within delegation limits."
+                  : "Change queued for owner approval.",
+              });
+            }}
+            onSurchargeUpdate={(serviceId, rules) => {
+              toast({
+                title: "Surcharge Rules Updated",
+                description: "Dynamic pricing rules have been applied.",
+              });
+            }}
+          />
         </TabsContent>
 
         <TabsContent value="audit" className="space-y-6">

@@ -1,0 +1,984 @@
+openapi: 3.0.3
+info:
+  title: Hotel Management System API
+  description: Multi-tenant hotel operations platform with QR services, POS, housekeeping, and maintenance
+  version: 1.0.0
+  contact:
+    name: Hotel Management API Support
+    email: support@hotelmanagement.com
+
+servers:
+  - url: https://your-supabase-project.supabase.co
+    description: Production Supabase Environment
+
+security:
+  - BearerAuth: []
+
+paths:
+  # Authentication Endpoints
+  /auth/v1/token:
+    post:
+      tags: [Authentication]
+      summary: User login with email/password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 6
+              required: [email, password]
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+
+  /auth/v1/logout:
+    post:
+      tags: [Authentication]
+      summary: User logout
+      responses:
+        '204':
+          description: Logout successful
+
+  # Super Admin Endpoints
+  /rest/v1/rpc/super_admin_overview:
+    post:
+      tags: [Super Admin]
+      summary: Get platform overview stats
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Platform statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_tenants:
+                    type: integer
+                  active_trials:
+                    type: integer
+                  monthly_revenue:
+                    type: number
+                  system_health:
+                    type: string
+                    enum: [healthy, warning, critical]
+
+  /rest/v1/tenants:
+    get:
+      tags: [Super Admin]
+      summary: List all tenants
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of tenants
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tenant'
+
+    post:
+      tags: [Super Admin]
+      summary: Create new tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTenantRequest'
+      responses:
+        '201':
+          description: Tenant created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+
+  /rest/v1/tenants/{tenant_id}:
+    get:
+      tags: [Super Admin]
+      summary: Get tenant details
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Tenant details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+
+  # Impersonation
+  /rest/v1/rpc/start_impersonation:
+    post:
+      tags: [Super Admin]
+      summary: Start user impersonation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                target_user_id:
+                  type: string
+                  format: uuid
+                reason:
+                  type: string
+              required: [target_user_id, reason]
+      responses:
+        '200':
+          description: Impersonation token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  impersonation_token:
+                    type: string
+                  expires_at:
+                    type: string
+                    format: date-time
+
+  # Hotel Operations (Tenant-Scoped)
+  /rest/v1/rooms:
+    get:
+      tags: [Hotel Operations]
+      summary: Get hotel rooms
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [available, occupied, maintenance, checkout]
+      responses:
+        '200':
+          description: List of rooms
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Room'
+
+    post:
+      tags: [Hotel Operations]
+      summary: Create new room
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoomRequest'
+      responses:
+        '201':
+          description: Room created
+
+  /rest/v1/reservations:
+    get:
+      tags: [Hotel Operations]
+      summary: Get reservations
+      parameters:
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [confirmed, checked_in, checked_out, cancelled]
+      responses:
+        '200':
+          description: List of reservations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Reservation'
+
+    post:
+      tags: [Hotel Operations]  
+      summary: Create new reservation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReservationRequest'
+      responses:
+        '201':
+          description: Reservation created
+
+  # QR Code Management
+  /rest/v1/qr_codes:
+    get:
+      tags: [QR Management]
+      summary: Get QR codes for hotel
+      responses:
+        '200':
+          description: List of QR codes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/QRCode'
+
+    post:
+      tags: [QR Management]
+      summary: Generate new QR code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                room_id:
+                  type: string
+                  format: uuid
+                services:
+                  type: array
+                  items:
+                    type: string
+                    enum: [housekeeping, maintenance, room_service, wifi]
+                template_id:
+                  type: string
+                  format: uuid
+              required: [room_id, services]
+      responses:
+        '201':
+          description: QR code generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QRCode'
+
+  /rest/v1/qr_codes/{qr_id}/scan:
+    post:
+      tags: [QR Management]
+      summary: Process QR code scan
+      parameters:
+        - name: qr_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                guest_session_id:
+                  type: string
+                service_type:
+                  type: string
+                  enum: [housekeeping, maintenance, room_service, wifi]
+                request_details:
+                  type: object
+              required: [service_type]
+      responses:
+        '201':
+          description: QR order created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QROrder'
+
+  # Housekeeping Management
+  /rest/v1/housekeeping/tasks:
+    get:
+      tags: [Housekeeping]
+      summary: Get housekeeping tasks
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, assigned, in_progress, completed]
+        - name: assigned_to
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of housekeeping tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HousekeepingTask'
+
+    post:
+      tags: [Housekeeping]
+      summary: Create housekeeping task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateHousekeepingTaskRequest'
+      responses:
+        '201':
+          description: Task created
+
+  /rest/v1/housekeeping/tasks/{task_id}/assign:
+    post:
+      tags: [Housekeeping]
+      summary: Assign task to staff member
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                assigned_to:
+                  type: string
+                  format: uuid
+              required: [assigned_to]
+      responses:
+        '200':
+          description: Task assigned successfully
+
+  # Maintenance Management  
+  /rest/v1/maintenance/work_orders:
+    get:
+      tags: [Maintenance]
+      summary: Get maintenance work orders
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, assigned, in_progress, completed, cancelled]
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [low, medium, high, urgent]
+      responses:
+        '200':
+          description: List of work orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorkOrder'
+
+    post:
+      tags: [Maintenance]
+      summary: Create work order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWorkOrderRequest'
+      responses:
+        '201':
+          description: Work order created
+
+  # POS Management
+  /rest/v1/pos/orders:
+    get:
+      tags: [POS]
+      summary: Get POS orders
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, preparing, ready, served, cancelled]
+        - name: order_type
+          in: query
+          schema:
+            type: string
+            enum: [room_service, restaurant, bar]
+      responses:
+        '200':
+          description: List of POS orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/POSOrder'
+
+    post:
+      tags: [POS]
+      summary: Create POS order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePOSOrderRequest'
+      responses:
+        '201':
+          description: Order created
+
+  # Billing & Payments
+  /rest/v1/folios/{room_id}:
+    get:
+      tags: [Billing]
+      summary: Get guest folio for room
+      parameters:
+        - name: room_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Guest folio details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GuestFolio'
+
+  /rest/v1/payments:
+    post:
+      tags: [Billing]
+      summary: Record payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePaymentRequest'
+      responses:
+        '201':
+          description: Payment recorded
+
+  # Offline Sync
+  /rest/v1/rpc/offline_sync:
+    post:
+      tags: [Offline Sync]
+      summary: Sync offline actions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                actions:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/OfflineAction'
+                last_sync_token:
+                  type: string
+              required: [actions]
+      responses:
+        '200':
+          description: Sync results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        status:
+                          type: string
+                          enum: [success, error, conflict]
+                        error_message:
+                          type: string
+                  new_sync_token:
+                    type: string
+
+  # Webhook Endpoints
+  /webhooks/paystack:
+    post:
+      tags: [Webhooks]
+      summary: Paystack webhook handler
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                event:
+                  type: string
+                data:
+                  type: object
+      responses:
+        '200':
+          description: Webhook processed
+
+  /webhooks/stripe:
+    post:
+      tags: [Webhooks]
+      summary: Stripe webhook handler
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                data:
+                  type: object
+      responses:
+        '200':
+          description: Webhook processed
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [SUPER_ADMIN, OWNER, MANAGER, STAFF, FRONT_DESK, HOUSEKEEPING, MAINTENANCE, POS]
+        tenant_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+
+    Tenant:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          format: uuid
+        hotel_name:
+          type: string
+        plan_id:
+          type: string
+        subscription_status:
+          type: string
+          enum: [trialing, active, expired, suspended]
+        trial_end:
+          type: string
+          format: date-time
+        setup_completed:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    Room:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        room_number:
+          type: string
+        room_type:
+          type: string
+        status:
+          type: string
+          enum: [available, occupied, maintenance, checkout]
+        floor:
+          type: integer
+        tenant_id:
+          type: string
+          format: uuid
+
+    Reservation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        guest_name:
+          type: string
+        guest_email:
+          type: string
+          format: email
+        room_id:
+          type: string
+          format: uuid
+        check_in_date:
+          type: string
+          format: date
+        check_out_date:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [confirmed, checked_in, checked_out, cancelled]
+        tenant_id:
+          type: string
+          format: uuid
+
+    QRCode:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        qr_code_url:
+          type: string
+        room_id:
+          type: string
+          format: uuid
+        services:
+          type: array
+          items:
+            type: string
+        tenant_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+
+    QROrder:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        qr_code_id:
+          type: string
+          format: uuid
+        service_type:
+          type: string
+        request_details:
+          type: object
+        status:
+          type: string
+          enum: [pending, assigned, in_progress, completed, cancelled]
+        guest_session_id:
+          type: string
+        tenant_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+
+    HousekeepingTask:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        task_type:
+          type: string
+          enum: [cleaning, maintenance, inspection, supply_restock]
+        room_id:
+          type: string
+          format: uuid
+        assigned_to:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, assigned, in_progress, completed]
+        priority:
+          type: string
+          enum: [low, medium, high, urgent]
+        tenant_id:
+          type: string
+          format: uuid
+
+    WorkOrder:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        room_id:
+          type: string
+          format: uuid
+        assigned_to:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, assigned, in_progress, completed, cancelled]
+        priority:
+          type: string
+          enum: [low, medium, high, urgent]
+        tenant_id:
+          type: string
+          format: uuid
+
+    POSOrder:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        order_number:
+          type: string
+        room_id:
+          type: string
+          format: uuid
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              quantity:
+                type: integer
+              price:
+                type: number
+        total_amount:
+          type: number
+        status:
+          type: string
+          enum: [pending, preparing, ready, served, cancelled]
+        tenant_id:
+          type: string
+          format: uuid
+
+    GuestFolio:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        room_id:
+          type: string
+          format: uuid
+        guest_name:
+          type: string
+        charges:
+          type: array
+          items:
+            type: object
+            properties:
+              description:
+                type: string
+              amount:
+                type: number
+              date:
+                type: string
+                format: date-time
+        payments:
+          type: array
+          items:
+            type: object
+            properties:
+              amount:
+                type: number
+              method:
+                type: string
+              date:
+                type: string
+                format: date-time
+        balance:
+          type: number
+        tenant_id:
+          type: string
+          format: uuid
+
+    OfflineAction:
+      type: object
+      properties:
+        id:
+          type: string
+        action_type:
+          type: string
+        table_name:
+          type: string
+        record_id:
+          type: string
+        data:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+
+    CreateTenantRequest:
+      type: object
+      properties:
+        hotel_name:
+          type: string
+        owner_email:
+          type: string
+          format: email
+        plan_id:
+          type: string
+        trial_days:
+          type: integer
+          default: 14
+      required: [hotel_name, owner_email, plan_id]
+
+    CreateRoomRequest:
+      type: object
+      properties:
+        room_number:
+          type: string
+        room_type:
+          type: string
+        floor:
+          type: integer
+      required: [room_number, room_type]
+
+    CreateReservationRequest:
+      type: object
+      properties:
+        guest_name:
+          type: string
+        guest_email:
+          type: string
+          format: email
+        room_id:
+          type: string
+          format: uuid
+        check_in_date:
+          type: string
+          format: date
+        check_out_date:
+          type: string
+          format: date
+      required: [guest_name, room_id, check_in_date, check_out_date]
+
+    CreateHousekeepingTaskRequest:
+      type: object
+      properties:
+        task_type:
+          type: string
+          enum: [cleaning, maintenance, inspection, supply_restock]
+        room_id:
+          type: string
+          format: uuid
+        priority:
+          type: string
+          enum: [low, medium, high, urgent]
+        notes:
+          type: string
+      required: [task_type, room_id]
+
+    CreateWorkOrderRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        room_id:
+          type: string
+          format: uuid
+        priority:
+          type: string
+          enum: [low, medium, high, urgent]
+      required: [title, description, room_id]
+
+    CreatePOSOrderRequest:
+      type: object
+      properties:
+        room_id:
+          type: string
+          format: uuid
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              menu_item_id:
+                type: string
+                format: uuid
+              quantity:
+                type: integer
+        order_type:
+          type: string
+          enum: [room_service, restaurant, bar]
+      required: [room_id, items, order_type]
+
+    CreatePaymentRequest:
+      type: object
+      properties:
+        folio_id:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        payment_method:
+          type: string
+          enum: [cash, card, transfer, credit]
+        reference:
+          type: string
+      required: [folio_id, amount, payment_method]

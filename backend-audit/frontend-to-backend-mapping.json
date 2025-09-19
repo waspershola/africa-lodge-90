@@ -1,0 +1,239 @@
+{
+  "components": {
+    "src/components/auth/LoginForm.tsx": {
+      "endpoints": ["/auth/v1/token"],
+      "requests": [
+        {
+          "method": "POST",
+          "payload": {"email": "string", "password": "string"},
+          "response": {"access_token": "string", "user": "User"}
+        }
+      ],
+      "status": "MISSING - Using mock auth"
+    },
+    "src/hooks/useMultiTenantAuth.ts": {
+      "endpoints": ["/rest/v1/users", "/rest/v1/tenants"],  
+      "requests": [
+        {
+          "method": "GET",
+          "endpoint": "/rest/v1/users?id=eq.{user_id}",
+          "response": "User object with tenant_id"
+        }
+      ],
+      "status": "MISSING - Using localStorage mock"
+    },
+    "src/components/frontdesk/RoomGrid.tsx": {
+      "endpoints": ["/rest/v1/rooms"],
+      "requests": [
+        {
+          "method": "GET", 
+          "endpoint": "/rest/v1/rooms?select=*,room_type(*)",
+          "response": "Array of Room objects"
+        }
+      ],
+      "status": "MISSING - Using static mock data"
+    },
+    "src/hooks/useCheckout.ts": {
+      "endpoints": ["/rest/v1/folios", "/rest/v1/payments"],
+      "requests": [
+        {
+          "method": "GET",
+          "endpoint": "/rest/v1/folios?room_id=eq.{room_id}",
+          "response": "GuestFolio with charges and payments"
+        },
+        {
+          "method": "POST",
+          "endpoint": "/rest/v1/payments", 
+          "payload": {"folio_id": "uuid", "amount": "number", "payment_method": "string"},
+          "response": "Payment confirmation"
+        }
+      ],
+      "status": "MISSING - Mock implementation only"
+    },
+    "src/components/owner/reservations/ReservationCalendar.tsx": {
+      "endpoints": ["/rest/v1/reservations"],
+      "requests": [
+        {
+          "method": "GET",
+          "endpoint": "/rest/v1/reservations?check_in_date=gte.{date}&check_out_date=lte.{date}",
+          "response": "Array of Reservation objects"
+        },
+        {
+          "method": "POST", 
+          "endpoint": "/rest/v1/reservations",
+          "payload": {"guest_name": "string", "room_id": "uuid", "check_in_date": "date"},
+          "response": "Created Reservation"
+        }
+      ],
+      "status": "MISSING - Static mock data"
+    },
+    "src/components/qr-portal/QRServices.tsx": {
+      "endpoints": ["/rest/v1/qr_codes", "/rest/v1/qr_orders"],
+      "requests": [
+        {
+          "method": "GET",
+          "endpoint": "/rest/v1/qr_codes/{qr_id}",
+          "response": "QRCode with available services"
+        },
+        {
+          "method": "POST",
+          "endpoint": "/rest/v1/qr_codes/{qr_id}/scan", 
+          "payload": {"service_type": "string", "request_details": "object"},
+          "response": "Created QROrder"
+        }
+      ],
+      "status": "MISSING - Mock QR token validation"
+    },
+    "src/hooks/useHousekeepingApi.ts": {
+      "endpoints": ["/rest/v1/housekeeping_tasks", "/rest/v1/supplies"],
+      "requests": [
+        {
+          "method": "GET",
+          "endpoint": "/rest/v1/housekeeping_tasks?status=eq.pending",
+          "response": "Array of HousekeepingTask objects"
+        },
+        {
+          "method": "PATCH",
+          "endpoint": "/rest/v1/housekeeping_tasks/{task_id}",
+          "payload": {"status": "string", "assigned_to": "uuid"},
+          "response": "Updated task"
+        }
+      ],
+      "status": "MISSING - localStorage simulation"
+    },
+    "src/hooks/useMaintenanceApi.ts": {
+      "endpoints": ["/rest/v1/work_orders"],
+      "requests": [
+        {
+          "method": "GET", 
+          "endpoint": "/rest/v1/work_orders?assigned_to=eq.{user_id}",
+          "response": "Array of WorkOrder objects"
+        },
+        {
+          "method": "POST",
+          "endpoint": "/rest/v1/work_orders",
+          "payload": {"title": "string", "description": "string", "room_id": "uuid"},
+          "response": "Created WorkOrder"
+        }
+      ],
+      "status": "MISSING - Mock data arrays"
+    },
+    "src/hooks/usePOSApi.ts": {
+      "endpoints": ["/rest/v1/pos_orders", "/rest/v1/menu_items"],
+      "requests": [
+        {
+          "method": "GET",
+          "endpoint": "/rest/v1/pos_orders?status=neq.served",
+          "response": "Array of active POS orders"
+        },
+        {
+          "method": "POST", 
+          "endpoint": "/rest/v1/pos_orders",
+          "payload": {"room_id": "uuid", "items": "array", "order_type": "string"},
+          "response": "Created POSOrder with order_number"
+        }
+      ],
+      "status": "MISSING - Mock KDS data"
+    },
+    "src/components/sa/TenantManagementDashboard.tsx": {
+      "endpoints": ["/rest/v1/rpc/super_admin_overview", "/rest/v1/tenants"],
+      "requests": [
+        {
+          "method": "POST",
+          "endpoint": "/rest/v1/rpc/super_admin_overview", 
+          "response": {"total_tenants": "number", "active_trials": "number", "system_health": "string"}
+        },
+        {
+          "method": "POST",
+          "endpoint": "/rest/v1/tenants",
+          "payload": {"hotel_name": "string", "owner_email": "string", "plan_id": "string"},
+          "response": "Created tenant with trial setup"
+        }
+      ],
+      "status": "MISSING - Mock tenant management"
+    },
+    "src/components/owner/billing/BillsManagement.tsx": {
+      "endpoints": ["/rest/v1/folios", "/rest/v1/folio_charges"],
+      "requests": [
+        {
+          "method": "GET",
+          "endpoint": "/rest/v1/folios?status=eq.open&select=*,folio_charges(*)",
+          "response": "Array of open folios with line items"
+        },
+        {
+          "method": "POST",
+          "endpoint": "/rest/v1/folio_charges",
+          "payload": {"folio_id": "uuid", "description": "string", "amount": "number"},
+          "response": "Created charge"
+        }
+      ],
+      "status": "MISSING - Mock billing data"
+    },
+    "src/components/onboarding/OnboardingWizard.tsx": {
+      "endpoints": ["/rest/v1/tenants", "/rest/v1/rpc/complete_onboarding"],
+      "requests": [
+        {
+          "method": "PATCH",
+          "endpoint": "/rest/v1/tenants/{tenant_id}",
+          "payload": {"onboarding_step": "string", "hotel_name": "string", "settings": "jsonb"},
+          "response": "Updated tenant"
+        },
+        {
+          "method": "POST", 
+          "endpoint": "/rest/v1/rpc/complete_onboarding",
+          "payload": {"tenant_id": "uuid", "final_config": "jsonb"},
+          "response": {"success": "boolean"}
+        }
+      ],
+      "status": "MISSING - localStorage progress only"
+    }
+  },
+  "realtime_channels": {
+    "hotel_{tenant_id}_qr_orders": {
+      "components": ["QRRequestsPanel", "HousekeepingDashboard", "MaintenanceDashboard"],
+      "events": ["INSERT", "UPDATE"], 
+      "status": "NOT_IMPLEMENTED"
+    },
+    "hotel_{tenant_id}_pos_orders": {
+      "components": ["KDSBoard", "PosLiveFeed"],
+      "events": ["INSERT", "UPDATE"],
+      "status": "NOT_IMPLEMENTED" 
+    },
+    "hotel_{tenant_id}_rooms": {
+      "components": ["RoomGrid", "FrontDeskDashboard"],
+      "events": ["UPDATE"],
+      "status": "NOT_IMPLEMENTED"
+    }
+  },
+  "authentication_requirements": {
+    "JWT_claims_required": [
+      "tenant_id - for RLS policies",
+      "role - for authorization checks", 
+      "user_id - for audit logging"
+    ],
+    "current_auth_issues": [
+      "Tokens stored in localStorage (security risk)",
+      "Mock authentication system",
+      "No tenant isolation in current auth"
+    ]
+  },
+  "missing_endpoints": {
+    "critical": [
+      "/auth/v1/token - Real authentication",
+      "/rest/v1/rpc/offline_sync - Offline synchronization", 
+      "/webhooks/paystack - Payment processing",
+      "/rest/v1/rpc/start_impersonation - Super admin impersonation"
+    ],
+    "high_priority": [
+      "/rest/v1/audit_log - Activity tracking",
+      "/rest/v1/qr_codes/{id}/scan - QR service requests",
+      "/rest/v1/rpc/complete_checkout - Guest checkout process"
+    ]
+  },
+  "implementation_priority": {
+    "phase_1": ["Authentication", "Tenant management", "Room operations"],
+    "phase_2": ["Reservations", "Billing", "QR services"],
+    "phase_3": ["Housekeeping", "Maintenance", "POS"],
+    "phase_4": ["Realtime updates", "Offline sync", "Advanced features"]
+  }
+}

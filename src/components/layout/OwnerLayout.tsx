@@ -13,6 +13,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import UnifiedDashboardLayout from './UnifiedDashboardLayout';
+import { TrialBanner } from '@/components/trial/TrialBanner';
 
 const navigation = [
   { name: 'Dashboard', href: '/owner-dashboard/dashboard', icon: BarChart3 },
@@ -30,16 +31,30 @@ const navigation = [
 ];
 
 export default function OwnerLayout() {
+  const handleUpgradeClick = () => {
+    // Navigate to billing/upgrade page
+    window.location.href = '/owner-dashboard/billing';
+  };
+
   return (
-    <UnifiedDashboardLayout
-      navigation={navigation}
-      title="Lagos Grand Hotel"
-      subtitle="Hotel Owner Dashboard"
-      backToSiteUrl="/"
-      headerBadge={{
-        icon: Settings,
-        label: "Owner"
-      }}
-    />
+    <>
+      {/* Trial Banner */}
+      <div className="bg-background border-b">
+        <div className="container mx-auto px-4">
+          <TrialBanner onUpgradeClick={handleUpgradeClick} dismissible />
+        </div>
+      </div>
+      
+      <UnifiedDashboardLayout
+        navigation={navigation}
+        title="Lagos Grand Hotel"
+        subtitle="Hotel Owner Dashboard"
+        backToSiteUrl="/"
+        headerBadge={{
+          icon: Settings,
+          label: "Owner"
+        }}
+      />
+    </>
   );
 }

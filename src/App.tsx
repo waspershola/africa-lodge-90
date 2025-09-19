@@ -40,6 +40,7 @@ import Advanced from "./pages/sa/Advanced";
 import Audit from "./pages/sa/Audit";
 import Metrics from "./pages/sa/Metrics";
 import Services from "./pages/sa/Services";
+import PricingConfig from "./pages/sa/PricingConfig";
 import HotelDashboard from "./pages/hotel/Dashboard";
 import ManagerDashboard from "./pages/manager/Dashboard";
 import ManagerOperations from "./pages/manager/Operations";
@@ -166,6 +167,7 @@ const App = () => (
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="tenants" element={<Tenants />} />
             <Route path="services" element={<Services />} />
+            <Route path="pricing-config" element={<PricingConfig />} />
             <Route path="templates" element={<Templates />} />
             <Route path="roles" element={<Roles />} />
             <Route path="global-users" element={<GlobalUsers />} />

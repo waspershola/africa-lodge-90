@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { 
   Building2, 
   Smartphone, 
@@ -19,15 +20,25 @@ import {
   TrendingUp,
   Activity,
   Settings,
-  UtensilsCrossed
+  UtensilsCrossed,
+  Mail,
+  Lock,
+  LogIn
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { PricingSection } from "@/components/pricing/PricingSection";
 import heroHotelBg from "@/assets/hero-hotel-bg.jpg";
 import sunsetHotelBg from "@/assets/sunset-hotel-bg.jpg";
 import diningHotelBg from "@/assets/dining-hotel-bg.jpg";
 
 const Index = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+  const { login, isAuthenticated } = useAuth();
   const fadeIn = {
     initial: { opacity: 0, y: 20 },
     animate: { opacity: 1, y: 0 },
@@ -81,49 +92,20 @@ const Index = () => {
     }
   ];
 
-  const plans = [
-    {
-      name: "Starter",
-      price: "₦35,000",
-      description: "Perfect for boutique hotels up to 25 rooms",
-      features: [
-        "Core bookings & front desk",
-        "Local payments (POS/Cash/Transfer)",
-        "Basic reports & analytics",
-        "Email notifications",
-        "Offline front desk (24hrs)"
-      ],
-      popular: false
-    },
-    {
-      name: "Growth",
-      price: "₦65,000", 
-      description: "Ideal for mid-size hotels 26-75 rooms",
-      features: [
-        "Everything in Starter",
-        "POS & F&B management",
-        "Room Service QR module",
-        "Extended reports & charts",
-        "Power & fuel tracking",
-        "WhatsApp notifications"
-      ],
-      popular: true
-    },
-    {
-      name: "Pro",
-      price: "₦120,000",
-      description: "Full-featured for large hotels 75+ rooms",
-      features: [
-        "Everything in Growth",
-        "Kiosk self check-in",
-        "Multi-property dashboard",
-        "Advanced analytics & AI",
-        "Custom integrations",
-        "Priority support"
-      ],
-      popular: false
+  const handleQuickLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) return;
+    
+    setLoginLoading(true);
+    try {
+      await login(email, password);
+      // Role-based redirect will happen in useAuth
+    } catch (error) {
+      console.error('Login failed:', error);
+    } finally {
+      setLoginLoading(false);
     }
-  ];
+  };
 
   const testimonials = [
     {
@@ -170,12 +152,48 @@ const Index = () => {
             <Building2 className="h-8 w-8 text-primary" />
             <span className="text-xl font-bold display-heading text-gradient">LuxuryHotelSaaS</span>
           </div>
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className="hidden lg:flex items-center space-x-6">
             <a href="#features" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Features</a>
             <a href="#pricing" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Pricing</a>
             <a href="#testimonials" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Reviews</a>
-            <Button variant="outline" size="sm">Sign In</Button>
-            <Button className="bg-gradient-primary shadow-luxury hover:shadow-hover">Get Started</Button>
+            
+            {/* Quick Login Form */}
+            <form onSubmit={handleQuickLogin} className="flex items-center space-x-2">
+              <div className="relative">
+                <Mail className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                <Input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-8 h-8 w-32 text-xs"
+                  disabled={loginLoading}
+                />
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                <Input
+                  type="password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-8 h-8 w-32 text-xs"
+                  disabled={loginLoading}
+                />
+              </div>
+              <Button 
+                type="submit" 
+                size="sm" 
+                disabled={loginLoading || !email || !password}
+                className="h-8 bg-gradient-primary"
+              >
+                <LogIn className="h-3 w-3" />
+              </Button>
+            </form>
+            
+            <Button className="bg-gradient-primary shadow-luxury hover:shadow-hover" size="sm">
+              Request Demo
+            </Button>
           </nav>
         </div>
       </motion.header>
@@ -338,69 +356,8 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section id="pricing" className="py-20 px-4 bg-card">
-        <div className="container mx-auto">
-          <motion.div 
-            className="text-center mb-16"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
-            <h2 className="text-3xl md:text-4xl font-bold display-heading text-gradient mb-4">
-              Simple, Transparent Pricing
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Choose the perfect plan for your hotel. All plans include core features with no hidden fees.
-            </p>
-          </motion.div>
-
-          <motion.div 
-            className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto"
-            variants={staggerChildren}
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true }}
-          >
-            {plans.map((plan, index) => (
-              <motion.div key={index} variants={fadeIn}>
-                <Card className={`modern-card relative h-full ${plan.popular ? 'ring-2 ring-accent shadow-accent' : ''}`}>
-                  {plan.popular && (
-                    <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-accent text-accent-foreground">
-                      Most Popular
-                    </Badge>
-                  )}
-                  <CardHeader>
-                    <CardTitle className="display-heading text-2xl">{plan.name}</CardTitle>
-                    <div className="text-4xl font-bold text-primary">
-                      {plan.price}
-                      <span className="text-lg font-normal text-muted-foreground">/month</span>
-                    </div>
-                    <CardDescription className="text-base">{plan.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-3 mb-8">
-                      {plan.features.map((feature, idx) => (
-                        <li key={idx} className="flex items-center gap-3">
-                          <CheckCircle className="h-5 w-5 text-accent flex-shrink-0" />
-                          <span className="text-sm">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    <Button 
-                      className={`w-full ${plan.popular ? 'bg-gradient-primary shadow-luxury hover:shadow-hover' : ''}`}
-                      variant={plan.popular ? "default" : "outline"}
-                    >
-                      {plan.popular ? 'Start Free Trial' : 'Choose Plan'}
-                    </Button>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
+      {/* Dynamic Pricing Section */}
+      <PricingSection />
 
       {/* Testimonials */}
       <section 

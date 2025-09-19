@@ -60,13 +60,13 @@ export default function ReservationContextMenu({
     // Check for room conflicts first
     try {
       const conflictResult = await checkConflicts.mutateAsync({
-        roomNumber: reservation.room,
+        roomId: reservation.room,
         checkIn: reservation.checkIn,
         checkOut: reservation.checkOut,
         reservationId: reservation.id
       });
 
-      if (conflictResult.data.hasConflicts) {
+      if (conflictResult.hasConflicts) {
         toast({
           title: 'Room Conflict Detected',
           description: `Room ${reservation.room} has conflicts. Please resolve before check-in.`,

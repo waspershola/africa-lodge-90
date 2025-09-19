@@ -75,7 +75,7 @@ export default function ReservationDetailDrawer({
     try {
       await updateReservation.mutateAsync({
         id: reservation.id,
-        data: { notes, room: roomAssignment }
+        updates: { notes, room: roomAssignment }
       });
       setIsEditing(false);
     } catch (error) {

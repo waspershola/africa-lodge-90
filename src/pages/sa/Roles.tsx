@@ -108,7 +108,7 @@ const Roles = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {roles?.data?.map((role: any) => (
+        {roles?.map((role: any) => (
           <Card key={role.id} className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <div className="flex justify-between items-start">

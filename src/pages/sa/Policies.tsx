@@ -45,6 +45,7 @@ export default function Policies() {
   const handleSave = async (tenantId: string) => {
     try {
       await updatePolicy.mutateAsync({
+        id: tenantId,
         tenantId,
         offlineWindowHours: editValue,
       });
@@ -150,21 +151,21 @@ export default function Policies() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {policies.tenantOverrides?.map((override) => {
-                  const isEditing = editingTenant === override.tenantId;
-                  
-                  return (
-                    <TableRow key={override.tenantId}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center">
-                            <Building2 className="h-4 w-4 text-primary" />
-                          </div>
-                          <span className="font-medium">{override.tenantName}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {isEditing ? (
+                 {policies.tenantOverrides?.map((override) => {
+                   const isEditing = editingTenant === override.tenant_id;
+                   
+                   return (
+                     <TableRow key={override.tenant_id}>
+                       <TableCell>
+                         <div className="flex items-center gap-3">
+                           <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center">
+                             <Building2 className="h-4 w-4 text-primary" />
+                           </div>
+                           <span className="font-medium">{override.hotel_name}</span>
+                         </div>
+                       </TableCell>
+                       <TableCell>
+                         {isEditing ? (
                           <div className="flex items-center gap-2 max-w-32">
                             <Input
                               type="number"
@@ -177,16 +178,16 @@ export default function Policies() {
                             <span className="text-sm text-muted-foreground">hrs</span>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">{override.offlineWindowHours} hours</span>
-                          </div>
+                           <div className="flex items-center gap-2">
+                             <Clock className="h-4 w-4 text-muted-foreground" />
+                             <span className="font-medium">{override.offline_window_hours} hours</span>
+                           </div>
                         )}
                       </TableCell>
                       <TableCell>
-                        <span className={`text-sm font-medium ${getStatusColor(override.offlineWindowHours)}`}>
-                          {getStatusText(override.offlineWindowHours)}
-                        </span>
+                         <span className={`text-sm font-medium ${getStatusColor(override.offline_window_hours)}`}>
+                           {getStatusText(override.offline_window_hours)}
+                         </span>
                       </TableCell>
                       <TableCell className="text-right">
                         {isEditing ? (
@@ -199,22 +200,22 @@ export default function Policies() {
                             >
                               Cancel
                             </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => handleSave(override.tenantId)}
-                              disabled={updatePolicy.isPending || editValue < policies.minOfflineWindow || editValue > policies.maxOfflineWindow}
-                              className="bg-gradient-primary shadow-luxury hover:shadow-hover"
-                            >
-                              <Save className="h-3 w-3 mr-1" />
-                              {updatePolicy.isPending ? 'Saving...' : 'Save'}
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(override.tenantId, override.offlineWindowHours)}
-                          >
+                             <Button
+                               size="sm"
+                               onClick={() => handleSave(override.tenant_id)}
+                               disabled={updatePolicy.isPending || editValue < policies.minOfflineWindow || editValue > policies.maxOfflineWindow}
+                               className="bg-gradient-primary shadow-luxury hover:shadow-hover"
+                             >
+                               <Save className="h-3 w-3 mr-1" />
+                               {updatePolicy.isPending ? 'Saving...' : 'Save'}
+                             </Button>
+                           </div>
+                         ) : (
+                           <Button
+                             variant="ghost"
+                             size="sm"
+                             onClick={() => handleEdit(override.tenant_id, override.offline_window_hours)}
+                           >
                             Edit
                           </Button>
                         )}

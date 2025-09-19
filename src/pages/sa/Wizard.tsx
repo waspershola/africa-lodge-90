@@ -90,7 +90,7 @@ const Wizard = () => {
       }
     };
 
-    createTenant.mutate(tenantData);
+    createTenant.mutate(tenantData as any);
   };
 
   const canProceed = () => {

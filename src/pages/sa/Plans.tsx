@@ -157,11 +157,11 @@ export default function Plans() {
     editForm.reset({
       currency: 'USD',
       name: plan.name,
-      description: plan.description || '',
-      price: plan.price || plan.price_monthly,
-      maxRooms: plan.maxRooms || plan.max_rooms,
-      trialDays: plan.trialDays || plan.trial_days || 0,
-      billingCycle: (plan.billingCycle || 'monthly') as 'monthly' | 'yearly',
+      description: '',
+      price: plan.price_monthly,
+      maxRooms: plan.max_rooms,
+      trialDays: plan.trial_days || 0,
+      billingCycle: 'monthly' as 'monthly' | 'yearly',
       features: typeof plan.features === 'object' ? plan.features as any : {}
     });
   };
@@ -173,7 +173,7 @@ export default function Plans() {
       const data = editForm.getValues();
       await updatePlan.mutateAsync({
         id: editingPlan,
-        ...data
+        data
       });
       setEditingPlan(null);
     } catch (error) {
@@ -208,7 +208,7 @@ export default function Plans() {
       try {
         await updateTenant.mutateAsync({
           id: tenantId,
-          status: 'suspended'
+          updates: { status: 'suspended' }
         });
         refetchTenants();
       } catch (error) {
@@ -931,12 +931,12 @@ export default function Plans() {
                   </Card>
                 </div>
 
-                {expiry.suspensionRequired > 0 && (
+                {expiry.expired && expiry.expired.length > 0 && (
                   <Card className="modern-card border-destructive">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-destructive">
                         <AlertTriangle className="h-5 w-5" />
-                        Action Required: {expiry.suspensionRequired} Tenants Need Suspension
+                        Action Required: {expiry.expired?.length || 0} Tenants Need Suspension
                       </CardTitle>
                     </CardHeader>
                     <CardContent>

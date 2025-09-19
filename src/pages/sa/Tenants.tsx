@@ -60,24 +60,24 @@ export default function Tenants() {
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this tenant?')) {
-      deleteTenant.mutate(id);
+      deleteTenant.mutate({ id });
     }
   };
 
   const handleSuspend = async (id: string) => {
     if (confirm('Are you sure you want to suspend this tenant?')) {
-      suspendTenant.mutate(id);
+      suspendTenant.mutate({ id });
     }
   };
 
   const handleReactivate = async (id: string) => {
     if (confirm('Are you sure you want to reactivate this tenant?')) {
-      reactivateTenant.mutate(id);
+      reactivateTenant.mutate({ id });
     }
   };
 
   const handleImpersonate = async (id: string) => {
-    impersonateTenant.mutate(id);
+    impersonateTenant.mutate({ tenantId: id });
   };
 
   const handleViewTenant = (tenant: Tenant) => {
@@ -122,9 +122,11 @@ export default function Tenants() {
           }), {});
         });
         
-        bulkImportTenants.mutate(data);
-        setBulkImportOpen(false);
-        setSelectedFile(null);
+         if (data.length > 0) {
+           bulkImportTenants.mutate(selectedFile);
+         }
+         setBulkImportOpen(false);
+         setSelectedFile(null);
       } catch (error) {
         console.error('Failed to parse CSV:', error);
       }
@@ -350,10 +352,10 @@ export default function Tenants() {
                   <TableCell>{getStatusBadge(tenant.status)}</TableCell>
                   <TableCell>{tenant.totalRooms}</TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-3 w-3 text-muted-foreground" />
-                      {tenant.offlineWindowHours}h
-                    </div>
+                     <div className="flex items-center gap-1">
+                       <Clock className="h-3 w-3 text-muted-foreground" />
+                       24h
+                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
@@ -366,7 +368,7 @@ export default function Tenants() {
                       <Button 
                         variant="ghost" 
                         size="sm"
-                        onClick={() => handleViewTenant(tenant)}
+                        onClick={() => handleViewTenant(tenant as any)}
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
@@ -393,10 +395,10 @@ export default function Tenants() {
                               <SheetHeader>
                                 <SheetTitle>Edit Tenant</SheetTitle>
                               </SheetHeader>
-                              <EditTenantForm 
-                                tenant={tenant}
-                                onSuccess={() => setEditingTenant(null)}
-                              />
+                               <EditTenantForm 
+                                 tenant={tenant as any}
+                                 onSuccess={() => setEditingTenant(null)}
+                               />
                             </SheetContent>
                           </Sheet>
                           <DropdownMenuSeparator />

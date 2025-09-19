@@ -1,33 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useToast } from '@/hooks/use-toast';
 
+// Updated interfaces to match Supabase schema
 export interface MenuItem {
   id: string;
   tenant_id: string;
+  category_id: string;
   name: string;
   description?: string;
-  base_price: number;
-  prep_time_mins: number;
-  available: boolean;
-  stations: string[];
-  inventory_tracked: boolean;
-  category: string;
+  price: number;
+  is_available: boolean;
+  preparation_time?: number;
+  dietary_info?: string[];
+  tags?: string[];
   image_url?: string;
-}
-
-export interface OrderModifier {
-  id: string;
-  name: string;
-  price_delta: number;
-}
-
-export interface OrderItem {
-  menu_item_id: string;
-  menu_item: MenuItem;
-  qty: number;
-  modifiers: OrderModifier[];
-  notes?: string;
-  subtotal: number;
+  category?: {
+    name: string;
+    description?: string;
+  };
 }
 
 export interface Order {
@@ -36,42 +28,53 @@ export interface Order {
   order_number: string;
   order_type: 'room_service' | 'dine_in' | 'takeaway';
   room_id?: string;
-  status: 'pending' | 'accepted' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
-  subtotal: number;  
+  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'served' | 'cancelled';
+  subtotal: number;
   tax_amount?: number;
   service_charge?: number;
   total_amount?: number;
   special_instructions?: string;
-  created_at: string;
-  updated_at: string;
+  order_time?: string;
+  promised_time?: string;
   completed_time?: string;
-  folio_id?: string;
-  served_by?: string;
-  prepared_by?: string;
   taken_by?: string;
-  // Additional properties for component compatibility
-  source: 'qr' | 'walkin' | 'phone';
-  guest_name: string;
-  items: OrderItem[];
-  payment_status: 'unpaid' | 'charged' | 'paid';
-  notes?: string;
-  eta_minutes?: number;
-  assigned_staff?: string;
-  guest_id?: string;
+  prepared_by?: string;
+  served_by?: string;
+  created_at?: string;
+  updated_at?: string;
+  items?: OrderItem[];
+}
+
+export interface OrderItem {
+  id: string;
+  order_id: string;
+  menu_item_id: string;
+  tenant_id: string;
+  item_name: string;
+  item_price: number;
+  quantity: number;
+  line_total?: number;
+  special_requests?: string;
+  menu_item?: MenuItem;
 }
 
 export interface KitchenTicket {
-  ticket_id: string;
+  id: string;
   order_id: string;
   order_number: string;
-  station: string;
-  items: OrderItem[];
-  start_time?: string;
-  eta: string;
-  status: 'pending' | 'preparing' | 'ready';
-  assigned_chef?: string;
-  room_id?: string;
-  priority: 'normal' | 'high' | 'urgent';
+  room_number?: string;
+  items: {
+    name: string;
+    quantity: number;
+    special_requests?: string;
+    preparation_time?: number;
+  }[];
+  priority: 'low' | 'medium' | 'high';
+  status: 'new' | 'acknowledged' | 'preparing' | 'ready';
+  order_time: string;
+  promised_time?: string;
+  eta_minutes?: number;
+  assigned_staff?: string;
 }
 
 export interface POSStats {
@@ -85,362 +88,466 @@ export interface POSStats {
   cancelledOrders: number;
 }
 
-// Mock data for development
-const mockMenuItems: MenuItem[] = [
-  {
-    id: 'menu-001',
-    tenant_id: 'hotel-1',
-    name: 'Grilled Chicken Breast',
-    description: 'Tender grilled chicken with herbs and spices',
-    base_price: 2500,
-    prep_time_mins: 15,
-    available: true,
-    stations: ['grill', 'plating'],
-    inventory_tracked: true,
-    category: 'Main Course'
-  },
-  {
-    id: 'menu-002',
-    tenant_id: 'hotel-1',
-    name: 'Caesar Salad',
-    description: 'Fresh romaine lettuce with caesar dressing',
-    base_price: 1200,
-    prep_time_mins: 5,
-    available: true,
-    stations: ['cold'],
-    inventory_tracked: false,
-    category: 'Salads'
-  },
-  {
-    id: 'menu-003',
-    tenant_id: 'hotel-1',
-    name: 'Margherita Pizza',
-    description: 'Classic pizza with tomato, mozzarella, and basil',
-    base_price: 1800,
-    prep_time_mins: 12,
-    available: true,
-    stations: ['pizza', 'oven'],
-    inventory_tracked: true,
-    category: 'Pizza'
-  }
-];
-
-const mockOrders: Order[] = [
-  {
-    id: 'ord-001',
-    tenant_id: 'hotel-1',
-    order_number: 'ORD-2024-001',
-    order_type: 'room_service',
-    room_id: '205',
-    status: 'pending',
-    subtotal: 3900,
-    total_amount: 3900,
-    created_at: '2024-01-19T14:30:00Z',
-    updated_at: '2024-01-19T14:30:00Z',
-    special_instructions: 'Please deliver to room 205',
-    source: 'qr',
-    guest_name: 'John Doe',
-    items: [
-      {
-        menu_item_id: 'menu-001',
-        menu_item: mockMenuItems[0],
-        qty: 1,
-        modifiers: [],
-        subtotal: 2500
-      }
-    ],
-    payment_status: 'unpaid',
-    eta_minutes: 25,
-    assigned_staff: 'Staff Member',
-    guest_id: 'guest-001'
-  },
-  {
-    id: 'ord-002',
-    tenant_id: 'hotel-1',
-    order_number: 'ORD-2024-002',
-    order_type: 'dine_in',
-    status: 'preparing',
-    subtotal: 3600,
-    total_amount: 3600,
-    created_at: '2024-01-19T13:45:00Z',
-    updated_at: '2024-01-19T14:00:00Z',
-    prepared_by: 'Chef Mike',
-    source: 'walkin',
-    guest_name: 'Jane Smith',
-    items: [
-      {
-        menu_item_id: 'menu-002',
-        menu_item: mockMenuItems[1],
-        qty: 2,
-        modifiers: [],
-        subtotal: 2400
-      }
-    ],
-    payment_status: 'charged',
-    eta_minutes: 15,
-    assigned_staff: 'Kitchen Staff',
-    guest_id: 'guest-002'
-  }
-];
-
 export function usePOSApi() {
-  const [orders, setOrders] = useState<Order[]>(mockOrders);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>(mockMenuItems);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [kitchenTickets, setKitchenTickets] = useState<KitchenTicket[]>([]);
   const [stats, setStats] = useState<POSStats>({
-    ordersToday: 15,
-    revenue: 45000,
-    averageOrderValue: 3000,
-    pendingOrders: 3,
-    preparingOrders: 5,
-    readyOrders: 2,
-    completedOrders: 12,
-    cancelledOrders: 1
+    ordersToday: 0,
+    revenue: 0,
+    averageOrderValue: 0,
+    pendingOrders: 0,
+    preparingOrders: 0,
+    readyOrders: 0,
+    completedOrders: 0,
+    cancelledOrders: 0
   });
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
-    // Initialize kitchen tickets from orders (simplified)
-    setKitchenTickets([]);
+  // Load menu items from Supabase
+  const loadMenuItems = useCallback(async () => {
+    if (!user?.tenant_id) return;
 
-  // Simulate real-time updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // Simulate new orders occasionally
-      if (Math.random() > 0.95) {
-        const newOrder: Order = {
-          id: `ord-${Date.now()}`,
-          tenant_id: 'hotel-1',
-          order_number: `ORD-2024-${String(orders.length + 1).padStart(3, '0')}`,
-          order_type: Math.random() > 0.5 ? 'room_service' : 'dine_in',
-          room_id: Math.random() > 0.5 ? String(Math.floor(Math.random() * 500) + 100) : undefined,
-          status: 'pending',
-          subtotal: mockMenuItems[0].base_price,
-          total_amount: mockMenuItems[0].base_price,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          source: Math.random() > 0.5 ? 'qr' : 'walkin',
-          guest_name: 'Guest ' + Math.floor(Math.random() * 100),
-          items: [{
-            menu_item_id: mockMenuItems[0].id,
-            menu_item: mockMenuItems[0],
-            qty: 1,
-            modifiers: [],
-            subtotal: mockMenuItems[0].base_price
-          }],
-          payment_status: 'unpaid',
-          eta_minutes: Math.floor(Math.random() * 30) + 15,
-          assigned_staff: 'Kitchen Staff',
-          guest_id: 'guest-' + Date.now()
-        };
-        
-        setOrders(prev => [newOrder, ...prev]);
-        setStats(prev => ({
-          ...prev,
-          pendingOrders: prev.pendingOrders + 1,
-          ordersToday: prev.ordersToday + 1
-        }));
-      }
-    }, 15000);
-
-    return () => clearInterval(interval);
-  }, [orders.length]);
-
-  const acceptOrder = async (orderId: string) => {
-    setIsLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setOrders(prev => prev.map(order => 
-        order.id === orderId 
-          ? { ...order, status: 'accepted', prepared_by: 'Current Staff', updated_at: new Date().toISOString() }
-          : order
-      ));
-      
-      setStats(prev => ({
-        ...prev,
-        pendingOrders: prev.pendingOrders - 1,
-        preparingOrders: prev.preparingOrders + 1
+      const { data, error } = await supabase
+        .from('menu_items')
+        .select(`
+          *,
+          category:menu_categories(name, description)
+        `)
+        .eq('tenant_id', user.tenant_id)
+        .eq('is_available', true)
+        .order('name');
+
+      if (error) throw error;
+
+      const formattedItems: MenuItem[] = (data || []).map(item => ({
+        id: item.id,
+        tenant_id: item.tenant_id,
+        category_id: item.category_id,
+        name: item.name,
+        description: item.description,
+        price: Number(item.price),
+        is_available: item.is_available,
+        preparation_time: item.preparation_time,
+        dietary_info: item.dietary_info,
+        tags: item.tags,
+        image_url: item.image_url,
+        category: item.category ? {
+          name: item.category.name,
+          description: item.category.description
+        } : undefined
       }));
-      
-      toast({
-        title: "Order Accepted",
-        description: "Order has been accepted and sent to kitchen.",
-      });
+
+      setMenuItems(formattedItems);
     } catch (error) {
+      console.error('Error loading menu items:', error);
       toast({
         title: "Error",
-        description: "Failed to accept order. Please try again.",
+        description: "Failed to load menu items",
+        variant: "destructive"
+      });
+    }
+  }, [user?.tenant_id, toast]);
+
+  // Load orders from Supabase
+  const loadOrders = useCallback(async () => {
+    if (!user?.tenant_id) return;
+
+    try {
+      setIsLoading(true);
+      
+      const { data, error } = await supabase
+        .from('pos_orders')
+        .select(`
+          *,
+          pos_order_items(
+            *,
+            menu_item:menu_items(name, price)
+          )
+        `)
+        .eq('tenant_id', user.tenant_id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+
+      const formattedOrders: Order[] = (data || []).map(order => ({
+        id: order.id,
+        tenant_id: order.tenant_id,
+        order_number: order.order_number,
+        order_type: order.order_type as Order['order_type'],
+        room_id: order.room_id,
+        status: order.status as Order['status'],
+        subtotal: Number(order.subtotal),
+        tax_amount: Number(order.tax_amount || 0),
+        service_charge: Number(order.service_charge || 0),
+        total_amount: Number(order.total_amount || 0),
+        special_instructions: order.special_instructions,
+        order_time: order.order_time,
+        promised_time: order.promised_time,
+        completed_time: order.completed_time,
+        taken_by: order.taken_by,
+        prepared_by: order.prepared_by,
+        served_by: order.served_by,
+        created_at: order.created_at,
+        updated_at: order.updated_at,
+        items: (order.pos_order_items || []).map((item: any) => ({
+          id: item.id,
+          order_id: item.order_id,
+          menu_item_id: item.menu_item_id,
+          tenant_id: item.tenant_id,
+          item_name: item.item_name,
+          item_price: Number(item.item_price),
+          quantity: item.quantity,
+          line_total: Number(item.line_total || 0),
+          special_requests: item.special_requests,
+          menu_item: item.menu_item ? {
+            id: item.menu_item_id,
+            tenant_id: item.tenant_id,
+            category_id: '',
+            name: item.menu_item.name,
+            price: Number(item.menu_item.price),
+            is_available: true
+          } : undefined
+        }))
+      }));
+
+      setOrders(formattedOrders);
+      calculateStats(formattedOrders);
+      
+      // Create kitchen tickets from orders
+      const tickets: KitchenTicket[] = formattedOrders
+        .filter(order => ['pending', 'confirmed', 'preparing'].includes(order.status))
+        .map(order => ({
+          id: `ticket-${order.id}`,
+          order_id: order.id,
+          order_number: order.order_number,
+          room_number: order.room_id || 'Dine-in',
+          items: (order.items || []).map(item => ({
+            name: item.item_name,
+            quantity: item.quantity,
+            special_requests: item.special_requests,
+            preparation_time: item.menu_item?.preparation_time
+          })),
+          priority: 'medium',
+          status: order.status === 'pending' ? 'new' : 
+                  order.status === 'confirmed' ? 'acknowledged' :
+                  'preparing',
+          order_time: order.order_time || order.created_at || '',
+          promised_time: order.promised_time,
+          assigned_staff: order.prepared_by || 'Kitchen Staff'
+        }));
+
+      setKitchenTickets(tickets);
+    } catch (error) {
+      console.error('Error loading orders:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load orders",
         variant: "destructive"
       });
     } finally {
       setIsLoading(false);
     }
+  }, [user?.tenant_id, toast]);
+
+  // Calculate statistics
+  const calculateStats = (ordersList: Order[]) => {
+    const today = new Date().toDateString();
+    const todayOrders = ordersList.filter(order => 
+      new Date(order.created_at || '').toDateString() === today
+    );
+
+    const stats: POSStats = {
+      ordersToday: todayOrders.length,
+      revenue: todayOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0),
+      averageOrderValue: todayOrders.length > 0 
+        ? todayOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0) / todayOrders.length 
+        : 0,
+      pendingOrders: ordersList.filter(order => order.status === 'pending').length,
+      preparingOrders: ordersList.filter(order => order.status === 'preparing').length,
+      readyOrders: ordersList.filter(order => order.status === 'ready').length,
+      completedOrders: ordersList.filter(order => order.status === 'served').length,
+      cancelledOrders: ordersList.filter(order => order.status === 'cancelled').length
+    };
+
+    setStats(stats);
   };
 
-  const updateOrderStatus = async (orderId: string, status: Order['status']) => {
-    setIsLoading(true);
+  // Create new order
+  const createOrder = async (orderData: {
+    order_type: Order['order_type'];
+    room_id?: string;
+    items: { menu_item_id: string; quantity: number; special_requests?: string }[];
+    special_instructions?: string;
+  }) => {
+    if (!user?.tenant_id || !user?.id) return;
+
     try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      setOrders(prev => prev.map(order => 
-        order.id === orderId 
-          ? { ...order, status, updated_at: new Date().toISOString() }
-          : order
-      ));
-      
-      // Update stats based on status change
-      setStats(prev => {
-        const updates = { ...prev };
-        switch (status) {
-          case 'preparing':
-            updates.preparingOrders = prev.preparingOrders + 1;
-            break;
-          case 'ready':
-            updates.preparingOrders = Math.max(0, prev.preparingOrders - 1);
-            updates.readyOrders = prev.readyOrders + 1;
-            break;
-          case 'delivered':
-            updates.readyOrders = Math.max(0, prev.readyOrders - 1);
-            updates.completedOrders = prev.completedOrders + 1;
-            updates.revenue = prev.revenue; // Would add order total in real app
-            break;
-          case 'cancelled':
-            updates.cancelledOrders = prev.cancelledOrders + 1;
-            break;
-        }
-        return updates;
+      setIsLoading(true);
+
+      // Calculate totals
+      const itemsWithPrices = await Promise.all(
+        orderData.items.map(async (item) => {
+          const { data: menuItem } = await supabase
+            .from('menu_items')
+            .select('name, price')
+            .eq('id', item.menu_item_id)
+            .single();
+
+          const price = Number(menuItem?.price || 0);
+          return {
+            ...item,
+            item_name: menuItem?.name || '',
+            item_price: price,
+            line_total: price * item.quantity
+          };
+        })
+      );
+
+      const subtotal = itemsWithPrices.reduce((sum, item) => sum + item.line_total, 0);
+      const serviceCharge = subtotal * 0.1; // 10% service charge
+      const taxAmount = (subtotal + serviceCharge) * 0.075; // 7.5% VAT
+      const totalAmount = subtotal + serviceCharge + taxAmount;
+
+      // Create order
+      const { data: order, error: orderError } = await supabase
+        .from('pos_orders')
+        .insert({
+          tenant_id: user.tenant_id,
+          order_number: `POS-${Date.now()}`,
+          order_type: orderData.order_type,
+          room_id: orderData.room_id,
+          status: 'pending',
+          subtotal,
+          service_charge: serviceCharge,
+          tax_amount: taxAmount,
+          total_amount: totalAmount,
+          special_instructions: orderData.special_instructions,
+          taken_by: user.id,
+          order_time: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // Create order items
+      const { error: itemsError } = await supabase
+        .from('pos_order_items')
+        .insert(
+          itemsWithPrices.map(item => ({
+            order_id: order.id,
+            tenant_id: user.tenant_id,
+            menu_item_id: item.menu_item_id,
+            item_name: item.item_name,
+            item_price: item.item_price,
+            quantity: item.quantity,
+            line_total: item.line_total,
+            special_requests: item.special_requests
+          }))
+        );
+
+      if (itemsError) throw itemsError;
+
+      // Create audit log
+      await supabase
+        .from('audit_log')
+        .insert([{
+          action: 'order_created',
+          resource_type: 'pos_order',
+          resource_id: order.id,
+          actor_id: user.id,
+          actor_email: user.email,
+          actor_role: user.role,
+          tenant_id: user.tenant_id,
+          description: `POS order ${order.order_number} created`,
+          new_values: { order_number: order.order_number, total_amount: totalAmount }
+        }]);
+
+      // Reload orders
+      await loadOrders();
+
+      toast({
+        title: "Order Created",
+        description: `Order ${order.order_number} created successfully`,
       });
-      
+
+      return order;
+    } catch (error) {
+      console.error('Error creating order:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create order",
+        variant: "destructive"
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Update order status
+  const updateOrderStatus = async (orderId: string, status: Order['status']) => {
+    if (!user?.id) return;
+
+    try {
+      const updateData: any = { 
+        status,
+        updated_at: new Date().toISOString()
+      };
+
+      if (status === 'preparing') {
+        updateData.prepared_by = user.id;
+      } else if (status === 'served') {
+        updateData.served_by = user.id;
+        updateData.completed_time = new Date().toISOString();
+      }
+
+      const { error } = await supabase
+        .from('pos_orders')
+        .update(updateData)
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      // Create audit log
+      await supabase
+        .from('audit_log')
+        .insert([{
+          action: 'order_status_updated',
+          resource_type: 'pos_order',
+          resource_id: orderId,
+          actor_id: user.id,
+          actor_email: user.email,
+          actor_role: user.role,
+          tenant_id: user.tenant_id,
+          description: `Order status changed to ${status}`,
+          new_values: { status }
+        }]);
+
+      // Reload orders
+      await loadOrders();
+
       toast({
         title: "Order Updated",
-        description: `Order status changed to ${status}.`,
+        description: `Order status changed to ${status}`,
       });
     } catch (error) {
+      console.error('Error updating order:', error);
       toast({
         title: "Error",
-        description: "Failed to update order status. Please try again.",
+        description: "Failed to update order status",
         variant: "destructive"
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const processPayment = async (orderId: string, method: 'room_folio' | 'card' | 'cash', amount: number) => {
-    setIsLoading(true);
+  // Add menu item
+  const addMenuItem = async (itemData: {
+    category_id: string;
+    name: string;
+    description?: string;
+    price: number;
+    preparation_time?: number;
+    dietary_info?: string[];
+    tags?: string[];
+  }) => {
+    if (!user?.tenant_id || !user?.id) return;
+
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      setOrders(prev => prev.map(order => 
-        order.id === orderId 
-          ? { ...order, updated_at: new Date().toISOString() }
-          : order
-      ));
-      
+      const { data, error } = await supabase
+        .from('menu_items')
+        .insert({
+          tenant_id: user.tenant_id,
+          ...itemData,
+          is_available: true
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Reload menu items
+      await loadMenuItems();
+
       toast({
-        title: "Payment Processed",
-        description: `Payment of ₦${(amount / 100).toFixed(2)} processed successfully via ${method}.`,
+        title: "Menu Item Added",
+        description: `${itemData.name} has been added to the menu`,
       });
+
+      return data;
     } catch (error) {
+      console.error('Error adding menu item:', error);
       toast({
-        title: "Payment Failed",
-        description: "Failed to process payment. Please try again.",
+        title: "Error",
+        description: "Failed to add menu item",
         variant: "destructive"
       });
-    } finally {
-      setIsLoading(false);
+      throw error;
     }
   };
 
+  // Update menu item
   const updateMenuItem = async (itemId: string, updates: Partial<MenuItem>) => {
-    setIsLoading(true);
+    if (!user?.tenant_id) return;
+
     try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      setMenuItems(prev => prev.map(item => 
-        item.id === itemId 
-          ? { ...item, ...updates }
-          : item
-      ));
-      
+      const { error } = await supabase
+        .from('menu_items')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', itemId)
+        .eq('tenant_id', user.tenant_id);
+
+      if (error) throw error;
+
+      // Reload menu items
+      await loadMenuItems();
+
       toast({
-        title: "Menu Updated",
-        description: "Menu item has been updated successfully.",
+        title: "Menu Item Updated",
+        description: "Menu item has been updated successfully",
       });
     } catch (error) {
+      console.error('Error updating menu item:', error);
       toast({
         title: "Error",
-        description: "Failed to update menu item. Please try again.",
+        description: "Failed to update menu item",
         variant: "destructive"
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const claimKitchenTicket = async (ticketId: string, chefId: string) => {
-    setIsLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      setKitchenTickets(prev => prev.map(ticket => 
-        ticket.ticket_id === ticketId 
-          ? { ...ticket, status: 'preparing', assigned_chef: chefId, start_time: new Date().toISOString() }
-          : ticket
-      ));
-      
-      toast({
-        title: "Ticket Claimed",
-        description: "Kitchen ticket has been claimed and prep started.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to claim ticket. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
+  // Kitchen ticket management
+  const claimKitchenTicket = async (ticketId: string) => {
+    if (!user?.id) return;
+
+    const ticket = kitchenTickets.find(t => t.id === ticketId);
+    if (!ticket) return;
+
+    await updateOrderStatus(ticket.order_id, 'preparing');
   };
 
-  const completeKitchenTicket = async (ticketId: string, notes?: string) => {
-    setIsLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      setKitchenTickets(prev => prev.map(ticket => 
-        ticket.ticket_id === ticketId 
-          ? { ...ticket, status: 'ready' }
-          : ticket
-      ));
-      
-      // Check if all tickets for an order are ready
-      const ticket = kitchenTickets.find(t => t.ticket_id === ticketId);
-      if (ticket) {
-        const allOrderTickets = kitchenTickets.filter(t => t.order_id === ticket.order_id);
-        const allReady = allOrderTickets.every(t => t.ticket_id === ticketId || t.status === 'ready');
-        
-        if (allReady) {
-          await updateOrderStatus(ticket.order_id, 'ready');
-        }
-      }
-      
-      toast({
-        title: "Item Ready",
-        description: "Kitchen item marked as ready for service.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to complete ticket. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
+  const completeKitchenTicket = async (ticketId: string) => {
+    const ticket = kitchenTickets.find(t => t.id === ticketId);
+    if (!ticket) return;
+
+    await updateOrderStatus(ticket.order_id, 'ready');
   };
+
+  // Load data on mount and user change
+  useEffect(() => {
+    if (user?.tenant_id) {
+      loadMenuItems();
+      loadOrders();
+    }
+  }, [user?.tenant_id, loadMenuItems, loadOrders]);
 
   return {
     orders,
@@ -448,11 +555,13 @@ export function usePOSApi() {
     kitchenTickets,
     stats,
     isLoading,
-    acceptOrder,
+    createOrder,
     updateOrderStatus,
-    processPayment,
+    addMenuItem,
     updateMenuItem,
     claimKitchenTicket,
-    completeKitchenTicket
+    completeKitchenTicket,
+    refreshOrders: loadOrders,
+    refreshMenuItems: loadMenuItems
   };
 }

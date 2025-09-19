@@ -113,8 +113,8 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
       const claims = JSON.parse(atob(session.access_token.split('.')[1]));
       console.log('JWT claims:', claims);
       
-      const roleFromJWT = claims.role as User['role'];
-      const tenantIdFromJWT = claims.tenant_id ? claims.tenant_id : null;
+      const roleFromJWT = claims.user_metadata?.role as User['role'];
+      const tenantIdFromJWT = claims.user_metadata?.tenant_id ? claims.user_metadata.tenant_id : null;
 
       console.log('Role from JWT:', roleFromJWT, 'Tenant ID:', tenantIdFromJWT);
 

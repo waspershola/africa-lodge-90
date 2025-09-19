@@ -14,8 +14,8 @@ export const extractJWTClaims = (session: Session | null) => {
     return {
       userId: claims.sub,
       email: claims.email,
-      role: claims.role || 'STAFF',
-      tenantId: claims.tenant_id || null,
+      role: claims.user_metadata?.role || 'STAFF',
+      tenantId: claims.user_metadata?.tenant_id || null,
       exp: claims.exp,
       iat: claims.iat
     };

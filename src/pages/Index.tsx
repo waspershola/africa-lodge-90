@@ -23,7 +23,8 @@ import {
   UtensilsCrossed,
   Mail,
   Lock,
-  LogIn
+  LogIn,
+  Loader2
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
@@ -183,45 +184,11 @@ const Index = () => {
             <Building2 className="h-8 w-8 text-primary" />
             <span className="text-xl font-bold display-heading text-gradient">LuxuryHotelSaaS</span>
           </div>
-          <nav className="hidden lg:flex items-center space-x-6">
+          <nav className="hidden md:flex items-center space-x-8">
             <a href="#features" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Features</a>
             <a href="#pricing" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Pricing</a>
             <a href="#testimonials" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Reviews</a>
-            
-            {/* Quick Login Form */}
-            <form onSubmit={handleQuickLogin} className="flex items-center space-x-2">
-              <div className="relative">
-                <Mail className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                <Input
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-8 h-8 w-32 text-xs"
-                  disabled={loginLoading}
-                />
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                <Input
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-8 h-8 w-32 text-xs"
-                  disabled={loginLoading}
-                />
-              </div>
-              <Button 
-                type="submit" 
-                size="sm" 
-                disabled={loginLoading || !email || !password}
-                className="h-8 bg-gradient-primary"
-              >
-                <LogIn className="h-3 w-3" />
-              </Button>
-            </form>
-            
+            <Button variant="outline" size="sm">About</Button>
             <Button className="bg-gradient-primary shadow-luxury hover:shadow-hover" size="sm">
               Request Demo
             </Button>
@@ -267,28 +234,84 @@ const Index = () => {
               payments, room service, and analytics in one unified system.
             </motion.p>
             
+            {/* Hero Login Form */}
+            <motion.div 
+              className="mb-8 max-w-md mx-auto"
+              variants={fadeIn}
+            >
+              <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
+                <h3 className="text-lg font-semibold text-white text-center mb-4">
+                  Sign In to Your Dashboard
+                </h3>
+                <form onSubmit={handleQuickLogin} className="space-y-4">
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-white/60" />
+                    <Input
+                      type="email"
+                      placeholder="Enter your email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-12 bg-white/20 border-white/30 text-white placeholder:text-white/60 focus:bg-white/30"
+                      disabled={loginLoading}
+                    />
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-white/60" />
+                    <Input
+                      type="password"
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-12 bg-white/20 border-white/30 text-white placeholder:text-white/60 focus:bg-white/30"
+                      disabled={loginLoading}
+                    />
+                  </div>
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-semibold py-3"
+                    disabled={loginLoading || !email || !password}
+                  >
+                    {loginLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Signing In...
+                      </>
+                    ) : (
+                      <>
+                        <LogIn className="mr-2 h-5 w-5" />
+                        Sign In to Dashboard
+                      </>
+                    )}
+                  </Button>
+                </form>
+                <p className="text-xs text-white/70 text-center mt-3">
+                  New hotel? <Button variant="link" className="text-yellow-300 p-0 h-auto text-xs">Request a demo</Button>
+                </p>
+              </div>
+            </motion.div>
+            
             <motion.div 
               className="flex flex-col sm:flex-row gap-4 justify-center items-center"
               variants={fadeIn}
             >
               <Button 
                 size="lg" 
-                className="bg-yellow-500 hover:bg-red-700 text-black hover:text-white text-lg px-8 py-6 font-semibold shadow-2xl hover:shadow-red-500/50 transition-all duration-300"
+                className="bg-white/20 hover:bg-white/30 text-white border border-white/30 text-lg px-8 py-6 font-semibold backdrop-blur-sm"
                 asChild
               >
                 <Link to="/front-desk">
-                  Get Started Free
+                  Try Demo Mode
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
               <Button 
                 variant="outline" 
                 size="lg"
-                className="bg-yellow-500 hover:bg-red-700 text-black hover:text-white text-lg px-8 py-6 font-semibold shadow-2xl hover:shadow-red-500/50 transition-all duration-300 border-0"
+                className="bg-transparent hover:bg-white/10 text-white border-white/30 text-lg px-8 py-6 font-semibold"
                 asChild
               >
                 <Link to="/qr-portal">
-                  Book a Demo
+                  View Features
                 </Link>
               </Button>
             </motion.div>

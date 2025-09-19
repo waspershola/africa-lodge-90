@@ -100,15 +100,26 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
   // Load user profile from JWT claims and database
   const loadUserProfile = async (authUser: SupabaseUser) => {
     try {
+      console.log('Loading user profile for:', authUser.email);
+      
       // Extract role and tenant_id from JWT claims for security
       const { data: { session } } = await supabase.auth.getSession();
-      const claims = session?.access_token ? 
-        JSON.parse(atob(session.access_token.split('.')[1])) : {};
+      if (!session?.access_token) {
+        console.error('No access token found in session');
+        setError('Authentication failed - no access token');
+        return;
+      }
+      
+      const claims = JSON.parse(atob(session.access_token.split('.')[1]));
+      console.log('JWT claims:', claims);
       
       const roleFromJWT = claims.role as User['role'];
       const tenantIdFromJWT = claims.tenant_id ? claims.tenant_id : null;
 
+      console.log('Role from JWT:', roleFromJWT, 'Tenant ID:', tenantIdFromJWT);
+
       // Load additional user profile data from database
+      console.log('Fetching user profile from database...');
       const { data: userProfile, error: userError } = await supabase
         .from('users')
         .select('name, force_reset, temp_password_hash, temp_expires')
@@ -117,14 +128,17 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
 
       if (userError && userError.code !== 'PGRST116') {
         console.error('Error loading user profile:', userError);
+        setError(`Failed to load user profile: ${userError.message}`);
         return;
       }
+
+      console.log('User profile loaded:', userProfile);
 
       // Build user data with JWT claims as source of truth for security
       const userData: User = {
         id: authUser.id,
         email: authUser.email || '',
-        name: userProfile?.name || authUser.user_metadata?.name,
+        name: userProfile?.name || authUser.user_metadata?.name || 'Unknown User',
         role: roleFromJWT || 'STAFF',
         tenant_id: tenantIdFromJWT,
         force_reset: userProfile?.force_reset || false,
@@ -132,10 +146,12 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
         temp_expires: userProfile?.temp_expires,
       };
 
+      console.log('Setting user:', userData);
       setUser(userData);
 
       // Load tenant data if user has tenant_id from JWT
       if (tenantIdFromJWT) {
+        console.log('Loading tenant data...');
         const { data: tenantData, error: tenantError } = await supabase
           .from('tenants')
           .select('*')
@@ -144,6 +160,7 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
 
         if (tenantError && tenantError.code !== 'PGRST116') {
           console.error('Error loading tenant:', tenantError);
+          setError(`Failed to load tenant data: ${tenantError.message}`);
           return;
         }
 
@@ -159,13 +176,23 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
             updated_at: tenantData.updated_at,
           };
 
+          console.log('Tenant loaded:', tenant);
           setTenant(tenant);
           setTrialStatus(calculateTrialStatus(tenant));
 
           // Check if onboarding is required for new login
-          checkOnboardingRequired(userData, tenant);
+          if (checkOnboardingRequired(userData, tenant)) {
+            return; // Redirected to onboarding
+          }
         }
+      } else {
+        console.log('No tenant ID - likely super admin');
+        setTenant(null);
+        setTrialStatus(null);
       }
+
+      console.log('User profile loading completed successfully');
+      
     } catch (err) {
       console.error('Error in loadUserProfile:', err);
       setError(err instanceof Error ? err.message : 'Failed to load user profile');
@@ -175,17 +202,23 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
   // Load auth state
   const loadAuthState = async () => {
     try {
+      console.log('Loading auth state...');
       setIsLoading(true);
       
       const { data: { session } } = await supabase.auth.getSession();
+      console.log('Current session:', session ? 'Found' : 'None');
       setSession(session);
 
       if (session?.user) {
         await loadUserProfile(session.user);
+      } else {
+        console.log('No session found, user not authenticated');
       }
     } catch (err) {
+      console.error('Error loading auth state:', err);
       setError(err instanceof Error ? err.message : 'Auth loading failed');
     } finally {
+      console.log('Auth state loading completed');
       setIsLoading(false);
     }
   };

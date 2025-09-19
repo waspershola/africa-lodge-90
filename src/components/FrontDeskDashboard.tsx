@@ -36,6 +36,7 @@ import { QRDirectoryFD } from "./frontdesk/QRDirectoryFD";
 import { StaffOpsPanel } from "./frontdesk/StaffOpsPanel";
 import { BillingOverviewFD } from "./frontdesk/BillingOverviewFD";
 import { HandoverPanel } from "./frontdesk/HandoverPanel";
+import { CheckoutDialog } from "./frontdesk/CheckoutDialog";
 import { QRRequestsPanel } from "./frontdesk/QRRequestsPanel";
 import type { Room } from "./frontdesk/RoomGrid";
 
@@ -90,6 +91,8 @@ const FrontDeskDashboard = () => {
   const [showSearch, setShowSearch] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [showQuickCapture, setShowQuickCapture] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [checkoutRoomId, setCheckoutRoomId] = useState<string | undefined>(undefined);
   const [captureAction, setCaptureAction] = useState<"assign" | "walkin" | "check-in" | "check-out" | "assign-room" | "extend-stay" | "transfer-room" | "add-service" | "work-order" | "housekeeping" | "">("");
   const [rooms, setRooms] = useState<Room[]>([]);
   const [activePanel, setActivePanel] = useState<'overview' | 'qr-requests' | 'staff-ops' | 'billing' | 'handover' | 'qr-manager'>('overview');
@@ -113,7 +116,7 @@ const FrontDeskDashboard = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only handle if no input is focused and no modal is open
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (showNewReservation || showSearch || showPayment || showQuickCapture) return;
+      if (showNewReservation || showSearch || showPayment || showQuickCapture || showCheckout) return;
       
       switch (e.key.toLowerCase()) {
         case 'a':
@@ -136,7 +139,7 @@ const FrontDeskDashboard = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showNewReservation, showSearch, showPayment, showQuickCapture]);
+  }, [showNewReservation, showSearch, showPayment, showQuickCapture, showCheckout]);
 
   const handleCardClick = (filterKey: string) => {
     setActiveFilter(activeFilter === filterKey ? undefined : filterKey);
@@ -158,8 +161,13 @@ const FrontDeskDashboard = () => {
         setShowQuickCapture(true);
         break;
       case 'check-out':
-        setCaptureAction('check-out');
-        setShowQuickCapture(true);
+        if (selectedRoom?.number) {
+          setCheckoutRoomId(selectedRoom.number);
+          setShowCheckout(true);
+        } else {
+          setCaptureAction('check-out');
+          setShowQuickCapture(true);
+        }
         break;
       case 'collect-payment':
         setShowPayment(true);
@@ -511,6 +519,12 @@ const FrontDeskDashboard = () => {
         onOpenChange={setShowQuickCapture}
         action={captureAction as any}
         onComplete={handleGuestCaptureComplete}
+      />
+      
+      <CheckoutDialog
+        open={showCheckout}
+        onOpenChange={setShowCheckout}
+        roomId={checkoutRoomId}
       />
     </div>
   );

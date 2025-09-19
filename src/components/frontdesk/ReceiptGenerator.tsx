@@ -46,10 +46,13 @@ interface Receipt {
 }
 
 interface ReceiptGeneratorProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  guestBill?: any;
   onReceiptGenerated?: (receipt: Receipt) => void;
 }
 
-export function ReceiptGenerator({ onReceiptGenerated }: ReceiptGeneratorProps) {
+export function ReceiptGenerator({ open, onOpenChange, guestBill, onReceiptGenerated }: ReceiptGeneratorProps) {
   const [selectedGuest, setSelectedGuest] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [items, setItems] = useState<ReceiptItem[]>([]);

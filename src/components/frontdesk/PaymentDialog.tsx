@@ -11,6 +11,8 @@ import { CreditCard, Banknote, Building, Smartphone, Clock, UserX } from "lucide
 interface PaymentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  pendingAmount?: number;
+  onPaymentSuccess?: (amount: number, method: string) => void;
 }
 
 const mockPendingPayments = [
@@ -40,7 +42,7 @@ const mockPendingPayments = [
   }
 ];
 
-export const PaymentDialog = ({ open, onOpenChange }: PaymentDialogProps) => {
+export const PaymentDialog = ({ open, onOpenChange, pendingAmount, onPaymentSuccess }: PaymentDialogProps) => {
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [paymentMethod, setPaymentMethod] = useState("");
   const [amount, setAmount] = useState("");
@@ -51,11 +53,18 @@ export const PaymentDialog = ({ open, onOpenChange }: PaymentDialogProps) => {
   };
 
   const handleProcessPayment = () => {
+    const paymentAmount = parseFloat(amount);
     console.log("Processing payment:", {
       payment: selectedPayment,
       method: paymentMethod,
-      amount: parseFloat(amount)
+      amount: paymentAmount
     });
+    
+    // Call success callback if provided
+    if (onPaymentSuccess) {
+      onPaymentSuccess(paymentAmount, paymentMethod);
+    }
+    
     onOpenChange(false);
     setSelectedPayment(null);
     setPaymentMethod("");

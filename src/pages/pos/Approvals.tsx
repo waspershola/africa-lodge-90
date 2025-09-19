@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ApprovalDialog, { type ApprovalRequest } from '@/components/pos/ApprovalDialog';
-import { useAuth } from '@/hooks/useMultiTenantAuth';
+import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import RoleGuard from '@/components/pos/RoleGuard';
 import { 
   AlertTriangle, 

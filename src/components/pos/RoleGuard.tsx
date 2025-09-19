@@ -3,7 +3,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Shield, AlertTriangle, Lock } from 'lucide-react';
-import { useAuth, UserRole } from '@/hooks/useMultiTenantAuth';
+import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
+
+type UserRole = 'SUPER_ADMIN' | 'OWNER' | 'MANAGER' | 'STAFF' | 'FRONT_DESK' | 'HOUSEKEEPING' | 'MAINTENANCE' | 'POS';
 
 interface RoleGuardProps {
   children: ReactNode;

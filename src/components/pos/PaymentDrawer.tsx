@@ -17,7 +17,7 @@ import {
   CheckCircle,
   Settings
 } from 'lucide-react';
-import { useAuth } from '@/hooks/useMultiTenantAuth';
+import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import RoleGuard, { ProtectedButton } from './RoleGuard';
 import { usePOSApi, type Order } from '@/hooks/usePOSApi';
 import { useToast } from '@/hooks/use-toast';

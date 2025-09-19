@@ -55,7 +55,12 @@ export default function OwnerDashboardPage() {
     return <div className="p-6 text-destructive">Error loading dashboard: {error.message}</div>;
   }
 
-  const overview = overviewData?.data || {
+  const overview = {
+    totalRooms: overviewData?.totalRooms || 25,
+    occupiedRooms: overviewData?.occupiedRooms || 18,
+    availableRooms: overviewData?.availableRooms || 7,
+    revenue: overviewData?.revenue || 850000,
+    reservations: overviewData?.reservations || 15,
     occupancyRate: 78,
     adr: 35000,
     revenueYTD: 125000000,

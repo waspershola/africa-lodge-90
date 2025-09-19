@@ -54,7 +54,7 @@ export function EditTenantForm({ tenant, onSuccess }: EditTenantFormProps) {
     try {
       await updateTenant.mutateAsync({
         id: tenant.tenant_id,
-        data: {
+        updates: {
           hotel_name: data.name,
           hotel_slug: data.slug,
           email: data.contactEmail,

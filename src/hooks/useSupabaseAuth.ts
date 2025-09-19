@@ -152,10 +152,11 @@ export function useSupabaseAuth() {
 
   const validateJWTClaims = async () => {
     try {
-      const { data: { session } } = await supabaseApi.auth.signIn(
+      const result = await supabaseApi.auth.signIn(
         'owner1@test.com',
         'TestPassword123!'
       );
+      const session = result?.session;
 
       if (!session) {
         throw new Error('No session found');

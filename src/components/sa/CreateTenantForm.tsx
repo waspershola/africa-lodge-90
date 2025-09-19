@@ -48,8 +48,25 @@ export function CreateTenantForm({ onSuccess }: CreateTenantFormProps) {
   const onSubmit = async (data: CreateTenantForm) => {
     try {
       await createTenant.mutateAsync({
-        ...data,
-        status: 'active',
+        hotel_name: data.name,
+        hotel_slug: data.slug,
+        email: data.contactEmail,
+        city: data.city,
+        subscription_status: 'active',
+        plan_id: '00000000-0000-0000-0000-000000000001',
+        address: '',
+        brand_colors: {},
+        country: 'Nigeria',
+        currency: 'NGN',
+        logo_url: '',
+        onboarding_step: 'hotel_information',
+        phone: '',
+        receipt_template: 'default',
+        settings: {},
+        setup_completed: false,
+        timezone: 'Africa/Lagos',
+        trial_start: new Date().toISOString(),
+        trial_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
       });
       onSuccess();
       form.reset();

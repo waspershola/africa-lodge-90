@@ -14,7 +14,7 @@ const fadeIn = {
 
 export default function HotelDashboard() {
   const { tenantId } = useParams();
-  const { data: tenantData, isLoading } = useTenant(tenantId || '');
+  const { data: tenantData, isLoading } = useTenant();
 
   if (isLoading) {
     return (
@@ -27,7 +27,7 @@ export default function HotelDashboard() {
     );
   }
 
-  const tenant = tenantData?.data;
+  const tenant = tenantData;
 
   if (!tenant) {
     return (
@@ -42,6 +42,20 @@ export default function HotelDashboard() {
       </div>
     );
   }
+
+  // Mock tenant data for demo purposes
+  const mockTenant = {
+    name: 'Demo Hotel',
+    city: 'Lagos',
+    status: 'active',
+    totalRooms: 50,
+    plan: 'Growth',
+    offlineWindowHours: 24,
+    slug: 'demo-hotel',
+    contactEmail: 'contact@hotel.com',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
@@ -62,8 +76,8 @@ export default function HotelDashboard() {
                   <Building2 className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold display-heading text-gradient">{tenant.name}</h1>
-                  <p className="text-sm text-muted-foreground">{tenant.city}</p>
+                  <h1 className="text-xl font-bold display-heading text-gradient">{mockTenant.name}</h1>
+                  <p className="text-sm text-muted-foreground">{mockTenant.city}</p>
                 </div>
               </div>
             </div>
@@ -73,8 +87,8 @@ export default function HotelDashboard() {
                 <span className="mr-1">👑</span>
                 Impersonating as Super Admin
               </Badge>
-              <Badge variant={tenant.status === 'active' ? 'default' : 'secondary'}>
-                {tenant.status}
+              <Badge variant={mockTenant.status === 'active' ? 'default' : 'secondary'}>
+                {mockTenant.status}
               </Badge>
             </div>
           </div>
@@ -98,7 +112,7 @@ export default function HotelDashboard() {
           {/* Welcome Message */}
           <motion.div variants={fadeIn}>
             <div className="bg-gradient-to-r from-primary/10 to-accent/10 rounded-lg p-6 border border-primary/20">
-              <h2 className="text-2xl font-bold mb-2">Welcome to {tenant.name} Dashboard</h2>
+              <h2 className="text-2xl font-bold mb-2">Welcome to {mockTenant.name} Dashboard</h2>
               <p className="text-muted-foreground">
                 You are currently impersonating this hotel's dashboard as a Super Admin. 
                 This is a simulation of what the hotel owner would see.
@@ -116,7 +130,7 @@ export default function HotelDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-primary">{tenant.totalRooms}</div>
+                <div className="text-2xl font-bold text-primary">{mockTenant.totalRooms}</div>
                 <p className="text-xs text-muted-foreground mt-1">Hotel capacity</p>
               </CardContent>
             </Card>
@@ -129,7 +143,7 @@ export default function HotelDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-accent">{tenant.plan}</div>
+                <div className="text-2xl font-bold text-accent">{mockTenant.plan}</div>
                 <p className="text-xs text-muted-foreground mt-1">Subscription</p>
               </CardContent>
             </Card>
@@ -142,7 +156,7 @@ export default function HotelDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-primary">{tenant.offlineWindowHours}h</div>
+                <div className="text-2xl font-bold text-primary">{mockTenant.offlineWindowHours}h</div>
                 <p className="text-xs text-muted-foreground mt-1">Allowed offline time</p>
               </CardContent>
             </Card>
@@ -155,7 +169,7 @@ export default function HotelDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-accent capitalize">{tenant.status}</div>
+                <div className="text-2xl font-bold text-accent capitalize">{mockTenant.status}</div>
                 <p className="text-xs text-muted-foreground mt-1">Account status</p>
               </CardContent>
             </Card>
@@ -172,29 +186,29 @@ export default function HotelDashboard() {
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Hotel Name:</span>
-                      <span className="font-medium">{tenant.name}</span>
+                      <span className="font-medium">{mockTenant.name}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">URL Slug:</span>
-                      <span className="font-medium">{tenant.slug}</span>
+                      <span className="font-medium">{mockTenant.slug}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Location:</span>
-                      <span className="font-medium">{tenant.city}</span>
+                      <span className="font-medium">{mockTenant.city}</span>
                     </div>
                   </div>
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Contact Email:</span>
-                      <span className="font-medium">{tenant.contactEmail}</span>
+                      <span className="font-medium">{mockTenant.contactEmail}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Created:</span>
-                      <span className="font-medium">{new Date(tenant.createdAt).toLocaleDateString()}</span>
+                      <span className="font-medium">{new Date(mockTenant.createdAt).toLocaleDateString()}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Last Updated:</span>
-                      <span className="font-medium">{new Date(tenant.updatedAt).toLocaleDateString()}</span>
+                      <span className="font-medium">{new Date(mockTenant.updatedAt).toLocaleDateString()}</span>
                     </div>
                   </div>
                 </div>

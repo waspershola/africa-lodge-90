@@ -33,6 +33,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { TrialSignupFlow } from "@/components/auth/TrialSignupFlow";
+import { createTestUsers } from "@/utils/createTestUsers";
 import { PricingSection } from "@/components/pricing/PricingSection";
 import { DemoVideoSection } from "@/components/demo/DemoVideoSection";
 import { InitialUserCreator } from "@/components/admin/InitialUserCreator";
@@ -45,6 +46,7 @@ const Index = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
+  const [userCreationLoading, setUserCreationLoading] = useState(false);
   const { user, login } = useAuth();
   const navigate = useNavigate();
 
@@ -135,6 +137,18 @@ const Index = () => {
       color: "text-accent"
     }
   ];
+
+  const handleCreateTestUsers = async () => {
+    setUserCreationLoading(true);
+    try {
+      await createTestUsers();
+      // Show success message or visual indicator
+    } catch (error) {
+      console.error('Failed to create test users:', error);
+    } finally {
+      setUserCreationLoading(false);
+    }
+  };
 
   const handleQuickLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -255,6 +269,14 @@ const Index = () => {
               variants={fadeIn}
             >
               <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
+                <button
+                  onClick={handleCreateTestUsers}
+                  disabled={userCreationLoading}
+                  className="w-full mb-4 bg-yellow-600 hover:bg-yellow-700 disabled:bg-yellow-800 text-white font-medium py-2 px-4 rounded-md transition-colors text-sm"
+                >
+                  {userCreationLoading ? '⏳ Creating Users...' : '🔧 Create Test Users (Click First)'}
+                </button>
+                
                 <h3 className="text-lg font-semibold text-white text-center mb-4">
                   Sign In to Your Dashboard
                 </h3>

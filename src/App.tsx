@@ -18,6 +18,7 @@ import Financials from "./pages/owner/Financials";
 import Billing from "./pages/owner/Billing";
 import EnhancedBilling from "./pages/owner/EnhancedBilling";
 import StaffManagement from "./pages/owner/StaffManagement";
+import { OnboardingWizard } from "./components/onboarding/OnboardingWizard";
 import QRManager from "./pages/owner/QRManager";
 import Reports from "./pages/owner/Reports";
 import Reservations from "./pages/owner/Reservations";

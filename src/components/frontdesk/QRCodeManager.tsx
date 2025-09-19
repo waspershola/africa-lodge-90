@@ -19,9 +19,13 @@ import {
   Users,
   CheckCircle,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Scan,
+  FileText
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { QRCodeRoomPoster } from "./QRCodeRoomPoster";
+import { QRCodeScanner } from "./QRCodeScanner";
 
 interface QRCodeManagerProps {
   open?: boolean;
@@ -50,6 +54,8 @@ export const QRCodeManager = ({ open, onOpenChange }: QRCodeManagerProps = {}) =
     purpose: '',
     notes: ''
   });
+  const [showRoomPoster, setShowRoomPoster] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
   const { toast } = useToast();
 
   const [qrCodes] = useState<QRCode[]>([
@@ -139,9 +145,11 @@ export const QRCodeManager = ({ open, onOpenChange }: QRCodeManagerProps = {}) =
 
   const renderContent = () => (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid w-full grid-cols-3">
+      <TabsList className="grid w-full grid-cols-5">
         <TabsTrigger value="generate">Generate New</TabsTrigger>
         <TabsTrigger value="active">Active QR Codes</TabsTrigger>
+        <TabsTrigger value="scanner">Scanner</TabsTrigger>
+        <TabsTrigger value="posters">Room Posters</TabsTrigger>
         <TabsTrigger value="history">History & Analytics</TabsTrigger>
       </TabsList>
 
@@ -265,6 +273,46 @@ export const QRCodeManager = ({ open, onOpenChange }: QRCodeManagerProps = {}) =
         </div>
       </TabsContent>
 
+      <TabsContent value="scanner" className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Scan className="h-5 w-5" />
+              QR Code Scanner
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground mb-4">
+              Scan QR codes to process guest requests, staff tasks, and payments.
+            </p>
+            <Button onClick={() => setShowScanner(true)} className="w-full">
+              <Scan className="h-4 w-4 mr-2" />
+              Open QR Scanner
+            </Button>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="posters" className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Room QR Posters
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground mb-4">
+              Create printable QR code posters for guest rooms with service request codes.
+            </p>
+            <Button onClick={() => setShowRoomPoster(true)} className="w-full">
+              <FileText className="h-4 w-4 mr-2" />
+              Create Room Poster
+            </Button>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
       <TabsContent value="history" className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <Card>
@@ -346,6 +394,17 @@ export const QRCodeManager = ({ open, onOpenChange }: QRCodeManagerProps = {}) =
         <h2 className="text-xl font-semibold">QR Code Management Center</h2>
       </div>
       {renderContent()}
+      
+      {/* Sub-component Dialogs */}
+      <QRCodeScanner 
+        open={showScanner}
+        onOpenChange={setShowScanner}
+      />
+      
+      <QRCodeRoomPoster 
+        open={showRoomPoster}
+        onOpenChange={setShowRoomPoster}
+      />
     </div>
   );
 };

@@ -47,9 +47,10 @@ interface TrialSignupFlowProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedPlanId?: string;
+  onSuccess?: () => void;
 }
 
-export function TrialSignupFlow({ open, onOpenChange, selectedPlanId }: TrialSignupFlowProps) {
+export function TrialSignupFlow({ open, onOpenChange, selectedPlanId, onSuccess }: TrialSignupFlowProps) {
   const [step, setStep] = useState<'plan' | 'details' | 'success'>('plan');
   const [formData, setFormData] = useState<TrialSignupData>({
     hotel_name: '',
@@ -102,6 +103,7 @@ export function TrialSignupFlow({ open, onOpenChange, selectedPlanId }: TrialSig
       
       console.log('Trial signup:', formData);
       setStep('success');
+      onSuccess?.(); // Call success callback
     } catch (err) {
       setError('Failed to create trial account. Please try again.');
     } finally {

@@ -29,7 +29,9 @@ import {
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { useState } from "react";
-import { useAuth, UserRole } from "@/hooks/useAuth";
+import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
+import { LoginForm } from "@/components/auth/LoginForm";
+import { TrialSignupFlow } from "@/components/auth/TrialSignupFlow";
 import { PricingSection } from "@/components/pricing/PricingSection";
 import { DemoVideoSection } from "@/components/demo/DemoVideoSection";
 import heroHotelBg from "@/assets/hero-hotel-bg.jpg";
@@ -37,10 +39,35 @@ import sunsetHotelBg from "@/assets/sunset-hotel-bg.jpg";
 import diningHotelBg from "@/assets/dining-hotel-bg.jpg";
 
 const Index = () => {
+  const [trialSignupOpen, setTrialSignupOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
-  const { login, isAuthenticated } = useAuth();
+  const { user, login } = useAuth();
+
+  const getUserDashboardPath = (role: string) => {
+    switch (role) {
+      case 'SUPER_ADMIN': return '/super-admin/dashboard';
+      case 'OWNER': return '/owner-dashboard'; 
+      case 'MANAGER': return '/manager-dashboard';
+      case 'FRONT_DESK': return '/front-desk';
+      case 'HOUSEKEEPING': return '/housekeeping-dashboard';
+      case 'MAINTENANCE': return '/maintenance-dashboard';
+      case 'POS': return '/pos';
+      default: return '/owner-dashboard';
+    }
+  };
+
+  const handleTrialSignupSuccess = () => {
+    setTrialSignupOpen(false);
+    // User will be redirected to onboarding by the auth system
+  };
+
+  // Redirect authenticated users to appropriate dashboard
+  if (user) {
+    window.location.href = getUserDashboardPath(user.role);
+    return <div>Redirecting...</div>;
+  }
   const fadeIn = {
     initial: { opacity: 0, y: 20 },
     animate: { opacity: 1, y: 0 },
@@ -101,37 +128,7 @@ const Index = () => {
     setLoginLoading(true);
     try {
       await login(email, password);
-      // Role-based redirect handled by auth system
-      // For demo purposes, we'll use the user's actual role from auth
-      // In production, this will come from the authenticated user
-      
-      // Mock role determination - in production this comes from auth response
-      const getUserRole = (): UserRole => {
-        // This will be replaced with actual auth logic
-        return 'owner';
-      };
-      
-      const userRole = getUserRole();
-      
-      switch (userRole) {
-        case 'owner':
-          window.location.href = '/owner-dashboard';
-          break;
-        case 'manager':
-          window.location.href = '/manager-dashboard';
-          break;
-        case 'staff':
-          window.location.href = '/front-desk';
-          break;
-        case 'chef':
-          window.location.href = '/pos';
-          break;
-        case 'accountant':
-          window.location.href = '/owner-dashboard/financials';
-          break;
-        default:
-          window.location.href = '/owner-dashboard';
-      }
+      // Redirect will be handled by the auth system's onboarding check
     } catch (error) {
       console.error('Login failed:', error);
     } finally {
@@ -647,12 +644,10 @@ const Index = () => {
               <Button 
                 size="lg" 
                 className="bg-yellow-500 hover:bg-red-700 text-black hover:text-white text-lg px-8 py-6 font-semibold shadow-2xl hover:shadow-red-500/50 transition-all duration-300"
-                asChild
+                onClick={() => setTrialSignupOpen(true)}
               >
-                <Link to="/owner-dashboard">
-                  Start Managing Smarter
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Link>
+                Start Free Trial
+                <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
               <Button 
                 variant="outline" 
@@ -721,6 +716,12 @@ const Index = () => {
           </div>
         </div>
       </footer>
+      {/* Trial Signup Dialog */}
+      <TrialSignupFlow 
+        open={trialSignupOpen}
+        onOpenChange={setTrialSignupOpen}
+        onSuccess={handleTrialSignupSuccess}
+      />
     </div>
   );
 };

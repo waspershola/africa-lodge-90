@@ -15,7 +15,10 @@ import {
   Clock,
   DollarSign,
   Activity,
-  Filter
+  Filter,
+  RotateCcw,
+  Eye,
+  Settings
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -29,6 +32,7 @@ import { Tenant, SubscriptionStatus } from '@/types/tenant';
 import { CreateTenantDialog } from './CreateTenantDialog';
 import { TenantDetailsDrawer } from './TenantDetailsDrawer';
 import { TenantControlsDialog } from './TenantControlsDialog';
+import { OnboardingResetDialog } from './OnboardingResetDialog';
 
 const getStatusColor = (status: SubscriptionStatus) => {
   switch (status) {
@@ -57,6 +61,7 @@ export function TenantManagementDashboard() {
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
   const [showTenantControls, setShowTenantControls] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showOnboardingReset, setShowOnboardingReset] = useState(false);
   
   const { 
     tenants, 
@@ -345,6 +350,20 @@ export function TenantManagementDashboard() {
           setSelectedTenant(null);
           setShowTenantControls(false);
         }}
+      />
+
+      {/* Onboarding Reset Dialog */}
+      <OnboardingResetDialog
+        open={showOnboardingReset}
+        onOpenChange={setShowOnboardingReset}
+        tenant={selectedTenant ? {
+          tenant_id: selectedTenant.tenant_id,
+          hotel_name: selectedTenant.hotel_name,
+          owner_email: 'owner@' + selectedTenant.hotel_name.toLowerCase().replace(/\s+/g, '') + '.com',
+          subscription_status: selectedTenant.subscription_status,
+          setup_completed: true,
+          onboarding_step: 'completed'
+        } : undefined}
       />
 
       {selectedTenant && (

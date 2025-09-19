@@ -10,11 +10,13 @@ import {
   Save, 
   AlertCircle,
   CheckCircle2,
-  Upload
+  Upload,
+  FileText
 } from "lucide-react";
 import HotelProfileForm from "./config/HotelProfileForm";
 import BrandingForm from "./config/BrandingForm";
 import RoomSetupForm from "./config/RoomSetupForm";
+import ReceiptSettings from "./config/ReceiptSettings";
 
 const HotelConfigurationPage = () => {
   const [activeTab, setActiveTab] = useState("profile");
@@ -129,7 +131,7 @@ const HotelConfigurationPage = () => {
 
       {/* Configuration Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             Hotel Profile
@@ -141,6 +143,10 @@ const HotelConfigurationPage = () => {
           <TabsTrigger value="rooms" className="flex items-center gap-2">
             <BedDouble className="h-4 w-4" />
             Room Setup
+          </TabsTrigger>
+          <TabsTrigger value="receipts" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Receipt Settings
           </TabsTrigger>
         </TabsList>
 
@@ -154,6 +160,10 @@ const HotelConfigurationPage = () => {
 
         <TabsContent value="rooms" className="space-y-6">
           <RoomSetupForm onDataChange={() => setUnsavedChanges(true)} />
+        </TabsContent>
+
+        <TabsContent value="receipts" className="space-y-6">
+          <ReceiptSettings onDataChange={() => setUnsavedChanges(true)} />
         </TabsContent>
       </Tabs>
     </div>

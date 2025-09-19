@@ -165,7 +165,8 @@ export const RoomActionDrawer = ({
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
-                  <p className="font-medium">{room.guest}</p>
+                  <p className="font-medium">{room.guest.name}</p>
+                  <p className="text-sm text-muted-foreground">{room.guest.phone}</p>
                   {room.checkIn && (
                     <p className="text-sm text-muted-foreground">
                       Checked in: {new Date(room.checkIn).toLocaleDateString()}

@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Filter } from "lucide-react";
-import { RoomTile } from "./RoomTile";
+import { Search, Filter, QrCode, CreditCard } from "lucide-react";
+import { RoomTileEnhanced } from "./RoomTileEnhanced";
 import { RoomActionDrawer } from "./RoomActionDrawer";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -12,7 +12,15 @@ export interface Room {
   name: string;
   status: 'available' | 'occupied' | 'reserved' | 'oos' | 'overstay';
   type: string;
-  guest?: string;
+  guest?: {
+    name: string;
+    phone?: string;
+    idNumber?: string;
+    bookingSource?: string;
+    checkIn?: string;
+    checkOut?: string;
+    stayDuration?: number; // days
+  };
   checkIn?: string;
   checkOut?: string;
   alerts: {
@@ -24,6 +32,15 @@ export interface Room {
   folio?: {
     balance: number;
     isPaid: boolean;
+    qrCharges?: number; // QR-generated service charges
+    status: 'up-to-date' | 'pending' | 'overdue' | 'pay-later';
+  };
+  qrCode?: {
+    id: string;
+    status: 'active' | 'inactive' | 'disabled';
+    servicesEnabled: string[];
+    pendingRequests: number;
+    lastScanned?: Date;
   };
 }
 
@@ -33,20 +50,204 @@ interface RoomGridProps {
   onRoomSelect?: (room: Room) => void;
 }
 
-// Mock room data - make it mutable for updates
+// Mock room data - Enhanced with QR integration and detailed guest info
 let mockRooms: Room[] = [
-  { id: '101', number: '101', name: 'Standard', status: 'available', type: 'Standard', alerts: {} },
-  { id: '102', number: '102', name: 'Standard', status: 'occupied', type: 'Standard', guest: 'John Doe', checkIn: '2024-01-15', alerts: { cleaning: true } },
-  { id: '103', number: '103', name: 'Standard', status: 'reserved', type: 'Standard', guest: 'Jane Smith', checkIn: '2024-01-22', alerts: { depositPending: true } },
-  { id: '201', number: '201', name: 'Deluxe', status: 'occupied', type: 'Deluxe', guest: 'Mike Wilson', alerts: { idMissing: true }, folio: { balance: 15000, isPaid: false } },
-  { id: '202', number: '202', name: 'Deluxe', status: 'available', type: 'Deluxe', alerts: {} },
-  { id: '203', number: '203', name: 'Deluxe', status: 'oos', type: 'Deluxe', alerts: { maintenance: true } },
-  { id: '301', number: '301', name: 'Suite', status: 'overstay', type: 'Executive Suite', guest: 'Sarah Johnson', checkOut: '2024-01-20', alerts: { depositPending: true } },
-  { id: '302', number: '302', name: 'Suite', status: 'available', type: 'Executive Suite', alerts: {} },
-  { id: '303', number: '303', name: 'Deluxe', status: 'reserved', type: 'Deluxe', guest: 'Adebayo Johnson', checkIn: '2024-01-22', alerts: {} },
-  { id: '304', number: '304', name: 'Standard', status: 'occupied', type: 'Standard', guest: 'Fatima Hassan', alerts: {}, folio: { balance: 12000, isPaid: true } },
-  { id: '401', number: '401', name: 'Presidential', status: 'available', type: 'Presidential Suite', alerts: {} },
-  { id: '402', number: '402', name: 'Suite', status: 'occupied', type: 'Executive Suite', guest: 'David Okoro', alerts: { cleaning: true } },
+  { 
+    id: '101', 
+    number: '101', 
+    name: 'Standard', 
+    status: 'available', 
+    type: 'Standard', 
+    alerts: {},
+    qrCode: { id: 'QR_101', status: 'inactive', servicesEnabled: [], pendingRequests: 0 }
+  },
+  { 
+    id: '102', 
+    number: '102', 
+    name: 'Standard', 
+    status: 'occupied', 
+    type: 'Standard', 
+    guest: {
+      name: 'John Doe',
+      phone: '+234 801 234 5678',
+      idNumber: 'A12345678',
+      bookingSource: 'Booking.com',
+      checkIn: '2024-01-15',
+      checkOut: '2024-01-18',
+      stayDuration: 3
+    },
+    alerts: { cleaning: true },
+    folio: { balance: 15000, isPaid: false, qrCharges: 5000, status: 'pending' },
+    qrCode: { 
+      id: 'QR_102', 
+      status: 'active', 
+      servicesEnabled: ['Wi-Fi', 'Room Service', 'Housekeeping'],
+      pendingRequests: 2,
+      lastScanned: new Date(Date.now() - 30 * 60 * 1000)
+    }
+  },
+  { 
+    id: '103', 
+    number: '103', 
+    name: 'Standard', 
+    status: 'reserved', 
+    type: 'Standard', 
+    guest: {
+      name: 'Jane Smith',
+      phone: '+234 802 345 6789',
+      bookingSource: 'Direct',
+      checkIn: '2024-01-22'
+    },
+    alerts: { depositPending: true },
+    qrCode: { id: 'QR_103', status: 'inactive', servicesEnabled: [], pendingRequests: 0 }
+  },
+  { 
+    id: '201', 
+    number: '201', 
+    name: 'Deluxe', 
+    status: 'occupied', 
+    type: 'Deluxe', 
+    guest: {
+      name: 'Mike Wilson',
+      phone: '+234 803 456 7890',
+      bookingSource: 'Expedia',
+      checkIn: '2024-01-14',
+      checkOut: '2024-01-20',
+      stayDuration: 6
+    },
+    alerts: { idMissing: true }, 
+    folio: { balance: 25000, isPaid: false, qrCharges: 8000, status: 'overdue' },
+    qrCode: { 
+      id: 'QR_201', 
+      status: 'active', 
+      servicesEnabled: ['Wi-Fi', 'Room Service', 'Digital Menu', 'Maintenance'],
+      pendingRequests: 1,
+      lastScanned: new Date(Date.now() - 2 * 60 * 60 * 1000)
+    }
+  },
+  { 
+    id: '202', 
+    number: '202', 
+    name: 'Deluxe', 
+    status: 'available', 
+    type: 'Deluxe', 
+    alerts: {},
+    qrCode: { id: 'QR_202', status: 'inactive', servicesEnabled: [], pendingRequests: 0 }
+  },
+  { 
+    id: '203', 
+    number: '203', 
+    name: 'Deluxe', 
+    status: 'oos', 
+    type: 'Deluxe', 
+    alerts: { maintenance: true },
+    qrCode: { id: 'QR_203', status: 'disabled', servicesEnabled: [], pendingRequests: 0 }
+  },
+  { 
+    id: '301', 
+    number: '301', 
+    name: 'Suite', 
+    status: 'overstay', 
+    type: 'Executive Suite', 
+    guest: {
+      name: 'Sarah Johnson',
+      phone: '+234 804 567 8901',
+      bookingSource: 'Hotels.com',
+      checkIn: '2024-01-10',
+      checkOut: '2024-01-20',
+      stayDuration: 10
+    },
+    alerts: { depositPending: true },
+    folio: { balance: 45000, isPaid: false, qrCharges: 12000, status: 'pay-later' },
+    qrCode: { 
+      id: 'QR_301', 
+      status: 'active', 
+      servicesEnabled: ['Wi-Fi', 'Room Service', 'Housekeeping', 'Digital Menu', 'Events'],
+      pendingRequests: 3,
+      lastScanned: new Date(Date.now() - 45 * 60 * 1000)
+    }
+  },
+  { 
+    id: '302', 
+    number: '302', 
+    name: 'Suite', 
+    status: 'available', 
+    type: 'Executive Suite', 
+    alerts: {},
+    qrCode: { id: 'QR_302', status: 'inactive', servicesEnabled: [], pendingRequests: 0 }
+  },
+  { 
+    id: '303', 
+    number: '303', 
+    name: 'Deluxe', 
+    status: 'reserved', 
+    type: 'Deluxe', 
+    guest: {
+      name: 'Adebayo Johnson',
+      phone: '+234 805 678 9012',
+      bookingSource: 'Agoda',
+      checkIn: '2024-01-22'
+    },
+    alerts: {},
+    qrCode: { id: 'QR_303', status: 'inactive', servicesEnabled: [], pendingRequests: 0 }
+  },
+  { 
+    id: '304', 
+    number: '304', 
+    name: 'Standard', 
+    status: 'occupied', 
+    type: 'Standard', 
+    guest: {
+      name: 'Fatima Hassan',
+      phone: '+234 806 789 0123',
+      bookingSource: 'Direct',
+      checkIn: '2024-01-16',
+      checkOut: '2024-01-19',
+      stayDuration: 3
+    },
+    alerts: {}, 
+    folio: { balance: 18000, isPaid: true, qrCharges: 3000, status: 'up-to-date' },
+    qrCode: { 
+      id: 'QR_304', 
+      status: 'active', 
+      servicesEnabled: ['Wi-Fi', 'Room Service'],
+      pendingRequests: 0,
+      lastScanned: new Date(Date.now() - 6 * 60 * 60 * 1000)
+    }
+  },
+  { 
+    id: '401', 
+    number: '401', 
+    name: 'Presidential', 
+    status: 'available', 
+    type: 'Presidential Suite', 
+    alerts: {},
+    qrCode: { id: 'QR_401', status: 'inactive', servicesEnabled: [], pendingRequests: 0 }
+  },
+  { 
+    id: '402', 
+    number: '402', 
+    name: 'Suite', 
+    status: 'occupied', 
+    type: 'Executive Suite', 
+    guest: {
+      name: 'David Okoro',
+      phone: '+234 807 890 1234',
+      bookingSource: 'Trivago',
+      checkIn: '2024-01-17',
+      checkOut: '2024-01-21',
+      stayDuration: 4
+    },
+    alerts: { cleaning: true },
+    folio: { balance: 32000, isPaid: false, qrCharges: 7500, status: 'pending' },
+    qrCode: { 
+      id: 'QR_402', 
+      status: 'active', 
+      servicesEnabled: ['Wi-Fi', 'Room Service', 'Housekeeping', 'Digital Menu'],
+      pendingRequests: 1,
+      lastScanned: new Date(Date.now() - 15 * 60 * 1000)
+    }
+  },
 ];
 
 export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridProps) => {
@@ -64,7 +265,9 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
       filtered = filtered.filter(room => 
         room.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
         room.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        room.guest?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        room.guest?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        room.guest?.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        room.guest?.idNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         room.type.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
@@ -90,7 +293,7 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
           break;
         case 'pending-payments':
           filtered = filtered.filter(room => 
-            room.folio && !room.folio.isPaid && room.folio.balance > 0
+            room.folio && (room.folio.status === 'pending' || room.folio.status === 'overdue') && room.folio.balance > 0
           );
           break;
         case 'oos':
@@ -143,11 +346,20 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [selectedRoom]);
 
-  // Get status counts for summary
+  // Get enhanced status counts for summary
   const statusCounts = roomData.reduce((acc, room) => {
     acc[room.status] = (acc[room.status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+
+  const qrStats = roomData.reduce((acc, room) => {
+    if (room.qrCode) {
+      acc.active += room.qrCode.status === 'active' ? 1 : 0;
+      acc.totalRequests += room.qrCode.pendingRequests || 0;
+      acc.withCharges += (room.folio?.qrCharges && room.folio.qrCharges > 0) ? 1 : 0;
+    }
+    return acc;
+  }, { active: 0, totalRequests: 0, withCharges: 0 });
 
   const handleRoomUpdate = (updatedRoom: Room) => {
     setRoomData(prevRooms => {
@@ -167,9 +379,9 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
 
   return (
     <div className="space-y-6">
-      {/* Room Status Summary */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      {/* Enhanced Room Status Summary */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline" className="bg-room-available/10 text-room-available border-room-available/20">
             Available: {statusCounts.available || 0}
           </Badge>
@@ -179,6 +391,21 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
           <Badge variant="outline" className="bg-room-reserved/10 text-room-reserved border-room-reserved/20">
             Reserved: {statusCounts.reserved || 0}
           </Badge>
+          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1">
+            <QrCode className="h-3 w-3" />
+            QR Active: {qrStats.active}
+          </Badge>
+          {qrStats.totalRequests > 0 && (
+            <Badge variant="destructive" className="flex items-center gap-1">
+              {qrStats.totalRequests} QR Requests
+            </Badge>
+          )}
+          {qrStats.withCharges > 0 && (
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 flex items-center gap-1">
+              <CreditCard className="h-3 w-3" />
+              {qrStats.withCharges} with QR Charges
+            </Badge>
+          )}
         </div>
 
         {/* Active Filter Display */}
@@ -208,7 +435,7 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.2 }}
             >
-              <RoomTile
+              <RoomTileEnhanced
                 room={room}
                 isSelected={selectedRoom?.id === room.id}
                 onClick={() => handleRoomClick(room)}

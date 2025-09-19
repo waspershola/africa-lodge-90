@@ -37,6 +37,8 @@ import { StaffOpsPanel } from "./frontdesk/StaffOpsPanel";
 import { BillingOverviewFD } from "./frontdesk/BillingOverviewFD";
 import { HandoverPanel } from "./frontdesk/HandoverPanel";
 import { QRRequestsPanel } from "./frontdesk/QRRequestsPanel";
+import { AuditTrailPanel } from "./frontdesk/AuditTrailPanel";
+import { CheckInOutFlow } from "./frontdesk/CheckInOutFlow";
 import type { Room } from "./frontdesk/RoomGrid";
 
 // Mock data
@@ -90,9 +92,12 @@ const FrontDeskDashboard = () => {
   const [showSearch, setShowSearch] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [showQuickCapture, setShowQuickCapture] = useState(false);
+  const [showCheckInOut, setShowCheckInOut] = useState(false);
+  const [checkInOutType, setCheckInOutType] = useState<'check-in' | 'check-out'>('check-in');
   const [captureAction, setCaptureAction] = useState<"assign" | "walkin" | "check-in" | "check-out" | "assign-room" | "extend-stay" | "transfer-room" | "add-service" | "work-order" | "housekeeping" | "">("");
   const [rooms, setRooms] = useState<Room[]>([]);
-  const [activePanel, setActivePanel] = useState<'overview' | 'qr-requests' | 'staff-ops' | 'billing' | 'handover' | 'qr-manager'>('overview');
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [activePanel, setActivePanel] = useState<'overview' | 'qr-requests' | 'staff-ops' | 'billing' | 'handover' | 'qr-manager' | 'audit-trail'>('overview');
 
   // Simulate online/offline status
   useEffect(() => {
@@ -154,12 +159,12 @@ const FrontDeskDashboard = () => {
         setShowQuickCapture(true);
         break;
       case 'check-in':
-        setCaptureAction('check-in');
-        setShowQuickCapture(true);
+        setCheckInOutType('check-in');
+        setShowCheckInOut(true);
         break;
       case 'check-out':
-        setCaptureAction('check-out');
-        setShowQuickCapture(true);
+        setCheckInOutType('check-out');
+        setShowCheckInOut(true);
         break;
       case 'collect-payment':
         setShowPayment(true);
@@ -184,6 +189,12 @@ const FrontDeskDashboard = () => {
     setRooms(prev => prev.map(room => 
       room.number === updatedRoom.number ? updatedRoom : room
     ));
+  };
+
+  const handleCheckInOutComplete = (room: Room, auditLog: any) => {
+    handleRoomUpdate(room);
+    setAuditLogs(prev => [auditLog, ...prev]);
+    setShowCheckInOut(false);
   };
 
   const handleGuestCaptureComplete = (guestData: any) => {
@@ -443,6 +454,13 @@ const FrontDeskDashboard = () => {
           >
             QR Manager
           </Button>
+          <Button 
+            variant={activePanel === 'audit-trail' ? 'default' : 'outline'}
+            onClick={() => setActivePanel('audit-trail')}
+            size="sm"
+          >
+            Audit Trail
+          </Button>
         </div>
 
         {/* Dynamic Panel Content */}
@@ -482,6 +500,10 @@ const FrontDeskDashboard = () => {
         {activePanel === 'qr-manager' && (
           <QRCodeManager />
         )}
+
+        {activePanel === 'audit-trail' && (
+          <AuditTrailPanel />
+        )}
       </div>
 
       {/* Keyboard Shortcuts Helper */}
@@ -494,6 +516,15 @@ const FrontDeskDashboard = () => {
       <NewReservationDialog 
         open={showNewReservation}
         onOpenChange={setShowNewReservation}
+      />
+      
+      {/* Check-In/Out Flow */}
+      <CheckInOutFlow
+        open={showCheckInOut}
+        onOpenChange={setShowCheckInOut}
+        room={selectedRoom}
+        type={checkInOutType}
+        onComplete={handleCheckInOutComplete}
       />
       
       <SearchDialog 

@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Calendar, Users, Phone, Mail, MapPin, MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
-import { useReservations } from '@/hooks/useApi';
+import { useReservations } from '@/hooks/useRooms';
 
 interface ReservationListProps {
   searchTerm: string;
@@ -19,12 +19,12 @@ export default function ReservationList({
   statusFilter, 
   onReservationSelect 
 }: ReservationListProps) {
-  const { data: reservations = [], isLoading } = useReservations();
+  const { reservations = [], loading: isLoading } = useReservations();
 
   const filteredReservations = reservations.filter(reservation => {
     const matchesSearch = searchTerm === '' || 
       reservation.guest_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      reservation.rooms?.room_number?.includes(searchTerm) ||
+      reservation.reservation_number?.includes(searchTerm) ||
       reservation.id.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || reservation.status === statusFilter;
@@ -106,7 +106,7 @@ export default function ReservationList({
                       <div className="flex items-center gap-2">
                         <MapPin className="h-4 w-4 text-muted-foreground" />
                         <div>
-                          <div className="font-medium">Room {reservation.rooms?.room_number || 'N/A'}</div>
+                          <div className="font-medium">Room {reservation.room_id || 'N/A'}</div>
                           <div className="text-muted-foreground">Standard Room</div>
                         </div>
                       </div>
@@ -161,7 +161,7 @@ export default function ReservationList({
                           {reservation.status === 'confirmed' && (
                             <DropdownMenuItem>Check In</DropdownMenuItem>
                           )}
-                          {reservation.status === 'checked-in' && (
+                          {reservation.status === 'checked_in' && (
                             <DropdownMenuItem>Check Out</DropdownMenuItem>
                           )}
                           <DropdownMenuItem className="text-destructive">

@@ -5,17 +5,32 @@ import { Search, Filter } from "lucide-react";
 import { RoomTile } from "./RoomTile";
 import { RoomActionDrawer } from "./RoomActionDrawer";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRooms } from "@/hooks/useRooms";
 
 export interface Room {
   id: string;
-  number: string;
-  name: string;
-  status: 'available' | 'occupied' | 'reserved' | 'oos' | 'overstay';
-  type: string;
+  room_number: string;
+  status: 'available' | 'occupied' | 'reserved' | 'oos' | 'overstay' | 'dirty' | 'clean' | 'maintenance';
+  room_type?: {
+    name: string;
+    base_rate: number;
+  };
+  current_reservation?: {
+    guest_name: string;
+    check_in_date: string;
+    check_out_date: string;
+    status: string;
+  };
+  notes?: string;
+  last_cleaned?: string;
+  // Legacy compatibility
+  number?: string;
+  name?: string;
+  type?: string;
   guest?: string;
   checkIn?: string;
   checkOut?: string;
-  alerts: {
+  alerts?: {
     cleaning?: boolean;
     depositPending?: boolean;
     idMissing?: boolean;
@@ -33,27 +48,59 @@ interface RoomGridProps {
   onRoomSelect?: (room: Room) => void;
 }
 
-// Mock room data - make it mutable for updates
-let mockRooms: Room[] = [
-  { id: '101', number: '101', name: 'Standard', status: 'available', type: 'Standard', alerts: {} },
-  { id: '102', number: '102', name: 'Standard', status: 'occupied', type: 'Standard', guest: 'John Doe', checkIn: '2024-01-15', alerts: { cleaning: true } },
-  { id: '103', number: '103', name: 'Standard', status: 'reserved', type: 'Standard', guest: 'Jane Smith', checkIn: '2024-01-22', alerts: { depositPending: true } },
-  { id: '201', number: '201', name: 'Deluxe', status: 'occupied', type: 'Deluxe', guest: 'Mike Wilson', alerts: { idMissing: true }, folio: { balance: 15000, isPaid: false } },
-  { id: '202', number: '202', name: 'Deluxe', status: 'available', type: 'Deluxe', alerts: {} },
-  { id: '203', number: '203', name: 'Deluxe', status: 'oos', type: 'Deluxe', alerts: { maintenance: true } },
-  { id: '301', number: '301', name: 'Suite', status: 'overstay', type: 'Executive Suite', guest: 'Sarah Johnson', checkOut: '2024-01-20', alerts: { depositPending: true } },
-  { id: '302', number: '302', name: 'Suite', status: 'available', type: 'Executive Suite', alerts: {} },
-  { id: '303', number: '303', name: 'Deluxe', status: 'reserved', type: 'Deluxe', guest: 'Adebayo Johnson', checkIn: '2024-01-22', alerts: {} },
-  { id: '304', number: '304', name: 'Standard', status: 'occupied', type: 'Standard', guest: 'Fatima Hassan', alerts: {}, folio: { balance: 12000, isPaid: true } },
-  { id: '401', number: '401', name: 'Presidential', status: 'available', type: 'Presidential Suite', alerts: {} },
-  { id: '402', number: '402', name: 'Suite', status: 'occupied', type: 'Executive Suite', guest: 'David Okoro', alerts: { cleaning: true } },
-];
-
 export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridProps) => {
+  const { rooms, loading, error } = useRooms();
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
-  const [filteredRooms, setFilteredRooms] = useState<Room[]>(mockRooms);
+  const [filteredRooms, setFilteredRooms] = useState<Room[]>([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [roomData, setRoomData] = useState<Room[]>(mockRooms);
+
+  // Transform Supabase room data to component format
+  const roomData: Room[] = rooms?.map(room => {
+    // Map Supabase status to frontend status
+    let mappedStatus: Room['status'] = 'available';
+    switch (room.status) {
+      case 'available':
+        mappedStatus = 'available';
+        break;
+      case 'occupied':
+        mappedStatus = 'occupied';
+        break;
+      case 'dirty':
+        mappedStatus = 'dirty';
+        break;
+      case 'maintenance':
+        mappedStatus = 'maintenance';
+        break;
+      case 'out_of_order':
+        mappedStatus = 'oos';
+        break;
+      default:
+        mappedStatus = 'available';
+    }
+    
+    return {
+      id: room.id,
+      room_number: room.room_number,
+      status: mappedStatus,
+      room_type: room.room_type,
+      current_reservation: room.current_reservation,
+      notes: room.notes,
+      last_cleaned: room.last_cleaned,
+      // Legacy compatibility fields
+      number: room.room_number,
+      name: room.room_type?.name || 'Standard',
+      type: room.room_type?.name || 'Standard',
+      guest: room.current_reservation?.guest_name,
+      checkIn: room.current_reservation?.check_in_date,
+      checkOut: room.current_reservation?.check_out_date,
+      alerts: {
+        cleaning: room.status === 'dirty',
+        maintenance: room.status === 'maintenance',
+        depositPending: false, // Can be enhanced based on folio data
+        idMissing: false, // Can be enhanced based on reservation data
+      }
+    };
+  }) || [];
 
   // Filter rooms based on search query and active filter
   useEffect(() => {
@@ -62,10 +109,13 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
     // Apply search filter
     if (searchQuery.trim()) {
       filtered = filtered.filter(room => 
-        room.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        room.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        room.guest?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        room.type.toLowerCase().includes(searchQuery.toLowerCase())
+        room.room_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        room.room_type?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        room.current_reservation?.guest_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (room.number && room.number.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (room.name && room.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (room.guest && room.guest.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (room.type && room.type.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     }
 
@@ -150,20 +200,33 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
   }, {} as Record<string, number>);
 
   const handleRoomUpdate = (updatedRoom: Room) => {
-    setRoomData(prevRooms => {
-      const updatedRooms = prevRooms.map(room => 
-        room.id === updatedRoom.id ? updatedRoom : room
-      );
-      // Also update the global mock data
-      const roomIndex = mockRooms.findIndex(r => r.id === updatedRoom.id);
-      if (roomIndex !== -1) {
-        mockRooms[roomIndex] = updatedRoom;
-      }
-      return updatedRooms;
-    });
+    // In real implementation, this would call an API to update the room
+    // For now, we'll just refresh the data and close the drawer
     setSelectedRoom(null);
     setIsDrawerOpen(false);
+    // TODO: Implement room update API call
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-12">
+          <p className="text-lg font-medium text-destructive">Error loading rooms</p>
+          <p className="text-sm text-muted-foreground">Please try refreshing the page</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

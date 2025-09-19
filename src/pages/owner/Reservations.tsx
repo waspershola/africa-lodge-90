@@ -11,7 +11,7 @@ import InteractiveReservationCalendar from '@/components/owner/reservations/Inte
 import ReservationList from '@/components/owner/reservations/ReservationList';
 import NewReservationDialog from '@/components/owner/reservations/NewReservationDialog';
 import ReservationDetails from '@/components/owner/reservations/ReservationDetails';
-import { useReservations } from '@/hooks/useApi';
+import { useReservations } from '@/hooks/useRooms';
 
 export default function ReservationsPage() {
   const [view, setView] = useState('calendar');
@@ -20,14 +20,14 @@ export default function ReservationsPage() {
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState(null);
 
-  const { data: reservations = [], isLoading, error } = useReservations();
+  const { reservations = [], loading: isLoading, error } = useReservations();
 
   // Calculate stats from API data
   const reservationStats = {
     total: reservations.length,
     confirmed: reservations.filter(r => r.status === 'confirmed').length,
-    pending: reservations.filter(r => r.status === 'pending').length,
-    checkedIn: reservations.filter(r => r.status === 'checked-in').length,
+    pending: reservations.filter(r => r.status === 'confirmed').length, // No pending status in new schema
+    checked_in: reservations.filter(r => r.status === 'checked_in').length,
     checkedOut: reservations.filter(r => r.status === 'checked-out').length,
     cancelled: reservations.filter(r => r.status === 'cancelled').length,
     noShow: 0
@@ -127,7 +127,7 @@ export default function ReservationsPage() {
             <MapPin className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{reservationStats.checkedIn}</div>
+            <div className="text-2xl font-bold text-blue-600">{reservationStats.checked_in}</div>
             <p className="text-xs text-muted-foreground">
               Currently in house
             </p>

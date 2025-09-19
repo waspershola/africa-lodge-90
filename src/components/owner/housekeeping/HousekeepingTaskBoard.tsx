@@ -16,7 +16,7 @@ import {
   Calendar,
   MapPin
 } from 'lucide-react';
-import { useHousekeepingTasks } from '@/hooks/useApi';
+import { useHousekeepingTasks } from '@/hooks/useHousekeeping';
 import { format } from 'date-fns';
 
 interface Task {

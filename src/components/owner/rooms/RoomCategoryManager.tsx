@@ -25,7 +25,7 @@ import {
   Coffee,
   Shirt
 } from "lucide-react";
-import { useOwnerRoomCategories, useCreateRoomCategory, useUpdateRoomCategory, useDeleteRoomCategory } from "@/hooks/useApi";
+import { useRoomTypes, useCreateRoomType, useUpdateRoomType, useDeleteRoomType } from "@/hooks/useApi";
 import { toast } from "sonner";
 
 interface RoomCategory {
@@ -59,10 +59,10 @@ export default function RoomCategoryManager() {
   const [isNewCategory, setIsNewCategory] = useState(false);
 
   // API hooks
-  const { data: categoriesData, isLoading } = useOwnerRoomCategories();
-  const createCategoryMutation = useCreateRoomCategory();
-  const updateCategoryMutation = useUpdateRoomCategory();
-  const deleteCategoryMutation = useDeleteRoomCategory();
+  const { data: categoriesData, isLoading } = useRoomTypes();
+  const createCategoryMutation = useCreateRoomType();
+  const updateCategoryMutation = useUpdateRoomType();
+  const deleteCategoryMutation = useDeleteRoomType();
 
   const categories = categoriesData || [];
 

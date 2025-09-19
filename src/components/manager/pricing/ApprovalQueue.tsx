@@ -1,12 +1,10 @@
 import { useState } from 'react';
-import { Clock, CheckCircle, XCircle, AlertCircle, TrendingUp, TrendingDown, Eye } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, AlertCircle, TrendingUp, TrendingDown, Eye, User } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useToast } from '@/components/ui/use-toast';
 import { useCurrency } from '@/hooks/useCurrency';
 import type { PricingChange } from '@/types/pricing';
 
@@ -16,18 +14,16 @@ interface ApprovalQueueProps {
   onReject: (changeId: string, reason: string) => void;
 }
 
-export const ApprovalQueue = ({ pendingChanges, onApprove, onReject }: ApprovalQueueProps) => {
-  const [rejectionReason, setRejectionReason] = useState('');
+export const ApprovalQueue = ({ pendingChanges }: ApprovalQueueProps) => {
   const [selectedChange, setSelectedChange] = useState<PricingChange | null>(null);
   const { formatPrice } = useCurrency();
-  const { toast } = useToast();
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return 'secondary';
+      case 'pending': return 'outline';
       case 'approved': return 'default';
       case 'rejected': return 'destructive';
-      case 'auto-approved': return 'outline';
+      case 'auto-approved': return 'secondary';
       default: return 'secondary';
     }
   };
@@ -60,19 +56,14 @@ export const ApprovalQueue = ({ pendingChanges, onApprove, onReject }: ApprovalQ
     return `${Math.floor(diffInHours / 24)}d ago`;
   };
 
-  const handleReject = (changeId: string) => {
-    if (!rejectionReason.trim()) {
-      toast({
-        title: "Rejection Reason Required",
-        description: "Please provide a reason for rejecting this change.",
-        variant: "destructive"
-      });
-      return;
+  const getStatusDescription = (status: string) => {
+    switch (status) {
+      case 'pending': return 'Awaiting owner approval';
+      case 'approved': return 'Approved by owner';
+      case 'rejected': return 'Rejected by owner';
+      case 'auto-approved': return 'Auto-approved within limits';
+      default: return status;
     }
-    
-    onReject(changeId, rejectionReason);
-    setRejectionReason('');
-    setSelectedChange(null);
   };
 
   return (
@@ -81,8 +72,10 @@ export const ApprovalQueue = ({ pendingChanges, onApprove, onReject }: ApprovalQ
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-amber-600">{pendingChanges.length}</div>
-            <div className="text-sm text-muted-foreground">Pending Reviews</div>
+            <div className="text-2xl font-bold text-orange-600">
+              {pendingChanges.filter(c => c.status === 'pending').length}
+            </div>
+            <div className="text-sm text-muted-foreground">Pending Approval</div>
           </CardContent>
         </Card>
         <Card>
@@ -96,38 +89,38 @@ export const ApprovalQueue = ({ pendingChanges, onApprove, onReject }: ApprovalQ
         <Card>
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold text-green-600">
-              {pendingChanges.filter(c => c.changeAmount > 0).length}
+              {pendingChanges.filter(c => c.status === 'approved' || c.status === 'auto-approved').length}
             </div>
-            <div className="text-sm text-muted-foreground">Price Increases</div>
+            <div className="text-sm text-muted-foreground">Approved</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-blue-600">
-              {formatTimeAgo(pendingChanges.sort((a, b) => new Date(a.requestedAt).getTime() - new Date(b.requestedAt).getTime())[0]?.requestedAt || new Date().toISOString())}
+            <div className="text-2xl font-bold text-red-600">
+              {pendingChanges.filter(c => c.status === 'rejected').length}
             </div>
-            <div className="text-sm text-muted-foreground">Oldest Request</div>
+            <div className="text-sm text-muted-foreground">Rejected</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Pending Changes List */}
+      {/* My Requests List */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5" />
-            Pending Price Changes
+            My Price Change Requests
           </CardTitle>
           <CardDescription>
-            Review and approve pricing changes submitted by managers within delegation limits
+            Track your pricing change requests and their approval status
           </CardDescription>
         </CardHeader>
         <CardContent>
           {pendingChanges.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
               <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium">All caught up!</p>
-              <p>No pending price changes require your review.</p>
+              <p className="text-lg font-medium">No Requests</p>
+              <p>You haven't submitted any pricing changes yet.</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -147,11 +140,17 @@ export const ApprovalQueue = ({ pendingChanges, onApprove, onReject }: ApprovalQ
                             {priority} priority
                           </Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground capitalize">
-                          {change.serviceType.replace('-', ' ')} • Requested by {change.requestedBy}
-                        </p>
+                        <div className="text-sm text-muted-foreground flex items-center gap-4">
+                          <span className="flex items-center gap-1 capitalize">
+                            {change.serviceType.replace('-', ' ')}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            {getStatusDescription(change.status)}
+                          </span>
+                        </div>
                         <p className="text-xs text-muted-foreground">
-                          {formatTimeAgo(change.requestedAt)} • Effective {new Date(change.effectiveDate).toLocaleDateString()}
+                          Submitted {formatTimeAgo(change.requestedAt)} • Effective {new Date(change.effectiveDate).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
@@ -188,12 +187,31 @@ export const ApprovalQueue = ({ pendingChanges, onApprove, onReject }: ApprovalQ
                       </div>
                     </div>
 
-                    {/* Delegation Alert */}
-                    {priority === 'high' && (
+                    {/* Status-specific messaging */}
+                    {change.status === 'pending' && (
                       <Alert>
-                        <AlertCircle className="h-4 w-4" />
+                        <Clock className="h-4 w-4" />
                         <AlertDescription>
-                          This change significantly exceeds normal delegation limits and requires careful review.
+                          Your request is awaiting owner approval. You'll be notified once it's reviewed.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    {change.status === 'rejected' && change.rejectionReason && (
+                      <Alert variant="destructive">
+                        <XCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          <div className="font-medium">Rejected:</div>
+                          <div className="mt-1">{change.rejectionReason}</div>
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    {change.status === 'auto-approved' && (
+                      <Alert>
+                        <CheckCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          This change was automatically approved as it falls within your delegation limits.
                         </AlertDescription>
                       </Alert>
                     )}
@@ -202,99 +220,82 @@ export const ApprovalQueue = ({ pendingChanges, onApprove, onReject }: ApprovalQ
                     <div className="flex justify-between items-center pt-2 border-t">
                       <Dialog>
                         <DialogTrigger asChild>
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" onClick={() => setSelectedChange(change)}>
                             <Eye className="h-4 w-4 mr-2" />
-                            View Details
+                            View Status
                           </Button>
                         </DialogTrigger>
                         <DialogContent>
                           <DialogHeader>
-                            <DialogTitle>Price Change Details</DialogTitle>
+                            <DialogTitle>Request Status Details</DialogTitle>
                             <DialogDescription>
                               Complete information for {change.itemName}
                             </DialogDescription>
                           </DialogHeader>
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                              <div>
-                                <div className="font-medium">Request ID:</div>
-                                <div className="text-muted-foreground">{change.id}</div>
-                              </div>
-                              <div>
-                                <div className="font-medium">Service Type:</div>
-                                <div className="text-muted-foreground capitalize">{change.serviceType.replace('-', ' ')}</div>
-                              </div>
-                              <div>
-                                <div className="font-medium">Requested By:</div>
-                                <div className="text-muted-foreground">{change.requestedBy}</div>
-                              </div>
-                              <div>
-                                <div className="font-medium">Request Date:</div>
-                                <div className="text-muted-foreground">{new Date(change.requestedAt).toLocaleString()}</div>
-                              </div>
-                            </div>
-                            {change.roomType && change.roomType.length > 0 && (
-                              <div>
-                                <div className="font-medium text-sm">Room Type Restrictions:</div>
-                                <div className="flex gap-2 mt-1">
-                                  {change.roomType.map(type => (
-                                    <Badge key={type} variant="outline">{type}</Badge>
-                                  ))}
+                          {selectedChange && (
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                  <div className="font-medium">Request ID:</div>
+                                  <div className="text-muted-foreground">{selectedChange.id}</div>
+                                </div>
+                                <div>
+                                  <div className="font-medium">Service Type:</div>
+                                  <div className="text-muted-foreground capitalize">{selectedChange.serviceType.replace('-', ' ')}</div>
+                                </div>
+                                <div>
+                                  <div className="font-medium">Current Status:</div>
+                                  <div className="text-muted-foreground">
+                                    <Badge variant={getStatusColor(selectedChange.status)}>
+                                      {selectedChange.status}
+                                    </Badge>
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="font-medium">Submitted Date:</div>
+                                  <div className="text-muted-foreground">{new Date(selectedChange.requestedAt).toLocaleString()}</div>
+                                </div>
+                                <div>
+                                  <div className="font-medium">Effective Date:</div>
+                                  <div className="text-muted-foreground">{new Date(selectedChange.effectiveDate).toLocaleDateString()}</div>
+                                </div>
+                                <div>
+                                  <div className="font-medium">Priority Level:</div>
+                                  <div className="text-muted-foreground">
+                                    <Badge variant="outline" className={getPriorityColor(getPriorityLevel(selectedChange))}>
+                                      {getPriorityLevel(selectedChange)}
+                                    </Badge>
+                                  </div>
                                 </div>
                               </div>
-                            )}
-                          </div>
+                              {selectedChange.roomType && selectedChange.roomType.length > 0 && (
+                                <div>
+                                  <div className="font-medium text-sm">Room Type Restrictions:</div>
+                                  <div className="flex gap-2 mt-1">
+                                    {selectedChange.roomType.map(type => (
+                                      <Badge key={type} variant="outline">{type}</Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {selectedChange.rejectionReason && (
+                                <div>
+                                  <div className="font-medium text-sm">Rejection Reason:</div>
+                                  <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md mt-1">
+                                    {selectedChange.rejectionReason}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </DialogContent>
                       </Dialog>
 
-                      <div className="flex gap-2">
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => setSelectedChange(change)}
-                            >
-                              <XCircle className="h-4 w-4 mr-2" />
-                              Reject
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Reject Price Change</DialogTitle>
-                              <DialogDescription>
-                                Please provide a reason for rejecting this change
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                              <Textarea
-                                value={rejectionReason}
-                                onChange={(e) => setRejectionReason(e.target.value)}
-                                placeholder="Explain why this change is being rejected..."
-                                rows={3}
-                              />
-                              <div className="flex justify-end gap-2">
-                                <Button variant="outline" onClick={() => setRejectionReason('')}>
-                                  Cancel
-                                </Button>
-                                <Button 
-                                  variant="destructive" 
-                                  onClick={() => handleReject(change.id)}
-                                >
-                                  Reject Change
-                                </Button>
-                              </div>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-
-                        <Button 
-                          size="sm"
-                          onClick={() => onApprove(change.id)}
-                        >
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Approve
-                        </Button>
+                      <div className="text-sm text-muted-foreground">
+                        {change.status === 'pending' && 'Waiting for owner approval...'}
+                        {change.status === 'approved' && `Approved ${change.approvedAt ? formatTimeAgo(change.approvedAt) : ''}`}
+                        {change.status === 'rejected' && 'Request denied'}
+                        {change.status === 'auto-approved' && 'Applied automatically'}
                       </div>
                     </div>
                   </div>

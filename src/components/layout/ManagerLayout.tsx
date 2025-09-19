@@ -9,13 +9,15 @@ import {
   Bell,
   Bed,
   Settings,
-  QrCode
+  QrCode,
+  CheckCircle
 } from 'lucide-react';
 import UnifiedDashboardLayout from './UnifiedDashboardLayout';
 
 const navigation = [
   { name: 'Overview', href: '/manager-dashboard/dashboard', icon: Home },
   { name: 'Operations', href: '/manager-dashboard/operations', icon: Activity },
+  { name: 'Approvals', href: '/manager-dashboard/approvals', icon: CheckCircle },
   { name: 'Room Status', href: '/manager-dashboard/rooms', icon: Bed },
   { name: 'Service Requests', href: '/manager-dashboard/requests', icon: Bell },
   { name: 'Staff Management', href: '/manager-dashboard/staff', icon: Users },

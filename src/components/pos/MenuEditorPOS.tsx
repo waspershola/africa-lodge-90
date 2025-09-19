@@ -37,6 +37,17 @@ export default function MenuEditorPOS() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false);
+  const [newItem, setNewItem] = useState<Partial<MenuItem>>({
+    name: '',
+    category: '',
+    description: '',
+    base_price: 0,
+    prep_time_mins: 15,
+    available: true,
+    inventory_tracked: false,
+    stations: []
+  });
   const [approvalRequests, setApprovalRequests] = useState<ApprovalRequest[]>([]);
   const [selectedApproval, setSelectedApproval] = useState<ApprovalRequest | null>(null);
 
@@ -128,6 +139,57 @@ export default function MenuEditorPOS() {
     }
   };
 
+  const handleAddNewItem = async () => {
+    if (!newItem.name || !newItem.category || newItem.base_price <= 0) {
+      toast({
+        title: "Invalid Item",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Create approval request for new item
+    const approvalRequest: ApprovalRequest = {
+      id: `req-${Date.now()}`,
+      type: 'new_item',
+      requestor_id: user?.id || '',
+      requestor_name: user?.name || '',
+      entity_id: 'new',
+      entity_name: newItem.name,
+      current_value: null,
+      requested_value: {
+        ...newItem,
+        id: `item-${Date.now()}`,
+        tenant_id: 'current-tenant'
+      },
+      reason: `Staff request to add new menu item: ${newItem.name}`,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+      urgency: 'medium'
+    };
+    
+    setApprovalRequests(prev => [...prev, approvalRequest]);
+    
+    toast({
+      title: "New Item Request Submitted",
+      description: "Your request to add this menu item has been sent to a manager for approval.",
+    });
+    
+    // Reset form
+    setNewItem({
+      name: '',
+      category: '',
+      description: '',
+      base_price: 0,
+      prep_time_mins: 15,
+      available: true,
+      inventory_tracked: false,
+      stations: []
+    });
+    setIsAddItemDialogOpen(false);
+  };
+
   // Stats
   const totalItems = menuItems.length;
   const availableItems = menuItems.filter(item => item.available).length;
@@ -144,10 +206,10 @@ export default function MenuEditorPOS() {
             Manage menu items, availability, and pricing
           </p>
         </div>
-        <ProtectedButton requiredRole={['manager', 'owner']}>
+        <Button onClick={() => setIsAddItemDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Add New Item
-        </ProtectedButton>
+        </Button>
       </div>
 
       {/* Stats */}
@@ -336,6 +398,116 @@ export default function MenuEditorPOS() {
           </CardContent>
         </Card>
       )}
+
+      {/* Add New Item Dialog */}
+      <Dialog open={isAddItemDialogOpen} onOpenChange={setIsAddItemDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add New Menu Item</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-name">Item Name *</Label>
+                <Input
+                  id="new-name"
+                  value={newItem.name}
+                  onChange={(e) => setNewItem({...newItem, name: e.target.value})}
+                  placeholder="Enter item name"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="new-category">Category *</Label>
+                <Input
+                  id="new-category"
+                  value={newItem.category}
+                  onChange={(e) => setNewItem({...newItem, category: e.target.value})}
+                  placeholder="e.g., Appetizers, Main Course"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="new-description">Description</Label>
+              <Textarea
+                id="new-description"
+                value={newItem.description || ''}
+                onChange={(e) => setNewItem({...newItem, description: e.target.value})}
+                placeholder="Describe the menu item..."
+                rows={3}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-price">Price (in kobo) *</Label>
+                <Input
+                  id="new-price"
+                  type="number"
+                  value={newItem.base_price}
+                  onChange={(e) => setNewItem({...newItem, base_price: parseInt(e.target.value) || 0})}
+                  placeholder="e.g., 2500 for ₦25.00"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="new-prep-time">Prep Time (minutes)</Label>
+                <Input
+                  id="new-prep-time"
+                  type="number"
+                  value={newItem.prep_time_mins}
+                  onChange={(e) => setNewItem({...newItem, prep_time_mins: parseInt(e.target.value) || 0})}
+                  placeholder="e.g., 15"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="new-stations">Kitchen Stations (comma separated)</Label>
+              <Input
+                id="new-stations"
+                value={newItem.stations?.join(', ') || ''}
+                onChange={(e) => setNewItem({
+                  ...newItem, 
+                  stations: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
+                })}
+                placeholder="e.g., grill, cold, bar"
+              />
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="new-available"
+                  checked={newItem.available}
+                  onCheckedChange={(checked) => setNewItem({...newItem, available: checked})}
+                />
+                <Label htmlFor="new-available">Available for ordering</Label>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="new-inventory-tracked"
+                  checked={newItem.inventory_tracked}
+                  onCheckedChange={(checked) => setNewItem({...newItem, inventory_tracked: checked})}
+                />
+                <Label htmlFor="new-inventory-tracked">Track inventory</Label>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setIsAddItemDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleAddNewItem} disabled={isLoading}>
+                Submit for Approval
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

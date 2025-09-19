@@ -14,13 +14,14 @@ import {
   X, 
   User,
   DollarSign,
-  FileText
+  FileText,
+  Plus
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export interface ApprovalRequest {
   id: string;
-  type: 'price_change' | 'void_order' | 'menu_availability' | 'refund';
+  type: 'price_change' | 'void_order' | 'menu_availability' | 'refund' | 'new_item';
   requestor_id: string;
   requestor_name: string;
   entity_id: string;
@@ -62,6 +63,7 @@ export default function ApprovalDialog({
       case 'void_order': return <X className="h-5 w-5 text-red-500" />;
       case 'menu_availability': return <FileText className="h-5 w-5 text-blue-500" />;
       case 'refund': return <DollarSign className="h-5 w-5 text-orange-500" />;
+      case 'new_item': return <Plus className="h-5 w-5 text-purple-500" />;
       default: return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
     }
   };
@@ -127,6 +129,9 @@ export default function ApprovalDialog({
     if (type === 'price_change' && typeof value === 'number') {
       return `₦${(value / 100).toFixed(2)}`;
     }
+    if (type === 'new_item' && typeof value === 'object') {
+      return JSON.stringify(value, null, 2);
+    }
     return String(value);
   };
 
@@ -188,21 +193,39 @@ export default function ApprovalDialog({
               <CardTitle className="text-lg">Requested Changes</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <Label className="text-sm font-medium text-red-700">Current Value</Label>
-                  <p className="mt-1 font-mono text-red-900">
-                    {formatValue(request.current_value, request.type)}
-                  </p>
-                </div>
-                
+              {request.type === 'new_item' ? (
                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <Label className="text-sm font-medium text-green-700">Requested Value</Label>
-                  <p className="mt-1 font-mono text-green-900">
-                    {formatValue(request.requested_value, request.type)}
-                  </p>
+                  <Label className="text-sm font-medium text-green-700">New Item Details</Label>
+                  <div className="mt-2 space-y-2">
+                    <div><strong>Name:</strong> {request.requested_value?.name}</div>
+                    <div><strong>Category:</strong> {request.requested_value?.category}</div>
+                    <div><strong>Price:</strong> ₦{((request.requested_value?.base_price || 0) / 100).toFixed(2)}</div>
+                    <div><strong>Prep Time:</strong> {request.requested_value?.prep_time_mins} minutes</div>
+                    {request.requested_value?.description && (
+                      <div><strong>Description:</strong> {request.requested_value.description}</div>
+                    )}
+                    {request.requested_value?.stations?.length > 0 && (
+                      <div><strong>Stations:</strong> {request.requested_value.stations.join(', ')}</div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <Label className="text-sm font-medium text-red-700">Current Value</Label>
+                    <p className="mt-1 font-mono text-red-900">
+                      {formatValue(request.current_value, request.type)}
+                    </p>
+                  </div>
+                  
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <Label className="text-sm font-medium text-green-700">Requested Value</Label>
+                    <p className="mt-1 font-mono text-green-900">
+                      {formatValue(request.requested_value, request.type)}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Price change specific info */}
               {request.type === 'price_change' && (

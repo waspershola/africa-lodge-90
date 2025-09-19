@@ -50,6 +50,7 @@ import ManagerReceiptControl from "./pages/manager/ReceiptControl";
 import ManagerEventsPackages from "./pages/manager/EventsPackages";
 import ManagerCompliance from "./pages/manager/Compliance";
 import ManagerQRManagement from "./pages/manager/QRManagement";
+import ManagerApprovals from "./pages/manager/Approvals";
 import HousekeepingDashboard from "./pages/housekeeping/Dashboard";
 import HousekeepingTasks from "./pages/housekeeping/Tasks";
 import HousekeepingAmenities from "./pages/housekeeping/Amenities";
@@ -109,6 +110,7 @@ const App = () => (
             <Route index element={<ManagerDashboard />} />
             <Route path="dashboard" element={<ManagerDashboard />} />
             <Route path="operations" element={<ManagerOperations />} />
+            <Route path="approvals" element={<ManagerApprovals />} />
             <Route path="rooms" element={<ManagerRoomStatus />} />
             <Route path="requests" element={<ManagerServiceRequests />} />
             <Route path="staff" element={<ManagerStaffManagement />} />

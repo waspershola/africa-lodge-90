@@ -14,8 +14,11 @@ import {
   Receipt, 
   DollarSign,
   Calculator,
-  CheckCircle
+  CheckCircle,
+  Settings
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import RoleGuard, { ProtectedButton } from './RoleGuard';
 import { usePOSApi, type Order } from '@/hooks/usePOSApi';
 import { useToast } from '@/hooks/use-toast';
 
@@ -27,6 +30,7 @@ interface PaymentDrawerProps {
 export default function PaymentDrawer({ order, trigger }: PaymentDrawerProps) {
   const { processPayment } = usePOSApi();
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'room_folio' | 'card' | 'cash'>('room_folio');
   const [cashReceived, setCashReceived] = useState<string>('');
@@ -194,6 +198,15 @@ export default function PaymentDrawer({ order, trigger }: PaymentDrawerProps) {
                   </Label>
                 </div>
               </RadioGroup>
+
+              <RoleGuard requiredRole={['manager', 'owner']}>
+                <div className="mt-4 pt-4 border-t">
+                  <Button variant="outline" className="w-full">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Configure Payment Methods
+                  </Button>
+                </div>
+              </RoleGuard>
 
               {/* Cash Amount Input */}
               {paymentMethod === 'cash' && (

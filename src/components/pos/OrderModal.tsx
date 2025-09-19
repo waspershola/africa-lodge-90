@@ -253,9 +253,9 @@ export default function OrderModal({ order, onStatusUpdate, isLoading }: OrderMo
             )}
             
             {canStartDelivery && (
-              <Button onClick={() => handleStatusUpdate('out_for_delivery')} disabled={isLoading}>
+              <Button onClick={() => handleStatusUpdate('delivered')} disabled={isLoading}>
                 <User className="h-4 w-4 mr-2" />
-                Start Delivery
+                Mark Delivered
               </Button>
             )}
             

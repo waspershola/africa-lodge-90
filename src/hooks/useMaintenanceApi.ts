@@ -19,12 +19,13 @@ export interface WorkOrder {
   estimated_cost?: number;
   actual_cost?: number;
   completion_notes?: string;
+  tenant_id?: string;
   // Legacy properties for compatibility
-  workOrderNumber: string;
+  workOrderNumber?: string;
   roomId?: string;
-  issue: string;
+  issue?: string;
   assignedTo?: string;
-  createdAt: string;
+  createdAt?: string;
   estimatedTime?: number;
 }
 
@@ -105,35 +106,30 @@ const mockWorkOrders: WorkOrder[] = [
   },
   {
     id: 'wo-002',
-    workOrderNumber: 'WO-POOL-07',
-    facility: 'Swimming Pool',
-    issue: 'Pool pump fault',
+    work_order_number: 'WO-POOL-07',
+    title: 'Pool pump fault',
     description: 'Pool pump making unusual noise and reduced water circulation',
-    source: 'manual',
-    priority: 'critical',
+    category: 'mechanical',
+    priority: 'high',
     status: 'pending',
-    createdAt: '2024-01-19T10:15:00Z',
-    updatedAt: '2024-01-19T10:15:00Z',
-    estimatedTime: 120
+    created_at: '2024-01-19T10:15:00Z',
+    updated_at: '2024-01-19T10:15:00Z',
+    estimated_hours: 2,
+    tenant_id: 'hotel-1'
   },
   {
     id: 'wo-003',
-    workOrderNumber: 'WO308-02',
-    roomId: '308',
-    issue: 'Shower leaking',
+    work_order_number: 'WO308-02',
+    room_id: '308',
+    title: 'Shower leaking',
     description: 'Water dripping from shower head even when turned off',
-    source: 'guest-qr',
+    category: 'plumbing',
     priority: 'medium',
     status: 'completed',
-    assignedTo: 'John Martinez',
-    createdAt: '2024-01-19T07:00:00Z',
-    updatedAt: '2024-01-19T08:30:00Z',
-    completedAt: '2024-01-19T08:30:00Z',
-    actualTime: 30,
-    partsUsed: [
-      { partId: 'valve-001', partName: 'Shower Valve Washer', quantity: 1, cost: 5.50 }
-    ],
-    notes: 'Replaced worn valve washer. Tested for 10 minutes - no leaks.'
+    assigned_to: 'john-martinez',
+    created_at: '2024-01-19T07:00:00Z',
+    updated_at: '2024-01-19T08:30:00Z',
+    tenant_id: 'hotel-1'
   }
 ];
 
@@ -312,13 +308,13 @@ export function useMaintenanceApi() {
       const newWorkOrder: WorkOrder = {
         id: `wo-${Date.now()}`,
         workOrderNumber: `WO${workOrderData.roomId || 'FAC'}-${String(workOrders.length + 1).padStart(2, '0')}`,
-        issue: workOrderData.issue || '',
+        title: workOrderData.title || 'New Work Order',
         description: workOrderData.description,
-        source: workOrderData.source || 'manual',
+        category: workOrderData.category || 'general',
         priority: workOrderData.priority || 'medium',
         status: 'pending',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         estimatedTime: workOrderData.estimatedTime,
         ...workOrderData
       };

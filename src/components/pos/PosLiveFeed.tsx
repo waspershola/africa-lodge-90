@@ -93,7 +93,7 @@ export default function PosLiveFeed() {
       });
       return;
     }
-    await acceptOrder(orderId, user?.name || 'Current Staff');
+    await acceptOrder(orderId);
   };
 
   const priorityOrders = orders.filter(order => 
@@ -221,12 +221,11 @@ export default function PosLiveFeed() {
           <TabsTrigger value="pending">Pending ({stats.pendingOrders})</TabsTrigger>
           <TabsTrigger value="preparing">Kitchen ({stats.preparingOrders})</TabsTrigger>
           <TabsTrigger value="ready">Ready ({stats.readyOrders})</TabsTrigger>
-          <TabsTrigger value="out_for_delivery">Out ({orders.filter(o => o.status === 'out_for_delivery').length})</TabsTrigger>
-          <TabsTrigger value="delivered">Complete</TabsTrigger>
+          <TabsTrigger value="delivered">Delivered</TabsTrigger>
           <TabsTrigger value="all">All Orders</TabsTrigger>
         </TabsList>
 
-        {['pending', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'all'].map(tabStatus => (
+        {['pending', 'preparing', 'ready', 'delivered', 'all'].map(tabStatus => (
           <TabsContent key={tabStatus} value={tabStatus} className="mt-6">
             <ScrollArea className="h-[600px]">
               <div className="grid gap-4">
@@ -318,14 +317,14 @@ export default function PosLiveFeed() {
                           {order.status === 'ready' && (
                             <Button 
                               size="sm"
-                              onClick={() => updateOrderStatus(order.id, 'out_for_delivery')}
+                              onClick={() => updateOrderStatus(order.id, 'delivered')}
                               disabled={isLoading}
                             >
-                              Start Delivery
+                              Mark Delivered
                             </Button>
                           )}
 
-                          {order.status === 'out_for_delivery' && (
+                          {order.status === 'ready' && (
                             <Button 
                               size="sm"
                               onClick={() => updateOrderStatus(order.id, 'delivered')}

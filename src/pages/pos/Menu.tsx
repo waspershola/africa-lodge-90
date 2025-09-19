@@ -33,14 +33,14 @@ export default function MenuManagementPage() {
   const filteredItems = menuItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
+    const matchesCategory = categoryFilter === 'all' || item.category_id === categoryFilter;
     return matchesSearch && matchesCategory;
   });
 
-  const categories = [...new Set(menuItems.map(item => item.category))];
+  const categories = [...new Set(menuItems.map(item => item.category_id))];
 
   const handleToggleAvailability = async (itemId: string, available: boolean) => {
-    await updateMenuItem(itemId, { available });
+    await updateMenuItem(itemId, { is_available: available });
   };
 
   const handleEditItem = (item: MenuItem) => {

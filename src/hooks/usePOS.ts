@@ -17,6 +17,13 @@ export interface MenuItem {
   image_url?: string;
   created_at?: string;
   updated_at?: string;
+  // Legacy compatibility
+  category?: string;
+  base_price?: number;
+  prep_time_mins?: number;
+  stations?: string[];
+  inventory_tracked?: boolean;
+  available?: boolean;
 }
 
 export interface MenuCategory {
@@ -30,16 +37,26 @@ export interface MenuCategory {
 }
 
 export interface OrderItem {
-  id: string;
-  order_id: string;
+  id?: string;
+  order_id?: string;
   menu_item_id: string;
   item_name: string;
   item_price: number;
   quantity: number;
   line_total?: number;
   special_requests?: string;
-  tenant_id: string;
+  tenant_id?: string;
   created_at?: string;
+  // Legacy compatibility
+  menu_item?: MenuItem;
+  qty?: number;
+  modifiers?: Array<{
+    id: string;
+    name: string;
+    price_delta: number;
+  }>;
+  notes?: string;
+  subtotal?: number;
 }
 
 export interface Order {
@@ -63,6 +80,15 @@ export interface Order {
   folio_id?: string;
   created_at?: string;
   updated_at?: string;
+  // Additional properties for component compatibility
+  source: 'qr' | 'walkin' | 'phone';
+  guest_name: string;
+  items: OrderItem[];
+  payment_status: 'unpaid' | 'charged' | 'paid';
+  notes?: string;
+  eta_minutes?: number;
+  assigned_staff?: string;
+  guest_id?: string;
 }
 
 export interface KitchenTicket {
@@ -154,7 +180,34 @@ export function usePOSApi() {
         served_by: order.served_by,
         folio_id: order.folio_id,
         created_at: order.created_at,
-        updated_at: order.updated_at
+        updated_at: order.updated_at,
+        // Legacy compatibility mapping
+        source: order.order_type === 'room_service' ? 'qr' as const : 'walkin' as const,
+        guest_name: order.room_id ? `Room ${order.room_id}` : 'Walk-in Customer',
+        items: (order.items || []).map((item: any) => ({
+          menu_item_id: item.menu_item_id,
+          menu_item: {
+            id: item.menu_item_id,
+            tenant_id: order.tenant_id,
+            category_id: 'default',
+            name: item.item_name,
+            price: item.item_price,
+            is_available: true,
+            preparation_time: 15,
+          } as MenuItem,
+          qty: item.quantity,
+          quantity: item.quantity,
+          modifiers: [],
+          subtotal: item.line_total || (item.quantity * item.item_price),
+          item_name: item.item_name,
+          item_price: item.item_price,
+          line_total: item.line_total
+        })),
+        payment_status: 'unpaid' as const,
+        notes: order.special_instructions,
+        eta_minutes: 25,
+        assigned_staff: order.prepared_by || 'Kitchen Staff',
+        guest_id: order.room_id || 'walk-in'
       }));
       
       setOrders(processedOrders);
@@ -184,7 +237,10 @@ export function usePOSApi() {
 
       if (error) throw error;
 
-      setMenuItems(data || []);
+      setMenuItems((data || []).map(item => ({
+        ...item,
+        category: item.category?.name || 'Uncategorized'
+      })));
     } catch (err: any) {
       console.error('Failed to load menu items:', err);
     }

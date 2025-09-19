@@ -49,11 +49,11 @@ export interface Order {
   served_by?: string;
   prepared_by?: string;
   taken_by?: string;
-  // Legacy compatibility properties
-  source?: 'qr' | 'walkin' | 'phone';
-  guest_name?: string;
-  items?: OrderItem[];
-  payment_status?: 'unpaid' | 'charged' | 'paid';
+  // Additional properties for component compatibility
+  source: 'qr' | 'walkin' | 'phone';
+  guest_name: string;
+  items: OrderItem[];
+  payment_status: 'unpaid' | 'charged' | 'paid';
   notes?: string;
   eta_minutes?: number;
   assigned_staff?: string;
@@ -137,7 +137,22 @@ const mockOrders: Order[] = [
     total_amount: 3900,
     created_at: '2024-01-19T14:30:00Z',
     updated_at: '2024-01-19T14:30:00Z',
-    special_instructions: 'Please deliver to room 205'
+    special_instructions: 'Please deliver to room 205',
+    source: 'qr',
+    guest_name: 'John Doe',
+    items: [
+      {
+        menu_item_id: 'menu-001',
+        menu_item: mockMenuItems[0],
+        qty: 1,
+        modifiers: [],
+        subtotal: 2500
+      }
+    ],
+    payment_status: 'unpaid',
+    eta_minutes: 25,
+    assigned_staff: 'Staff Member',
+    guest_id: 'guest-001'
   },
   {
     id: 'ord-002',
@@ -149,7 +164,22 @@ const mockOrders: Order[] = [
     total_amount: 3600,
     created_at: '2024-01-19T13:45:00Z',
     updated_at: '2024-01-19T14:00:00Z',
-    prepared_by: 'Chef Mike'
+    prepared_by: 'Chef Mike',
+    source: 'walkin',
+    guest_name: 'Jane Smith',
+    items: [
+      {
+        menu_item_id: 'menu-002',
+        menu_item: mockMenuItems[1],
+        qty: 2,
+        modifiers: [],
+        subtotal: 2400
+      }
+    ],
+    payment_status: 'charged',
+    eta_minutes: 15,
+    assigned_staff: 'Kitchen Staff',
+    guest_id: 'guest-002'
   }
 ];
 
@@ -188,7 +218,20 @@ export function usePOSApi() {
           subtotal: mockMenuItems[0].base_price,
           total_amount: mockMenuItems[0].base_price,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          source: Math.random() > 0.5 ? 'qr' : 'walkin',
+          guest_name: 'Guest ' + Math.floor(Math.random() * 100),
+          items: [{
+            menu_item_id: mockMenuItems[0].id,
+            menu_item: mockMenuItems[0],
+            qty: 1,
+            modifiers: [],
+            subtotal: mockMenuItems[0].base_price
+          }],
+          payment_status: 'unpaid',
+          eta_minutes: Math.floor(Math.random() * 30) + 15,
+          assigned_staff: 'Kitchen Staff',
+          guest_id: 'guest-' + Date.now()
         };
         
         setOrders(prev => [newOrder, ...prev]);

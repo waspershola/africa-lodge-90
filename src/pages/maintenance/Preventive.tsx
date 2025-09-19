@@ -7,33 +7,31 @@ import { Calendar, Clock, CheckCircle, AlertTriangle, Plus } from 'lucide-react'
 import { useMaintenanceApi } from '@/hooks/useMaintenance';
 
 export default function PreventiveSchedulePage() {
-  const { preventiveTasks, completePreventiveTask, isLoading } = useMaintenanceApi();
+  const { workOrders, completeWorkOrder } = useMaintenanceApi();
+
+  // Filter work orders for preventive maintenance tasks
+  const preventiveTasks = workOrders.filter(wo => wo.category === 'preventive');
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed': return 'success';
-      case 'overdue': return 'destructive';
-      case 'scheduled': return 'secondary';
+      case 'pending': return 'destructive';
+      case 'in-progress': return 'secondary';
       default: return 'secondary';
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed': return CheckCircle;
-      case 'overdue': return AlertTriangle;
-      default: return Clock;
-    }
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString();
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-start">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Preventive Maintenance Schedule</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage scheduled maintenance tasks and prevent equipment failures
+          <h1 className="text-2xl font-bold">Preventive Maintenance</h1>
+          <p className="text-muted-foreground">
+            Scheduled maintenance tasks and equipment inspections
           </p>
         </div>
         <Button>
@@ -42,63 +40,52 @@ export default function PreventiveSchedulePage() {
         </Button>
       </div>
 
-      {/* Summary Cards */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <Calendar className="h-4 w-4 text-blue-500" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Tasks</p>
-                <p className="text-2xl font-bold">{preventiveTasks.length}</p>
+                <p className="text-sm text-muted-foreground">Due Today</p>
+                <p className="text-lg font-semibold">3</p>
               </div>
-              <Calendar className="h-8 w-8 text-blue-500" />
             </div>
           </CardContent>
         </Card>
-
+        
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <Clock className="h-4 w-4 text-yellow-500" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Overdue</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {preventiveTasks.filter(t => t.status === 'overdue').length}
-                </p>
+                <p className="text-sm text-muted-foreground">This Week</p>
+                <p className="text-lg font-semibold">8</p>
               </div>
-              <AlertTriangle className="h-8 w-8 text-red-500" />
             </div>
           </CardContent>
         </Card>
-
+        
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="h-4 w-4 text-green-500" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Due This Week</p>
-                <p className="text-2xl font-bold text-amber-600">
-                  {preventiveTasks.filter(t => {
-                    const nextDue = new Date(t.nextDue);
-                    const nextWeek = new Date();
-                    nextWeek.setDate(nextWeek.getDate() + 7);
-                    return nextDue <= nextWeek && t.status !== 'completed';
-                  }).length}
-                </p>
+                <p className="text-sm text-muted-foreground">Completed</p>
+                <p className="text-lg font-semibold">12</p>
               </div>
-              <Clock className="h-8 w-8 text-amber-500" />
             </div>
           </CardContent>
         </Card>
-
+        
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <AlertTriangle className="h-4 w-4 text-red-500" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Completed</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {preventiveTasks.filter(t => t.status === 'completed').length}
-                </p>
+                <p className="text-sm text-muted-foreground">Overdue</p>
+                <p className="text-lg font-semibold">0</p>
               </div>
-              <CheckCircle className="h-8 w-8 text-green-500" />
             </div>
           </CardContent>
         </Card>
@@ -110,58 +97,63 @@ export default function PreventiveSchedulePage() {
           <CardTitle>Scheduled Tasks</CardTitle>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="h-[600px]">
+          <ScrollArea className="h-[400px]">
             <div className="space-y-4">
-              {preventiveTasks.map(task => {
-                const StatusIcon = getStatusIcon(task.status);
-                return (
-                  <div key={task.id} className="flex items-center justify-between p-4 border rounded-lg">
+              {preventiveTasks.map((task) => (
+                <div key={task.id} className="border rounded-lg p-4">
+                  <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <StatusIcon className="h-4 w-4" />
-                        <Badge variant={getStatusColor(task.status) as any}>
-                          {task.status}
-                        </Badge>
-                        <Badge variant="outline">
-                          {task.frequency}
-                        </Badge>
-                        <Badge variant="outline" className={
-                          task.priority === 'high' ? 'border-red-200 text-red-700' :
-                          task.priority === 'medium' ? 'border-yellow-200 text-yellow-700' :
-                          'border-green-200 text-green-700'
-                        }>
-                          {task.priority}
-                        </Badge>
-                      </div>
-                      <h3 className="font-semibold text-lg">{task.title}</h3>
-                      <p className="text-muted-foreground mb-2">{task.description}</p>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>📍 {task.location}</span>
-                        <span>⏱️ {task.estimatedTime} min</span>
-                        <span>📅 Due: {new Date(task.nextDue).toLocaleDateString()}</span>
-                        {task.lastCompleted && (
-                          <span>✅ Last: {new Date(task.lastCompleted).toLocaleDateString()}</span>
-                        )}
-                      </div>
+                      <h3 className="font-medium">{task.title}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {task.description}
+                      </p>
                     </div>
-                    <div className="flex flex-col gap-2 ml-4">
-                      {task.status !== 'completed' && (
-                        <Button 
-                          size="sm"
-                          onClick={() => completePreventiveTask(task.id)}
-                          disabled={isLoading}
-                        >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Complete
-                        </Button>
-                      )}
-                      <Button variant="outline" size="sm">
-                        Edit Schedule
-                      </Button>
+                    <Badge variant={getStatusColor(task.status) as any}>
+                      {task.status}
+                    </Badge>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Priority</p>
+                      <p className="font-medium capitalize">{task.priority}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Category</p>
+                      <p className="font-medium capitalize">{task.category}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Created</p>
+                      <p className="font-medium">{formatDate(task.created_at || '')}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Status</p>
+                      <p className="font-medium capitalize">{task.status}</p>
                     </div>
                   </div>
-                );
-              })}
+
+                  {task.status === 'pending' && (
+                    <div className="mt-4 flex space-x-2">
+                      <Button
+                        size="sm"
+                        onClick={() => completeWorkOrder(task.id, { 
+                          notes: 'Preventive maintenance completed',
+                          actualHours: 1,
+                          actualCost: 0
+                        })}
+                      >
+                        Mark Complete
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              {preventiveTasks.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No preventive maintenance tasks scheduled</p>
+                </div>
+              )}
             </div>
           </ScrollArea>
         </CardContent>

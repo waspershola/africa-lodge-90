@@ -101,7 +101,7 @@ export default function ApprovalsPage() {
   };
 
   return (
-    <RoleGuard requiredRole={['manager', 'owner']}>
+    <RoleGuard requiredRole={['staff', 'chef', 'manager', 'owner']}>
       <div className="p-6 space-y-6">
         {/* Header */}
         <div>

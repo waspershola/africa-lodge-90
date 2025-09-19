@@ -115,7 +115,6 @@ export default function SettingsPage() {
         <TabsList>
           <TabsTrigger value="printers">Printers</TabsTrigger>
           <TabsTrigger value="orders">Orders</TabsTrigger>
-          <TabsTrigger value="payments">Payments</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="kds">Kitchen Display</TabsTrigger>
         </TabsList>
@@ -373,113 +372,6 @@ export default function SettingsPage() {
                       })
                     }
                   />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Payment Settings */}
-        <TabsContent value="payments" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
-                Payment Configuration
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Payment Methods</h3>
-                  
-                  <div className="flex items-center justify-between">
-                    <Label>Room Folio Charges</Label>
-                    <Switch
-                      checked={settings.paymentSettings.enableRoomCharges}
-                      onCheckedChange={(checked) => 
-                        setSettings({
-                          ...settings,
-                          paymentSettings: { ...settings.paymentSettings, enableRoomCharges: checked }
-                        })
-                      }
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <Label>Cash Payments</Label>
-                    <Switch
-                      checked={settings.paymentSettings.enableCashPayments}
-                      onCheckedChange={(checked) => 
-                        setSettings({
-                          ...settings,
-                          paymentSettings: { ...settings.paymentSettings, enableCashPayments: checked }
-                        })
-                      }
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <Label>Card Payments</Label>
-                    <Switch
-                      checked={settings.paymentSettings.enableCardPayments}
-                      onCheckedChange={(checked) => 
-                        setSettings({
-                          ...settings,
-                          paymentSettings: { ...settings.paymentSettings, enableCardPayments: checked }
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Tax & Charges</h3>
-                  
-                  <div>
-                    <Label htmlFor="taxRate">Tax Rate (%)</Label>
-                    <Input
-                      id="taxRate"
-                      type="number"
-                      step="0.1"
-                      value={settings.paymentSettings.taxRate}
-                      onChange={(e) => 
-                        setSettings({
-                          ...settings,
-                          paymentSettings: { ...settings.paymentSettings, taxRate: Number(e.target.value) }
-                        })
-                      }
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="serviceCharge">Service Charge (%)</Label>
-                    <Input
-                      id="serviceCharge"
-                      type="number"
-                      step="0.1"
-                      value={settings.paymentSettings.serviceCharge}
-                      onChange={(e) => 
-                        setSettings({
-                          ...settings,
-                          paymentSettings: { ...settings.paymentSettings, serviceCharge: Number(e.target.value) }
-                        })
-                      }
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <Label>Auto Calculate Tax</Label>
-                    <Switch
-                      checked={settings.paymentSettings.autoCalculateTax}
-                      onCheckedChange={(checked) => 
-                        setSettings({
-                          ...settings,
-                          paymentSettings: { ...settings.paymentSettings, autoCalculateTax: checked }
-                        })
-                      }
-                    />
-                  </div>
                 </div>
               </div>
             </CardContent>

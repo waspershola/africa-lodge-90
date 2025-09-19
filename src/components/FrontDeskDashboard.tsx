@@ -32,7 +32,7 @@ import { NewReservationDialog } from "./frontdesk/NewReservationDialog";
 import { SearchDialog } from "./frontdesk/SearchDialog"; 
 import { PaymentDialog } from "./frontdesk/PaymentDialog";
 import { QuickGuestCapture } from "./frontdesk/QuickGuestCapture";
-import { QRCodeManager } from "./frontdesk/QRCodeManager";
+import { QRDirectoryFD } from "./frontdesk/QRDirectoryFD";
 import { StaffOpsPanel } from "./frontdesk/StaffOpsPanel";
 import { BillingOverviewFD } from "./frontdesk/BillingOverviewFD";
 import { HandoverPanel } from "./frontdesk/HandoverPanel";
@@ -441,7 +441,7 @@ const FrontDeskDashboard = () => {
             onClick={() => setActivePanel('qr-manager')}
             size="sm"
           >
-            QR Manager
+            QR Directory
           </Button>
         </div>
 
@@ -480,7 +480,7 @@ const FrontDeskDashboard = () => {
         )}
 
         {activePanel === 'qr-manager' && (
-          <QRCodeManager />
+          <QRDirectoryFD />
         )}
       </div>
 

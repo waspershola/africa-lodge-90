@@ -5,7 +5,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, LogIn, Mail, Lock } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
+import { ForgotPasswordDialog } from '@/components/auth/ForgotPasswordDialog';
 
 interface LoginFormProps {
   onSuccess?: () => void;

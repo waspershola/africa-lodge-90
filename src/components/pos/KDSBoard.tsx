@@ -15,10 +15,15 @@ import {
   Coffee,
   UtensilsCrossed
 } from 'lucide-react';
-import { usePOSApi, type KitchenTicket } from '@/hooks/usePOS';
+import { usePOSApi, type KitchenTicket } from '@/hooks/usePOSApi';
 
 export default function KDSBoard() {
-  const { kitchenTickets, isLoading, claimKitchenTicket, completeKitchenTicket } = usePOSApi();
+  const { 
+    kitchenTickets, 
+    isLoading, 
+    claimKitchenTicket, 
+    completeKitchenTicket 
+  } = usePOSApi();
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // Update current time every second for timer calculations
@@ -258,7 +263,7 @@ export default function KDSBoard() {
                               <div className="flex justify-between items-start">
                                 <div className="flex-1">
                                   <span className="font-medium text-sm">{item.qty}x {item.menu_item.name}</span>
-                                  {item.modifiers.length > 0 && (
+                                  {item.modifiers && item.modifiers.length > 0 && (
                                     <div className="flex flex-wrap gap-1 mt-1">
                                       {item.modifiers.map((mod, modIndex) => (
                                         <Badge key={modIndex} variant="secondary" className="text-xs h-5">

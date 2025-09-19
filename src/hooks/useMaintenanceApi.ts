@@ -3,30 +3,29 @@ import { useToast } from '@/hooks/use-toast';
 
 export interface WorkOrder {
   id: string;
-  workOrderNumber: string;
-  roomId?: string;
-  facility?: string;
-  issue: string;
+  work_order_number: string;
+  room_id?: string;
+  title: string;
   description?: string;
-  source: 'guest-qr' | 'housekeeping' | 'manual' | 'preventive';
+  category: string;
   priority: 'low' | 'medium' | 'high' | 'critical';
   status: 'pending' | 'in-progress' | 'completed' | 'escalated';
+  assigned_to?: string;
+  created_at: string;
+  updated_at: string;
+  completed_at?: string;
+  estimated_hours?: number;
+  actual_hours?: number;
+  estimated_cost?: number;
+  actual_cost?: number;
+  completion_notes?: string;
+  // Legacy properties for compatibility
+  workOrderNumber: string;
+  roomId?: string;
+  issue: string;
   assignedTo?: string;
-  assignedBy?: string;
   createdAt: string;
-  updatedAt: string;
-  completedAt?: string;
   estimatedTime?: number;
-  actualTime?: number;
-  partsUsed?: Array<{
-    partId: string;
-    partName: string;
-    quantity: number;
-    cost: number;
-  }>;
-  photos?: string[];
-  notes?: string;
-  rootCause?: string;
 }
 
 export interface PreventiveTask {
@@ -84,19 +83,25 @@ interface MaintenanceStats {
 const mockWorkOrders: WorkOrder[] = [
   {
     id: 'wo-001',
+    work_order_number: 'WO205-01',
+    room_id: '205',
+    title: 'AC not cooling',
+    description: 'Guest reported room temperature not dropping below 25°C',
+    category: 'hvac',
+    priority: 'high',
+    status: 'in-progress',
+    assigned_to: 'Mike Anderson',
+    created_at: '2024-01-19T08:30:00Z',
+    updated_at: '2024-01-19T09:15:00Z',
+    estimated_hours: 1,
+    completion_notes: 'Checking AC filter and refrigerant levels',
+    // Legacy compatibility
     workOrderNumber: 'WO205-01',
     roomId: '205',
     issue: 'AC not cooling',
-    description: 'Guest reported room temperature not dropping below 25°C',
-    source: 'housekeeping',
-    priority: 'high',
-    status: 'in-progress',
     assignedTo: 'Mike Anderson',
-    assignedBy: 'Supervisor',
     createdAt: '2024-01-19T08:30:00Z',
-    updatedAt: '2024-01-19T09:15:00Z',
-    estimatedTime: 45,
-    notes: 'Checking AC filter and refrigerant levels'
+    estimatedTime: 45
   },
   {
     id: 'wo-002',

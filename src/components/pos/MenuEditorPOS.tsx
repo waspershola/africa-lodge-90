@@ -7,9 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   Plus, 
   Edit3, 
@@ -20,19 +18,14 @@ import {
   Package,
   Filter,
   Search,
-  ChefHat,
-  AlertTriangle
+  ChefHat
 } from 'lucide-react';
-import { usePOSApi, type MenuItem } from '@/hooks/usePOS';
+import { usePOSApi, type MenuItem } from '@/hooks/usePOSApi';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
-import RoleGuard, { ProtectedButton } from './RoleGuard';
-import ApprovalDialog, { type ApprovalRequest } from './ApprovalDialog';
 
 export default function MenuEditorPOS() {
   const { menuItems, isLoading, updateMenuItem } = usePOSApi();
   const { toast } = useToast();
-  const { user, hasPermission } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
@@ -40,16 +33,14 @@ export default function MenuEditorPOS() {
   const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false);
   const [newItem, setNewItem] = useState<Partial<MenuItem>>({
     name: '',
-    category: '',
     description: '',
     base_price: 0,
-    prep_time_mins: 15,
+    prep_time_mins: 10,
     available: true,
+    stations: [],
     inventory_tracked: false,
-    stations: []
+    image_url: ''
   });
-  const [approvalRequests, setApprovalRequests] = useState<ApprovalRequest[]>([]);
-  const [selectedApproval, setSelectedApproval] = useState<ApprovalRequest | null>(null);
 
   // Filter menu items
   const filteredItems = menuItems.filter(item => {
@@ -63,32 +54,6 @@ export default function MenuEditorPOS() {
   const categories = Array.from(new Set(menuItems.map(item => item.category))).filter(Boolean);
 
   const handleToggleAvailability = async (itemId: string, available: boolean) => {
-    // Check if user can modify availability
-    if (!hasPermission('menu:modify_availability')) {
-      // Create approval request
-      const approvalRequest: ApprovalRequest = {
-        id: `req-${Date.now()}`,
-        type: 'menu_availability',
-        requestor_id: user?.id || '',
-        requestor_name: user?.name || '',
-        entity_id: itemId,
-        entity_name: menuItems.find(item => item.id === itemId)?.name || '',
-        current_value: !available,
-        requested_value: available,
-        reason: `Staff request to ${available ? 'enable' : 'disable'} menu item`,
-        status: 'pending',
-        created_at: new Date().toISOString(),
-        urgency: 'medium'
-      };
-      
-      setApprovalRequests(prev => [...prev, approvalRequest]);
-      toast({
-        title: "Approval Required",
-        description: "Your request has been sent to a manager for approval.",
-      });
-      return;
-    }
-
     try {
       await updateMenuItem(itemId, { available });
       toast({
@@ -118,7 +83,6 @@ export default function MenuEditorPOS() {
         description: selectedItem.description,
         base_price: selectedItem.base_price,
         prep_time_mins: selectedItem.prep_time_mins,
-        category: selectedItem.category,
         available: selectedItem.available,
         inventory_tracked: selectedItem.inventory_tracked,
         stations: selectedItem.stations,
@@ -140,7 +104,7 @@ export default function MenuEditorPOS() {
   };
 
   const handleAddNewItem = async () => {
-    if (!newItem.name || !newItem.category || newItem.base_price <= 0) {
+    if (!newItem.name || newItem.base_price! <= 0) {
       toast({
         title: "Invalid Item",
         description: "Please fill in all required fields.",
@@ -149,28 +113,6 @@ export default function MenuEditorPOS() {
       return;
     }
 
-    // Create approval request for new item
-    const approvalRequest: ApprovalRequest = {
-      id: `req-${Date.now()}`,
-      type: 'new_item',
-      requestor_id: user?.id || '',
-      requestor_name: user?.name || '',
-      entity_id: 'new',
-      entity_name: newItem.name,
-      current_value: null,
-      requested_value: {
-        ...newItem,
-        id: `item-${Date.now()}`,
-        tenant_id: 'current-tenant'
-      },
-      reason: `Staff request to add new menu item: ${newItem.name}`,
-      status: 'pending',
-      created_at: new Date().toISOString(),
-      urgency: 'medium'
-    };
-    
-    setApprovalRequests(prev => [...prev, approvalRequest]);
-    
     toast({
       title: "New Item Request Submitted",
       description: "Your request to add this menu item has been sent to a manager for approval.",
@@ -179,7 +121,6 @@ export default function MenuEditorPOS() {
     // Reset form
     setNewItem({
       name: '',
-      category: '',
       description: '',
       base_price: 0,
       prep_time_mins: 15,
@@ -323,7 +264,7 @@ export default function MenuEditorPOS() {
                 </div>
               </div>
 
-              {item.stations.length > 0 && (
+              {item.stations && item.stations.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {item.stations.map(station => (
                     <Badge key={station} variant="outline" className="text-xs">
@@ -345,15 +286,14 @@ export default function MenuEditorPOS() {
                     disabled={isLoading}
                   />
                 </div>
-                <ProtectedButton 
+                <Button 
                   variant="outline" 
                   size="sm"
                   onClick={() => handleEditItem(item)}
-                  requiredPermission="menu:edit_items"
                 >
                   <Edit3 className="h-4 w-4 mr-1" />
                   Edit
-                </ProtectedButton>
+                </Button>
               </div>
 
               {item.inventory_tracked && (
@@ -366,38 +306,6 @@ export default function MenuEditorPOS() {
           </Card>
         ))}
       </div>
-
-      {/* Approval Requests */}
-      {approvalRequests.length > 0 && hasPermission('menu:approve_changes') && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-orange-500" />
-              Pending Approval Requests ({approvalRequests.filter(r => r.status === 'pending').length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {approvalRequests.filter(r => r.status === 'pending').map(request => (
-                <div key={request.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <p className="font-medium">{request.entity_name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Requested by {request.requestor_name} • {request.type.replace('_', ' ')}
-                    </p>
-                  </div>
-                  <Button 
-                    size="sm" 
-                    onClick={() => setSelectedApproval(request)}
-                  >
-                    Review
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Add New Item Dialog */}
       <Dialog open={isAddItemDialogOpen} onOpenChange={setIsAddItemDialogOpen}>
@@ -412,17 +320,17 @@ export default function MenuEditorPOS() {
                 <Label htmlFor="new-name">Item Name *</Label>
                 <Input
                   id="new-name"
-                  value={newItem.name}
+                  value={newItem.name || ''}
                   onChange={(e) => setNewItem({...newItem, name: e.target.value})}
                   placeholder="Enter item name"
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="new-category">Category *</Label>
+                <Label htmlFor="new-category">Category</Label>
                 <Input
                   id="new-category"
-                  value={newItem.category}
+                  value={newItem.category || ''}
                   onChange={(e) => setNewItem({...newItem, category: e.target.value})}
                   placeholder="e.g., Appetizers, Main Course"
                 />
@@ -446,7 +354,7 @@ export default function MenuEditorPOS() {
                 <Input
                   id="new-price"
                   type="number"
-                  value={newItem.base_price}
+                  value={newItem.base_price || 0}
                   onChange={(e) => setNewItem({...newItem, base_price: parseInt(e.target.value) || 0})}
                   placeholder="e.g., 2500 for ₦25.00"
                 />
@@ -457,7 +365,7 @@ export default function MenuEditorPOS() {
                 <Input
                   id="new-prep-time"
                   type="number"
-                  value={newItem.prep_time_mins}
+                  value={newItem.prep_time_mins || 0}
                   onChange={(e) => setNewItem({...newItem, prep_time_mins: parseInt(e.target.value) || 0})}
                   placeholder="e.g., 15"
                 />
@@ -473,43 +381,43 @@ export default function MenuEditorPOS() {
                   ...newItem, 
                   stations: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
                 })}
-                placeholder="e.g., grill, cold, bar"
+                placeholder="e.g., grill, cold, pizza"
               />
             </div>
 
-            <div className="flex items-center space-x-4">
+            <div className="flex gap-4">
               <div className="flex items-center space-x-2">
                 <Switch
                   id="new-available"
-                  checked={newItem.available}
+                  checked={newItem.available || false}
                   onCheckedChange={(checked) => setNewItem({...newItem, available: checked})}
                 />
-                <Label htmlFor="new-available">Available for ordering</Label>
+                <Label htmlFor="new-available">Available</Label>
               </div>
               
               <div className="flex items-center space-x-2">
                 <Switch
-                  id="new-inventory-tracked"
-                  checked={newItem.inventory_tracked}
+                  id="new-inventory"
+                  checked={newItem.inventory_tracked || false}
                   onCheckedChange={(checked) => setNewItem({...newItem, inventory_tracked: checked})}
                 />
-                <Label htmlFor="new-inventory-tracked">Track inventory</Label>
+                <Label htmlFor="new-inventory">Track Inventory</Label>
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setIsAddItemDialogOpen(false)}>
                 Cancel
               </Button>
               <Button onClick={handleAddNewItem} disabled={isLoading}>
-                Submit for Approval
+                Add Item
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Dialog */}
+      {/* Edit Item Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -520,18 +428,19 @@ export default function MenuEditorPOS() {
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Item Name</Label>
+                  <Label htmlFor="edit-name">Item Name *</Label>
                   <Input
-                    id="name"
+                    id="edit-name"
                     value={selectedItem.name}
                     onChange={(e) => setSelectedItem({...selectedItem, name: e.target.value})}
+                    placeholder="Enter item name"
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
+                  <Label htmlFor="edit-category">Category</Label>
                   <Input
-                    id="category"
+                    id="edit-category"
                     value={selectedItem.category}
                     onChange={(e) => setSelectedItem({...selectedItem, category: e.target.value})}
                     placeholder="e.g., Appetizers, Main Course"
@@ -540,9 +449,9 @@ export default function MenuEditorPOS() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="edit-description">Description</Label>
                 <Textarea
-                  id="description"
+                  id="edit-description"
                   value={selectedItem.description || ''}
                   onChange={(e) => setSelectedItem({...selectedItem, description: e.target.value})}
                   placeholder="Describe the menu item..."
@@ -552,9 +461,9 @@ export default function MenuEditorPOS() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="price">Price (in kobo)</Label>
+                  <Label htmlFor="edit-price">Price (in kobo) *</Label>
                   <Input
-                    id="price"
+                    id="edit-price"
                     type="number"
                     value={selectedItem.base_price}
                     onChange={(e) => setSelectedItem({...selectedItem, base_price: parseInt(e.target.value) || 0})}
@@ -563,9 +472,9 @@ export default function MenuEditorPOS() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="prep-time">Prep Time (minutes)</Label>
+                  <Label htmlFor="edit-prep-time">Prep Time (minutes)</Label>
                   <Input
-                    id="prep-time"
+                    id="edit-prep-time"
                     type="number"
                     value={selectedItem.prep_time_mins}
                     onChange={(e) => setSelectedItem({...selectedItem, prep_time_mins: parseInt(e.target.value) || 0})}
@@ -575,39 +484,39 @@ export default function MenuEditorPOS() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="stations">Kitchen Stations (comma separated)</Label>
+                <Label htmlFor="edit-stations">Kitchen Stations (comma separated)</Label>
                 <Input
-                  id="stations"
-                  value={selectedItem.stations.join(', ')}
+                  id="edit-stations"
+                  value={selectedItem.stations?.join(', ') || ''}
                   onChange={(e) => setSelectedItem({
                     ...selectedItem, 
                     stations: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
                   })}
-                  placeholder="e.g., grill, cold, bar"
+                  placeholder="e.g., grill, cold, pizza"
                 />
               </div>
 
-              <div className="flex items-center space-x-4">
+              <div className="flex gap-4">
                 <div className="flex items-center space-x-2">
                   <Switch
-                    id="available"
+                    id="edit-available"
                     checked={selectedItem.available}
                     onCheckedChange={(checked) => setSelectedItem({...selectedItem, available: checked})}
                   />
-                  <Label htmlFor="available">Available for ordering</Label>
+                  <Label htmlFor="edit-available">Available</Label>
                 </div>
                 
                 <div className="flex items-center space-x-2">
                   <Switch
-                    id="inventory-tracked"
+                    id="edit-inventory"
                     checked={selectedItem.inventory_tracked}
                     onCheckedChange={(checked) => setSelectedItem({...selectedItem, inventory_tracked: checked})}
                   />
-                  <Label htmlFor="inventory-tracked">Track inventory</Label>
+                  <Label htmlFor="edit-inventory">Track Inventory</Label>
                 </div>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
                   Cancel
                 </Button>
@@ -619,36 +528,6 @@ export default function MenuEditorPOS() {
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Approval Dialog */}
-      {selectedApproval && (
-        <ApprovalDialog
-          isOpen={!!selectedApproval}
-          onClose={() => setSelectedApproval(null)}
-          request={selectedApproval}
-          canApprove={hasPermission('menu:approve_changes')}
-          onApprove={async (requestId) => {
-            // Handle approval logic here
-            setApprovalRequests(prev => 
-              prev.map(r => r.id === requestId ? {...r, status: 'approved' as const} : r)
-            );
-            toast({
-              title: "Request Approved",
-              description: "The approval request has been processed.",
-            });
-          }}
-          onReject={async (requestId, reason) => {
-            // Handle rejection logic here
-            setApprovalRequests(prev => 
-              prev.map(r => r.id === requestId ? {...r, status: 'rejected' as const} : r)
-            );
-            toast({
-              title: "Request Rejected",
-              description: "The request has been rejected.",
-            });
-          }}
-        />
-      )}
     </div>
   );
 }

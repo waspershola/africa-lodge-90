@@ -17,7 +17,7 @@ import {
   Shield,
   Hammer
 } from 'lucide-react';
-import { useMaintenanceApi } from '@/hooks/useMaintenance';
+import { useMaintenanceApi } from '@/hooks/useMaintenanceApi';
 
 export default function MaintenanceDashboard() {
   const { workOrders, stats, isLoading } = useMaintenanceApi();
@@ -125,7 +125,7 @@ export default function MaintenanceDashboard() {
                 <div>
                   <p className="font-medium text-red-700">🚨 {wo.issue}</p>
                   <p className="text-sm text-red-600">
-                    {wo.roomId ? `Room ${wo.roomId}` : wo.facility} • {wo.workOrderNumber}
+                    {wo.roomId ? `Room ${wo.roomId}` : 'General'} • {wo.workOrderNumber}
                   </p>
                 </div>
                 <Badge variant="destructive">Critical</Badge>
@@ -192,7 +192,7 @@ export default function MaintenanceDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Housekeeping Escalations</p>
-                <p className="text-2xl font-bold text-blue-600">{stats.escalationsFromHousekeeping}</p>
+                <p className="text-2xl font-bold text-blue-600">{stats.escalationsFromHousekeeping || 0}</p>
               </div>
               <Users className="h-8 w-8 text-blue-500" />
             </div>
@@ -207,7 +207,7 @@ export default function MaintenanceDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Low Stock Items</p>
-                <p className="text-2xl font-bold text-amber-600">{stats.suppliesLowStock}</p>
+                <p className="text-2xl font-bold text-amber-600">{stats.suppliesLowStock || 0}</p>
               </div>
               <Package className="h-8 w-8 text-amber-500" />
             </div>
@@ -242,7 +242,7 @@ export default function MaintenanceDashboard() {
                       </div>
                       <p className="font-medium">{wo.issue}</p>
                       <p className="text-sm text-muted-foreground">
-                        {wo.roomId ? `Room ${wo.roomId}` : wo.facility} • 
+                        {wo.roomId ? `Room ${wo.roomId}` : 'General'} • 
                         {wo.assignedTo ? ` Assigned to ${wo.assignedTo}` : ' Unassigned'}
                       </p>
                     </div>
@@ -251,7 +251,7 @@ export default function MaintenanceDashboard() {
                         {wo.status}
                       </Badge>
                       <p className="text-xs text-muted-foreground">
-                        {wo.estimatedTime}min ETA
+                        {wo.estimatedTime || 0}min ETA
                       </p>
                     </div>
                   </div>

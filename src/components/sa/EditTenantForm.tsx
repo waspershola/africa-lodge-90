@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useUpdateTenant } from '@/hooks/useApi';
-import type { Tenant } from '@/lib/api/mockAdapter';
+import type { Tenant } from '@/lib/supabase-api';
 
 const editTenantSchema = z.object({
   name: z.string().min(1, 'Hotel name is required').max(100, 'Name too long'),
@@ -39,22 +39,28 @@ export function EditTenantForm({ tenant, onSuccess }: EditTenantFormProps) {
   const form = useForm<EditTenantForm>({
     resolver: zodResolver(editTenantSchema),
     defaultValues: {
-      name: tenant.name,
-      slug: tenant.slug,
-      plan: tenant.plan as 'Starter' | 'Growth' | 'Pro',
-      status: tenant.status as 'active' | 'inactive',
-      contactEmail: tenant.contactEmail,
-      totalRooms: tenant.totalRooms,
-      city: tenant.city,
-      offlineWindowHours: tenant.offlineWindowHours,
+      name: tenant.hotel_name,
+      slug: tenant.hotel_slug,
+      plan: 'Growth' as 'Starter' | 'Growth' | 'Pro', // Will be derived from plan_id
+      status: tenant.subscription_status === 'active' ? 'active' : 'inactive',
+      contactEmail: tenant.email || '',
+      totalRooms: 50, // Default value as this is not stored in tenants table
+      city: tenant.city || '',
+      offlineWindowHours: 24, // Default value
     },
   });
 
   const onSubmit = async (data: EditTenantForm) => {
     try {
       await updateTenant.mutateAsync({
-        id: tenant.id,
-        data,
+        id: tenant.tenant_id,
+        data: {
+          hotel_name: data.name,
+          hotel_slug: data.slug,
+          email: data.contactEmail,
+          city: data.city,
+          subscription_status: data.status === 'active' ? 'active' : 'trialing',
+        },
       });
       onSuccess();
     } catch (error) {

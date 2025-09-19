@@ -26,7 +26,7 @@ import {
   usePlans, useCreatePlan, useUpdatePlan, useDeletePlan, usePlanMetrics, 
   useSendInvoiceReminder, useCheckSubscriptionExpiry, useTenants, useUpdateTenant
 } from '@/hooks/useApi';
-import type { Plan } from '@/lib/api/mockAdapter';
+import type { Plan } from '@/lib/supabase-api';
 
 const fadeIn = {
   initial: { opacity: 0, y: 20 },

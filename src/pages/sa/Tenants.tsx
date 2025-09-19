@@ -16,7 +16,7 @@ import { useTenants, useDeleteTenant, useSuspendTenant, useReactivateTenant, use
 import { CreateTenantForm } from '@/components/sa/CreateTenantForm';
 import { EditTenantForm } from '@/components/sa/EditTenantForm';
 import TenantDrawer from '@/components/sa/TenantDrawer';
-import type { Tenant } from '@/lib/api/mockAdapter';
+import type { Tenant } from '@/lib/supabase-api';
 
 const fadeIn = {
   initial: { opacity: 0, y: 20 },

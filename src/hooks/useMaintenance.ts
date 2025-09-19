@@ -71,9 +71,27 @@ export function useMaintenanceApi() {
       if (error) throw error;
 
       setWorkOrders((data || []).map(order => ({
-        ...order,
+        id: order.id,
+        tenant_id: order.tenant_id,
+        work_order_number: order.work_order_number,
+        room_id: order.room_id,
+        title: order.title,
+        description: order.description,
+        category: order.category,
         priority: order.priority as 'low' | 'medium' | 'high' | 'critical',
-        status: order.status as 'pending' | 'in-progress' | 'completed' | 'escalated'
+        status: order.status as 'pending' | 'in-progress' | 'completed' | 'escalated',
+        assigned_to: order.assigned_to,
+        assigned_at: order.assigned_at,
+        estimated_hours: order.estimated_hours,
+        actual_hours: order.actual_hours,
+        estimated_cost: order.estimated_cost,
+        actual_cost: order.actual_cost,
+        created_by: order.created_by,
+        created_at: order.created_at,
+        updated_at: order.updated_at,
+        completed_at: order.completed_at,
+        completion_notes: order.completion_notes,
+        qr_order_id: order.qr_order_id
       })));
     } catch (err: any) {
       toast({

@@ -134,16 +134,31 @@ export function usePOSApi() {
 
       if (error) throw error;
 
-      setOrders((data || []).map(order => ({
-        ...order,
+      const processedOrders = (data || []).map(order => ({
+        id: order.id,
+        tenant_id: order.tenant_id,
+        order_number: order.order_number,
         order_type: order.order_type as 'dine_in' | 'takeaway' | 'room_service' | 'delivery',
-        status: order.status as 'pending' | 'accepted' | 'preparing' | 'ready' | 'delivered' | 'cancelled'
-      })));
-      generateKitchenTickets((data || []).map(order => ({
-        ...order,
-        order_type: order.order_type as 'dine_in' | 'takeaway' | 'room_service' | 'delivery',
-        status: order.status as 'pending' | 'accepted' | 'preparing' | 'ready' | 'delivered' | 'cancelled'
-      })));
+        status: order.status as 'pending' | 'accepted' | 'preparing' | 'ready' | 'delivered' | 'cancelled',
+        room_id: order.room_id,
+        subtotal: Number(order.subtotal) || 0,
+        tax_amount: order.tax_amount ? Number(order.tax_amount) : undefined,
+        service_charge: order.service_charge ? Number(order.service_charge) : undefined,
+        total_amount: order.total_amount ? Number(order.total_amount) : undefined,
+        special_instructions: order.special_instructions,
+        order_time: order.order_time,
+        promised_time: order.promised_time,
+        completed_time: order.completed_time,
+        taken_by: order.taken_by,
+        prepared_by: order.prepared_by,
+        served_by: order.served_by,
+        folio_id: order.folio_id,
+        created_at: order.created_at,
+        updated_at: order.updated_at
+      }));
+      
+      setOrders(processedOrders);
+      generateKitchenTickets(processedOrders);
     } catch (err: any) {
       toast({
         title: "Error",

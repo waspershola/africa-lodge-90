@@ -94,9 +94,25 @@ export function useHousekeepingTasks() {
       if (error) throw error;
 
       setTasks((data || []).map(task => ({
-        ...task,
+        id: task.id,
+        tenant_id: task.tenant_id,
+        room_id: task.room_id,
+        title: task.title,
+        description: task.description,
+        task_type: task.task_type,
         status: task.status as 'pending' | 'in-progress' | 'completed' | 'delayed',
-        priority: task.priority as 'low' | 'medium' | 'high' | 'urgent'
+        priority: task.priority as 'low' | 'medium' | 'high' | 'urgent',
+        assigned_to: task.assigned_to,
+        assigned_at: task.assigned_at,
+        estimated_minutes: task.estimated_minutes,
+        actual_minutes: task.actual_minutes,
+        started_at: task.started_at,
+        completed_at: task.completed_at,
+        created_by: task.created_by,
+        created_at: task.created_at,
+        updated_at: task.updated_at,
+        checklist: Array.isArray(task.checklist) ? (task.checklist as unknown as ChecklistItem[]) : [],
+        qr_order_id: task.qr_order_id
       })));
       setError(null);
     } catch (err: any) {
@@ -239,8 +255,18 @@ export function useHousekeepingSupplies() {
       if (error) throw error;
 
       setSupplies((data || []).map(supply => ({
-        ...supply,
-        category: supply.category as 'bedding' | 'bathroom' | 'cleaning' | 'amenities' | 'maintenance' | 'food'
+        id: supply.id,
+        tenant_id: supply.tenant_id,
+        name: supply.name,
+        category: supply.category as 'bedding' | 'bathroom' | 'cleaning' | 'amenities' | 'maintenance' | 'food',
+        current_stock: supply.current_stock,
+        minimum_stock: supply.minimum_stock,
+        maximum_stock: supply.maximum_stock,
+        unit: supply.unit,
+        unit_cost: supply.unit_cost,
+        is_active: supply.is_active,
+        created_at: supply.created_at,
+        updated_at: supply.updated_at
       })));
       setError(null);
     } catch (err: any) {

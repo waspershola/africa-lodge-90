@@ -216,10 +216,6 @@ const QRManagement = () => {
     issueCount: 3
   };
 
-  // Mock pricing data - will be integrated with existing data structure
-  const mockServicePricing = [];
-  const mockPendingChanges = [];
-
   // Mock data for enhanced pricing control
   const mockServicePricing: ServicePricing[] = [
     {

@@ -264,6 +264,8 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
       setTenant(null);
       setSession(null);
       setTrialStatus(null);
+      // Redirect to homepage after logout
+      window.location.href = '/';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Logout failed');
     }

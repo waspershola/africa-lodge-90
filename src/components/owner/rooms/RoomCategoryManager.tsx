@@ -18,10 +18,12 @@ import {
   Wifi,
   Snowflake,
   Tv,
-  Coffee,
   Car,
-  Utensils,
-  Loader2
+  UtensilsCrossed,
+  Dumbbell,
+  Waves,
+  Coffee,
+  Shirt
 } from "lucide-react";
 import { useOwnerRoomCategories, useCreateRoomCategory, useUpdateRoomCategory, useDeleteRoomCategory } from "@/hooks/useApi";
 import { toast } from "sonner";
@@ -43,9 +45,12 @@ const availableAmenities = [
   { id: 'wifi', name: 'Wi-Fi', icon: Wifi },
   { id: 'ac', name: 'Air Conditioning', icon: Snowflake },
   { id: 'tv', name: 'Smart TV', icon: Tv },
+  { id: 'parking', name: 'Free Parking', icon: Car },
+  { id: 'breakfast', name: 'Breakfast Included', icon: UtensilsCrossed },
+  { id: 'gym', name: 'Gym Access', icon: Dumbbell },
+  { id: 'pool', name: 'Swimming Pool', icon: Waves },
   { id: 'minibar', name: 'Mini Bar', icon: Coffee },
-  { id: 'parking', name: 'Parking', icon: Car },
-  { id: 'room-service', name: 'Room Service', icon: Utensils },
+  { id: 'laundry', name: 'Laundry Service', icon: Shirt },
 ];
 
 export default function RoomCategoryManager() {
@@ -53,12 +58,13 @@ export default function RoomCategoryManager() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isNewCategory, setIsNewCategory] = useState(false);
 
-  const { data: categoriesData, isLoading, error } = useOwnerRoomCategories();
+  // API hooks
+  const { data: categoriesData, isLoading } = useOwnerRoomCategories();
   const createCategoryMutation = useCreateRoomCategory();
   const updateCategoryMutation = useUpdateRoomCategory();
   const deleteCategoryMutation = useDeleteRoomCategory();
 
-  const categories = categoriesData?.data || [];
+  const categories = categoriesData || [];
 
   const handleNewCategory = () => {
     setSelectedCategory({
@@ -88,11 +94,24 @@ export default function RoomCategoryManager() {
 
     try {
       if (isNewCategory) {
-        await createCategoryMutation.mutateAsync(selectedCategory);
+        await createCategoryMutation.mutateAsync({
+          name: selectedCategory.name,
+          description: selectedCategory.description,
+          base_rate: selectedCategory.baseRate,
+          max_occupancy: selectedCategory.maxOccupancy,
+          amenities: selectedCategory.amenities,
+          tenant_id: 'current-tenant' // This should come from auth context
+        });
       } else {
         await updateCategoryMutation.mutateAsync({ 
           id: selectedCategory.id, 
-          data: selectedCategory 
+          updates: {
+            name: selectedCategory.name,
+            description: selectedCategory.description,
+            base_rate: selectedCategory.baseRate,
+            max_occupancy: selectedCategory.maxOccupancy,
+            amenities: selectedCategory.amenities
+          }
         });
       }
       setIsEditDialogOpen(false);
@@ -105,14 +124,14 @@ export default function RoomCategoryManager() {
   const handleDeleteCategory = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this room category?')) {
       try {
-        await deleteCategoryMutation.mutateAsync(id);
+        await deleteCategoryMutation.mutateAsync({ id });
       } catch (error) {
         toast.error('Failed to delete room category');
       }
     }
   };
 
-  const handleAmenityChange = (amenityId: string) => {
+  const toggleAmenity = (amenityId: string) => {
     if (!selectedCategory) return;
     
     const amenities = selectedCategory.amenities.includes(amenityId)
@@ -122,49 +141,27 @@ export default function RoomCategoryManager() {
     setSelectedCategory({ ...selectedCategory, amenities });
   };
 
-  const getAmenityIcon = (amenityId: string) => {
-    const amenity = availableAmenities.find(a => a.id === amenityId);
-    return amenity ? amenity.icon : Wifi;
-  };
-
-  if (error) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="text-center text-destructive">
-            Failed to load room categories. Please try again.
-          </div>
-        </CardContent>
-      </Card>
-    );
+  if (isLoading) {
+    return <div>Loading room categories...</div>;
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">Room Categories</h3>
-          <p className="text-sm text-muted-foreground">
-            Manage your hotel's room types and pricing
+          <h2 className="text-2xl font-bold">Room Categories</h2>
+          <p className="text-muted-foreground">
+            Manage different types of rooms and their configurations
           </p>
         </div>
-        <Button onClick={handleNewCategory} className="bg-gradient-primary">
+        <Button onClick={handleNewCategory}>
           <Plus className="h-4 w-4 mr-2" />
-          Add Category
+          New Category
         </Button>
       </div>
 
-      {/* Loading State */}
-      {isLoading && (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="ml-2">Loading categories...</span>
-        </div>
-      )}
-
       {/* Categories Grid */}
-      {!isLoading && categories.length === 0 ? (
+      {categories.length === 0 ? (
         <Card>
           <CardContent className="p-6 text-center">
             <div className="text-muted-foreground">
@@ -174,83 +171,85 @@ export default function RoomCategoryManager() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {categories.map((category: RoomCategory) => (
-            <Card key={category.id} className="luxury-card">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{category.name}</CardTitle>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEditCategory(category)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteCategory(category.id)}
-                      disabled={deleteCategoryMutation.isPending}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">{category.description}</p>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-primary" />
-                      <span className="text-sm">₦{category.baseRate.toLocaleString()}/night</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-primary" />
-                      <span className="text-sm">Max {category.maxOccupancy}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <BedDouble className="h-4 w-4 text-primary" />
-                      <span className="text-sm">{category.size}m²</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">{category.totalRooms} rooms</span>
-                    </div>
-                  </div>
-
+          {categories.map((dbCategory) => {
+            // Map Supabase schema to component interface
+            const category: RoomCategory = {
+              id: dbCategory.id,
+              name: dbCategory.name,
+              description: dbCategory.description || '',
+              baseRate: dbCategory.base_rate,
+              maxOccupancy: dbCategory.max_occupancy,
+              size: 0, // Not in current schema
+              amenities: dbCategory.amenities || [],
+              totalRooms: 0, // Would need to be calculated
+              availableRooms: 0, // Would need to be calculated
+              images: []
+            };
+            
+            return (
+              <Card key={category.id} className="luxury-card">
+                <CardHeader>
                   <div className="flex items-center justify-between">
-                    <Badge variant="secondary">
-                      {category.availableRooms} available
-                    </Badge>
-                    <Badge variant={category.availableRooms > 0 ? "default" : "destructive"}>
-                      {category.availableRooms > 0 ? "Available" : "Full"}
-                    </Badge>
+                    <CardTitle className="text-lg">{category.name}</CardTitle>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditCategory(category)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteCategory(category.id)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      {category.description}
+                    </p>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">₦{category.baseRate.toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">{category.maxOccupancy} guests</span>
+                      </div>
+                    </div>
 
-                  {/* Amenities */}
-                  <div className="flex flex-wrap gap-1">
-                    {category.amenities.slice(0, 4).map((amenityId) => {
-                      const amenity = availableAmenities.find(a => a.id === amenityId);
-                      const Icon = amenity?.icon || Wifi;
-                      return (
-                        <Badge key={amenityId} variant="outline" className="text-xs">
-                          <Icon className="h-3 w-3 mr-1" />
-                          {amenity?.name || amenityId}
-                        </Badge>
-                      );
-                    })}
-                    {category.amenities.length > 4 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{category.amenities.length - 4} more
-                      </Badge>
-                    )}
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium">Amenities</div>
+                      <div className="flex flex-wrap gap-1">
+                        {category.amenities.slice(0, 4).map((amenityId) => {
+                          const amenity = availableAmenities.find(a => a.id === amenityId);
+                          return amenity ? (
+                            <Badge key={amenityId} variant="secondary" className="text-xs">
+                              {amenity.name}
+                            </Badge>
+                          ) : null;
+                        })}
+                        {category.amenities.length > 4 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{category.amenities.length - 4} more
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
@@ -264,9 +263,9 @@ export default function RoomCategoryManager() {
           </DialogHeader>
 
           {selectedCategory && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="name">Category Name</Label>
                   <Input
                     id="name"
@@ -275,10 +274,11 @@ export default function RoomCategoryManager() {
                       ...selectedCategory,
                       name: e.target.value
                     })}
-                    placeholder="e.g. Deluxe Suite"
+                    placeholder="e.g., Deluxe Suite"
                   />
                 </div>
-                <div>
+
+                <div className="space-y-2">
                   <Label htmlFor="baseRate">Base Rate (₦)</Label>
                   <Input
                     id="baseRate"
@@ -286,14 +286,14 @@ export default function RoomCategoryManager() {
                     value={selectedCategory.baseRate}
                     onChange={(e) => setSelectedCategory({
                       ...selectedCategory,
-                      baseRate: parseInt(e.target.value) || 0
+                      baseRate: Number(e.target.value)
                     })}
-                    placeholder="25000"
+                    placeholder="150000"
                   />
                 </div>
               </div>
 
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
@@ -307,71 +307,62 @@ export default function RoomCategoryManager() {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <Label htmlFor="maxOccupancy">Max Occupancy</Label>
-                  <Input
-                    id="maxOccupancy"
-                    type="number"
-                    value={selectedCategory.maxOccupancy}
-                    onChange={(e) => setSelectedCategory({
+                  <Select
+                    value={selectedCategory.maxOccupancy.toString()}
+                    onValueChange={(value) => setSelectedCategory({
                       ...selectedCategory,
-                      maxOccupancy: parseInt(e.target.value) || 2
+                      maxOccupancy: Number(value)
                     })}
-                    min="1"
-                    max="8"
-                  />
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5, 6].map(num => (
+                        <SelectItem key={num} value={num.toString()}>
+                          {num} {num === 1 ? 'guest' : 'guests'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div>
-                  <Label htmlFor="size">Room Size (m²)</Label>
+
+                <div className="space-y-2">
+                  <Label htmlFor="size">Room Size (sq ft)</Label>
                   <Input
                     id="size"
                     type="number"
                     value={selectedCategory.size}
                     onChange={(e) => setSelectedCategory({
                       ...selectedCategory,
-                      size: parseInt(e.target.value) || 0
+                      size: Number(e.target.value)
                     })}
-                    placeholder="35"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="totalRooms">Total Rooms</Label>
-                  <Input
-                    id="totalRooms"
-                    type="number"
-                    value={selectedCategory.totalRooms}
-                    onChange={(e) => setSelectedCategory({
-                      ...selectedCategory,
-                      totalRooms: parseInt(e.target.value) || 0,
-                      availableRooms: parseInt(e.target.value) || 0
-                    })}
-                    min="1"
+                    placeholder="450"
                   />
                 </div>
               </div>
 
-              <div>
+              <div className="space-y-3">
                 <Label>Amenities</Label>
-                <div className="grid grid-cols-3 gap-3 mt-2">
+                <div className="grid grid-cols-3 gap-3">
                   {availableAmenities.map((amenity) => {
                     const Icon = amenity.icon;
                     const isSelected = selectedCategory.amenities.includes(amenity.id);
+                    
                     return (
-                      <div
+                      <Button
                         key={amenity.id}
-                        className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                          isSelected 
-                            ? 'border-primary bg-primary/10' 
-                            : 'border-border hover:border-primary/50'
-                        }`}
-                        onClick={() => handleAmenityChange(amenity.id)}
+                        variant={isSelected ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => toggleAmenity(amenity.id)}
+                        className="justify-start h-auto p-3"
                       >
-                        <div className="flex items-center gap-2">
-                          <Icon className="h-4 w-4" />
-                          <span className="text-sm">{amenity.name}</span>
-                        </div>
-                      </div>
+                        <Icon className="h-4 w-4 mr-2" />
+                        <span className="text-sm">{amenity.name}</span>
+                      </Button>
                     );
                   })}
                 </div>
@@ -380,17 +371,16 @@ export default function RoomCategoryManager() {
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditDialogOpen(false)}
+            >
               Cancel
             </Button>
             <Button 
               onClick={handleSaveCategory}
               disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}
-              className="bg-gradient-primary"
             >
-              {(createCategoryMutation.isPending || updateCategoryMutation.isPending) && (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              )}
               {isNewCategory ? 'Create Category' : 'Save Changes'}
             </Button>
           </DialogFooter>

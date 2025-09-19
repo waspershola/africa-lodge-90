@@ -384,7 +384,6 @@ export const useOwnerRoomCategories = useRoomTypes;
 export const useCreateRoomCategory = useCreateRoomType;
 export const useUpdateRoomCategory = useUpdateRoomType;
 export const useDeleteRoomCategory = useDeleteRoomType;
-export const useStaff = useUsers;
 export const useOwnerStaff = useUsers;
 export const useInviteStaff = useCreateStaff;
 
@@ -475,3 +474,7 @@ export const useUpdateStaffMember = () => {
     },
   });
 };
+
+// Alias for useUsers to maintain compatibility
+export const useStaff = useUsers;
+

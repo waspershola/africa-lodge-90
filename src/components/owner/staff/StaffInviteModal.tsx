@@ -65,13 +65,11 @@ export default function StaffInviteModal({ open, onOpenChange }: StaffInviteModa
 
     try {
       await inviteStaff.mutateAsync({
-        firstName: formData.firstName,
-        lastName: formData.lastName,
+        name: `${formData.firstName} ${formData.lastName}`,
         email: formData.email,
         phone: formData.phone,
         role: formData.role,
-        department: formData.department,
-        message: formData.message
+        department: formData.department
       });
       
       // Reset form

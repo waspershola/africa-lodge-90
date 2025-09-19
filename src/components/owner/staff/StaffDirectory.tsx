@@ -11,19 +11,25 @@ import { useStaff, useDeleteStaffMember, useUpdateStaffMember } from "@/hooks/us
 import { toast } from "sonner";
 import AddStaffDialog from "./AddStaffDialog";
 
-interface Staff {
+// Use the actual Supabase schema type
+type StaffMember = {
   id: string;
   name: string;
   email: string;
-  phone: string;
+  phone: string | null;
   role: string;
-  department: string;
-  status: 'active' | 'inactive' | 'pending';
-  startDate?: string;
-  avatar?: string;
-  lastLogin?: string;
-  permissions?: string[];
-}
+  department: string | null;
+  is_active: boolean;
+  created_at: string;
+  last_login: string | null;
+  tenant_id: string;
+  updated_at: string;
+  force_reset: boolean;
+  shift_end: string | null;
+  shift_start: string | null;
+  temp_expires: string | null;
+  temp_password_hash: string | null;
+};
 
 export default function StaffDirectory() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -33,47 +39,35 @@ export default function StaffDirectory() {
   const deleteStaffMutation = useDeleteStaffMember();
   const updateStaffMutation = useUpdateStaffMember();
 
-  const staff = staffData || [];
+  const staff: StaffMember[] = staffData || [];
 
-  const filteredStaff = staff.filter((member: Staff) =>
+  const filteredStaff = staff.filter((member) =>
     member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     member.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     member.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    member.department.toLowerCase().includes(searchQuery.toLowerCase())
+    (member.department && member.department.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const handleStatusToggle = async (staffId: string, currentStatus: string) => {
-    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+  const handleStatusToggle = async (staffId: string, currentActive: boolean) => {
     try {
       await updateStaffMutation.mutateAsync({ 
         id: staffId, 
-        updates: { is_active: newStatus === 'active' }
+        updates: { is_active: !currentActive }
       });
+      toast.success('Staff status updated successfully');
     } catch (error) {
       toast.error('Failed to update staff status');
     }
   };
 
   const handleDeleteStaff = async (staffId: string) => {
-    if (window.confirm('Are you sure you want to remove this staff member?')) {
+    if (window.confirm('Are you sure you want to delete this staff member?')) {
       try {
         await deleteStaffMutation.mutateAsync({ id: staffId });
+        toast.success('Staff member deleted successfully');
       } catch (error) {
-        toast.error('Failed to remove staff member');
+        toast.error('Failed to delete staff member');
       }
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'active':
-        return <Badge variant="default" className="bg-success/10 text-success border-success/20">Active</Badge>;
-      case 'pending':
-        return <Badge variant="secondary" className="bg-warning/10 text-warning-foreground border-warning/20">Pending</Badge>;
-      case 'inactive':
-        return <Badge variant="secondary" className="bg-muted text-muted-foreground">Inactive</Badge>;
-      default:
-        return <Badge variant="secondary">Unknown</Badge>;
     }
   };
 
@@ -81,96 +75,117 @@ export default function StaffDirectory() {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
+  const getRoleColor = (role: string) => {
+    const colors: Record<string, string> = {
+      'OWNER': 'bg-gradient-to-r from-purple-500 to-pink-500',
+      'MANAGER': 'bg-gradient-to-r from-blue-500 to-indigo-500',
+      'FRONT_DESK': 'bg-gradient-to-r from-green-500 to-teal-500',
+      'HOUSEKEEPING': 'bg-gradient-to-r from-yellow-500 to-orange-500',
+      'MAINTENANCE': 'bg-gradient-to-r from-gray-500 to-slate-500',
+      'POS': 'bg-gradient-to-r from-red-500 to-rose-500'
+    };
+    return colors[role] || 'bg-gradient-to-r from-gray-400 to-gray-500';
+  };
+
   // Stats calculation
-  const activeStaff = staff.filter((s: Staff) => s.status === 'active').length;
-  const pendingStaff = staff.filter((s: Staff) => s.status === 'pending').length;
+  const activeStaff = staff.filter(s => s.is_active).length;
+  const inactiveStaff = staff.filter(s => !s.is_active).length;
   const totalStaff = staff.length;
 
   if (error) {
     return (
-      <div className="space-y-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-center text-destructive">
-              Failed to load staff data. Please try again.
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center text-destructive">
+            Error loading staff data: {error.message}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin mr-2" />
+            Loading staff...
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Staff Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="luxury-card">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Staff Directory</h2>
+          <p className="text-muted-foreground">
+            Manage your hotel staff members and their permissions
+          </p>
+        </div>
+        <Button onClick={() => setIsAddDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Staff
+        </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Staff</p>
                 <p className="text-2xl font-bold">{totalStaff}</p>
               </div>
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <UserCheck className="h-6 w-6 text-primary" />
-              </div>
+              <UserCheck className="h-8 w-8 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="luxury-card">
+        <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Active Staff</p>
-                <p className="text-2xl font-bold text-success">{activeStaff}</p>
+                <p className="text-sm font-medium text-muted-foreground">Active</p>
+                <p className="text-2xl font-bold text-green-600">{activeStaff}</p>
               </div>
-              <div className="h-12 w-12 rounded-full bg-success/10 flex items-center justify-center">
-                <UserCheck className="h-6 w-6 text-success" />
-              </div>
+              <UserCheck className="h-8 w-8 text-green-600" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="luxury-card">
+        <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Pending Invites</p>
-                <p className="text-2xl font-bold text-warning-foreground">{pendingStaff}</p>
+                <p className="text-sm font-medium text-muted-foreground">Inactive</p>
+                <p className="text-2xl font-bold text-gray-600">{inactiveStaff}</p>
               </div>
-              <div className="h-12 w-12 rounded-full bg-warning/10 flex items-center justify-center">
-                <UserX className="h-6 w-6 text-warning-foreground" />
-              </div>
+              <UserX className="h-8 w-8 text-gray-600" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Staff Management */}
-      <Card className="luxury-card">
+      {/* Search and Filters */}
+      <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Staff Directory</CardTitle>
-              <CardDescription>Manage your hotel staff and their roles</CardDescription>
-            </div>
-            <Button 
-              onClick={() => setIsAddDialogOpen(true)}
-              className="bg-gradient-primary"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Staff Member
-            </Button>
-          </div>
+          <CardTitle>Staff Members</CardTitle>
+          <CardDescription>
+            Manage staff accounts, roles, and permissions
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Search */}
-          <div className="flex items-center space-x-2 mb-4">
+          <div className="flex items-center space-x-4 mb-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
-                placeholder="Search staff by name, email, role, or department..."
+                placeholder="Search staff members..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -179,34 +194,25 @@ export default function StaffDirectory() {
           </div>
 
           {/* Staff Table */}
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin" />
-              <span className="ml-2">Loading staff...</span>
-            </div>
-          ) : filteredStaff.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              {searchQuery ? 'No staff found matching your search.' : 'No staff members yet.'}
-            </div>
-          ) : (
+          <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Staff Member</TableHead>
-                  <TableHead>Role & Department</TableHead>
-                  <TableHead>Contact</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Department</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Last Login</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredStaff.map((member: Staff) => (
+                {filteredStaff.map((member) => (
                   <TableRow key={member.id}>
                     <TableCell className="font-medium">
                       <div className="flex items-center space-x-3">
                         <Avatar>
-                          <AvatarImage src={member.avatar} />
+                          <AvatarImage src={`/avatars/${member.email}.jpg`} />
                           <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
                         </Avatar>
                         <div>
@@ -216,24 +222,20 @@ export default function StaffDirectory() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div>
-                        <div className="font-medium">{member.role}</div>
-                        <div className="text-sm text-muted-foreground">{member.department}</div>
-                      </div>
+                      <Badge variant="secondary" className={getRoleColor(member.role)}>
+                        {member.role.replace('_', ' ')}
+                      </Badge>
                     </TableCell>
+                    <TableCell>{member.department || 'N/A'}</TableCell>
                     <TableCell>
-                      <div className="text-sm">
-                        <div>{member.email}</div>
-                        <div className="text-muted-foreground">{member.phone}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {getStatusBadge(member.status)}
+                      <Badge variant={member.is_active ? "default" : "secondary"}>
+                        {member.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="text-sm text-muted-foreground">
-                        {member.lastLogin 
-                          ? new Date(member.lastLogin).toLocaleDateString()
+                        {member.last_login 
+                          ? new Date(member.last_login).toLocaleDateString()
                           : 'Never'
                         }
                       </div>
@@ -251,10 +253,10 @@ export default function StaffDirectory() {
                             Edit Details
                           </DropdownMenuItem>
                           <DropdownMenuItem 
-                            onClick={() => handleStatusToggle(member.id, member.status)}
+                            onClick={() => handleStatusToggle(member.id, member.is_active)}
                             disabled={updateStaffMutation.isPending}
                           >
-                            {member.status === 'active' ? (
+                            {member.is_active ? (
                               <>
                                 <UserX className="mr-2 h-4 w-4" />
                                 Deactivate
@@ -268,12 +270,12 @@ export default function StaffDirectory() {
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem 
-                            className="text-destructive"
                             onClick={() => handleDeleteStaff(member.id)}
                             disabled={deleteStaffMutation.isPending}
+                            className="text-destructive"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
-                            Remove Staff
+                            Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -282,14 +284,22 @@ export default function StaffDirectory() {
                 ))}
               </TableBody>
             </Table>
+          </div>
+
+          {filteredStaff.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              {searchQuery ? "No staff members match your search." : "No staff members found."}
+            </div>
           )}
         </CardContent>
       </Card>
 
-      <AddStaffDialog
+      {/* Add Staff Dialog */}
+      <AddStaffDialog 
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
         onStaffAdded={() => {
+          // Refresh staff list - handled by react-query
           setIsAddDialogOpen(false);
         }}
       />

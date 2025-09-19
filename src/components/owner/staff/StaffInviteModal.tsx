@@ -67,9 +67,17 @@ export default function StaffInviteModal({ open, onOpenChange }: StaffInviteModa
       await inviteStaff.mutateAsync({
         name: `${formData.firstName} ${formData.lastName}`,
         email: formData.email,
-        phone: formData.phone,
+        phone: formData.phone || '',
         role: formData.role,
-        department: formData.department
+        department: formData.department,
+        tenant_id: 'current-tenant-id', // This should come from auth context
+        is_active: true,
+        force_reset: true,
+        last_login: null,
+        shift_start: null,
+        shift_end: null,
+        temp_expires: null,
+        temp_password_hash: null
       });
       
       // Reset form

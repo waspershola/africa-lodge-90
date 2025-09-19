@@ -70,7 +70,7 @@ export default function QuickBookingForm({ onClose }: QuickBookingFormProps) {
   // API hooks
   const createReservation = useCreateReservation();
   const importOTAReservation = useImportOTAReservation();
-  const autoAssignRoom = useAutoAssignRoom();
+  // Note: autoAssignRoom is imported as alias from useAssignRoom
   const { data: guestProfiles = [] } = useGuestProfiles();
   const { data: companies = [] } = useCompanies();
   const { data: roomAvailability = [] } = useRoomAvailability();

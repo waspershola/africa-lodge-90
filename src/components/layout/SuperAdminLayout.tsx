@@ -12,7 +12,8 @@ import {
   AlertTriangle,
   Wand2,
   Flag,
-  Database
+  Database,
+  Video
 } from 'lucide-react';
 import UnifiedDashboardLayout from './UnifiedDashboardLayout';
 
@@ -21,6 +22,7 @@ const navigation = [
   { name: 'Tenants', href: '/sa/tenants', icon: Building2 },
   { name: 'Services', href: '/sa/services', icon: Layers },
   { name: 'Pricing Config', href: '/sa/pricing-config', icon: CreditCard },
+  { name: 'Demo Config', href: '/sa/demo-config', icon: Video },
   { name: 'Templates', href: '/sa/templates', icon: Layers },
   { name: 'Roles', href: '/sa/roles', icon: Shield },
   { name: 'Global Users', href: '/sa/global-users', icon: UserCheck },

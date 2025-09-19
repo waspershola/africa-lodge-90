@@ -28,8 +28,9 @@ import {
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, UserRole } from "@/hooks/useAuth";
 import { PricingSection } from "@/components/pricing/PricingSection";
+import { DemoVideoSection } from "@/components/demo/DemoVideoSection";
 import heroHotelBg from "@/assets/hero-hotel-bg.jpg";
 import sunsetHotelBg from "@/assets/sunset-hotel-bg.jpg";
 import diningHotelBg from "@/assets/dining-hotel-bg.jpg";
@@ -99,7 +100,37 @@ const Index = () => {
     setLoginLoading(true);
     try {
       await login(email, password);
-      // Role-based redirect will happen in useAuth
+      // Role-based redirect handled by auth system
+      // For demo purposes, we'll use the user's actual role from auth
+      // In production, this will come from the authenticated user
+      
+      // Mock role determination - in production this comes from auth response
+      const getUserRole = (): UserRole => {
+        // This will be replaced with actual auth logic
+        return 'owner';
+      };
+      
+      const userRole = getUserRole();
+      
+      switch (userRole) {
+        case 'owner':
+          window.location.href = '/owner-dashboard';
+          break;
+        case 'manager':
+          window.location.href = '/manager-dashboard';
+          break;
+        case 'staff':
+          window.location.href = '/front-desk';
+          break;
+        case 'chef':
+          window.location.href = '/pos';
+          break;
+        case 'accountant':
+          window.location.href = '/owner-dashboard/financials';
+          break;
+        default:
+          window.location.href = '/owner-dashboard';
+      }
     } catch (error) {
       console.error('Login failed:', error);
     } finally {
@@ -355,6 +386,9 @@ const Index = () => {
           </motion.div>
         </div>
       </section>
+
+      {/* Demo Video Section */}
+      <DemoVideoSection />
 
       {/* Dynamic Pricing Section */}
       <PricingSection />

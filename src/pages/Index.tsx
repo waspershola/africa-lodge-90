@@ -33,10 +33,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { TrialSignupFlow } from "@/components/auth/TrialSignupFlow";
-import { createTestUsers } from "@/utils/createTestUsers";
 import { PricingSection } from "@/components/pricing/PricingSection";
 import { DemoVideoSection } from "@/components/demo/DemoVideoSection";
-import { InitialUserCreator } from "@/components/admin/InitialUserCreator";
 import heroHotelBg from "@/assets/hero-hotel-bg.jpg";
 import sunsetHotelBg from "@/assets/sunset-hotel-bg.jpg";
 import diningHotelBg from "@/assets/dining-hotel-bg.jpg";
@@ -46,7 +44,7 @@ const Index = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
-  const [userCreationLoading, setUserCreationLoading] = useState(false);
+  
   const { user, login } = useAuth();
   const navigate = useNavigate();
 
@@ -138,17 +136,6 @@ const Index = () => {
     }
   ];
 
-  const handleCreateTestUsers = async () => {
-    setUserCreationLoading(true);
-    try {
-      await createTestUsers();
-      // Show success message or visual indicator
-    } catch (error) {
-      console.error('Failed to create test users:', error);
-    } finally {
-      setUserCreationLoading(false);
-    }
-  };
 
   const handleQuickLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -269,14 +256,6 @@ const Index = () => {
               variants={fadeIn}
             >
               <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
-                <button
-                  onClick={handleCreateTestUsers}
-                  disabled={userCreationLoading}
-                  className="w-full mb-4 bg-yellow-600 hover:bg-yellow-700 disabled:bg-yellow-800 text-white font-medium py-2 px-4 rounded-md transition-colors text-sm"
-                >
-                  {userCreationLoading ? '⏳ Creating Users...' : '🔧 Create Test Users (Click First)'}
-                </button>
-                
                 <h3 className="text-lg font-semibold text-white text-center mb-4">
                   Sign In to Your Dashboard
                 </h3>
@@ -401,37 +380,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Initial User Setup Section - For Development/Setup */}
-      <section className="py-16 px-4 bg-muted/30">
-        <div className="container mx-auto">
-          <motion.div 
-            className="text-center mb-12"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
-            <Badge variant="outline" className="mb-4">
-              System Setup
-            </Badge>
-            <h2 className="text-2xl md:text-3xl font-bold display-heading mb-4">
-              Phase 2: Backend Integration
-            </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Create initial system users to complete the backend integration and enable authentication.
-            </p>
-          </motion.div>
-          
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-          >
-            <InitialUserCreator />
-          </motion.div>
-        </div>
-      </section>
 
       {/* Features Section */}
       <section id="features" className="py-20 px-4">

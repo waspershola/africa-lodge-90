@@ -43,11 +43,13 @@ export interface UseMultiTenantAuthReturn {
   isLoading: boolean;
   error: string | null;
   trialStatus: TrialStatus | null;
+  needsPasswordReset: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   hasAccess: (requiredRole: string) => boolean;
   hasPermission: (permission: string) => boolean;
   refreshAuth: () => Promise<void>;
+  resetPassword: (newPassword: string) => Promise<void>;
 }
 
 export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
@@ -57,11 +59,21 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [trialStatus, setTrialStatus] = useState<TrialStatus | null>(null);
+  const [needsPasswordReset, setNeedsPasswordReset] = useState(false);
 
   // ... keep existing code ...
 
+  // Check if password reset is required
+  const checkPasswordResetRequired = (user: User): boolean => {
+    if (user.force_reset && user.temp_password_hash) {
+      console.log('Password reset required - user has temporary password');
+      return true;
+    }
+    return false;
+  };
+
   // Check if onboarding is required
-  const checkOnboardingRequired = (user: User, tenant: Tenant) => {
+  const checkOnboardingRequired = (user: User, tenant: Tenant): boolean => {
     // Only check for owners on trialing subscriptions
     if (user.role === 'OWNER' && tenant.subscription_status === 'trialing') {
       // Use database setup_completed field instead of localStorage
@@ -143,6 +155,15 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
 
       console.log('Setting user:', userData);
       setUser(userData);
+
+      // Check if password reset is required first
+      const requiresReset = checkPasswordResetRequired(userData);
+      setNeedsPasswordReset(requiresReset);
+      
+      if (requiresReset) {
+        console.log('Password reset required, stopping further auth processing');
+        return; // Don't proceed with tenant loading or onboarding if reset is required
+      }
 
       // Load tenant data if user has tenant_id from JWT
       if (tenantIdFromJWT) {
@@ -305,6 +326,50 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
     return requiredRoles.includes(user.role) || user.role === 'SUPER_ADMIN' || user.role === 'OWNER';
   };
 
+  // Reset password function
+  const resetPassword = async (newPassword: string) => {
+    try {
+      if (!user) throw new Error('No user found');
+      
+      console.log('Resetting password for user:', user.id);
+      
+      // Update password in Supabase Auth
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (error) throw error;
+      
+      // Clear force_reset flag and temp password in database
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({
+          force_reset: false,
+          temp_password_hash: null,
+          temp_expires: null
+        })
+        .eq('id', user.id);
+      
+      if (updateError) {
+        console.warn('Failed to clear temp password flags:', updateError);
+      }
+      
+      // Update local state
+      setNeedsPasswordReset(false);
+      setUser(prev => prev ? { ...prev, force_reset: false } : null);
+      
+      console.log('Password reset completed successfully');
+      
+      // Reload auth state to continue with normal flow
+      await loadAuthState();
+      
+    } catch (err) {
+      console.error('Password reset failed:', err);
+      setError(err instanceof Error ? err.message : 'Password reset failed');
+      throw err;
+    }
+  };
+
   // Refresh auth state
   const refreshAuth = async () => {
     await loadAuthState();
@@ -354,11 +419,13 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
     isLoading,
     error,
     trialStatus,
+    needsPasswordReset,
     login,
     logout,
     hasAccess,
     hasPermission,
-    refreshAuth
+    refreshAuth,
+    resetPassword
   };
 }
 

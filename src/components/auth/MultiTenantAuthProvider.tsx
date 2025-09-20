@@ -1,6 +1,7 @@
 import { createContext, useContext, ReactNode } from 'react';
 import { useMultiTenantAuth, UseMultiTenantAuthReturn } from '@/hooks/useMultiTenantAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { PasswordResetDialog } from '@/components/auth/PasswordResetDialog';
 
 const MultiTenantAuthContext = createContext<UseMultiTenantAuthReturn | undefined>(undefined);
 
@@ -81,6 +82,13 @@ export function MultiTenantAuthProvider({ children }: MultiTenantAuthProviderPro
   return (
     <MultiTenantAuthContext.Provider value={enhancedAuth}>
       {children}
+      
+      {/* Password Reset Dialog - shown when user needs to reset temporary password */}
+      <PasswordResetDialog
+        open={auth.needsPasswordReset}
+        userEmail={auth.user?.email}
+        onPasswordReset={auth.resetPassword}
+      />
     </MultiTenantAuthContext.Provider>
   );
 }

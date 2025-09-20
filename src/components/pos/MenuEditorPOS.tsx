@@ -24,7 +24,7 @@ import { usePOSApi, type MenuItem } from '@/hooks/usePOSApi';
 import { useToast } from '@/hooks/use-toast';
 
 export default function MenuEditorPOS() {
-  const { menuItems, isLoading, updateMenuItem } = usePOSApi();
+  const { menuItems, isLoading, updateMenuItem, addMenuItem } = usePOSApi();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -34,31 +34,30 @@ export default function MenuEditorPOS() {
   const [newItem, setNewItem] = useState<Partial<MenuItem>>({
     name: '',
     description: '',
-    base_price: 0,
-    prep_time_mins: 10,
-    available: true,
-    stations: [],
-    inventory_tracked: false,
-    image_url: ''
+    price: 0,
+    preparation_time: 10,
+    is_available: true,
+    category_id: '',
+    tenant_id: ''
   });
 
   // Filter menu items
   const filteredItems = menuItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          item.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
+    const matchesCategory = categoryFilter === 'all' || item.category?.name === categoryFilter;
     return matchesSearch && matchesCategory;
   });
 
   // Get unique categories
-  const categories = Array.from(new Set(menuItems.map(item => item.category))).filter(Boolean);
+  const categories = Array.from(new Set(menuItems.map(item => item.category?.name))).filter(Boolean);
 
-  const handleToggleAvailability = async (itemId: string, available: boolean) => {
+  const handleToggleAvailability = async (itemId: string, is_available: boolean) => {
     try {
-      await updateMenuItem(itemId, { available });
+      await updateMenuItem(itemId, { is_available });
       toast({
         title: "Menu Item Updated",
-        description: `Item ${available ? 'enabled' : 'disabled'} successfully.`,
+        description: `Item ${is_available ? 'enabled' : 'disabled'} successfully.`,
       });
     } catch (error) {
       toast({
@@ -81,11 +80,9 @@ export default function MenuEditorPOS() {
       await updateMenuItem(selectedItem.id, {
         name: selectedItem.name,
         description: selectedItem.description,
-        base_price: selectedItem.base_price,
-        prep_time_mins: selectedItem.prep_time_mins,
-        available: selectedItem.available,
-        inventory_tracked: selectedItem.inventory_tracked,
-        stations: selectedItem.stations,
+        price: selectedItem.price,
+        preparation_time: selectedItem.preparation_time,
+        is_available: selectedItem.is_available,
       });
       
       toast({
@@ -104,7 +101,7 @@ export default function MenuEditorPOS() {
   };
 
   const handleAddNewItem = async () => {
-    if (!newItem.name || newItem.base_price! <= 0) {
+    if (!newItem.name || (newItem.price || 0) <= 0) {
       toast({
         title: "Invalid Item",
         description: "Please fill in all required fields.",
@@ -113,29 +110,53 @@ export default function MenuEditorPOS() {
       return;
     }
 
-    toast({
-      title: "New Item Request Submitted",
-      description: "Your request to add this menu item has been sent to a manager for approval.",
-    });
-    
-    // Reset form
-    setNewItem({
-      name: '',
-      description: '',
-      base_price: 0,
-      prep_time_mins: 15,
-      available: true,
-      inventory_tracked: false,
-      stations: []
-    });
-    setIsAddItemDialogOpen(false);
+    try {
+      if (addMenuItem) {
+        await addMenuItem({
+          category_id: newItem.category_id || '',
+          name: newItem.name || '',
+          description: newItem.description,
+          price: newItem.price || 0,
+          preparation_time: newItem.preparation_time,
+          dietary_info: newItem.dietary_info,
+          tags: newItem.tags
+        });
+        
+        toast({
+          title: "Menu Item Added",
+          description: "New menu item created successfully.",
+        });
+      } else {
+        toast({
+          title: "New Item Request Submitted",
+          description: "Your request to add this menu item has been sent to a manager for approval.",
+        });
+      }
+      
+      // Reset form
+      setNewItem({
+        name: '',
+        description: '',
+        price: 0,
+        preparation_time: 15,
+        is_available: true,
+        category_id: '',
+        tenant_id: ''
+      });
+      setIsAddItemDialogOpen(false);
+    } catch (error) {
+      toast({
+        title: "Add Failed",
+        description: "Unable to add new menu item.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Stats
   const totalItems = menuItems.length;
-  const availableItems = menuItems.filter(item => item.available).length;
+  const availableItems = menuItems.filter(item => item.is_available).length;
   const unavailableItems = totalItems - availableItems;
-  const inventoryTracked = menuItems.filter(item => item.inventory_tracked).length;
 
   return (
     <div className="p-6 space-y-6">
@@ -195,8 +216,8 @@ export default function MenuEditorPOS() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Inventory Tracked</p>
-                <p className="text-2xl font-bold text-orange-600">{inventoryTracked}</p>
+                <p className="text-sm font-medium text-muted-foreground">Categories</p>
+                <p className="text-2xl font-bold text-orange-600">{categories.length}</p>
               </div>
               <Package className="h-8 w-8 text-orange-500" />
             </div>
@@ -223,7 +244,7 @@ export default function MenuEditorPOS() {
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
             {categories.map(category => (
-              <SelectItem key={category} value={category}>
+              <SelectItem key={category} value={category || ''}>
                 {category}
               </SelectItem>
             ))}
@@ -234,17 +255,17 @@ export default function MenuEditorPOS() {
       {/* Menu Items Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredItems.map(item => (
-          <Card key={item.id} className={`${!item.available ? 'opacity-60' : ''}`}>
+          <Card key={item.id} className={`${!item.is_available ? 'opacity-60' : ''}`}>
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <CardTitle className="text-lg">{item.name}</CardTitle>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {item.category}
+                    {item.category?.name || 'No Category'}
                   </p>
                 </div>
-                <Badge variant={item.available ? "default" : "secondary"}>
-                  {item.available ? "Available" : "Unavailable"}
+                <Badge variant={item.is_available ? "default" : "secondary"}>
+                  {item.is_available ? "Available" : "Unavailable"}
                 </Badge>
               </div>
             </CardHeader>
@@ -256,23 +277,13 @@ export default function MenuEditorPOS() {
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <DollarSign className="h-4 w-4 text-green-500" />
-                  <span className="font-bold">₦{(item.base_price / 100).toFixed(2)}</span>
+                  <span className="font-bold">₦{item.price.toFixed(2)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-blue-500" />
-                  <span className="text-sm">{item.prep_time_mins}m</span>
+                  <span className="text-sm">{item.preparation_time || 15}m</span>
                 </div>
               </div>
-
-              {item.stations && item.stations.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {item.stations.map(station => (
-                    <Badge key={station} variant="outline" className="text-xs">
-                      {station}
-                    </Badge>
-                  ))}
-                </div>
-              )}
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -281,7 +292,7 @@ export default function MenuEditorPOS() {
                   </Label>
                   <Switch
                     id={`available-${item.id}`}
-                    checked={item.available}
+                    checked={item.is_available}
                     onCheckedChange={(checked) => handleToggleAvailability(item.id, checked)}
                     disabled={isLoading}
                   />
@@ -295,13 +306,6 @@ export default function MenuEditorPOS() {
                   Edit
                 </Button>
               </div>
-
-              {item.inventory_tracked && (
-                <div className="flex items-center gap-2">
-                  <Package className="h-4 w-4 text-orange-500" />
-                  <span className="text-xs text-muted-foreground">Inventory Tracked</span>
-                </div>
-              )}
             </CardContent>
           </Card>
         ))}
@@ -327,12 +331,12 @@ export default function MenuEditorPOS() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="new-category">Category</Label>
+                <Label htmlFor="new-category">Category ID</Label>
                 <Input
                   id="new-category"
-                  value={newItem.category || ''}
-                  onChange={(e) => setNewItem({...newItem, category: e.target.value})}
-                  placeholder="e.g., Appetizers, Main Course"
+                  value={newItem.category_id || ''}
+                  onChange={(e) => setNewItem({...newItem, category_id: e.target.value})}
+                  placeholder="Enter category ID"
                 />
               </div>
             </div>
@@ -350,13 +354,13 @@ export default function MenuEditorPOS() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="new-price">Price (in kobo) *</Label>
+                <Label htmlFor="new-price">Price (NGN) *</Label>
                 <Input
                   id="new-price"
                   type="number"
-                  value={newItem.base_price || 0}
-                  onChange={(e) => setNewItem({...newItem, base_price: parseInt(e.target.value) || 0})}
-                  placeholder="e.g., 2500 for ₦25.00"
+                  value={newItem.price || 0}
+                  onChange={(e) => setNewItem({...newItem, price: parseFloat(e.target.value) || 0})}
+                  placeholder="e.g., 25.00"
                 />
               </div>
               
@@ -365,43 +369,21 @@ export default function MenuEditorPOS() {
                 <Input
                   id="new-prep-time"
                   type="number"
-                  value={newItem.prep_time_mins || 0}
-                  onChange={(e) => setNewItem({...newItem, prep_time_mins: parseInt(e.target.value) || 0})}
+                  value={newItem.preparation_time || 0}
+                  onChange={(e) => setNewItem({...newItem, preparation_time: parseInt(e.target.value) || 0})}
                   placeholder="e.g., 15"
                 />
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="new-stations">Kitchen Stations (comma separated)</Label>
-              <Input
-                id="new-stations"
-                value={newItem.stations?.join(', ') || ''}
-                onChange={(e) => setNewItem({
-                  ...newItem, 
-                  stations: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
-                })}
-                placeholder="e.g., grill, cold, pizza"
-              />
             </div>
 
             <div className="flex gap-4">
               <div className="flex items-center space-x-2">
                 <Switch
                   id="new-available"
-                  checked={newItem.available || false}
-                  onCheckedChange={(checked) => setNewItem({...newItem, available: checked})}
+                  checked={newItem.is_available || false}
+                  onCheckedChange={(checked) => setNewItem({...newItem, is_available: checked})}
                 />
                 <Label htmlFor="new-available">Available</Label>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="new-inventory"
-                  checked={newItem.inventory_tracked || false}
-                  onCheckedChange={(checked) => setNewItem({...newItem, inventory_tracked: checked})}
-                />
-                <Label htmlFor="new-inventory">Track Inventory</Label>
               </div>
             </div>
 
@@ -441,9 +423,9 @@ export default function MenuEditorPOS() {
                   <Label htmlFor="edit-category">Category</Label>
                   <Input
                     id="edit-category"
-                    value={selectedItem.category}
-                    onChange={(e) => setSelectedItem({...selectedItem, category: e.target.value})}
-                    placeholder="e.g., Appetizers, Main Course"
+                    value={selectedItem.category?.name || ''}
+                    disabled
+                    placeholder="Category (read-only)"
                   />
                 </div>
               </div>
@@ -461,13 +443,13 @@ export default function MenuEditorPOS() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-price">Price (in kobo) *</Label>
+                  <Label htmlFor="edit-price">Price (NGN) *</Label>
                   <Input
                     id="edit-price"
                     type="number"
-                    value={selectedItem.base_price}
-                    onChange={(e) => setSelectedItem({...selectedItem, base_price: parseInt(e.target.value) || 0})}
-                    placeholder="e.g., 2500 for ₦25.00"
+                    value={selectedItem.price}
+                    onChange={(e) => setSelectedItem({...selectedItem, price: parseFloat(e.target.value) || 0})}
+                    placeholder="e.g., 25.00"
                   />
                 </div>
                 
@@ -476,43 +458,21 @@ export default function MenuEditorPOS() {
                   <Input
                     id="edit-prep-time"
                     type="number"
-                    value={selectedItem.prep_time_mins}
-                    onChange={(e) => setSelectedItem({...selectedItem, prep_time_mins: parseInt(e.target.value) || 0})}
+                    value={selectedItem.preparation_time || 0}
+                    onChange={(e) => setSelectedItem({...selectedItem, preparation_time: parseInt(e.target.value) || 0})}
                     placeholder="e.g., 15"
                   />
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-stations">Kitchen Stations (comma separated)</Label>
-                <Input
-                  id="edit-stations"
-                  value={selectedItem.stations?.join(', ') || ''}
-                  onChange={(e) => setSelectedItem({
-                    ...selectedItem, 
-                    stations: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
-                  })}
-                  placeholder="e.g., grill, cold, pizza"
-                />
               </div>
 
               <div className="flex gap-4">
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="edit-available"
-                    checked={selectedItem.available}
-                    onCheckedChange={(checked) => setSelectedItem({...selectedItem, available: checked})}
+                    checked={selectedItem.is_available || false}
+                    onCheckedChange={(checked) => setSelectedItem({...selectedItem, is_available: checked})}
                   />
                   <Label htmlFor="edit-available">Available</Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="edit-inventory"
-                    checked={selectedItem.inventory_tracked}
-                    onCheckedChange={(checked) => setSelectedItem({...selectedItem, inventory_tracked: checked})}
-                  />
-                  <Label htmlFor="edit-inventory">Track Inventory</Label>
                 </div>
               </div>
 

@@ -57,13 +57,15 @@ export default function KDSBoard() {
   };
 
   const getTimeElapsed = (ticket: KitchenTicket) => {
-    if (!ticket.start_time) return 0;
-    return Math.floor((currentTime.getTime() - new Date(ticket.start_time).getTime()) / 1000 / 60);
+    if (!ticket.order_time) return 0;
+    return Math.floor((currentTime.getTime() - new Date(ticket.order_time).getTime()) / 1000 / 60);
   };
 
   const getTimeRemaining = (ticket: KitchenTicket) => {
-    const eta = new Date(ticket.eta);
-    const remaining = Math.ceil((eta.getTime() - currentTime.getTime()) / 1000 / 60);
+    if (!ticket.eta_minutes) return 30; // Default 30 minutes
+    const orderTime = new Date(ticket.order_time);
+    const etaTime = new Date(orderTime.getTime() + ticket.eta_minutes * 60 * 1000);
+    const remaining = Math.ceil((etaTime.getTime() - currentTime.getTime()) / 1000 / 60);
     return Math.max(0, remaining);
   };
 
@@ -92,25 +94,26 @@ export default function KDSBoard() {
   };
 
   const handleClaimTicket = async (ticketId: string) => {
-    await claimKitchenTicket(ticketId, 'Current Chef');
+    await claimKitchenTicket(ticketId);
   };
 
   const handleCompleteTicket = async (ticketId: string) => {
     await completeKitchenTicket(ticketId);
   };
 
-  // Group tickets by station
-  const stationGroups = kitchenTickets.reduce((acc, ticket) => {
-    if (!acc[ticket.station]) {
-      acc[ticket.station] = [];
+  // Group tickets by status for now (since station doesn't exist in interface)
+  const statusGroups = kitchenTickets.reduce((acc, ticket) => {
+    const status = ticket.status;
+    if (!acc[status]) {
+      acc[status] = [];
     }
-    acc[ticket.station].push(ticket);
+    acc[status].push(ticket);
     return acc;
   }, {} as Record<string, KitchenTicket[]>);
 
   // Sort tickets by priority and time
-  Object.keys(stationGroups).forEach(station => {
-    stationGroups[station].sort((a, b) => {
+  Object.keys(statusGroups).forEach(status => {
+    statusGroups[status].sort((a, b) => {
       const aPriority = getTicketPriority(a);
       const bPriority = getTicketPriority(b);
       
@@ -119,7 +122,7 @@ export default function KDSBoard() {
       if (aPriority === 'high' && bPriority === 'normal') return -1;
       if (bPriority === 'high' && aPriority === 'normal') return 1;
       
-      return new Date(a.eta).getTime() - new Date(b.eta).getTime();
+      return new Date(a.order_time).getTime() - new Date(b.order_time).getTime();
     });
   });
 
@@ -185,8 +188,8 @@ export default function KDSBoard() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Stations</p>
-                <p className="text-2xl font-bold">{Object.keys(stationGroups).length}</p>
+                <p className="text-sm font-medium text-muted-foreground">Status Groups</p>
+                <p className="text-2xl font-bold">{Object.keys(statusGroups).length}</p>
               </div>
               <UtensilsCrossed className="h-8 w-8 text-green-500" />
             </div>
@@ -194,14 +197,14 @@ export default function KDSBoard() {
         </Card>
       </div>
 
-      {/* Station Boards */}
+      {/* Status Boards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
-        {Object.entries(stationGroups).map(([station, tickets]) => (
-          <Card key={station} className={`${getStationColor(station)} border-2 h-fit`}>
+        {Object.entries(statusGroups).map(([status, tickets]) => (
+          <Card key={status} className="border-2 h-fit">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg capitalize">
-                {getStationIcon(station)}
-                {station}
+                <ChefHat className="h-5 w-5 text-blue-500" />
+                {status}
                 <Badge variant="outline">{tickets.length}</Badge>
               </CardTitle>
             </CardHeader>
@@ -213,7 +216,7 @@ export default function KDSBoard() {
                   const timeElapsed = getTimeElapsed(ticket);
                   
                   return (
-                    <Card key={ticket.ticket_id} className={`border ${
+                    <Card key={ticket.id} className={`border ${
                       priority === 'urgent' ? 'border-red-400 bg-red-50' :
                       priority === 'high' ? 'border-orange-400 bg-orange-50' :
                       'border-border bg-card'
@@ -230,8 +233,8 @@ export default function KDSBoard() {
                               </Badge>
                             </div>
                             <h4 className="font-bold">{ticket.order_number}</h4>
-                            {ticket.room_id && (
-                              <p className="text-sm text-muted-foreground">Room {ticket.room_id}</p>
+                            {ticket.room_number && (
+                              <p className="text-sm text-muted-foreground">Room {ticket.room_number}</p>
                             )}
                           </div>
                           <div className="text-right">
@@ -262,19 +265,15 @@ export default function KDSBoard() {
                             <div key={index} className="p-2 bg-muted/30 rounded border">
                               <div className="flex justify-between items-start">
                                 <div className="flex-1">
-                                  <span className="font-medium text-sm">{item.qty}x {item.menu_item.name}</span>
-                                  {item.modifiers && item.modifiers.length > 0 && (
-                                    <div className="flex flex-wrap gap-1 mt-1">
-                                      {item.modifiers.map((mod, modIndex) => (
-                                        <Badge key={modIndex} variant="secondary" className="text-xs h-5">
-                                          {mod.name}
-                                        </Badge>
-                                      ))}
-                                    </div>
-                                  )}
-                                  {item.notes && (
+                                  <span className="font-medium text-sm">{item.quantity}x {item.name}</span>
+                                  {item.special_requests && (
                                     <p className="text-xs text-muted-foreground mt-1 italic">
-                                      "{item.notes}"
+                                      "{item.special_requests}"
+                                    </p>
+                                  )}
+                                  {item.preparation_time && (
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      Prep time: {item.preparation_time}m
                                     </p>
                                   )}
                                 </div>
@@ -285,11 +284,11 @@ export default function KDSBoard() {
 
                         {/* Actions */}
                         <div className="space-y-2">
-                          {ticket.status === 'pending' && (
+                          {ticket.status === 'new' && (
                             <Button 
                               className="w-full" 
                               size="sm"
-                              onClick={() => handleClaimTicket(ticket.ticket_id)}
+                              onClick={() => handleClaimTicket(ticket.id)}
                               disabled={isLoading}
                             >
                               <User className="h-4 w-4 mr-1" />
@@ -302,7 +301,7 @@ export default function KDSBoard() {
                               className="w-full" 
                               size="sm"
                               variant="default"
-                              onClick={() => handleCompleteTicket(ticket.ticket_id)}
+                              onClick={() => handleCompleteTicket(ticket.id)}
                               disabled={isLoading}
                             >
                               <CheckCircle className="h-4 w-4 mr-1" />
@@ -310,9 +309,9 @@ export default function KDSBoard() {
                             </Button>
                           )}
 
-                          {ticket.assigned_chef && (
+                          {ticket.assigned_staff && (
                             <p className="text-xs text-muted-foreground text-center">
-                              Chef: {ticket.assigned_chef}
+                              Staff: {ticket.assigned_staff}
                             </p>
                           )}
                         </div>
@@ -326,7 +325,7 @@ export default function KDSBoard() {
         ))}
       </div>
 
-      {Object.keys(stationGroups).length === 0 && (
+      {Object.keys(statusGroups).length === 0 && (
         <Card>
           <CardContent className="p-12 text-center">
             <ChefHat className="h-12 w-12 text-muted-foreground mx-auto mb-4" />

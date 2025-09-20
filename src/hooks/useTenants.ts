@@ -27,6 +27,14 @@ export const useCreateTenantAndOwner = () => {
   return useMutation({
     mutationFn: async (data: CreateTenantAndOwnerData) => {
       const result = await tenantService.createTenantAndOwner(data);
+      
+      // Send temporary password email
+      await tenantService.sendTempPasswordEmail(
+        data.owner_email,
+        data.hotel_name,
+        result.tempPassword
+      );
+      
       return result;
     },
     onSuccess: () => {

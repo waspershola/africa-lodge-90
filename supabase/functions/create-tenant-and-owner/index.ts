@@ -254,6 +254,7 @@ serve(async (req) => {
             JSON.stringify({
               success: true,
               tenant,
+              tempPassword,
               owner_id: authUserId,
               message: 'Tenant and owner created successfully'
             }),

@@ -147,7 +147,7 @@ export const tenantService = {
 
       return { 
         tenant: result.tenant, 
-        tempPassword: 'Password sent via email' // Don't return actual password
+        tempPassword: result.tempPassword // Return the actual temp password for display
       };
 
     } catch (error) {

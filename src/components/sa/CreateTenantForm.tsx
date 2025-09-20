@@ -3,71 +3,63 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useCreateTenant } from '@/hooks/useApi';
+import { useCreateTenantAndOwner, usePlansReal } from '@/hooks/useTenants';
+import { CreateTenantAndOwnerData } from '@/services/tenantService';
 
 const createTenantSchema = z.object({
-  name: z.string().min(1, 'Hotel name is required').max(100, 'Name too long'),
-  slug: z.string()
+  hotel_name: z.string().min(1, 'Hotel name is required').max(100, 'Name too long'),
+  hotel_slug: z.string()
     .min(1, 'Slug is required')
     .max(50, 'Slug too long')
     .regex(/^[a-z0-9-]+$/, 'Slug can only contain lowercase letters, numbers, and hyphens'),
-  plan: z.enum(['Starter', 'Growth', 'Pro'], {
-    required_error: 'Please select a plan',
-  }),
-  contactEmail: z.string().email('Please enter a valid email address'),
-  totalRooms: z.number().min(1, 'Must have at least 1 room').max(999, 'Too many rooms'),
+  plan_id: z.string().min(1, 'Please select a plan'),
+  owner_email: z.string().email('Please enter a valid email address'),
+  owner_name: z.string().min(1, 'Owner name is required').max(100, 'Name too long'),
   city: z.string().min(1, 'City is required').max(50, 'City name too long'),
-  offlineWindowHours: z.number().min(12, 'Minimum 12 hours').max(48, 'Maximum 48 hours'),
+  address: z.string().optional(),
+  phone: z.string().optional(),
 });
 
 type CreateTenantForm = z.infer<typeof createTenantSchema>;
 
-interface CreateTenantFormProps {
+interface CreateTenantRealFormProps {
   onSuccess: () => void;
 }
 
-export function CreateTenantForm({ onSuccess }: CreateTenantFormProps) {
-  const createTenant = useCreateTenant();
+export function CreateTenantRealForm({ onSuccess }: CreateTenantRealFormProps) {
+  const createTenant = useCreateTenantAndOwner();
+  const { data: plans = [], isLoading: plansLoading } = usePlansReal();
 
   const form = useForm<CreateTenantForm>({
     resolver: zodResolver(createTenantSchema),
     defaultValues: {
-      name: '',
-      slug: '',
-      plan: 'Growth',
-      contactEmail: '',
-      totalRooms: 25,
-      city: '',
-      offlineWindowHours: 24,
+      hotel_name: '',
+      hotel_slug: '',
+      plan_id: '',
+      owner_email: '',
+      owner_name: '',
+      city: 'Lagos',
+      address: '',
+      phone: '',
     },
   });
 
   const onSubmit = async (data: CreateTenantForm) => {
     try {
-      await createTenant.mutateAsync({
-        hotel_name: data.name,
-        hotel_slug: data.slug,
-        email: data.contactEmail,
+      // Ensure all required fields are present
+      const createData: CreateTenantAndOwnerData = {
+        hotel_name: data.hotel_name,
+        hotel_slug: data.hotel_slug,
+        owner_email: data.owner_email,
+        owner_name: data.owner_name,
+        plan_id: data.plan_id,
         city: data.city,
-        subscription_status: 'active',
-        plan_id: '00000000-0000-0000-0000-000000000001',
-        address: '',
-        brand_colors: {},
-        country: 'Nigeria',
-        currency: 'NGN',
-        logo_url: '',
-        onboarding_step: 'hotel_information',
-        phone: '',
-        receipt_template: 'default',
-        settings: {},
-        setup_completed: false,
-        timezone: 'Africa/Lagos',
-        trial_start: new Date().toISOString(),
-        trial_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-      });
+        address: data.address,
+        phone: data.phone,
+      };
+      await createTenant.mutateAsync(createData);
       onSuccess();
       form.reset();
     } catch (error) {
@@ -77,14 +69,14 @@ export function CreateTenantForm({ onSuccess }: CreateTenantFormProps) {
 
   // Auto-generate slug from name
   const handleNameChange = (value: string) => {
-    form.setValue('name', value);
-    if (!form.formState.dirtyFields.slug) {
+    form.setValue('hotel_name', value);
+    if (!form.formState.dirtyFields.hotel_slug) {
       const slug = value
         .toLowerCase()
         .replace(/[^a-z0-9\s-]/g, '')
         .replace(/\s+/g, '-')
         .slice(0, 50);
-      form.setValue('slug', slug);
+      form.setValue('hotel_slug', slug);
     }
   };
 
@@ -94,7 +86,7 @@ export function CreateTenantForm({ onSuccess }: CreateTenantFormProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="name"
+            name="hotel_name"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Hotel Name</FormLabel>
@@ -112,10 +104,10 @@ export function CreateTenantForm({ onSuccess }: CreateTenantFormProps) {
 
           <FormField
             control={form.control}
-            name="slug"
+            name="hotel_slug"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Slug</FormLabel>
+                <FormLabel>URL Slug</FormLabel>
                 <FormControl>
                   <Input placeholder="grand-palace-hotel" {...field} />
                 </FormControl>
@@ -128,17 +120,65 @@ export function CreateTenantForm({ onSuccess }: CreateTenantFormProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="contactEmail"
+            name="owner_name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Contact Email</FormLabel>
+                <FormLabel>Owner Full Name</FormLabel>
                 <FormControl>
                   <Input 
-                    type="email"
-                    placeholder="admin@hotel.com"
+                    placeholder="John Doe"
                     {...field}
                   />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="owner_email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Owner Email</FormLabel>
+                <FormControl>
+                  <Input 
+                    type="email"
+                    placeholder="owner@hotel.com"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="plan_id"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Subscription Plan</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select plan" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {plansLoading ? (
+                      <SelectItem value="loading" disabled>Loading plans...</SelectItem>
+                    ) : (
+                      plans.map((plan) => (
+                        <SelectItem key={plan.id} value={plan.id}>
+                          {plan.name} - ₦{plan.price_monthly?.toLocaleString()}/month
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
@@ -159,43 +199,15 @@ export function CreateTenantForm({ onSuccess }: CreateTenantFormProps) {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="plan"
+            name="address"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Plan</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select plan" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="Starter">Starter</SelectItem>
-                    <SelectItem value="Growth">Growth</SelectItem>
-                    <SelectItem value="Pro">Pro</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="totalRooms"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Total Rooms</FormLabel>
+                <FormLabel>Address (Optional)</FormLabel>
                 <FormControl>
-                  <Input 
-                    type="number"
-                    placeholder="25"
-                    {...field}
-                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                  />
+                  <Input placeholder="123 Main Street" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -204,17 +216,12 @@ export function CreateTenantForm({ onSuccess }: CreateTenantFormProps) {
 
           <FormField
             control={form.control}
-            name="offlineWindowHours"
+            name="phone"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Offline Window (hours)</FormLabel>
+                <FormLabel>Phone (Optional)</FormLabel>
                 <FormControl>
-                  <Input 
-                    type="number"
-                    placeholder="24"
-                    {...field}
-                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                  />
+                  <Input placeholder="+234 800 000 0000" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -235,9 +242,15 @@ export function CreateTenantForm({ onSuccess }: CreateTenantFormProps) {
             disabled={createTenant.isPending}
             className="bg-gradient-primary shadow-luxury hover:shadow-hover"
           >
-            {createTenant.isPending ? 'Creating...' : 'Create Tenant'}
+            {createTenant.isPending ? 'Creating...' : 'Create Tenant & Owner'}
           </Button>
         </div>
+
+        {createTenant.isPending && (
+          <div className="text-sm text-muted-foreground">
+            Creating tenant, owner account, and sending temporary password email...
+          </div>
+        )}
       </form>
     </Form>
   );

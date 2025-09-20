@@ -23,6 +23,7 @@ import {
 import { format } from 'date-fns';
 import { useHousekeepingTasks, useAmenityRequests, useHousekeepingSupplies } from '@/hooks/useHousekeepingApi';
 import { useToast } from '@/hooks/use-toast';
+import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 
 export default function ProductionDashboard() {
   const { tasks, loading: tasksLoading, error: tasksError, refreshTasks } = useHousekeepingTasks();
@@ -32,6 +33,42 @@ export default function ProductionDashboard() {
   
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Enable real-time updates for housekeeping
+  useRealtimeUpdates([
+    {
+      table: 'housekeeping_tasks',
+      event: '*',
+      onUpdate: (payload) => {
+        if (payload.eventType === 'INSERT') {
+          toast({
+            title: "New Task Assigned",
+            description: `Task: ${payload.new.title}`,
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          toast({
+            title: "Task Updated",
+            description: `${payload.new.title} - ${payload.new.status}`,
+          });
+        }
+        refreshTasks();
+      },
+      enabled: true
+    },
+    {
+      table: 'rooms',
+      event: 'UPDATE',
+      onUpdate: (payload) => {
+        if (payload.old.status !== payload.new.status) {
+          toast({
+            title: "Room Status Changed",
+            description: `Room ${payload.new.room_number}: ${payload.new.status}`,
+          });
+        }
+      },
+      enabled: true
+    }
+  ]);
 
   // Mock current staff member (replace with auth context)
   const currentStaff = {

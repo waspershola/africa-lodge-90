@@ -81,6 +81,7 @@ import Audit from "./pages/sa/Audit";
 import AuditLogs from "./pages/sa/AuditLogs";
 import Metrics from "./pages/sa/Metrics";
 import Backups from "./pages/sa/Backups";
+import RealtimeMonitoring from "./pages/sa/RealtimeMonitoring";
 
 const queryClient = new QueryClient();
 
@@ -214,7 +215,9 @@ const App = () => (
             <Route path="plans" element={<Plans />} />
             <Route path="policies" element={<Policies />} />
             <Route path="advanced" element={<Advanced />} />
+            <Route path="audit" element={<Audit />} />
             <Route path="audit-logs" element={<AuditLogs />} />
+            <Route path="realtime-monitoring" element={<RealtimeMonitoring />} />
             <Route path="metrics" element={<Metrics />} />
             <Route path="backups" element={<Backups />} />
           </Route>

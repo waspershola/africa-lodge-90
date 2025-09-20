@@ -1,7 +1,8 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useMultiTenantAuth } from './useMultiTenantAuth';
-import { useToast } from './use-toast';
+import { useToast } from '@/hooks/use-toast';
+import { useRateLimiting } from './useRateLimiting';
+import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 
 export interface RealtimeConfig {
   table: string;
@@ -11,48 +12,63 @@ export interface RealtimeConfig {
 }
 
 export const useRealtimeUpdates = (configs: RealtimeConfig[]) => {
-  const { tenant } = useMultiTenantAuth();
   const { toast } = useToast();
+  const { user } = useAuth();
+  
+  // Rate limiting per tenant
+  const rateLimiter = useRateLimiting({
+    maxConnections: 10, // Max 10 realtime connections per tenant
+    windowMs: 60000, // 1 minute window
+    tenantId: user?.tenant_id
+  });
 
-  const setupRealtimeChannels = useCallback(() => {
-    if (!tenant?.tenant_id) return () => {};
+  useEffect(() => {
+    const channels: any[] = [];
 
-    const channels = configs
-      .filter(config => config.enabled !== false)
-      .map(config => {
-        const channelName = `hotel_${tenant.tenant_id}_${config.table}`;
-        
-        const channel = supabase
-          .channel(channelName)
-          .on(
-            'postgres_changes' as any,
-            {
-              event: config.event,
-              schema: 'public',
-              table: config.table,
-              filter: `tenant_id=eq.${tenant.tenant_id}`
-            },
-            (payload) => {
-              console.log(`Realtime update on ${config.table}:`, payload);
-              config.onUpdate(payload);
-            }
-          )
-          .subscribe();
+    configs.forEach((config) => {
+      if (!config.enabled) return;
 
-        return channel;
-      });
+      const tenantId = user?.tenant_id;
+      if (!tenantId) return;
+
+      // Check rate limit before creating connection
+      if (!rateLimiter.recordConnection()) {
+        toast({
+          title: "Connection Limited",
+          description: `Too many realtime connections. Try again in ${rateLimiter.getRemainingTime()}s`,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Create tenant-scoped channel name
+      const channelName = `hotel_${tenantId}_${config.table}`;
+      
+      const channel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes' as any,
+          {
+            event: config.event,
+            schema: 'public',
+            table: config.table,
+            filter: `tenant_id=eq.${tenantId}`
+          } as any,
+          (payload: any) => {
+            config.onUpdate(payload);
+          }
+        )
+        .subscribe();
+
+      channels.push(channel);
+    });
 
     return () => {
       channels.forEach(channel => {
         supabase.removeChannel(channel);
       });
     };
-  }, [tenant?.tenant_id, configs]);
-
-  useEffect(() => {
-    const cleanup = setupRealtimeChannels();
-    return cleanup;
-  }, [setupRealtimeChannels]);
+  }, [configs, user?.tenant_id, rateLimiter]);
 };
 
 // Specialized hooks for different domains

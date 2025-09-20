@@ -32,6 +32,7 @@ const navigation = [
   { name: 'Wizard', href: '/sa/wizard', icon: Wand2 },
   { name: 'Advanced', href: '/sa/advanced', icon: Settings },
   { name: 'Audit', href: '/sa/audit', icon: Activity },
+  { name: 'Realtime Monitor', href: '/sa/realtime-monitoring', icon: Activity },
   { name: 'Metrics', href: '/sa/metrics', icon: BarChart3 },
 ];
 

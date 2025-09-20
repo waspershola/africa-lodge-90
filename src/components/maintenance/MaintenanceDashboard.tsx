@@ -18,14 +18,41 @@ import {
   Hammer
 } from 'lucide-react';
 import { useMaintenanceApi } from '@/hooks/useMaintenanceApi';
+import { useToast } from '@/hooks/use-toast';
+import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 
 export default function MaintenanceDashboard() {
-  const { workOrders, stats, isLoading } = useMaintenanceApi();
+  const { workOrders, stats, isLoading, refreshWorkOrders } = useMaintenanceApi();
+  const { toast } = useToast();
   
   // Mock data for missing features that will be implemented later
   const preventiveTasks: any[] = [];
   const supplies: any[] = [];
   const [activeShift, setActiveShift] = useState(false);
+
+  // Enable real-time updates for maintenance
+  useRealtimeUpdates([
+    {
+      table: 'work_orders',
+      event: '*',
+      onUpdate: (payload) => {
+        if (payload.eventType === 'INSERT') {
+          toast({
+            title: "New Work Order",
+            description: `${payload.new.title} - ${payload.new.priority} priority`,
+            variant: payload.new.priority === 'critical' ? 'destructive' : 'default'
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          toast({
+            title: "Work Order Updated",
+            description: `${payload.new.title} - ${payload.new.status}`,
+          });
+        }
+        refreshWorkOrders();
+      },
+      enabled: true
+    }
+  ]);
 
   // Get critical alerts
   const criticalWorkOrders = workOrders.filter(wo => wo.priority === 'critical' && wo.status !== 'completed');

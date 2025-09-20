@@ -22,18 +22,42 @@ import {
 } from 'lucide-react';
 import { usePOSApi, type Order } from '@/hooks/usePOS';
 import { useToast } from '@/hooks/use-toast';
+import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 import OrderModal from './OrderModal';
 import PaymentDrawer from './PaymentDrawer';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import RoleGuard, { ProtectedButton } from './RoleGuard';
 
 export default function PosLiveFeed() {
-  const { orders, stats, isLoading, acceptOrder, updateOrderStatus } = usePOSApi();
+  const { orders, stats, isLoading, acceptOrder, updateOrderStatus, refresh } = usePOSApi();
   const { toast } = useToast();
   const { user, hasPermission } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
+  // Enable real-time updates for POS orders
+  useRealtimeUpdates([
+    {
+      table: 'pos_orders',
+      event: '*',
+      onUpdate: (payload) => {
+        if (payload.eventType === 'INSERT') {
+          toast({
+            title: "New Order",
+            description: `Order ${payload.new.order_number} received`,
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          toast({
+            title: "Order Updated",
+            description: `Order ${payload.new.order_number} status: ${payload.new.status}`,
+          });
+        }
+        refresh();
+      },
+      enabled: true
+    }
+  ]);
 
   const getFilteredOrders = (status: string) => {
     let filtered = orders;

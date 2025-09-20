@@ -1299,6 +1299,7 @@ export type Database = {
           hotel_slug: string
           logo_url: string | null
           onboarding_step: string | null
+          owner_id: string | null
           phone: string | null
           plan_id: string
           receipt_template: string | null
@@ -1323,6 +1324,7 @@ export type Database = {
           hotel_slug: string
           logo_url?: string | null
           onboarding_step?: string | null
+          owner_id?: string | null
           phone?: string | null
           plan_id: string
           receipt_template?: string | null
@@ -1347,6 +1349,7 @@ export type Database = {
           hotel_slug?: string
           logo_url?: string | null
           onboarding_step?: string | null
+          owner_id?: string | null
           phone?: string | null
           plan_id?: string
           receipt_template?: string | null

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +41,8 @@ import {
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useToast } from '@/hooks/use-toast';
 import { TemporaryPasswordResetDialog } from '@/components/auth/TemporaryPasswordResetDialog';
+import { supabase } from '@/integrations/supabase/client';
+import { useUsers } from '@/hooks/useUsers';
 
 interface StaffMember {
   id: string;
@@ -68,36 +70,10 @@ const staffRoles = [
 ];
 
 export function StaffInvitationInterface() {
-  const { tenant } = useAuth();
+  const { tenant, user } = useAuth();
   const { toast } = useToast();
-  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([
-    {
-      id: '1',
-      email: 'manager@hotel.com',
-      name: 'John Manager',
-      role: 'MANAGER',
-      status: 'active',
-      invitedAt: '2025-09-01',
-      lastLogin: '2025-09-18'
-    },
-    {
-      id: '2',
-      email: 'frontdesk@hotel.com',
-      name: 'Sarah Desk',
-      role: 'FRONT_DESK',
-      status: 'active',
-      invitedAt: '2025-09-02',
-      lastLogin: '2025-09-19'
-    },
-    {
-      id: '3',
-      email: 'newstaff@hotel.com',
-      name: 'Mike New',
-      role: 'HOUSEKEEPING',
-      status: 'invited',
-      invitedAt: '2025-09-18'
-    }
-  ]);
+  const { users: staffMembers, loading: usersLoading, createUser, deactivateUser } = useUsers();
+  const [staffMembersDisplay, setStaffMembersDisplay] = useState<StaffMember[]>([]);
 
   const [inviteForm, setInviteForm] = useState<InviteStaffForm>({
     email: '',
@@ -121,19 +97,12 @@ export function StaffInvitationInterface() {
 
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const newStaff: StaffMember = {
-        id: Date.now().toString(),
+      await createUser({
         email: inviteForm.email,
         name: inviteForm.name,
-        role: inviteForm.role,
-        status: 'invited',
-        invitedAt: new Date().toISOString().split('T')[0]
-      };
+        role: inviteForm.role as "MANAGER" | "FRONT_DESK" | "HOUSEKEEPING" | "MAINTENANCE" | "POS" | "STAFF" | "SUPER_ADMIN" | "OWNER"
+      });
       
-      setStaffMembers(prev => [...prev, newStaff]);
       setInviteForm({ email: '', name: '', role: '' });
       setInviteDialogOpen(false);
       
@@ -141,10 +110,10 @@ export function StaffInvitationInterface() {
         title: "Invitation sent",
         description: `Invited ${inviteForm.name} as ${staffRoles.find(r => r.id === inviteForm.role)?.label}`
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to send invitation",
+        description: error.message || "Failed to send invitation",
         variant: "destructive"
       });
     } finally {
@@ -155,17 +124,16 @@ export function StaffInvitationInterface() {
   const handleRemoveStaff = async (staffId: string) => {
     setLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setStaffMembers(prev => prev.filter(s => s.id !== staffId));
+      await deactivateUser(staffId);
       
       toast({
         title: "Staff removed",
         description: "Staff member has been removed from your hotel"
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to remove staff member",
+        description: error.message || "Failed to remove staff member",
         variant: "destructive"
       });
     } finally {
@@ -173,19 +141,38 @@ export function StaffInvitationInterface() {
     }
   };
 
+  // Transform Supabase users to display format
+  useEffect(() => {
+    const transformedStaff: StaffMember[] = staffMembers.map(user => ({
+      id: user.id,
+      email: user.email,
+      name: user.name || 'Unknown',
+      role: user.role,
+      status: user.is_active ? 'active' : 'suspended',
+      invitedAt: user.created_at?.split('T')[0] || '',
+      lastLogin: user.last_login?.split('T')[0]
+    }));
+    setStaffMembersDisplay(transformedStaff);
+  }, [staffMembers]);
+
   const handleResendInvite = async (staffId: string) => {
     setLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Send password reset email
+      const staff = staffMembers.find(s => s.id === staffId);
+      if (staff) {
+        const { error } = await supabase.auth.resetPasswordForEmail(staff.email);
+        if (error) throw error;
+      }
       
       toast({
         title: "Invitation resent",
-        description: "Invitation email has been sent again"
+        description: "Password reset email has been sent"
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to resend invitation",
+        description: error.message || "Failed to resend invitation",
         variant: "destructive"
       });
     } finally {
@@ -324,16 +311,20 @@ export function StaffInvitationInterface() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Staff Members ({staffMembers.length})
+            Staff Members ({staffMembersDisplay.length})
           </CardTitle>
           <CardDescription>
             Manage your hotel's staff members and their access levels
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {staffMembers.length > 0 ? (
+          {usersLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : staffMembersDisplay.length > 0 ? (
             <div className="space-y-3">
-              {staffMembers.map((staff) => (
+              {staffMembersDisplay.map((staff) => (
                 <div
                   key={staff.id}
                   className="flex items-center justify-between p-4 bg-muted/30 rounded-lg"

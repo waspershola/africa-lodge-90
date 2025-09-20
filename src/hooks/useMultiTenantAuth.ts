@@ -23,6 +23,8 @@ export interface Tenant {
   subscription_status: 'trialing' | 'active' | 'expired' | 'suspended';
   trial_start?: string;
   trial_end?: string;
+  setup_completed?: boolean;
+  onboarding_step?: string;
   created_at: string;
   updated_at: string;
 }
@@ -60,20 +62,13 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
 
   // Check if onboarding is required
   const checkOnboardingRequired = (user: User, tenant: Tenant) => {
+    // Only check for owners on trialing subscriptions
     if (user.role === 'OWNER' && tenant.subscription_status === 'trialing') {
-      // Check if setup is completed (mock check via localStorage)
-      const onboardingData = localStorage.getItem(`onboarding_${user.id}`);
-      if (!onboardingData) {
-        // First-time owner login - redirect to onboarding
+      // Use database setup_completed field instead of localStorage
+      if (tenant.setup_completed === false || tenant.setup_completed === undefined) {
+        console.log('Onboarding required - setup not completed');
         window.location.href = '/onboarding';
         return true;
-      } else {
-        const progress = JSON.parse(onboardingData);
-        if (!progress.completed) {
-          // Incomplete onboarding - redirect to continue
-          window.location.href = '/onboarding';
-          return true;
-        }
       }
     }
     return false;
@@ -154,7 +149,7 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
         console.log('Loading tenant data...');
         const { data: tenantData, error: tenantError } = await supabase
           .from('tenants')
-          .select('*')
+          .select('tenant_id, hotel_name, plan_id, subscription_status, trial_start, trial_end, setup_completed, onboarding_step, created_at, updated_at')
           .eq('tenant_id', tenantIdFromJWT)
           .maybeSingle();
 
@@ -172,6 +167,8 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
             subscription_status: tenantData.subscription_status as Tenant['subscription_status'],
             trial_start: tenantData.trial_start,
             trial_end: tenantData.trial_end,
+            setup_completed: tenantData.setup_completed,
+            onboarding_step: tenantData.onboarding_step,
             created_at: tenantData.created_at,
             updated_at: tenantData.updated_at,
           };

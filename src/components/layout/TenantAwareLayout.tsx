@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Lock } from 'lucide-react';
+import { AlertTriangle, Lock, Building2 } from 'lucide-react';
 
 interface TenantAwareLayoutProps {
   children: ReactNode;
@@ -43,6 +43,24 @@ export default function TenantAwareLayout({ children, requiredRole }: TenantAwar
           </p>
           <Button onClick={() => window.location.href = '/'}>
             Go to Login
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect owners with incomplete setup to onboarding
+  if (user.role === 'OWNER' && tenant && tenant.setup_completed === false) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <Building2 className="h-16 w-16 text-primary mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Setup Required</h2>
+          <p className="text-muted-foreground mb-4">
+            Please complete your hotel setup to continue.
+          </p>
+          <Button onClick={() => window.location.href = '/onboarding'}>
+            Complete Setup
           </Button>
         </div>
       </div>

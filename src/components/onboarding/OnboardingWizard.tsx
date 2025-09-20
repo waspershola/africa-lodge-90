@@ -91,8 +91,48 @@ export function OnboardingWizard() {
   const { toast } = useToast();
   const { user, tenant } = useAuth();
   const { saveProgress, completeOnboarding, getSavedData } = useOnboarding();
-  const [currentStep, setCurrentStep] = useState(0);
+  
+  // Calculate initial step from tenant.onboarding_step with fail-safe recovery
+  const getInitialStep = () => {
+    if (!tenant?.onboarding_step || tenant.onboarding_step === 'completed') {
+      return 0; // Start from beginning if no step or already completed
+    }
+    
+    // Map database onboarding_step values to wizard step indices
+    const stepMapping: Record<string, number> = {
+      'hotel_information': 0,
+      'hotel': 0,
+      'template': 1,
+      'template_selection': 1,
+      'plan': 2,
+      'plan_confirmation': 2,
+      'owner': 3,
+      'owner_setup': 3,
+      'branding': 4,
+      'documents': 5,
+      'permissions': 6,
+      'audit': 7,
+      'review': 8,
+    };
+    
+    const stepIndex = stepMapping[tenant.onboarding_step] ?? 0;
+    console.log(`Resuming onboarding from step: ${tenant.onboarding_step} -> index ${stepIndex}`);
+    return stepIndex;
+  };
+  
+  const [currentStep, setCurrentStep] = useState(getInitialStep);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Update current step when tenant changes (for fail-safe recovery)
+  useEffect(() => {
+    if (tenant) {
+      const newStep = getInitialStep();
+      if (newStep !== currentStep) {
+        console.log(`Tenant changed - updating step from ${currentStep} to ${newStep}`);
+        setCurrentStep(newStep);
+      }
+    }
+  }, [tenant?.onboarding_step]);
   
   // Initialize with saved data or defaults
   const [onboardingData, setOnboardingData] = useState<OnboardingData>(() => {

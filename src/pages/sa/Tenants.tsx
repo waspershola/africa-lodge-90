@@ -22,6 +22,7 @@ import {
   useReactivateTenantReal 
 } from '@/hooks/useTenants';
 import { CreateTenantRealForm } from '@/components/sa/CreateTenantForm';
+import { AuthDebugInfo } from '@/components/sa/AuthDebugInfo';
 import type { TenantWithOwner } from '@/services/tenantService';
 
 const fadeIn = {
@@ -134,6 +135,9 @@ export default function TenantsReal() {
       initial="initial"
       animate="animate"
     >
+      {/* Auth Debug Info */}
+      <AuthDebugInfo />
+      
       {/* Header */}
       <motion.div variants={fadeIn} className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>

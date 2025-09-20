@@ -24,6 +24,19 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const { to_email, hotel_name, temp_password, login_url }: SendTempPasswordRequest = await req.json();
 
+    // Only send to verified domain owner in Resend test mode
+    if (to_email !== 'engsholawasiu@gmail.com') {
+      console.log(`Skipping email to ${to_email} - only verified domain owner (engsholawasiu@gmail.com) can receive emails in Resend test mode`);
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'Email skipped - Resend test mode only allows verified domain owner',
+        note: 'In production, this email would be sent normally'
+      }), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
     console.log(`Sending temporary password email to ${to_email} for ${hotel_name}`);
 
     const emailResponse = await resend.emails.send({

@@ -65,6 +65,11 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
 
   // Check if password reset is required
   const checkPasswordResetRequired = (user: User): boolean => {
+    console.log('Checking password reset required:', { 
+      force_reset: user.force_reset, 
+      has_temp_password: !!user.temp_password_hash,
+      user_email: user.email 
+    });
     if (user.force_reset && user.temp_password_hash) {
       console.log('Password reset required - user has temporary password');
       return true;
@@ -238,6 +243,27 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
     } finally {
       console.log('Auth state loading completed');
       setIsLoading(false);
+      
+      // Force token refresh if user exists but JWT claims are missing
+      const checkAndRefreshToken = async () => {
+        if (session?.user) {
+          const claims = JSON.parse(atob(session.access_token.split('.')[1]));
+          console.log('Current JWT claims:', claims);
+          
+          // If role is missing from JWT but user exists, force refresh
+          if (!claims.user_metadata?.role && !claims.role) {
+            console.log('JWT missing role claims, forcing refresh...');
+            const { error } = await supabase.auth.refreshSession();
+            if (error) {
+              console.error('Failed to refresh session:', error);
+            } else {
+              console.log('Session refreshed successfully');
+            }
+          }
+        }
+      };
+      
+      checkAndRefreshToken();
     }
   };
 

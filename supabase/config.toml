@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.send-temp-password]
 verify_jwt = false
+
+[functions.create-tenant-and-owner]
+verify_jwt = false

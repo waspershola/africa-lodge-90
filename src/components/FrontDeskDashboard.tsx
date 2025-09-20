@@ -72,111 +72,6 @@ const mockAlerts = [
 ];
 
 const FrontDeskDashboard = () => {
-  const { user, tenant } = useAuth();
-  const { rooms } = useRooms();
-  const { orders, stats } = usePOSApi();
-
-  // Calculate real data from Supabase
-  const dashboardData = useMemo(() => {
-    if (!rooms) return {
-      roomsAvailable: 0,
-      occupancyRate: 0,
-      arrivalsToday: 0,
-      departuresToday: 0,
-      inHouseGuests: 0,
-      pendingPayments: 0,
-      oosRooms: 0,
-      dieselLevel: 75,
-      generatorRuntime: 8
-    };
-
-    const totalRooms = rooms.length;
-    const availableRooms = rooms.filter(r => r.status === 'available').length;
-    const occupiedRooms = rooms.filter(r => r.status === 'occupied').length;
-    const oosRooms = rooms.filter(r => r.status === 'maintenance' || r.status === 'out_of_order').length;
-    
-    // Get today's date for filtering
-    const today = new Date().toISOString().split('T')[0];
-    const arrivalsToday = rooms.filter(r => 
-      r.current_reservation?.check_in_date === today && 
-      r.current_reservation?.status === 'confirmed'
-    ).length;
-    
-    const departuresToday = rooms.filter(r => 
-      r.current_reservation?.check_out_date === today && 
-      r.current_reservation?.status === 'checked_in'
-    ).length;
-
-    return {
-      roomsAvailable: availableRooms,
-      occupancyRate: totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0,
-      arrivalsToday,
-      departuresToday,
-      inHouseGuests: occupiedRooms,
-      pendingPayments: stats?.ordersToday || 0, // Use POS orders as proxy
-      oosRooms,
-      dieselLevel: 75, // Static for now - could be enhanced with IoT integration
-      generatorRuntime: 8 // Static for now
-    };
-  }, [rooms, stats]);
-
-  // Real arrivals and departures from Supabase data
-  const arrivals = useMemo(() => {
-    if (!rooms) return [];
-    const today = new Date().toISOString().split('T')[0];
-    return rooms
-      .filter(r => r.current_reservation?.check_in_date === today && r.current_reservation?.status === 'confirmed')
-      .map(r => ({
-        id: r.current_reservation!.id,
-        guest: r.current_reservation!.guest_name,
-        room: r.room_number,
-        time: "TBD", // Could be enhanced with estimated arrival times
-        status: "pending"
-      }));
-  }, [rooms]);
-
-  const departures = useMemo(() => {
-    if (!rooms) return [];
-    const today = new Date().toISOString().split('T')[0];
-    return rooms
-      .filter(r => r.current_reservation?.check_out_date === today && r.current_reservation?.status === 'checked_in')
-      .map(r => ({
-        id: r.current_reservation!.id,
-        guest: r.current_reservation!.guest_name,
-        room: r.room_number,
-        time: "11:00", // Could be enhanced with actual checkout times
-        status: "pending"
-      }));
-  }, [rooms]);
-
-  // Real alerts from room and system data
-  const alerts = useMemo(() => {
-    if (!rooms) return [];
-    const systemAlerts: any[] = [];
-    
-    // Add maintenance alerts
-    rooms.filter(r => r.status === 'maintenance').forEach(room => {
-      systemAlerts.push({
-        id: `maint-${room.id}`,
-        type: 'maintenance',
-        message: `Room ${room.room_number} ${room.notes || 'needs maintenance'}`,
-        priority: 'high'
-      });
-    });
-
-    // Add dirty room alerts
-    rooms.filter(r => r.status === 'dirty').forEach(room => {
-      systemAlerts.push({
-        id: `clean-${room.id}`,
-        type: 'maintenance',
-        message: `Room ${room.room_number} needs cleaning`,
-        priority: 'medium'
-      });
-    });
-
-    return systemAlerts.slice(0, 5); // Limit to 5 most recent alerts
-  }, [rooms]);
-
   const [isOffline, setIsOffline] = useState(false);
   const [offlineTimeRemaining, setOfflineTimeRemaining] = useState(22); // hours
   const [searchQuery, setSearchQuery] = useState("");
@@ -323,7 +218,7 @@ const FrontDeskDashboard = () => {
   const dashboardCards = [
     {
       title: "Rooms Available",
-      value: dashboardData.roomsAvailable,
+      value: mockData.roomsAvailable,
       subtitle: "Ready for assignment",
       icon: <BedDouble className="h-6 w-6" />,
       action: "Assign Room",
@@ -332,7 +227,7 @@ const FrontDeskDashboard = () => {
     },
     {
       title: "Occupancy Rate",
-      value: `${dashboardData.occupancyRate}%`,
+      value: `${mockData.occupancyRate}%`,
       subtitle: "Current occupancy",
       icon: <Users className="h-6 w-6" />,
       action: "View Room Map",
@@ -341,7 +236,7 @@ const FrontDeskDashboard = () => {
     },
     {
       title: "Arrivals Today",
-      value: dashboardData.arrivalsToday,
+      value: mockData.arrivalsToday,
       subtitle: "Expected check-ins",
       icon: <LogIn className="h-6 w-6" />,
       action: "Start Check-In",
@@ -350,7 +245,7 @@ const FrontDeskDashboard = () => {
     },
     {
       title: "Departures Today",
-      value: dashboardData.departuresToday,
+      value: mockData.departuresToday,
       subtitle: "Expected check-outs",
       icon: <LogOut className="h-6 w-6" />,
       action: "Start Check-Out",
@@ -359,7 +254,7 @@ const FrontDeskDashboard = () => {
     },
     {
       title: "In-House Guests",
-      value: dashboardData.inHouseGuests,
+      value: mockData.inHouseGuests,
       subtitle: "Currently staying",
       icon: <Users className="h-6 w-6" />,
       action: "Open Folio",
@@ -368,7 +263,7 @@ const FrontDeskDashboard = () => {
     },
     {
       title: "Pending Payments",
-      value: dashboardData.pendingPayments,
+      value: mockData.pendingPayments,
       subtitle: "Requires collection",
       icon: <CreditCard className="h-6 w-6" />,
       action: "Collect Now",
@@ -377,7 +272,7 @@ const FrontDeskDashboard = () => {
     },
     {
       title: "OOS Rooms",
-      value: dashboardData.oosRooms,
+      value: mockData.oosRooms,
       subtitle: "Out of service",
       icon: <Wrench className="h-6 w-6" />,
       action: "Create Work Order",
@@ -386,11 +281,11 @@ const FrontDeskDashboard = () => {
     },
     {
       title: "Diesel Level",
-      value: `${dashboardData.dieselLevel}%`,
-      subtitle: `Gen: ${dashboardData.generatorRuntime}h today`,
+      value: `${mockData.dieselLevel}%`,
+      subtitle: `Gen: ${mockData.generatorRuntime}h today`,
       icon: <Battery className="h-6 w-6" />,
       action: "Open Power Panel",
-      color: dashboardData.dieselLevel < 30 ? "danger" : "success",
+      color: mockData.dieselLevel < 30 ? "danger" : "success",
       filterKey: undefined
     }
   ];

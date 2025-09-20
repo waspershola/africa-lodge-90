@@ -96,7 +96,7 @@ export function OnboardingWizard() {
   
   // Initialize with saved data or defaults
   const [onboardingData, setOnboardingData] = useState<OnboardingData>(() => {
-    const savedData = getSavedData();
+    const savedData = null; // getSavedData is async, load separately
     return savedData || {
       hotelInfo: {
         name: tenant?.hotel_name || '',

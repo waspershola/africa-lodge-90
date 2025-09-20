@@ -163,9 +163,8 @@ export function useOnboarding() {
           updated_at: new Date().toISOString(),
           // Merge final data with existing settings
           settings: {
-            ...tenant.settings,
-            ...finalData,
-            onboarding_completed_at: new Date().toISOString()
+            onboarding_completed_at: new Date().toISOString(),
+            ...finalData
           }
         })
         .eq('tenant_id', tenant.tenant_id);

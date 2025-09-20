@@ -74,9 +74,9 @@ export default function ProductionTasksBoard() {
   // Group tasks by status
   const tasksByStatus = {
     pending: filteredTasks.filter(t => t.status === 'pending'),
-    'in-progress': filteredTasks.filter(t => t.status === 'in-progress'),
-    completed: filteredTasks.filter(t => t.status === 'completed'),
-    delayed: filteredTasks.filter(t => t.status === 'delayed')
+    'assigned': filteredTasks.filter(t => t.status === 'assigned'),
+    'in_progress': filteredTasks.filter(t => t.status === 'in_progress'),
+    completed: filteredTasks.filter(t => t.status === 'completed')
   };
 
   const getStatusColor = (status: string) => {
@@ -373,7 +373,7 @@ export default function ProductionTasksBoard() {
                             </div>
                           )}
 
-                          {task.status === 'in-progress' && (
+                          {(task.status === 'in_progress' || task.status === 'assigned') && (
                             <div className="flex gap-2 mt-3">
                               <Button 
                                 size="sm" 
@@ -493,7 +493,7 @@ export default function ProductionTasksBoard() {
                   </div>
                   <div>
                     <span className="text-muted-foreground">Created:</span>
-                    <div className="font-medium">{format(selectedTask.createdAt, 'MMM dd, HH:mm')}</div>
+                    <div className="font-medium">{format(new Date(selectedTask.created_at || ''), 'MMM dd, HH:mm')}</div>
                   </div>
                 </div>
 
@@ -564,7 +564,7 @@ export default function ProductionTasksBoard() {
                     </>
                   )}
                   
-                  {selectedTask.status === 'in-progress' && (
+                  {(selectedTask.status === 'in_progress' || selectedTask.status === 'assigned') && (
                     <>
                       <Button 
                         onClick={() => handleCompleteTask(selectedTask.id)} 

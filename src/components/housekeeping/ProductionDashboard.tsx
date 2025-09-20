@@ -73,8 +73,8 @@ export default function ProductionDashboard() {
   // Calculate KPIs
   const kpiData = {
     pendingTasks: tasks.filter(t => t.status === 'pending').length,
-    completedToday: tasks.filter(t => t.status === 'completed' && 
-      new Date(t.completedAt || t.createdAt).toDateString() === new Date().toDateString()).length,
+      completedToday: tasks.filter(t => t.status === 'completed' && 
+        new Date(t.completed_at || t.created_at || '').toDateString() === new Date().toDateString()).length,
     amenitiesDelivered: requests.filter(r => r.status === 'completed').length,
     oosRooms: 3, // This would come from OOS API
     todayStats: {

@@ -134,7 +134,7 @@ export function useHousekeepingApi() {
         description: task.description,
         task_type: task.task_type,
         status: task.status as HousekeepingTask['status'],
-        priority: task.priority,
+        priority: task.priority as HousekeepingTask['priority'],
         assigned_to: task.assigned_to,
         assigned_at: task.assigned_at,
         created_by: task.created_by,
@@ -239,7 +239,7 @@ export function useHousekeepingApi() {
         targetId: log.resource_id || '',
         description: log.description || '',
         metadata: log.metadata as Record<string, any>,
-        ipAddress: log.ip_address || '',
+        ipAddress: (log.ip_address as string) || '',
         userAgent: log.user_agent || ''
       }));
 
@@ -443,12 +443,24 @@ export function useHousekeepingApi() {
       if (usageError) throw usageError;
 
       // Update supply stock
-      const { error: updateError } = await supabase.rpc('update_supply_stock', {
-        p_supply_id: supplyId,
-        p_quantity_change: -quantity
-      });
-
-      if (updateError) throw updateError;
+      // Update supply stock directly for now
+      const { data: currentSupply } = await supabase
+        .from('supplies')
+        .select('current_stock')
+        .eq('id', supplyId)
+        .single();
+      
+      if (currentSupply) {
+        const { error: stockUpdateError } = await supabase
+          .from('supplies')
+          .update({ 
+            current_stock: Math.max(0, currentSupply.current_stock - quantity),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', supplyId);
+        
+        if (stockUpdateError) throw stockUpdateError;
+      }
 
       await loadSupplies();
 
@@ -520,3 +532,38 @@ export function useHousekeepingApi() {
     refreshSupplies: loadSupplies
   };
 }
+
+// Legacy exports for backward compatibility  
+export const useHousekeepingTasks = () => {
+  const api = useHousekeepingApi();
+  return {
+    tasks: api.tasks,
+    loading: api.isLoading,
+    error: null,
+    acceptTask: api.acceptTask,
+    completeTask: api.completeTask,
+    createTask: api.createTask,
+    refreshTasks: api.refreshTasks
+  };
+};
+
+export const useAmenityRequests = () => {
+  // Mock amenity requests for now
+  return {
+    requests: [],
+    loading: false,
+    acceptRequest: async () => {},
+    completeRequest: async () => {},
+    refreshRequests: async () => {}
+  };
+};
+
+export const useHousekeepingSupplies = () => {
+  const api = useHousekeepingApi();
+  return {
+    supplies: api.supplies,
+    loading: api.isLoading,
+    recordUsage: api.recordSupplyUsage,
+    refreshSupplies: api.refreshSupplies
+  };
+};

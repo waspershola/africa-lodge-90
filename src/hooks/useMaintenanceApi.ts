@@ -126,7 +126,7 @@ export function useMaintenanceApi() {
         description: wo.description,
         category: wo.category,
         priority: wo.priority as WorkOrder['priority'],
-        status: wo.status,
+        status: wo.status as WorkOrder['status'],
         assigned_to: wo.assigned_to,
         assigned_at: wo.assigned_at,
         created_by: wo.created_by,
@@ -388,13 +388,19 @@ export function useMaintenanceApi() {
 
       const { data, error } = await supabase
         .from('work_orders')
-        .insert([{
+        .insert({
           tenant_id: user.tenant_id,
           work_order_number: workOrderNumber,
-          ...workOrderData,
+          room_id: workOrderData.room_id,
+          title: workOrderData.title,
+          description: workOrderData.description || '',
+          category: workOrderData.category,
+          priority: workOrderData.priority,
+          estimated_hours: workOrderData.estimated_hours,
+          estimated_cost: workOrderData.estimated_cost,
           status: 'pending',
           created_by: user.id
-        }])
+        })
         .select()
         .single();
 
@@ -445,12 +451,24 @@ export function useMaintenanceApi() {
 
       const quantityChange = operation === 'add' ? quantity : -quantity;
       
-      const { error } = await supabase.rpc('update_supply_stock', {
-        p_supply_id: supplyId,
-        p_quantity_change: quantityChange
-      });
+      // Update supply stock directly for now
+      const { data: currentSupply } = await supabase
+        .from('supplies')
+        .select('current_stock')
+        .eq('id', supplyId)
+        .single();
 
-      if (error) throw error;
+      if (currentSupply) {
+        const { error } = await supabase
+          .from('supplies')
+          .update({ 
+            current_stock: Math.max(0, currentSupply.current_stock + quantityChange),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', supplyId);
+        
+        if (error) throw error;
+      }
 
       await loadSupplies();
 

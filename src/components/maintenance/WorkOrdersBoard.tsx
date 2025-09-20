@@ -459,7 +459,7 @@ function WorkOrderCard({ workOrder, onAccept, onComplete, isLoading }: WorkOrder
                 Accept
               </Button>
             )}
-            {workOrder.status === 'in-progress' && (
+            {(workOrder.status === 'in_progress' || workOrder.status === 'assigned') && (
               <Button 
                 size="sm" 
                 onClick={() => onComplete(workOrder.id)}

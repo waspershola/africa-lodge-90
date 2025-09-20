@@ -145,7 +145,7 @@ export const useQRSession = (sessionToken?: string | null) => {
         enabled_services: (data.settings as any)?.enabled_services || [
           'room-service', 'housekeeping', 'maintenance', 'wifi', 'feedback', 'bill-preview'
         ],
-        room_service_menu: data.settings?.room_service_menu || []
+        room_service_menu: (data.settings as any)?.room_service_menu || []
       };
 
       setHotelConfig(config);
@@ -184,8 +184,8 @@ export const useQRSession = (sessionToken?: string | null) => {
         details: order.request_details,
         created_at: order.created_at || '',
         updated_at: order.updated_at || '',
-        eta_minutes: order.request_details?.eta_minutes,
-        assigned_staff: order.request_details?.assigned_staff
+        eta_minutes: (order.request_details as any)?.eta_minutes,
+        assigned_staff: (order.request_details as any)?.assigned_staff
       }));
 
       setRequests(formattedRequests);

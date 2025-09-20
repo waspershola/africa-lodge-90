@@ -1,23 +1,38 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useToast } from '@/hooks/use-toast';
 
-// Types for Housekeeping API
+// Updated interfaces to match Supabase schema
 export interface HousekeepingTask {
   id: string;
-  roomNumber: string;
-  type: 'cleaning' | 'amenity' | 'maintenance' | 'inspection';
-  status: 'pending' | 'in-progress' | 'completed' | 'delayed';
+  tenant_id: string;
+  room_id?: string;
+  title: string;
+  description?: string;
+  task_type: string;
+  status: 'pending' | 'assigned' | 'in_progress' | 'completed' | 'cancelled';
   priority: 'low' | 'medium' | 'high' | 'urgent';
-  assignedTo: string;
+  assigned_to?: string;
+  assigned_at?: string;
+  created_by?: string;
+  estimated_minutes?: number;
+  actual_minutes?: number;
+  started_at?: string;
+  completed_at?: string;
+  checklist?: any;
+  qr_order_id?: string;
+  created_at?: string;
+  updated_at?: string;
+  // Legacy properties for compatibility
+  roomNumber?: string;
+  type?: 'cleaning' | 'amenity' | 'maintenance' | 'inspection';
+  assignedTo?: string;
   assignedStaff?: string;
-  dueDate: Date;
-  createdAt: Date;
-  completedAt?: Date;
-  description: string;
-  checkoutId?: string;
-  estimatedDuration: number;
+  dueDate?: Date;
+  estimatedDuration?: number;
   notes?: string;
-  checklist?: ChecklistItem[];
+  checkoutId?: string;
   source?: 'guest-qr' | 'front-desk' | 'auto' | 'manager';
   items?: string[];
   photos?: string[];
@@ -30,46 +45,39 @@ export interface ChecklistItem {
   required: boolean;
 }
 
-export interface AmenityRequest {
-  id: string;
-  roomNumber: string;
-  guestName: string;
-  status: 'pending' | 'accepted' | 'in-progress' | 'completed' | 'declined';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  requestedAt: Date;
-  dueBy?: Date;
-  completedAt?: Date;
-  assignedTo?: string;
-  source: 'guest-qr' | 'front-desk' | 'phone' | 'concierge';
-  items: AmenityItem[];
-  specialInstructions?: string;
-  notes?: string;
-  estimatedDuration: number;
-  isVip?: boolean;
-}
-
-export interface AmenityItem {
-  id: string;
-  name: string;
-  category: 'bedding' | 'bathroom' | 'food' | 'baby' | 'electronics' | 'other';
-  quantity: number;
-  available: boolean;
-  estimatedTime: number;
-}
-
 export interface Supply {
   id: string;
+  tenant_id: string;
   name: string;
-  category: 'bedding' | 'bathroom' | 'cleaning' | 'amenities' | 'maintenance' | 'food';
-  currentStock: number;
-  minimumStock: number;
-  maximumStock: number;
+  category: string;
+  current_stock: number;
+  minimum_stock: number;
+  maximum_stock?: number;
   unit: string;
-  cost: number;
-  supplier: string;
-  lastRestocked: Date;
-  location: string;
-  status: 'in-stock' | 'low-stock' | 'out-of-stock' | 'ordered';
+  unit_cost?: number;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+  // Legacy compatibility
+  currentStock?: number;
+  minimumStock?: number;
+  maximumStock?: number;
+  cost?: number;
+  supplier?: string;
+  lastRestocked?: Date;
+  location?: string;
+  status?: 'in-stock' | 'low-stock' | 'out-of-stock' | 'ordered';
+}
+
+export interface SupplyUsage {
+  id: string;
+  tenant_id: string;
+  supply_id: string;
+  room_id?: string;
+  task_id?: string;
+  quantity_used: number;
+  used_by?: string;
+  created_at?: string;
 }
 
 export interface AuditLog {
@@ -85,603 +93,430 @@ export interface AuditLog {
   oldValue?: string;
   newValue?: string;
   metadata?: Record<string, any>;
-  ipAddress: string;
-  userAgent: string;
+  ipAddress?: string;
+  userAgent?: string;
   location?: string;
 }
 
-// Offline sync queue
-interface OfflineAction {
-  id: string;
-  type: 'accept_task' | 'complete_task' | 'use_supply' | 'update_status';
-  payload: any;
-  timestamp: Date;
-  retry: number;
-}
-
-class HousekeepingAPI {
-  private offlineQueue: OfflineAction[] = [];
-  private isOnline = navigator.onLine;
-
-  constructor() {
-    // Listen for online/offline events
-    window.addEventListener('online', this.syncOfflineActions.bind(this));
-    window.addEventListener('offline', () => {
-      this.isOnline = false;
-    });
-  }
-
-  // Task Management
-  async getTasks(): Promise<HousekeepingTask[]> {
-    if (!this.isOnline) {
-      return this.getTasksFromCache();
-    }
-
-    try {
-      // Simulate API call
-      await this.delay(500);
-      return this.mockTasks();
-    } catch (error) {
-      console.error('Failed to fetch tasks:', error);
-      return this.getTasksFromCache();
-    }
-  }
-
-  async acceptTask(taskId: string): Promise<void> {
-    const action: OfflineAction = {
-      id: this.generateId(),
-      type: 'accept_task',
-      payload: { taskId },
-      timestamp: new Date(),
-      retry: 0
-    };
-
-    if (!this.isOnline) {
-      this.offlineQueue.push(action);
-      this.updateTaskStatusLocally(taskId, 'in-progress');
-      return;
-    }
-
-    try {
-      await this.delay(300);
-      this.updateTaskStatusLocally(taskId, 'in-progress');
-      this.logAction('task_accepted', taskId);
-    } catch (error) {
-      this.offlineQueue.push(action);
-      throw error;
-    }
-  }
-
-  async completeTask(taskId: string, notes?: string, photos?: File[]): Promise<void> {
-    const action: OfflineAction = {
-      id: this.generateId(),
-      type: 'complete_task',
-      payload: { taskId, notes, photos },
-      timestamp: new Date(),
-      retry: 0
-    };
-
-    if (!this.isOnline) {
-      this.offlineQueue.push(action);
-      this.updateTaskStatusLocally(taskId, 'completed');
-      return;
-    }
-
-    try {
-      await this.delay(300);
-      this.updateTaskStatusLocally(taskId, 'completed');
-      this.logAction('task_completed', taskId, notes);
-    } catch (error) {
-      this.offlineQueue.push(action);
-      throw error;
-    }
-  }
-
-  // Supply Management
-  async getSupplies(): Promise<Supply[]> {
-    if (!this.isOnline) {
-      return this.getSuppliesFromCache();
-    }
-
-    try {
-      await this.delay(400);
-      return this.mockSupplies();
-    } catch (error) {
-      console.error('Failed to fetch supplies:', error);
-      return this.getSuppliesFromCache();
-    }
-  }
-
-  async recordSupplyUsage(supplyId: string, roomNumber: string, quantity: number, notes?: string): Promise<void> {
-    const action: OfflineAction = {
-      id: this.generateId(),
-      type: 'use_supply',
-      payload: { supplyId, roomNumber, quantity, notes },
-      timestamp: new Date(),
-      retry: 0
-    };
-
-    if (!this.isOnline) {
-      this.offlineQueue.push(action);
-      this.updateSupplyStockLocally(supplyId, quantity);
-      return;
-    }
-
-    try {
-      await this.delay(200);
-      this.updateSupplyStockLocally(supplyId, quantity);
-      this.logAction('supply_used', supplyId, `Used ${quantity} in room ${roomNumber}`);
-    } catch (error) {
-      this.offlineQueue.push(action);
-      throw error;
-    }
-  }
-
-  // Amenity Requests
-  async getAmenityRequests(): Promise<AmenityRequest[]> {
-    if (!this.isOnline) {
-      return this.getAmenityRequestsFromCache();
-    }
-
-    try {
-      await this.delay(300);
-      return this.mockAmenityRequests();
-    } catch (error) {
-      console.error('Failed to fetch amenity requests:', error);
-      return this.getAmenityRequestsFromCache();
-    }
-  }
-
-  // Audit Logs
-  async getAuditLogs(filters?: { staff?: string; room?: string; action?: string }): Promise<AuditLog[]> {
-    try {
-      await this.delay(200);
-      return this.mockAuditLogs(filters);
-    } catch (error) {
-      console.error('Failed to fetch audit logs:', error);
-      return [];
-    }
-  }
-
-  // Real-time updates simulation
-  subscribeToUpdates(callback: (update: any) => void) {
-    // Simulate real-time updates
-    const interval = setInterval(() => {
-      if (Math.random() < 0.1) { // 10% chance of update
-        const updates = [
-          { type: 'new_task', data: { roomNumber: '101', type: 'cleaning' } },
-          { type: 'task_completed', data: { taskId: 'task-1', roomNumber: '205' } },
-          { type: 'amenity_request', data: { roomNumber: '308', items: ['towels'] } }
-        ];
-        callback(updates[Math.floor(Math.random() * updates.length)]);
-      }
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }
-
-  // Offline sync
-  private async syncOfflineActions() {
-    this.isOnline = true;
-    
-    for (const action of this.offlineQueue) {
-      try {
-        switch (action.type) {
-          case 'accept_task':
-            await this.acceptTask(action.payload.taskId);
-            break;
-          case 'complete_task':
-            await this.completeTask(action.payload.taskId, action.payload.notes);
-            break;
-          case 'use_supply':
-            await this.recordSupplyUsage(
-              action.payload.supplyId,
-              action.payload.roomNumber,
-              action.payload.quantity,
-              action.payload.notes
-            );
-            break;
-        }
-        
-        // Remove from queue if successful
-        this.offlineQueue = this.offlineQueue.filter(a => a.id !== action.id);
-      } catch (error) {
-        action.retry++;
-        if (action.retry > 3) {
-          // Remove failed actions after 3 retries
-          this.offlineQueue = this.offlineQueue.filter(a => a.id !== action.id);
-        }
-      }
-    }
-  }
-
-  // Helper methods
-  private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  private generateId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
-  }
-
-  private updateTaskStatusLocally(taskId: string, status: string) {
-    // Update local storage/cache
-    const tasks = this.getTasksFromCache();
-    const updatedTasks = tasks.map(task => 
-      task.id === taskId ? { ...task, status } : task
-    );
-    localStorage.setItem('housekeeping_tasks', JSON.stringify(updatedTasks));
-  }
-
-  private updateSupplyStockLocally(supplyId: string, quantityUsed: number) {
-    // Update local storage/cache
-    const supplies = this.getSuppliesFromCache();
-    const updatedSupplies = supplies.map(supply => 
-      supply.id === supplyId 
-        ? { ...supply, currentStock: Math.max(0, supply.currentStock - quantityUsed) }
-        : supply
-    );
-    localStorage.setItem('housekeeping_supplies', JSON.stringify(updatedSupplies));
-  }
-
-  private logAction(action: string, targetId: string, description?: string) {
-    const log: AuditLog = {
-      id: this.generateId(),
-      timestamp: new Date(),
-      staffMember: 'Current User', // Get from auth context
-      staffId: 'staff-001',
-      action,
-      targetType: 'task',
-      targetId,
-      description: description || `${action.replace('_', ' ')} for ${targetId}`,
-      ipAddress: '192.168.1.25',
-      userAgent: navigator.userAgent
-    };
-
-    const logs = this.getAuditLogsFromCache();
-    logs.unshift(log);
-    localStorage.setItem('housekeeping_audit_logs', JSON.stringify(logs.slice(0, 1000))); // Keep last 1000 logs
-  }
-
-  // Cache methods
-  private getTasksFromCache(): HousekeepingTask[] {
-    const cached = localStorage.getItem('housekeeping_tasks');
-    return cached ? JSON.parse(cached) : this.mockTasks();
-  }
-
-  private getSuppliesFromCache(): Supply[] {
-    const cached = localStorage.getItem('housekeeping_supplies');
-    return cached ? JSON.parse(cached) : this.mockSupplies();
-  }
-
-  private getAmenityRequestsFromCache(): AmenityRequest[] {
-    const cached = localStorage.getItem('housekeeping_amenities');
-    return cached ? JSON.parse(cached) : this.mockAmenityRequests();
-  }
-
-  private getAuditLogsFromCache(): AuditLog[] {
-    const cached = localStorage.getItem('housekeeping_audit_logs');
-    return cached ? JSON.parse(cached) : [];
-  }
-
-  // Mock data methods
-  private mockTasks(): HousekeepingTask[] {
-    return [
-      {
-        id: 'task-1',
-        roomNumber: '301',
-        type: 'cleaning',
-        status: 'pending',
-        priority: 'high',
-        assignedTo: 'Maria Santos',
-        assignedStaff: 'Maria Santos',
-        dueDate: new Date(Date.now() + 1 * 60 * 60 * 1000),
-        createdAt: new Date(Date.now() - 30 * 60 * 1000),
-        description: 'Post-checkout deep cleaning',
-        estimatedDuration: 45,
-        source: 'auto',
-        checklist: [
-          { id: 'c1', task: 'Strip and remake beds', completed: false, required: true },
-          { id: 'c2', task: 'Clean bathroom thoroughly', completed: false, required: true },
-          { id: 'c3', task: 'Vacuum carpets and floors', completed: false, required: true }
-        ]
-      },
-      {
-        id: 'task-2',
-        roomNumber: '308',
-        type: 'amenity',
-        status: 'pending',
-        priority: 'medium',
-        assignedTo: 'Sarah Johnson',
-        dueDate: new Date(Date.now() + 30 * 60 * 1000),
-        createdAt: new Date(Date.now() - 15 * 60 * 1000),
-        description: 'Guest amenity delivery request',
-        estimatedDuration: 15,
-        source: 'guest-qr',
-        items: ['Extra Towels (x2)', 'Baby Cot', 'Extra Pillows']
-      }
-    ];
-  }
-
-  private mockSupplies(): Supply[] {
-    return [
-      {
-        id: 'sup-1',
-        name: 'Bath Towels',
-        category: 'bathroom',
-        currentStock: 45,
-        minimumStock: 20,
-        maximumStock: 100,
-        unit: 'pieces',
-        cost: 25.00,
-        supplier: 'Hotel Linens Co.',
-        lastRestocked: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-        location: 'Linen Room A',
-        status: 'in-stock'
-      },
-      {
-        id: 'sup-2',
-        name: 'Toilet Paper',
-        category: 'bathroom',
-        currentStock: 8,
-        minimumStock: 15,
-        maximumStock: 50,
-        unit: 'rolls',
-        cost: 12.50,
-        supplier: 'CleanSupply Ltd.',
-        lastRestocked: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
-        location: 'Storage Room B',
-        status: 'low-stock'
-      }
-    ];
-  }
-
-  private mockAmenityRequests(): AmenityRequest[] {
-    return [
-      {
-        id: 'req-1',
-        roomNumber: '308',
-        guestName: 'Sarah Johnson',
-        status: 'pending',
-        priority: 'medium',
-        requestedAt: new Date(Date.now() - 15 * 60 * 1000),
-        dueBy: new Date(Date.now() + 45 * 60 * 1000),
-        source: 'guest-qr',
-        estimatedDuration: 20,
-        items: [
-          { id: 'item-1', name: 'Extra Towels', category: 'bathroom', quantity: 2, available: true, estimatedTime: 5 },
-          { id: 'item-2', name: 'Baby Cot', category: 'baby', quantity: 1, available: true, estimatedTime: 15 }
-        ]
-      }
-    ];
-  }
-
-  private mockAuditLogs(filters?: any): AuditLog[] {
-    return [
-      {
-        id: 'log-1',
-        timestamp: new Date(Date.now() - 15 * 60 * 1000),
-        staffMember: 'Maria Santos',
-        staffId: 'staff-001',
-        action: 'task_completed',
-        targetType: 'task',
-        targetId: 'task-301-cleaning',
-        roomNumber: '301',
-        description: 'Completed post-checkout cleaning for Room 301',
-        ipAddress: '192.168.1.25',
-        userAgent: 'Mozilla/5.0 (Mobile)'
-      }
-    ];
-  }
-}
-
-// Singleton instance
-const housekeepingAPI = new HousekeepingAPI();
-
-// Custom hooks for React components
-export function useHousekeepingTasks() {
+export function useHousekeepingApi() {
   const [tasks, setTasks] = useState<HousekeepingTask[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [supplies, setSupplies] = useState<Supply[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
-  useEffect(() => {
-    loadTasks();
+  // Load housekeeping tasks from Supabase
+  const loadTasks = useCallback(async () => {
+    if (!user?.tenant_id) return;
 
-    // Subscribe to real-time updates
-    const unsubscribe = housekeepingAPI.subscribeToUpdates((update) => {
-      if (update.type === 'new_task' || update.type === 'task_completed') {
-        loadTasks();
-        toast({
-          title: "Task Update",
-          description: `${update.type.replace('_', ' ')} - Room ${update.data.roomNumber}`,
-        });
-      }
-    });
-
-    return unsubscribe;
-  }, [toast]);
-
-  const loadTasks = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      const tasksData = await housekeepingAPI.getTasks();
-      setTasks(tasksData);
-    } catch (err) {
-      setError('Failed to load tasks');
-      console.error('Error loading tasks:', err);
+      setIsLoading(true);
+      
+      const { data, error } = await supabase
+        .from('housekeeping_tasks')
+        .select(`
+          *,
+          room:rooms(room_number),
+          assigned_user:users!housekeeping_tasks_assigned_to_fkey(name, email)
+        `)
+        .eq('tenant_id', user.tenant_id)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+
+      const formattedTasks: HousekeepingTask[] = (data || []).map(task => ({
+        id: task.id,
+        tenant_id: task.tenant_id,
+        room_id: task.room_id,
+        title: task.title,
+        description: task.description,
+        task_type: task.task_type,
+        status: task.status as HousekeepingTask['status'],
+        priority: task.priority,
+        assigned_to: task.assigned_to,
+        assigned_at: task.assigned_at,
+        created_by: task.created_by,
+        estimated_minutes: task.estimated_minutes,
+        actual_minutes: task.actual_minutes,
+        started_at: task.started_at,
+        completed_at: task.completed_at,
+        checklist: task.checklist,
+        qr_order_id: task.qr_order_id,
+        created_at: task.created_at,
+        updated_at: task.updated_at,
+        // Legacy compatibility
+        roomNumber: task.room?.room_number,
+        type: task.task_type as any,
+        assignedTo: task.assigned_user?.name,
+        assignedStaff: task.assigned_user?.name,
+        dueDate: task.assigned_at ? new Date(task.assigned_at) : undefined,
+        estimatedDuration: task.estimated_minutes,
+      }));
+
+      setTasks(formattedTasks);
+    } catch (error) {
+      console.error('Error loading housekeeping tasks:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load housekeeping tasks",
+        variant: "destructive"
+      });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  };
+  }, [user?.tenant_id, toast]);
 
-  const acceptTask = async (taskId: string) => {
+  // Load supplies from Supabase
+  const loadSupplies = useCallback(async () => {
+    if (!user?.tenant_id) return;
+
     try {
-      await housekeepingAPI.acceptTask(taskId);
+      const { data, error } = await supabase
+        .from('supplies')
+        .select('*')
+        .eq('tenant_id', user.tenant_id)
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+
+      const formattedSupplies: Supply[] = (data || []).map(supply => ({
+        id: supply.id,
+        tenant_id: supply.tenant_id,
+        name: supply.name,
+        category: supply.category,
+        current_stock: supply.current_stock,
+        minimum_stock: supply.minimum_stock,
+        maximum_stock: supply.maximum_stock,
+        unit: supply.unit,
+        unit_cost: supply.unit_cost,
+        is_active: supply.is_active,
+        created_at: supply.created_at,
+        updated_at: supply.updated_at,
+        // Legacy compatibility
+        currentStock: supply.current_stock,
+        minimumStock: supply.minimum_stock,
+        maximumStock: supply.maximum_stock,
+        cost: supply.unit_cost,
+        status: supply.current_stock <= supply.minimum_stock ? 'low-stock' : 'in-stock'
+      }));
+
+      setSupplies(formattedSupplies);
+    } catch (error) {
+      console.error('Error loading supplies:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load supplies",
+        variant: "destructive"
+      });
+    }
+  }, [user?.tenant_id, toast]);
+
+  // Load audit logs from Supabase
+  const loadAuditLogs = useCallback(async () => {
+    if (!user?.tenant_id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('audit_log')
+        .select('*')
+        .eq('tenant_id', user.tenant_id)
+        .eq('resource_type', 'housekeeping_task')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+
+      const formattedLogs: AuditLog[] = (data || []).map(log => ({
+        id: log.id,
+        timestamp: new Date(log.created_at || ''),
+        staffMember: log.actor_email || 'Unknown',
+        staffId: log.actor_id || '',
+        action: log.action,
+        targetType: log.resource_type,
+        targetId: log.resource_id || '',
+        description: log.description || '',
+        metadata: log.metadata as Record<string, any>,
+        ipAddress: log.ip_address || '',
+        userAgent: log.user_agent || ''
+      }));
+
+      setAuditLogs(formattedLogs);
+    } catch (error) {
+      console.error('Error loading audit logs:', error);
+    }
+  }, [user?.tenant_id]);
+
+  // Accept/assign task
+  const acceptTask = async (taskId: string) => {
+    if (!user?.id) return;
+
+    try {
+      setIsLoading(true);
+
+      const { error } = await supabase
+        .from('housekeeping_tasks')
+        .update({
+          status: 'assigned',
+          assigned_to: user.id,
+          assigned_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      // Create audit log
+      await supabase
+        .from('audit_log')
+        .insert([{
+          action: 'task_assigned',
+          resource_type: 'housekeeping_task',
+          resource_id: taskId,
+          actor_id: user.id,
+          actor_email: user.email,
+          actor_role: user.role,
+          tenant_id: user.tenant_id,
+          description: `Task assigned to ${user.email}`,
+          new_values: { status: 'assigned', assigned_to: user.id }
+        }]);
+
       await loadTasks();
+
       toast({
         title: "Task Accepted",
-        description: "Task has been assigned to you",
+        description: "You have been assigned to this task",
       });
-    } catch (err) {
+    } catch (error) {
+      console.error('Error accepting task:', error);
       toast({
         title: "Error",
         description: "Failed to accept task",
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const completeTask = async (taskId: string, notes?: string) => {
+  // Complete task
+  const completeTask = async (taskId: string, notes?: string, actualMinutes?: number) => {
+    if (!user?.id) return;
+
     try {
-      await housekeepingAPI.completeTask(taskId, notes);
+      setIsLoading(true);
+
+      const { error } = await supabase
+        .from('housekeeping_tasks')
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          actual_minutes: actualMinutes
+        })
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      // Create audit log
+      await supabase
+        .from('audit_log')
+        .insert([{
+          action: 'task_completed',
+          resource_type: 'housekeeping_task',
+          resource_id: taskId,
+          actor_id: user.id,
+          actor_email: user.email,
+          actor_role: user.role,
+          tenant_id: user.tenant_id,
+          description: `Task completed${notes ? ` with notes: ${notes}` : ''}`,
+          new_values: { status: 'completed', notes, actual_minutes: actualMinutes }
+        }]);
+
       await loadTasks();
+
       toast({
         title: "Task Completed",
         description: "Task has been marked as completed",
       });
-    } catch (err) {
+    } catch (error) {
+      console.error('Error completing task:', error);
       toast({
         title: "Error",
         description: "Failed to complete task",
         variant: "destructive"
       });
-    }
-  };
-
-  return {
-    tasks,
-    loading,
-    error,
-    acceptTask,
-    completeTask,
-    refreshTasks: loadTasks
-  };
-}
-
-export function useHousekeepingSupplies() {
-  const [supplies, setSupplies] = useState<Supply[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    loadSupplies();
-  }, []);
-
-  const loadSupplies = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const suppliesData = await housekeepingAPI.getSupplies();
-      setSupplies(suppliesData);
-    } catch (err) {
-      setError('Failed to load supplies');
-      console.error('Error loading supplies:', err);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const recordUsage = async (supplyId: string, roomNumber: string, quantity: number, notes?: string) => {
+  // Create new task
+  const createTask = async (taskData: {
+    room_id?: string;
+    title: string;
+    description?: string;
+    task_type: string;
+    priority: 'low' | 'medium' | 'high' | 'urgent';
+    estimated_minutes?: number;
+  }) => {
+    if (!user?.tenant_id || !user?.id) return;
+
     try {
-      await housekeepingAPI.recordSupplyUsage(supplyId, roomNumber, quantity, notes);
-      await loadSupplies();
+      setIsLoading(true);
+
+      const { data, error } = await supabase
+        .from('housekeeping_tasks')
+        .insert([{
+          tenant_id: user.tenant_id,
+          ...taskData,
+          status: 'pending',
+          created_by: user.id
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Create audit log
+      await supabase
+        .from('audit_log')
+        .insert([{
+          action: 'task_created',
+          resource_type: 'housekeeping_task',
+          resource_id: data.id,
+          actor_id: user.id,
+          actor_email: user.email,
+          actor_role: user.role,
+          tenant_id: user.tenant_id,
+          description: `Housekeeping task created: ${taskData.title}`,
+          new_values: taskData
+        }]);
+
+      await loadTasks();
+
       toast({
-        title: "Usage Recorded",
-        description: `${quantity} items recorded for room ${roomNumber}`,
+        title: "Task Created",
+        description: "New housekeeping task has been created",
       });
-    } catch (err) {
+
+      return data;
+    } catch (error) {
+      console.error('Error creating task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create task",
+        variant: "destructive"
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Record supply usage
+  const recordSupplyUsage = async (
+    supplyId: string, 
+    roomId: string, 
+    quantity: number, 
+    taskId?: string
+  ) => {
+    if (!user?.tenant_id || !user?.id) return;
+
+    try {
+      setIsLoading(true);
+
+      // Record usage
+      const { error: usageError } = await supabase
+        .from('supply_usage')
+        .insert([{
+          tenant_id: user.tenant_id,
+          supply_id: supplyId,
+          room_id: roomId,
+          task_id: taskId,
+          quantity_used: quantity,
+          used_by: user.id
+        }]);
+
+      if (usageError) throw usageError;
+
+      // Update supply stock
+      const { error: updateError } = await supabase.rpc('update_supply_stock', {
+        p_supply_id: supplyId,
+        p_quantity_change: -quantity
+      });
+
+      if (updateError) throw updateError;
+
+      await loadSupplies();
+
+      toast({
+        title: "Supply Usage Recorded",
+        description: `Used ${quantity} units of supply`,
+      });
+    } catch (error) {
+      console.error('Error recording supply usage:', error);
       toast({
         title: "Error",
         description: "Failed to record supply usage",
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  // Subscribe to real-time updates
+  const subscribeToUpdates = useCallback((callback: (update: any) => void) => {
+    if (!user?.tenant_id) return () => {};
+
+    const channel = supabase
+      .channel('housekeeping_updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'housekeeping_tasks',
+          filter: `tenant_id=eq.${user.tenant_id}`
+        },
+        (payload) => {
+          callback({
+            type: payload.eventType === 'INSERT' ? 'new_task' : 'task_updated',
+            data: payload.new
+          });
+          loadTasks(); // Refresh tasks
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.tenant_id, loadTasks]);
+
+  // Load data on mount and user change
+  useEffect(() => {
+    if (user?.tenant_id) {
+      loadTasks();
+      loadSupplies();
+      loadAuditLogs();
+    }
+  }, [user?.tenant_id, loadTasks, loadSupplies, loadAuditLogs]);
+
   return {
+    tasks,
     supplies,
-    loading,
-    error,
-    recordUsage,
+    auditLogs,
+    isLoading,
+    acceptTask,
+    completeTask,
+    createTask,
+    recordSupplyUsage,
+    subscribeToUpdates,
+    refreshTasks: loadTasks,
     refreshSupplies: loadSupplies
-  };
-}
-
-export function useAmenityRequests() {
-  const [requests, setRequests] = useState<AmenityRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    loadRequests();
-
-    // Subscribe to real-time updates
-    const unsubscribe = housekeepingAPI.subscribeToUpdates((update) => {
-      if (update.type === 'amenity_request') {
-        loadRequests();
-        toast({
-          title: "New Amenity Request",
-          description: `Room ${update.data.roomNumber} - ${update.data.items.join(', ')}`,
-        });
-      }
-    });
-
-    return unsubscribe;
-  }, [toast]);
-
-  const loadRequests = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const requestsData = await housekeepingAPI.getAmenityRequests();
-      setRequests(requestsData);
-    } catch (err) {
-      setError('Failed to load amenity requests');
-      console.error('Error loading amenity requests:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return {
-    requests,
-    loading,
-    error,
-    refreshRequests: loadRequests
-  };
-}
-
-export function useAuditLogs(filters?: { staff?: string; room?: string; action?: string }) {
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    loadLogs();
-  }, [filters]);
-
-  const loadLogs = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const logsData = await housekeepingAPI.getAuditLogs(filters);
-      setLogs(logsData);
-    } catch (err) {
-      setError('Failed to load audit logs');
-      console.error('Error loading audit logs:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return {
-    logs,
-    loading,
-    error,
-    refreshLogs: loadLogs
   };
 }

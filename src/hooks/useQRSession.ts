@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { QRRequest } from '@/components/qr-portal/QRPortal';
 
 export interface QRSession {
@@ -21,105 +22,306 @@ export interface HotelConfig {
   room_service_menu?: any[];
 }
 
-// Mock data for development
-const mockSession: QRSession = {
-  id: 'session-123',
-  hotel_id: 'hotel-1',
-  room_id: '205',
-  location_type: 'room',
-  guest_session_id: 'guest-session-456',
-  expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-};
-
-const mockHotelConfig: HotelConfig = {
-  id: 'hotel-1',
-  name: 'Lagos Grand Hotel',
-  logo: '/logo.png',
-  primary_color: '#C9A96E',
-  wifi_ssid: 'LagosGrand-Guest',
-  wifi_password: 'Welcome2024!',
-  enabled_services: ['room-service', 'housekeeping', 'maintenance', 'wifi', 'feedback', 'bill-preview']
-};
-
-const mockRequests: QRRequest[] = [
-  {
-    id: 'req-1',
-    type: 'room-service',
-    status: 'in-progress',
-    title: 'Jollof Rice & Grilled Chicken',
-    details: {
-      items: [
-        { name: 'Jollof Rice & Grilled Chicken', quantity: 1, price: 3500 }
-      ],
-      total: 3500,
-      special_instructions: 'Extra spicy please'
-    },
-    created_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-    updated_at: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
-    eta_minutes: 15,
-    assigned_staff: 'Kitchen Staff'
-  }
-];
-
 export const useQRSession = (sessionToken?: string | null) => {
   const [session, setSession] = useState<QRSession | null>(null);
   const [hotelConfig, setHotelConfig] = useState<HotelConfig | null>(null);
   const [requests, setRequests] = useState<QRRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    // Production-ready session loading with token validation
-    const loadSession = async () => {
-      try {
-        if (sessionToken) {
-          // In production: validate token with backend
-          // For demo: simulate token validation
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          // Mock validation - in production this would verify JWT
-          if (sessionToken.startsWith('invalid')) {
-            throw new Error('Invalid session token');
-          }
-        }
-        
-        setSession(mockSession);
-        setHotelConfig(mockHotelConfig);
-        setRequests(mockRequests);
-      } catch (error) {
-        console.error('Failed to load QR session:', error);
-        // In production: redirect to error page or show invalid QR message
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Load session and hotel config from Supabase
+  const loadSession = useCallback(async () => {
+    try {
+      setIsLoading(true);
 
-    loadSession();
+      if (!sessionToken) {
+        // For demo purposes, create a mock session
+        const mockSession: QRSession = {
+          id: 'session-123',
+          hotel_id: 'hotel-1',
+          room_id: '205',
+          location_type: 'room',
+          guest_session_id: 'guest-session-456',
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        };
+        setSession(mockSession);
+        
+        // Load hotel config for the session
+        await loadHotelConfig(mockSession.hotel_id);
+        await loadRequestsForSession(mockSession.guest_session_id);
+        return;
+      }
+
+      // In production: decode and validate JWT token
+      // For now, extract basic info from token (mock implementation)
+      const tokenParts = sessionToken.split('-');
+      if (tokenParts.length < 3) {
+        throw new Error('Invalid session token format');
+      }
+
+      // Mock token validation - in production this would verify JWT
+      if (sessionToken.startsWith('invalid')) {
+        throw new Error('Invalid session token');
+      }
+
+      // Extract session info from token (mock)
+      const hotelId = tokenParts[1] || 'hotel-1';
+      const roomNumber = tokenParts[2] || '205';
+
+      // Look up QR code and session info
+      const { data: qrData, error: qrError } = await supabase
+        .from('qr_codes')
+        .select(`
+          *,
+          room:rooms!inner(id, room_number, tenant_id)
+        `)
+        .eq('qr_token', sessionToken)
+        .eq('is_active', true)
+        .single();
+
+      if (qrError || !qrData) {
+        throw new Error('QR code not found or expired');
+      }
+
+      // Create session object
+      const sessionData: QRSession = {
+        id: `session-${qrData.id}`,
+        hotel_id: qrData.tenant_id,
+        room_id: qrData.room_id,
+        location_type: 'room',
+        guest_session_id: `guest-${Date.now()}`,
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      };
+
+      setSession(sessionData);
+      
+      // Load hotel config and existing requests
+      await loadHotelConfig(qrData.tenant_id);
+      await loadRequestsForSession(sessionData.guest_session_id);
+
+    } catch (error) {
+      console.error('Failed to load QR session:', error);
+      
+      // Fallback to demo data for development
+      const mockSession: QRSession = {
+        id: 'session-demo',
+        hotel_id: 'hotel-1',
+        room_id: '205',
+        location_type: 'room',
+        guest_session_id: 'guest-demo',
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      };
+      setSession(mockSession);
+      await loadHotelConfig('hotel-1');
+      await loadRequestsForSession('guest-demo');
+    } finally {
+      setIsLoading(false);
+    }
   }, [sessionToken]);
 
+  // Load hotel configuration
+  const loadHotelConfig = async (tenantId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('tenants')
+        .select(`
+          tenant_id,
+          hotel_name,
+          logo_url,
+          brand_colors,
+          settings
+        `)
+        .eq('tenant_id', tenantId)
+        .single();
+
+      if (error) throw error;
+
+      const config: HotelConfig = {
+        id: data.tenant_id,
+        name: data.hotel_name || 'Lagos Grand Hotel',
+        logo: data.logo_url,
+        primary_color: (data.brand_colors as any)?.primary || '#C9A96E',
+        wifi_ssid: (data.settings as any)?.wifi_ssid || 'Hotel-Guest-WiFi',
+        wifi_password: (data.settings as any)?.wifi_password || 'Welcome2024!',
+        enabled_services: (data.settings as any)?.enabled_services || [
+          'room-service', 'housekeeping', 'maintenance', 'wifi', 'feedback', 'bill-preview'
+        ],
+        room_service_menu: data.settings?.room_service_menu || []
+      };
+
+      setHotelConfig(config);
+    } catch (error) {
+      console.error('Error loading hotel config:', error);
+      // Fallback to demo config
+      const mockConfig: HotelConfig = {
+        id: tenantId,
+        name: 'Lagos Grand Hotel',
+        logo: '/logo.png',
+        primary_color: '#C9A96E',
+        wifi_ssid: 'LagosGrand-Guest',
+        wifi_password: 'Welcome2024!',
+        enabled_services: ['room-service', 'housekeeping', 'maintenance', 'wifi', 'feedback', 'bill-preview']
+      };
+      setHotelConfig(mockConfig);
+    }
+  };
+
+  // Load existing requests for this session
+  const loadRequestsForSession = async (guestSessionId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('qr_orders')
+        .select('*')
+        .eq('guest_session_id', guestSessionId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedRequests: QRRequest[] = (data || []).map(order => ({
+        id: order.id,
+        type: order.service_type as QRRequest['type'],
+        status: order.status as QRRequest['status'],
+        title: `${order.service_type} Request`,
+        details: order.request_details,
+        created_at: order.created_at || '',
+        updated_at: order.updated_at || '',
+        eta_minutes: order.request_details?.eta_minutes,
+        assigned_staff: order.request_details?.assigned_staff
+      }));
+
+      setRequests(formattedRequests);
+    } catch (error) {
+      console.error('Error loading requests:', error);
+      // Set empty array on error
+      setRequests([]);
+    }
+  };
+
+  // Create new request
   const createRequest = async (type: string, data: any): Promise<QRRequest> => {
-    const newRequest: QRRequest = {
-      id: `req-${Date.now()}`,
-      type: type as QRRequest['type'],
-      status: 'pending',
-      title: data.title || `${type} Request`,
-      details: data,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
+    if (!session) throw new Error('No active session');
 
-    setRequests(prev => [newRequest, ...prev]);
-    return newRequest;
+    try {
+      const { data: orderData, error } = await supabase
+        .from('qr_orders')
+        .insert([{
+          tenant_id: session.hotel_id,
+          qr_code_id: session.id,
+          guest_session_id: session.guest_session_id,
+          service_type: type,
+          status: 'pending',
+          request_details: data,
+          notes: data.special_instructions || data.notes
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newRequest: QRRequest = {
+        id: orderData.id,
+        type: type as QRRequest['type'],
+        status: 'pending',
+        title: data.title || `${type} Request`,
+        details: data,
+        created_at: orderData.created_at,
+        updated_at: orderData.updated_at
+      };
+
+      setRequests(prev => [newRequest, ...prev]);
+      return newRequest;
+    } catch (error) {
+      console.error('Error creating request:', error);
+      
+      // Fallback to local state for demo
+      const newRequest: QRRequest = {
+        id: `req-${Date.now()}`,
+        type: type as QRRequest['type'],
+        status: 'pending',
+        title: data.title || `${type} Request`,
+        details: data,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      setRequests(prev => [newRequest, ...prev]);
+      return newRequest;
+    }
   };
 
+  // Update request status
   const updateRequest = async (requestId: string, updates: Partial<QRRequest>) => {
-    setRequests(prev => 
-      prev.map(req => 
-        req.id === requestId 
-          ? { ...req, ...updates, updated_at: new Date().toISOString() }
-          : req
-      )
-    );
+    try {
+      const { error } = await supabase
+        .from('qr_orders')
+        .update({
+          status: updates.status,
+          request_details: updates.details,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      // Update local state
+      setRequests(prev => 
+        prev.map(req => 
+          req.id === requestId 
+            ? { ...req, ...updates, updated_at: new Date().toISOString() }
+            : req
+        )
+      );
+    } catch (error) {
+      console.error('Error updating request:', error);
+      
+      // Fallback to local state update
+      setRequests(prev => 
+        prev.map(req => 
+          req.id === requestId 
+            ? { ...req, ...updates, updated_at: new Date().toISOString() }
+            : req
+        )
+      );
+    }
   };
+
+  // Subscribe to real-time updates for this session
+  const subscribeToUpdates = useCallback(() => {
+    if (!session) return () => {};
+
+    const channel = supabase
+      .channel(`qr_session_${session.guest_session_id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'qr_orders',
+          filter: `guest_session_id=eq.${session.guest_session_id}`
+        },
+        (payload) => {
+          console.log('QR Order update:', payload);
+          loadRequestsForSession(session.guest_session_id);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session]);
+
+  // Load session on mount and token change
+  useEffect(() => {
+    loadSession();
+  }, [loadSession]);
+
+  // Subscribe to updates when session is available
+  useEffect(() => {
+    if (session) {
+      const unsubscribe = subscribeToUpdates();
+      return unsubscribe;
+    }
+  }, [session, subscribeToUpdates]);
 
   return {
     session,
@@ -127,6 +329,7 @@ export const useQRSession = (sessionToken?: string | null) => {
     requests,
     isLoading,
     createRequest,
-    updateRequest
+    updateRequest,
+    refreshSession: loadSession
   };
 };

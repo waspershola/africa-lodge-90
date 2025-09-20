@@ -128,7 +128,8 @@ describe('Database Integration - Folio Operations', () => {
       .insert([{
         reservation_id: 'res-123',
         tenant_id: 'tenant-123',
-        status: 'open'
+        status: 'open',
+        folio_number: 'F001'
       }])
       .select()
       .single()
@@ -159,7 +160,8 @@ describe('Database Integration - Folio Operations', () => {
         folio_id: 'folio-123',
         amount: 5000,
         description: 'Room Service',
-        tenant_id: 'tenant-123'
+        tenant_id: 'tenant-123',
+        charge_type: 'service'
       }])
       .select()
       .single()

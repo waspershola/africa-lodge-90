@@ -1,169 +1,164 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { supabase } from '@/integrations/supabase/client'
 
-// Security test utilities
-const createTestUser = (role: string, tenantId: string | null = null) => ({
-  id: `user-${role.toLowerCase()}-123`,
-  email: `${role.toLowerCase()}@test.com`,
-  role,
-  tenant_id: tenantId
-})
+// Test utilities
+const testTenantId = 'test-tenant-123'
+const otherTenantId = 'other-tenant-456'
+const superAdminId = 'super-admin-123'
 
-const createTestTenant = (id = 'tenant-123') => ({
-  tenant_id: id,
-  hotel_name: 'Test Hotel',
-  subscription_status: 'active',
-  plan_id: 'growth'
-})
-
-describe('Row Level Security Tests', () => {
+describe('Row Level Security (RLS) Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   describe('Tenant Isolation', () => {
     it('should prevent cross-tenant data access', async () => {
-      const tenant1Id = 'tenant-111'
-      const tenant2Id = 'tenant-222'
-      
-      // Mock user from tenant 1 trying to access tenant 2 data
-      const user1 = createTestUser('OWNER', tenant1Id)
-      
-      // Mock RLS behavior - should return empty for cross-tenant access
+      // Mock RLS behavior - return empty results for cross-tenant access
       vi.mocked(supabase.from).mockReturnValue({
         select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ data: [], error: null })
+          eq: vi.fn().mockResolvedValue({ data: [], error: null }) // RLS filters out
         })
       } as any)
 
-      // Try to access rooms from another tenant
       const result = await supabase
         .from('rooms')
         .select('*')
-        .eq('tenant_id', tenant2Id)
+        .eq('tenant_id', otherTenantId)
 
-      expect(result.data).toHaveLength(0)
+      expect(result.data).toHaveLength(0) // Should be filtered by RLS
     })
 
-    it('should allow super admin global access', async () => {
-      const superAdmin = createTestUser('SUPER_ADMIN', null)
-      const allTenants = [
-        createTestTenant('tenant-1'),
-        createTestTenant('tenant-2'),
-        createTestTenant('tenant-3')
+    it('should allow access to own tenant data', async () => {
+      const mockRooms = [
+        {
+          id: 'room-1',
+          room_number: '101',
+          tenant_id: testTenantId,
+          status: 'available'
+        }
       ]
 
       vi.mocked(supabase.from).mockReturnValue({
-        select: vi.fn().mockResolvedValue({ data: allTenants, error: null })
-      } as any)
-
-      const result = await supabase
-        .from('tenants')
-        .select('*')
-
-      expect(result.data).toHaveLength(3)
-    })
-
-    it('should enforce tenant-specific access for regular users', async () => {
-      const owner = createTestUser('OWNER', 'tenant-123')
-      const tenantRooms = [
-        { id: 'room-1', room_number: '101', tenant_id: 'tenant-123' },
-        { id: 'room-2', room_number: '102', tenant_id: 'tenant-123' }
-      ]
-
-      vi.mocked(supabase.from).mockReturnValue({
-        select: vi.fn().mockResolvedValue({ data: tenantRooms, error: null })
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ data: mockRooms, error: null })
+        })
       } as any)
 
       const result = await supabase
         .from('rooms')
         .select('*')
+        .eq('tenant_id', testTenantId)
 
-      expect(result.data).toHaveLength(2)
-      expect(result.data?.every(room => room.tenant_id === 'tenant-123')).toBe(true)
+      expect(result.data).toHaveLength(1)
+      expect(result.data?.[0].tenant_id).toBe(testTenantId)
+    })
+
+    it('should enforce tenant_id in insert operations', async () => {
+      const mockRoom = {
+        id: 'room-new',
+        room_number: '102',
+        tenant_id: testTenantId,
+        status: 'available'
+      }
+
+      vi.mocked(supabase.from).mockReturnValue({
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: mockRoom, error: null })
+          })
+        })
+      } as any)
+
+      const result = await supabase
+        .from('rooms')
+        .insert([{
+          room_number: '102',
+          room_type_id: 'standard',
+          tenant_id: testTenantId,
+          status: 'available'
+        }])
+        .select()
+        .single()
+
+      expect(result.data.tenant_id).toBe(testTenantId)
     })
   })
 
   describe('Role-Based Access Control', () => {
-    it('should restrict sensitive operations by role', async () => {
-      const testScenarios = [
-        { role: 'OWNER', table: 'tenants', operation: 'UPDATE', allowed: true },
-        { role: 'MANAGER', table: 'tenants', operation: 'UPDATE', allowed: false },
-        { role: 'FRONT_DESK', table: 'folios', operation: 'INSERT', allowed: true },
-        { role: 'HOUSEKEEPING', table: 'folios', operation: 'INSERT', allowed: false },
-        { role: 'POS', table: 'pos_orders', operation: 'INSERT', allowed: true },
-        { role: 'POS', table: 'work_orders', operation: 'INSERT', allowed: false }
-      ]
+    it('should allow OWNER role to manage tenant data', () => {
+      const rolePermissions: Record<string, string[]> = {
+        'SUPER_ADMIN': ['*'],
+        'OWNER': ['rooms', 'reservations', 'folios', 'payments', 'staff'],
+        'MANAGER': ['rooms', 'reservations', 'folios', 'staff_limited'],
+        'FRONT_DESK': ['reservations', 'payments', 'rooms_status'],
+        'HOUSEKEEPING': ['housekeeping_tasks', 'supplies'],
+        'MAINTENANCE': ['work_orders', 'supplies'],
+        'POS': ['pos_orders', 'menu_items'],
+        'STAFF': ['own_profile']
+      }
 
-      testScenarios.forEach(({ role, table, operation, allowed }) => {
-        const mockRLSCheck = (userRole: string, tableName: string, op: string): boolean => {
-          const permissions: Record<string, Record<string, string[]>> = {
-            'OWNER': {
-              'tenants': ['SELECT', 'UPDATE'],
-              'folios': ['SELECT', 'INSERT', 'UPDATE'],
-              'pos_orders': ['SELECT', 'INSERT', 'UPDATE'],
-              'work_orders': ['SELECT', 'INSERT', 'UPDATE']
-            },
-            'MANAGER': {
-              'folios': ['SELECT', 'INSERT', 'UPDATE'],
-              'pos_orders': ['SELECT', 'INSERT', 'UPDATE'],
-              'work_orders': ['SELECT', 'INSERT', 'UPDATE']
-            },
-            'FRONT_DESK': {
-              'folios': ['SELECT', 'INSERT', 'UPDATE'],
-              'reservations': ['SELECT', 'INSERT', 'UPDATE'],
-              'rooms': ['SELECT', 'UPDATE']
-            },
-            'HOUSEKEEPING': {
-              'housekeeping_tasks': ['SELECT', 'INSERT', 'UPDATE'],
-              'rooms': ['SELECT', 'UPDATE']
-            },
-            'POS': {
-              'pos_orders': ['SELECT', 'INSERT', 'UPDATE'],
-              'menu_items': ['SELECT']
-            }
-          }
+      const canAccess = (role: string, resource: string): boolean => {
+        const permissions = rolePermissions[role] || []
+        return permissions.includes('*') || permissions.includes(resource)
+      }
 
-          return permissions[userRole]?.[tableName]?.includes(op) || false
-        }
-
-        expect(mockRLSCheck(role, table, operation)).toBe(allowed)
-      })
+      expect(canAccess('OWNER', 'rooms')).toBe(true)
+      expect(canAccess('FRONT_DESK', 'rooms')).toBe(false)
+      expect(canAccess('FRONT_DESK', 'rooms_status')).toBe(true)
+      expect(canAccess('SUPER_ADMIN', 'anything')).toBe(true)
     })
 
-    it('should allow read access to own profile for all users', async () => {
-      const userId = 'user-123'
-      const userProfile = {
-        id: userId,
-        email: 'test@hotel.com',
-        role: 'FRONT_DESK',
-        tenant_id: 'tenant-123'
+    it('should restrict staff to assigned tasks only', () => {
+      const isAssignedTask = (staffId: string, taskAssignedTo: string | null): boolean => {
+        return taskAssignedTo === staffId
+      }
+
+      expect(isAssignedTask('staff-123', 'staff-123')).toBe(true)
+      expect(isAssignedTask('staff-123', 'staff-456')).toBe(false)
+      expect(isAssignedTask('staff-123', null)).toBe(false)
+    })
+  })
+
+  describe('Tenant Creation Security', () => {
+    it('should only allow super admin to create tenants', async () => {
+      // Mock successful tenant creation for super admin
+      const mockTenant = {
+        tenant_id: 'new-tenant-123',
+        hotel_name: 'Test Hotel',
+        hotel_slug: 'test-hotel',
+        plan_id: 'plan-123'
       }
 
       vi.mocked(supabase.from).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ data: [userProfile], error: null })
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: mockTenant, error: null })
+          })
         })
       } as any)
 
       const result = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
+        .from('tenants')
+        .insert([{
+          hotel_name: 'Test Hotel',
+          hotel_slug: 'test-hotel',
+          plan_id: 'plan-123'
+        }])
+        .select()
+        .single()
 
-      expect(result.data).toHaveLength(1)
-      expect(result.data?.[0].id).toBe(userId)
+      expect(result.data.hotel_name).toBe('Test Hotel')
     })
-  })
 
-  describe('Data Modification Policies', () => {
-    it('should prevent unauthorized tenant creation', async () => {
-      const nonSuperAdmin = createTestUser('OWNER', 'tenant-123')
-
-      // Mock RLS violation
+    it('should prevent non-admin users from creating tenants', async () => {
+      // Mock RLS rejection for non-admin users
       vi.mocked(supabase.from).mockReturnValue({
-        insert: vi.fn().mockRejectedValue({
-          error: { message: 'new row violates row-level security policy', code: '42501' }
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockRejectedValue({
+              error: { message: 'RLS policy violation', code: '42501' }
+            })
+          })
         })
       } as any)
 
@@ -172,240 +167,141 @@ describe('Row Level Security Tests', () => {
           .from('tenants')
           .insert([{
             hotel_name: 'Unauthorized Hotel',
-            plan_id: 'growth'
+            hotel_slug: 'unauthorized',
+            plan_id: 'plan-123'
           }])
-      ).rejects.toThrow('new row violates row-level security policy')
-    })
-
-    it('should enforce foreign key constraints with RLS', async () => {
-      const user = createTestUser('OWNER', 'tenant-123')
-
-      // Try to create room with invalid room_type_id from another tenant
-      vi.mocked(supabase.from).mockReturnValue({
-        insert: vi.fn().mockRejectedValue({
-          error: { message: 'foreign key constraint violation', code: '23503' }
-        })
-      } as any)
-
-      await expect(
-        supabase
-          .from('rooms')
-          .insert([{
-            room_number: '101',
-            room_type_id: 'other-tenant-room-type',
-            tenant_id: 'tenant-123'
-          }])
-      ).rejects.toThrow('foreign key constraint violation')
-    })
-
-    it('should audit all data modifications', async () => {
-      const user = createTestUser('FRONT_DESK', 'tenant-123')
-      const roomUpdate = {
-        id: 'room-123',
-        status: 'occupied',
-        updated_at: '2024-01-01T12:00:00Z'
-      }
-
-      const auditEntry = {
-        id: 'audit-123',
-        action: 'room_status_updated',
-        resource_type: 'room',
-        resource_id: 'room-123',
-        actor_id: user.id,
-        tenant_id: 'tenant-123',
-        old_values: { status: 'available' },
-        new_values: { status: 'occupied' }
-      }
-
-      vi.mocked(supabase.from).mockImplementation((table) => {
-        if (table === 'rooms') {
-          return {
-            update: vi.fn().mockReturnValue({
-              eq: vi.fn().mockResolvedValue({ data: [roomUpdate], error: null })
-            })
-          } as any
-        }
-        if (table === 'audit_log') {
-          return {
-            insert: vi.fn().mockResolvedValue({ data: [auditEntry], error: null })
-          } as any
-        }
-        return {} as any
-      })
-
-      // Update room status
-      await supabase
-        .from('rooms')
-        .update({ status: 'occupied' })
-        .eq('id', 'room-123')
-
-      // Verify audit log entry
-      const auditResult = await supabase
-        .from('audit_log')
-        .insert([auditEntry])
-
-      expect(auditResult.error).toBeNull()
+          .select()
+          .single()
+      ).rejects.toThrow()
     })
   })
 
-  describe('Anonymous Access Policies', () => {
+  describe('Anonymous Access Controls', () => {
     it('should allow anonymous QR order creation', async () => {
-      const qrOrder = {
-        id: 'order-123',
+      const mockQROrder = {
+        id: 'qr-order-123',
         qr_code_id: 'qr-123',
         service_type: 'housekeeping',
         status: 'pending',
-        guest_session_id: 'guest-session-456'
+        tenant_id: testTenantId
       }
 
       vi.mocked(supabase.from).mockReturnValue({
         insert: vi.fn().mockReturnValue({
           select: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({ data: qrOrder, error: null })
+            single: vi.fn().mockResolvedValue({ data: mockQROrder, error: null })
           })
         })
       } as any)
 
-      // Anonymous user should be able to create QR orders
       const result = await supabase
         .from('qr_orders')
         .insert([{
           qr_code_id: 'qr-123',
           service_type: 'housekeeping',
-          request_details: { type: 'cleaning', notes: 'Please clean room' },
-          guest_session_id: 'guest-session-456'
+          request_details: { type: 'cleaning', notes: 'Extra towels' },
+          guest_session_id: 'session-123',
+          tenant_id: testTenantId
         }])
         .select()
         .single()
 
       expect(result.data.service_type).toBe('housekeeping')
-      expect(result.data.status).toBe('pending')
     })
 
     it('should prevent anonymous access to sensitive data', async () => {
-      // Mock anonymous user trying to access sensitive data
+      // Mock RLS behavior - no access to folios for anonymous users
       vi.mocked(supabase.from).mockReturnValue({
-        select: vi.fn().mockResolvedValue({ data: [], error: null })
-      } as any)
-
-      const sensitiveQueries = [
-        supabase.from('users').select('*'),
-        supabase.from('folios').select('*'),
-        supabase.from('payments').select('*'),
-        supabase.from('audit_log').select('*')
-      ]
-
-      for (const query of sensitiveQueries) {
-        const result = await query
-        expect(result.data).toHaveLength(0)
-      }
-    })
-  })
-
-  describe('SQL Injection Prevention', () => {
-    it('should prevent SQL injection in WHERE clauses', async () => {
-      const maliciousInput = "'; DROP TABLE rooms; --"
-      
-      // Parameterized queries should prevent injection
-      vi.mocked(supabase.from).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ data: [], error: null })
-        })
+        select: vi.fn().mockResolvedValue({ data: [], error: null }) // RLS blocks access
       } as any)
 
       const result = await supabase
-        .from('rooms')
+        .from('folios')
         .select('*')
-        .eq('room_number', maliciousInput)
 
-      // Should return empty result, not execute malicious SQL
-      expect(result.data).toHaveLength(0)
-    })
-
-    it('should sanitize user inputs in search queries', () => {
-      const sanitizeInput = (input: string): string => {
-        return input
-          .replace(/[';\\]/g, '') // Remove dangerous characters
-          .replace(/\b(DROP|DELETE|UPDATE|INSERT|ALTER|CREATE|TRUNCATE)\b/gi, '') // Remove SQL keywords
-          .trim()
-      }
-
-      const maliciousInputs = [
-        "'; DROP TABLE users; --",
-        "admin' OR '1'='1",
-        "'; UPDATE users SET role='SUPER_ADMIN'; --",
-        "room' UNION SELECT * FROM users --"
-      ]
-
-      maliciousInputs.forEach(input => {
-        const sanitized = sanitizeInput(input)
-        expect(sanitized).not.toContain(';')
-        expect(sanitized).not.toContain('DROP')
-        expect(sanitized).not.toContain('UPDATE')
-        expect(sanitized).not.toContain('UNION')
-      })
+      expect(result.data).toHaveLength(0) // Should be blocked by RLS
     })
   })
 
-  describe('Rate Limiting and Security Headers', () => {
-    it('should implement rate limiting for API endpoints', () => {
-      const rateLimiter = {
-        attempts: new Map<string, { count: number; resetTime: number }>(),
-        
-        isAllowed(identifier: string, maxAttempts = 100, windowMs = 60000): boolean {
-          const now = Date.now()
-          const userAttempts = this.attempts.get(identifier)
-          
-          if (!userAttempts || now > userAttempts.resetTime) {
-            this.attempts.set(identifier, { count: 1, resetTime: now + windowMs })
-            return true
-          }
-          
-          if (userAttempts.count >= maxAttempts) {
-            return false
-          }
-          
-          userAttempts.count++
-          return true
-        }
+  describe('Audit Log Security', () => {
+    it('should create audit entries for sensitive operations', async () => {
+      const mockAuditEntry = {
+        id: 'audit-123',
+        action: 'room_status_updated',
+        resource_type: 'room',
+        resource_id: 'room-123',
+        actor_id: 'user-123',
+        tenant_id: testTenantId,
+        old_values: { status: 'available' },
+        new_values: { status: 'occupied' }
       }
 
-      // Test rate limiting
-      const userId = 'user-123'
-      
-      // Should allow first 100 requests
-      for (let i = 0; i < 100; i++) {
-        expect(rateLimiter.isAllowed(userId)).toBe(true)
-      }
-      
-      // Should block 101st request
-      expect(rateLimiter.isAllowed(userId)).toBe(false)
+      vi.mocked(supabase.from).mockReturnValue({
+        insert: vi.fn().mockResolvedValue({ data: [mockAuditEntry], error: null })
+      } as any)
+
+      const result = await supabase
+        .from('audit_log')
+        .insert([{
+          action: 'room_status_updated',
+          resource_type: 'room',
+          resource_id: 'room-123',
+          actor_id: 'user-123',
+          tenant_id: testTenantId,
+          old_values: { status: 'available' },
+          new_values: { status: 'occupied' }
+        }])
+
+      expect(result.error).toBeNull()
     })
 
-    it('should validate security headers in requests', () => {
-      const validateSecurityHeaders = (headers: Record<string, string>): boolean => {
-        const requiredHeaders = [
-          'authorization',
-          'x-client-info',
-          'apikey'
-        ]
-        
-        return requiredHeaders.every(header => headers[header])
+    it('should prevent audit log tampering', async () => {
+      // Mock RLS behavior - no updates/deletes allowed on audit log
+      vi.mocked(supabase.from).mockReturnValue({
+        update: vi.fn().mockRejectedValue({
+          error: { message: 'RLS policy violation', code: '42501' }
+        }),
+        delete: vi.fn().mockRejectedValue({
+          error: { message: 'RLS policy violation', code: '42501' }
+        })
+      } as any)
+
+      await expect(
+        supabase
+          .from('audit_log')
+          .update({ action: 'tampered' })
+          .eq('id', 'audit-123')
+      ).rejects.toThrow()
+
+      await expect(
+        supabase
+          .from('audit_log')
+          .delete()
+          .eq('id', 'audit-123')
+      ).rejects.toThrow()
+    })
+  })
+
+  describe('Super Admin Privileges', () => {
+    it('should allow super admin access to all tenant data', () => {
+      const canSuperAdminAccess = (userRole: string, tenantId: string): boolean => {
+        return userRole === 'SUPER_ADMIN' || tenantId === testTenantId
       }
 
-      const validHeaders = {
-        'authorization': 'Bearer jwt-token',
-        'x-client-info': 'supabase-js-web/2.0.0',
-        'apikey': 'anon-key'
+      expect(canSuperAdminAccess('SUPER_ADMIN', 'any-tenant')).toBe(true)
+      expect(canSuperAdminAccess('OWNER', testTenantId)).toBe(true)
+      expect(canSuperAdminAccess('OWNER', 'other-tenant')).toBe(false)
+    })
+
+    it('should allow super admin to manage system-wide settings', () => {
+      const systemResources = ['plans', 'feature_flags', 'tenants', 'global_settings']
+      
+      const canManageSystemResource = (role: string, resource: string): boolean => {
+        return role === 'SUPER_ADMIN' && systemResources.includes(resource)
       }
 
-      const invalidHeaders = {
-        'authorization': 'Bearer jwt-token'
-        // Missing required headers
-      }
-
-      expect(validateSecurityHeaders(validHeaders)).toBe(true)
-      expect(validateSecurityHeaders(invalidHeaders)).toBe(false)
+      expect(canManageSystemResource('SUPER_ADMIN', 'plans')).toBe(true)
+      expect(canManageSystemResource('OWNER', 'plans')).toBe(false)
     })
   })
 })

@@ -199,7 +199,7 @@ describe('Room Management Integration', () => {
         .in('id', roomsToUpdate)
 
       expect(result.data).toHaveLength(3)
-      expect(result.data?.every(room => room.status === 'dirty')).toBe(true)
+      expect(result.data?.length && result.data.every(room => room.status === 'dirty')).toBe(true)
     })
   })
 
@@ -378,7 +378,7 @@ describe('Room Management Integration', () => {
       const checkedInReservation = {
         ...reservation,
         status: 'checked_in',
-        actual_check_in: '2024-01-01T15:00:00Z'
+        checked_in_at: '2024-01-01T15:00:00Z'
       }
 
       vi.mocked(supabase.from).mockReturnValue({
@@ -395,14 +395,14 @@ describe('Room Management Integration', () => {
         .from('reservations')
         .update({
           status: 'checked_in',
-          actual_check_in: '2024-01-01T15:00:00Z'
+          checked_in_at: '2024-01-01T15:00:00Z'
         })
         .eq('id', 'res-123')
         .select()
         .single()
 
       expect(result.data.status).toBe('checked_in')
-      expect(result.data.actual_check_in).toBe('2024-01-01T15:00:00Z')
+      expect(result.data.checked_in_at).toBe('2024-01-01T15:00:00Z')
     })
 
     it('should calculate occupancy rates', () => {

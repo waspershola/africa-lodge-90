@@ -39,11 +39,14 @@ async function runPhase4Tests() {
 
   // 4.2 Unit & Integration Testing
   console.log('\n🔬 Running Unit Tests...');
-  results.unitTests = runCommand('npx vitest run --coverage', 'Unit test execution');
+  results.unitTests = runCommand('npx vitest run src/test/unit/ --reporter=verbose', 'Unit test execution');
+  
+  console.log('\n🔗 Running Integration Tests...');
+  results.integrationTests = runCommand('npx vitest run src/test/integration/ --reporter=verbose', 'Integration test execution');
 
   // 4.3 Security Testing
   console.log('\n🔒 Running Security Tests...');
-  results.securityTests = runCommand('npx vitest run src/test/security/', 'Security validation tests');
+  results.securityTests = runCommand('npx vitest run src/test/security/ --reporter=verbose', 'Security validation tests');
 
   // 4.4 Code Quality & Linting
   console.log('\n📏 Code Quality Checks...');

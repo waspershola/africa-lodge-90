@@ -59,13 +59,21 @@ export function MultiTenantAuthProvider({ children }: MultiTenantAuthProviderPro
     // Override logout to add audit logging
     logout: async () => {
       try {
+        // Try to log audit event but don't let it block logout
         await logAuditEvent('LOGOUT', 'User logged out', {
           session_end: new Date().toISOString()
         });
+      } catch (auditError) {
+        console.warn('Failed to log logout audit event:', auditError);
+        // Continue with logout even if audit logging fails
+      }
+      
+      try {
         await auth.logout();
       } catch (error) {
         console.error('Logout error:', error);
-        throw error;
+        // Force redirect even if logout fails
+        window.location.href = '/';
       }
     }
   };

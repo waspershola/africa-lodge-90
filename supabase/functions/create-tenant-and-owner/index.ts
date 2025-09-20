@@ -63,6 +63,44 @@ serve(async (req) => {
       plan_id: requestData.plan_id
     });
 
+    // Check if user already exists with this email in public.users table
+    const { data: existingUser } = await supabaseAdmin
+      .from('users')
+      .select('id, email')
+      .eq('email', requestData.owner_email)
+      .single();
+
+    if (existingUser) {
+      console.log('User already exists in users table:', requestData.owner_email);
+      return new Response(
+        JSON.stringify({
+          error: `A user with email ${requestData.owner_email} already exists`,
+          success: false
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        }
+      );
+    }
+
+    // Check if user already exists with this email in auth
+    const { data: existingAuthUser } = await supabaseAdmin.auth.admin.listUsers();
+    const userAlreadyExists = existingAuthUser?.users?.find(u => u.email === requestData.owner_email);
+    if (userAlreadyExists) {
+      console.log('User already exists in auth:', requestData.owner_email);
+      return new Response(
+        JSON.stringify({
+          error: `A user with email ${requestData.owner_email} already exists`,
+          success: false
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        }
+      );
+    }
+
     const tempPassword = generateTempPassword();
     const tempPasswordHash = await hashPassword(tempPassword);
     const tempExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
@@ -128,27 +166,38 @@ serve(async (req) => {
         console.log('Auth user created:', authUserId);
 
         try {
-          // Step 3: Create user record in users table
-          const { error: userError } = await supabaseAdmin
+          // Step 3: Check if user record already exists in users table
+          const { data: existingUserRecord } = await supabaseAdmin
             .from('users')
-            .insert({
-              id: authUserId,
-              email: requestData.owner_email,
-              name: requestData.owner_name,
-              role: 'OWNER',
-              tenant_id: tenantId,
-              force_reset: true,
-              temp_password_hash: tempPasswordHash,
-              temp_expires: tempExpires.toISOString(),
-              is_active: true
-            });
+            .select('id')
+            .eq('id', authUserId)
+            .single();
 
-          if (userError) {
-            console.error('User record creation error:', userError);
-            throw new Error(`Failed to create user record: ${userError.message}`);
+          if (existingUserRecord) {
+            console.log('User record already exists, skipping creation');
+          } else {
+            // Create user record in users table
+            const { error: userError } = await supabaseAdmin
+              .from('users')
+              .insert({
+                id: authUserId,
+                email: requestData.owner_email,
+                name: requestData.owner_name,
+                role: 'OWNER',
+                tenant_id: tenantId,
+                force_reset: true,
+                temp_password_hash: tempPasswordHash,
+                temp_expires: tempExpires.toISOString(),
+                is_active: true
+              });
+
+            if (userError) {
+              console.error('User record creation error:', userError);
+              throw new Error(`Failed to create user record: ${userError.message}`);
+            }
+
+            console.log('User record created');
           }
-
-          console.log('User record created');
 
           // Step 4: Update tenant with owner_id
           const { error: updateError } = await supabaseAdmin
@@ -201,14 +250,24 @@ serve(async (req) => {
         } catch (error) {
           // Rollback: Delete auth user
           console.log('Rolling back auth user...');
-          await supabaseAdmin.auth.admin.deleteUser(authUserId);
+          try {
+            await supabaseAdmin.auth.admin.deleteUser(authUserId);
+            console.log('Auth user deleted successfully');
+          } catch (deleteError) {
+            console.error('Failed to delete auth user during rollback:', deleteError);
+          }
           throw error;
         }
 
       } catch (error) {
         // Rollback: Delete tenant
         console.log('Rolling back tenant...');
-        await supabaseAdmin.from('tenants').delete().eq('tenant_id', tenantId);
+        try {
+          await supabaseAdmin.from('tenants').delete().eq('tenant_id', tenantId);
+          console.log('Tenant deleted successfully');
+        } catch (deleteError) {
+          console.error('Failed to delete tenant during rollback:', deleteError);
+        }
         throw error;
       }
 

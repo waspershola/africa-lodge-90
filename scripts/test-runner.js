@@ -31,7 +31,11 @@ async function runPhase4Tests() {
     integrationTests: null,
     securityTests: null,
     linting: null,
-    typeCheck: null
+    typeCheck: null,
+    e2eTests: null,
+    apiTests: null,
+    loadTests: null,
+    securityScan: null
   };
 
   // 4.1 Backend Validation - Type Checking
@@ -51,6 +55,22 @@ async function runPhase4Tests() {
   // 4.4 Code Quality & Linting
   console.log('\n📏 Code Quality Checks...');
   results.linting = runCommand('npx eslint src/ --ext .ts,.tsx --fix', 'ESLint code quality');
+
+  // 4.5 E2E Testing
+  console.log('\n🌐 Running E2E Tests...');
+  results.e2eTests = runCommand('npx cypress run --headless', 'E2E test execution');
+
+  // 4.6 Backend API Testing
+  console.log('\n🔌 Running API Tests...');
+  results.apiTests = runCommand('npx newman run backend-audit/tests/postman_collection_updated.json', 'Postman API collection tests');
+
+  // 4.7 Load Testing (optional - requires k6 to be installed globally)
+  console.log('\n⚡ Running Load Tests...');
+  results.loadTests = runCommand('k6 run k6-load-test.js --duration=30s --vus=10', 'Load testing with k6 (light test)');
+
+  // 4.8 Security Scanning  
+  console.log('\n🔍 Running Security Scan...');
+  results.securityScan = runCommand('npx vitest run src/test/setup/security-scanner.ts', 'Security vulnerability scan');
 
   // Generate test report
   console.log('\n📊 Test Results Summary:');

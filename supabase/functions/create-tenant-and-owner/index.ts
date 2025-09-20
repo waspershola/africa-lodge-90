@@ -174,7 +174,23 @@ serve(async (req) => {
             .single();
 
           if (existingUserRecord) {
-            console.log('User record already exists, skipping creation');
+            console.log('User record already exists, updating with temp password');
+            // Update existing user record with temp password
+            const { error: updateError } = await supabaseAdmin
+              .from('users')
+              .update({
+                force_reset: true,
+                temp_password_hash: tempPasswordHash,
+                temp_expires: tempExpires.toISOString(),
+              })
+              .eq('id', authUserId);
+
+            if (updateError) {
+              console.error('User record update error:', updateError);
+              throw new Error(`Failed to update user record: ${updateError.message}`);
+            }
+
+            console.log('User record updated with temp password');
           } else {
             // Create user record in users table
             const { error: userError } = await supabaseAdmin

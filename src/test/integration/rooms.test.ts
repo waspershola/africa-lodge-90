@@ -199,7 +199,12 @@ describe('Room Management Integration', () => {
         .in('id', roomsToUpdate)
 
       expect(result.data).toHaveLength(3)
-      expect(result.data?.length && result.data.every(room => room.status === 'dirty')).toBe(true)
+      expect(result.data).toBeTruthy()
+      expect(Array.isArray(result.data)).toBe(true)
+      const rooms = result.data as typeof updatedRooms
+      if (rooms) {
+        expect(rooms.every(room => room.status === 'dirty')).toBe(true)
+      }
     })
   })
 

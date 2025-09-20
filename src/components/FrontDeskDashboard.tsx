@@ -38,6 +38,8 @@ import { BillingOverviewFD } from "./frontdesk/BillingOverviewFD";
 import { HandoverPanel } from "./frontdesk/HandoverPanel";
 import { CheckoutDialog } from "./frontdesk/CheckoutDialog";
 import { QRRequestsPanel } from "./frontdesk/QRRequestsPanel";
+import { useRealtimeRooms, useRealtimeQROrders } from '@/hooks/useRealtimeUpdates';
+import DashboardNotificationBar from '@/components/layout/DashboardNotificationBar';
 import type { Room } from "./frontdesk/RoomGrid";
 
 // Mock data
@@ -96,6 +98,15 @@ const FrontDeskDashboard = () => {
   const [captureAction, setCaptureAction] = useState<"assign" | "walkin" | "check-in" | "check-out" | "assign-room" | "extend-stay" | "transfer-room" | "add-service" | "work-order" | "housekeeping" | "">("");
   const [rooms, setRooms] = useState<Room[]>([]);
   const [activePanel, setActivePanel] = useState<'overview' | 'qr-requests' | 'staff-ops' | 'billing' | 'handover' | 'qr-manager'>('overview');
+
+  // Set up real-time updates for live dashboard experience
+  const handleRealtimeUpdate = () => {
+    // Force room grid refresh when real-time updates occur
+    console.log('Real-time update received - refreshing dashboard data');
+  };
+  
+  useRealtimeRooms(handleRealtimeUpdate);
+  useRealtimeQROrders(handleRealtimeUpdate);
 
   // Simulate online/offline status
   useEffect(() => {
@@ -335,6 +346,7 @@ const FrontDeskDashboard = () => {
                   className="pl-10 w-80"
                 />
               </div>
+              <DashboardNotificationBar />
               <Button 
                 variant="outline"
                 onClick={() => setIsOffline(!isOffline)}

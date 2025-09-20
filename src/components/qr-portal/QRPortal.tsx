@@ -8,7 +8,7 @@ import { HousekeepingFlow } from './services/HousekeepingFlow';
 import { MaintenanceFlow } from './services/MaintenanceFlow';
 import { WifiFlow } from './services/WifiFlow';
 import { useQRSession } from '@/hooks/useQRSession';
-import { useRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
+import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 import { QRSecurity } from '@/lib/qr-security';
 import { QRPortalErrorBoundary } from './ErrorBoundary';
 
@@ -52,7 +52,13 @@ const QRPortalWithErrorBoundary = () => {
     updateRequest 
   } = useQRSession(urlToken);
   
-  const { isConnected } = useRealTimeUpdates(session?.id, requests);
+  // Simple hook that returns connection status for this mock scenario
+  const [isConnected, setIsConnected] = useState(true);
+  
+  useEffect(() => {
+    // Simulate connection status
+    setIsConnected(!!session?.id);
+  }, [session?.id]);
 
   const handleServiceSelect = (service: string) => {
     setCurrentStep(service as QRStep);

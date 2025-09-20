@@ -1,0 +1,233 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+interface CreateTenantRequest {
+  hotel_name: string;
+  hotel_slug: string;
+  owner_email: string;
+  owner_name: string;
+  plan_id: string;
+  city?: string;
+  address?: string;
+  phone?: string;
+}
+
+// Generate secure temporary password
+const generateTempPassword = (): string => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%&*';
+  let password = '';
+  for (let i = 0; i < 12; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+};
+
+// Hash password for storage
+const hashPassword = async (password: string): Promise<string> => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password + 'hotel_saas_salt');
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    // Create Supabase client with service role key
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
+    const requestData: CreateTenantRequest = await req.json();
+    
+    console.log('Creating tenant and owner:', {
+      hotel_name: requestData.hotel_name,
+      owner_email: requestData.owner_email,
+      plan_id: requestData.plan_id
+    });
+
+    const tempPassword = generateTempPassword();
+    const tempPasswordHash = await hashPassword(tempPassword);
+    const tempExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    let tenantId: string;
+    let authUserId: string;
+
+    try {
+      // Step 1: Create tenant record
+      const tenantData = {
+        hotel_name: requestData.hotel_name,
+        hotel_slug: requestData.hotel_slug,
+        plan_id: requestData.plan_id,
+        subscription_status: 'trialing',
+        trial_start: new Date().toISOString(),
+        trial_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+        setup_completed: false,
+        onboarding_step: 'hotel_information',
+        city: requestData.city || '',
+        address: requestData.address || '',
+        phone: requestData.phone || '',
+        email: requestData.owner_email,
+        currency: 'NGN',
+        timezone: 'Africa/Lagos',
+        country: 'Nigeria',
+        settings: {},
+        brand_colors: {}
+      };
+
+      const { data: tenant, error: tenantError } = await supabaseAdmin
+        .from('tenants')
+        .insert(tenantData)
+        .select()
+        .single();
+
+      if (tenantError) {
+        console.error('Tenant creation error:', tenantError);
+        throw new Error(`Failed to create tenant: ${tenantError.message}`);
+      }
+
+      tenantId = tenant.tenant_id;
+      console.log('Tenant created:', tenantId);
+
+      try {
+        // Step 2: Create user in Supabase Auth
+        const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+          email: requestData.owner_email,
+          password: tempPassword,
+          email_confirm: true,
+          user_metadata: {
+            name: requestData.owner_name,
+            role: 'OWNER',
+            tenant_id: tenantId
+          }
+        });
+
+        if (authError) {
+          console.error('Auth user creation error:', authError);
+          throw new Error(`Failed to create auth user: ${authError.message}`);
+        }
+
+        authUserId = authUser.user.id;
+        console.log('Auth user created:', authUserId);
+
+        try {
+          // Step 3: Create user record in users table
+          const { error: userError } = await supabaseAdmin
+            .from('users')
+            .insert({
+              id: authUserId,
+              email: requestData.owner_email,
+              name: requestData.owner_name,
+              role: 'OWNER',
+              tenant_id: tenantId,
+              force_reset: true,
+              temp_password_hash: tempPasswordHash,
+              temp_expires: tempExpires.toISOString(),
+              is_active: true
+            });
+
+          if (userError) {
+            console.error('User record creation error:', userError);
+            throw new Error(`Failed to create user record: ${userError.message}`);
+          }
+
+          console.log('User record created');
+
+          // Step 4: Update tenant with owner_id
+          const { error: updateError } = await supabaseAdmin
+            .from('tenants')
+            .update({ owner_id: authUserId } as any)
+            .eq('tenant_id', tenantId);
+
+          if (updateError) {
+            console.error('Tenant update error:', updateError);
+            throw new Error(`Failed to update tenant owner: ${updateError.message}`);
+          }
+
+          console.log('Tenant updated with owner_id');
+
+          // Step 5: Send temporary password email
+          try {
+            const { error: emailError } = await supabaseAdmin.functions.invoke('send-temp-password', {
+              body: {
+                to_email: requestData.owner_email,
+                hotel_name: requestData.hotel_name,
+                temp_password: tempPassword,
+                login_url: `${req.headers.get('origin') || 'http://localhost:3000'}/`
+              }
+            });
+
+            if (emailError) {
+              console.error('Email sending error (non-critical):', emailError);
+              // Don't fail the whole process for email issues
+            } else {
+              console.log('Temporary password email sent');
+            }
+          } catch (emailError) {
+            console.error('Email sending failed (non-critical):', emailError);
+            // Continue without failing
+          }
+
+          return new Response(
+            JSON.stringify({
+              success: true,
+              tenant,
+              owner_id: authUserId,
+              message: 'Tenant and owner created successfully'
+            }),
+            {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 200,
+            }
+          );
+
+        } catch (error) {
+          // Rollback: Delete auth user
+          console.log('Rolling back auth user...');
+          await supabaseAdmin.auth.admin.deleteUser(authUserId);
+          throw error;
+        }
+
+      } catch (error) {
+        // Rollback: Delete tenant
+        console.log('Rolling back tenant...');
+        await supabaseAdmin.from('tenants').delete().eq('tenant_id', tenantId);
+        throw error;
+      }
+
+    } catch (error) {
+      console.error('Tenant and owner creation failed:', error);
+      throw error;
+    }
+
+  } catch (error) {
+    console.error('Error in create-tenant-and-owner function:', error);
+    return new Response(
+      JSON.stringify({
+        error: error.message || 'Internal server error',
+        success: false
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500,
+      }
+    );
+  }
+});

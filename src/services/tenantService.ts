@@ -129,96 +129,26 @@ export const tenantService = {
     };
   },
 
-  // Create tenant and owner with rollback capability
+  // Create tenant and owner via edge function
   async createTenantAndOwner(data: CreateTenantAndOwnerData): Promise<{ tenant: Tenant; tempPassword: string }> {
-    const tempPassword = generateTempPassword();
-    const tempPasswordHash = await hashPassword(tempPassword);
-    const tempExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
     try {
-      // Step 1: Create tenant record
-      const tenantData: TenantInsert = {
-        hotel_name: data.hotel_name,
-        hotel_slug: data.hotel_slug,
-        plan_id: data.plan_id,
-        subscription_status: 'trialing',
-        trial_start: new Date().toISOString(),
-        trial_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-        setup_completed: false,
-        onboarding_step: 'hotel_information',
-        city: data.city || '',
-        address: data.address || '',
-        phone: data.phone || '',
-        email: data.owner_email,
-        currency: 'NGN',
-        timezone: 'Africa/Lagos',
-        country: 'Nigeria',
-        settings: {},
-        brand_colors: {}
-      };
+      const { data: result, error } = await supabase.functions.invoke('create-tenant-and-owner', {
+        body: data
+      });
 
-      const { data: tenant, error: tenantError } = await supabase
-        .from('tenants')
-        .insert(tenantData)
-        .select()
-        .single();
-
-      if (tenantError) throw new Error(`Failed to create tenant: ${tenantError.message}`);
-
-      try {
-        // Step 2: Create user in Supabase Auth
-        const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-          email: data.owner_email,
-          password: tempPassword,
-          email_confirm: true,
-          user_metadata: {
-            name: data.owner_name,
-            role: 'OWNER',
-            tenant_id: tenant.tenant_id
-          }
-        });
-
-        if (authError) throw new Error(`Failed to create auth user: ${authError.message}`);
-
-        try {
-          // Step 3: Create user record in users table
-          const { error: userError } = await supabase
-            .from('users')
-            .insert({
-              id: authUser.user.id,
-              email: data.owner_email,
-              name: data.owner_name,
-              role: 'OWNER',
-              tenant_id: tenant.tenant_id,
-              force_reset: true,
-              temp_password_hash: tempPasswordHash,
-              temp_expires: tempExpires.toISOString(),
-              is_active: true
-            });
-
-          if (userError) throw new Error(`Failed to create user record: ${userError.message}`);
-
-          // Step 4: Update tenant with owner_id (need to cast to any due to type limitations)
-          const { error: updateError } = await supabase
-            .from('tenants')
-            .update({ owner_id: authUser.user.id } as any)
-            .eq('tenant_id', tenant.tenant_id);
-
-          if (updateError) throw new Error(`Failed to update tenant owner: ${updateError.message}`);
-
-          return { tenant, tempPassword };
-
-        } catch (error) {
-          // Rollback: Delete auth user
-          await supabase.auth.admin.deleteUser(authUser.user.id);
-          throw error;
-        }
-
-      } catch (error) {
-        // Rollback: Delete tenant
-        await supabase.from('tenants').delete().eq('tenant_id', tenant.tenant_id);
-        throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(`Failed to create tenant and owner: ${error.message}`);
       }
+
+      if (!result?.success) {
+        throw new Error(result?.error || 'Unknown error occurred');
+      }
+
+      return { 
+        tenant: result.tenant, 
+        tempPassword: 'Password sent via email' // Don't return actual password
+      };
 
     } catch (error) {
       console.error('CreateTenantAndOwner failed:', error);

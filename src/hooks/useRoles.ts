@@ -44,8 +44,13 @@ export const useCreateRole = () => {
   
   return useMutation({
     mutationFn: (data: CreateRoleData) => roleService.createRole(data),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      // Invalidate all role-related queries
       queryClient.invalidateQueries({ queryKey: ['roles'] });
+      queryClient.invalidateQueries({ queryKey: ['roles', 'global'] });
+      queryClient.invalidateQueries({ queryKey: ['roles', 'tenant'] });
+      queryClient.invalidateQueries({ queryKey: ['roles', variables.scope] });
+      queryClient.invalidateQueries({ queryKey: ['roles', variables.scope, variables.tenant_id] });
       toast.success('Role created successfully');
     },
     onError: (error: any) => {

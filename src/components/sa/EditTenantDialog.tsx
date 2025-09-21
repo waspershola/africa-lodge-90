@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useUpdateTenantReal, usePlansReal } from '@/hooks/useTenants';
+import { useUpdateTenantReal } from '@/hooks/useTenants';
+import { usePricingPlans } from '@/hooks/usePricingPlans';
 import type { TenantWithOwner } from '@/services/tenantService';
 
 const editTenantSchema = z.object({
@@ -32,7 +33,7 @@ interface EditTenantDialogProps {
 
 export function EditTenantDialog({ tenant, isOpen, onClose }: EditTenantDialogProps) {
   const updateTenant = useUpdateTenantReal();
-  const { data: plans = [] } = usePlansReal();
+  const { plans } = usePricingPlans();
 
   const form = useForm<EditTenantForm>({
     resolver: zodResolver(editTenantSchema),
@@ -133,11 +134,13 @@ export function EditTenantDialog({ tenant, isOpen, onClose }: EditTenantDialogPr
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {plans.map((plan) => (
-                        <SelectItem key={plan.id} value={plan.id}>
-                          {plan.name} - ₦{(plan.price_monthly || 0).toLocaleString()}/month
-                        </SelectItem>
-                      ))}
+                      {plans
+                        .filter(plan => plan.status === 'active')
+                        .map((plan) => (
+                          <SelectItem key={plan.id} value={plan.id}>
+                            {plan.name} - ₦{plan.price?.toLocaleString()}/month ({plan.room_capacity_min}-{plan.room_capacity_max === 9999 ? '∞' : plan.room_capacity_max} rooms)
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />

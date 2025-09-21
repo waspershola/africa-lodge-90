@@ -27,7 +27,7 @@ import { TenantDetailsDrawer } from '@/components/sa/TenantDetailsDrawer';
 import { ImpersonationModal } from '@/components/sa/ImpersonationModal';
 import { PasswordResetDialog } from '@/components/sa/PasswordResetDialog';
 import { EditTenantDialog } from '@/components/sa/EditTenantDialog';
-import { RoomManagementDialog } from '@/components/sa/RoomManagementDialog';
+
 import type { TenantWithOwner } from '@/services/tenantService';
 
 const fadeIn = {
@@ -53,7 +53,7 @@ export default function TenantsReal() {
   const [showImpersonation, setShowImpersonation] = useState(false);
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [showRoomManagement, setShowRoomManagement] = useState(false);
+  
   
   const { data: tenants = [], isLoading, error, refetch } = useTenantsReal();
   const { data: metrics } = useTenantMetrics();
@@ -109,9 +109,6 @@ export default function TenantsReal() {
         break;
       case 'edit':
         setShowEditDialog(true);
-        break;
-      case 'manage-rooms':
-        setShowRoomManagement(true);
         break;
       default:
         console.log('Unknown action:', action);
@@ -365,10 +362,6 @@ export default function TenantsReal() {
                           <Settings className="h-4 w-4 mr-2" />
                           Edit Details
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleAction('manage-rooms', tenant)}>
-                          <Building2 className="h-4 w-4 mr-2" />
-                          Manage Rooms
-                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         {tenant.subscription_status === 'active' || tenant.subscription_status === 'trialing' ? (
                           <DropdownMenuItem 
@@ -457,16 +450,6 @@ export default function TenantsReal() {
         }}
       />
 
-      {/* Room Management Dialog */}
-      <RoomManagementDialog
-        tenant={selectedTenant}
-        isOpen={showRoomManagement}
-        onClose={() => {
-          setShowRoomManagement(false);
-          setSelectedTenant(null);
-        }}
-        onRoomsUpdate={refetch}
-      />
     </motion.div>
   );
 }

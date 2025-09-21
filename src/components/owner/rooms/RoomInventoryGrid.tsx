@@ -22,8 +22,12 @@ import {
   Wind
 } from "lucide-react";
 import { useCurrency } from "@/hooks/useCurrency";
+import { usePricingPlans } from "@/hooks/usePricingPlans";
+import { useRoomLimits } from "@/hooks/useRoomLimits";
+import { useMultiTenantAuth } from "@/hooks/useMultiTenantAuth";
 import RoomDetailDrawer from "./RoomDetailDrawer";
 import BulkEditModal from "./BulkEditModal";
+import { AddRoomDialog } from "./AddRoomDialog";
 
 interface Room {
   id: string;
@@ -111,7 +115,12 @@ export default function RoomInventoryGrid() {
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const { formatPrice } = useCurrency();
+  const { user, tenant } = useMultiTenantAuth();
+  const roomLimits = useRoomLimits(tenant?.plan_id || '');
+  
+  const currentRoomCount = rooms.length;
 
   const filteredRooms = rooms.filter(room => {
     const matchesSearch = room.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -129,6 +138,38 @@ export default function RoomInventoryGrid() {
     setIsEditDialogOpen(true);
   };
 
+  const handleAddRoom = () => {
+    if (!roomLimits.canAddRoom(currentRoomCount)) {
+      alert(`Room limit exceeded. Your plan allows a maximum of ${roomLimits.maxRooms} rooms.`);
+      return;
+    }
+    setIsAddDialogOpen(true);
+  };
+
+  const handleSaveNewRoom = (newRoomData: Partial<Room>) => {
+    if (!roomLimits.canAddRoom(currentRoomCount)) {
+      alert(`Cannot add room. Room limit (${roomLimits.maxRooms}) reached.`);
+      return;
+    }
+    
+    const newRoom: Room = {
+      id: Date.now().toString(),
+      number: newRoomData.number || '',
+      category: newRoomData.category || 'Standard',
+      floor: newRoomData.floor || 1,
+      status: 'available',
+      baseRate: newRoomData.baseRate || 120,
+      currentRate: newRoomData.currentRate || newRoomData.baseRate || 120,
+      amenities: newRoomData.amenities || ['wifi', 'tv', 'ac'],
+      lastCleaned: new Date().toISOString(),
+      nextMaintenance: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      description: newRoomData.description || ''
+    };
+    
+    setRooms([...rooms, newRoom]);
+    setIsAddDialogOpen(false);
+  };
+
   const handleSaveRoom = () => {
     if (selectedRoom) {
       setRooms(rooms.map(room => 
@@ -144,10 +185,25 @@ export default function RoomInventoryGrid() {
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Room Filters
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              Room Filters
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">
+                {currentRoomCount} / {roomLimits.maxRooms === 9999 ? '∞' : roomLimits.maxRooms} rooms
+              </Badge>
+              <Button 
+                onClick={handleAddRoom}
+                disabled={!roomLimits.canAddRoom(currentRoomCount)}
+                size="sm"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Room
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -403,6 +459,13 @@ export default function RoomInventoryGrid() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Add Room Dialog */}
+      <AddRoomDialog
+        isOpen={isAddDialogOpen}
+        onClose={() => setIsAddDialogOpen(false)}
+        onSave={handleSaveNewRoom}
+      />
     </div>
   );
 }

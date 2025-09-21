@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useCreateTenantAndOwner, usePlansReal } from '@/hooks/useTenants';
+import { usePricingPlans, PricingPlan } from '@/hooks/usePricingPlans';
+import { useCreateTenantAndOwner } from '@/hooks/useTenants';
 import { CreateTenantAndOwnerData } from '@/services/tenantService';
 import { toast } from 'sonner';
 
@@ -32,7 +33,7 @@ interface CreateTenantRealFormProps {
 
 export function CreateTenantRealForm({ onSuccess }: CreateTenantRealFormProps) {
   const createTenantAndOwner = useCreateTenantAndOwner();
-  const { data: plans = [], isLoading: plansLoading } = usePlansReal();
+  const { plans, loading: plansLoading } = usePricingPlans();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -221,11 +222,13 @@ export function CreateTenantRealForm({ onSuccess }: CreateTenantRealFormProps) {
                         {plansLoading ? (
                           <SelectItem value="loading" disabled>Loading plans...</SelectItem>
                         ) : (
-                          plans.map((plan) => (
-                            <SelectItem key={plan.id} value={plan.id}>
-                              {plan.name} - ₦{plan.price_monthly?.toLocaleString()}/month
-                            </SelectItem>
-                          ))
+                          plans
+                            .filter(plan => plan.status === 'active')
+                            .map((plan) => (
+                              <SelectItem key={plan.id} value={plan.id}>
+                                {plan.name} - ₦{plan.price?.toLocaleString()}/month ({plan.room_capacity_min}-{plan.room_capacity_max === 9999 ? '∞' : plan.room_capacity_max} rooms)
+                              </SelectItem>
+                            ))
                         )}
                       </SelectContent>
                     </Select>

@@ -9,6 +9,8 @@ import {
   RefreshCw, Trash2, Pause, Play, Crown
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { usePricingPlans } from '@/hooks/usePricingPlans';
+import { useRoomLimits } from '@/hooks/useRoomLimits';
 import type { TenantWithOwner } from '@/services/tenantService';
 
 interface TenantDetailsDrawerProps {
@@ -20,6 +22,10 @@ interface TenantDetailsDrawerProps {
 
 export function TenantDetailsDrawer({ tenant, isOpen, onClose, onAction }: TenantDetailsDrawerProps) {
   if (!tenant) return null;
+
+  const { plans } = usePricingPlans();
+  const roomLimits = useRoomLimits(tenant.plan_id);
+  const selectedPlan = plans.find(p => p.id === tenant.plan_id);
 
   const trialProgress = tenant.subscription_status === 'trialing' && tenant.trial_start && tenant.trial_end 
     ? Math.max(0, Math.min(100, 
@@ -47,7 +53,14 @@ export function TenantDetailsDrawer({ tenant, isOpen, onClose, onAction }: Tenan
                            tenant.subscription_status === 'trialing' ? 'secondary' : 'destructive'}>
               {tenant.subscription_status}
             </Badge>
-            <Badge variant="outline">{tenant.plan_name || 'No Plan'}</Badge>
+            <Badge variant="outline">
+              {selectedPlan?.name || tenant.plan_name || 'No Plan'}
+              {selectedPlan && (
+                <span className="text-xs ml-1">
+                  ({selectedPlan.room_capacity_min}-{selectedPlan.room_capacity_max === 9999 ? '∞' : selectedPlan.room_capacity_max} rooms)
+                </span>
+              )}
+            </Badge>
           </div>
         </SheetHeader>
 
@@ -58,7 +71,9 @@ export function TenantDetailsDrawer({ tenant, isOpen, onClose, onAction }: Tenan
               <CardContent className="p-4 text-center">
                 <Hotel className="h-5 w-5 mx-auto mb-2 text-primary" />
                 <div className="text-2xl font-bold">{tenant.total_rooms || 0}</div>
-                <div className="text-xs text-muted-foreground">Rooms</div>
+                <div className="text-xs text-muted-foreground">
+                  Rooms ({roomLimits.minRooms}-{roomLimits.maxRooms === 9999 ? '∞' : roomLimits.maxRooms} allowed)
+                </div>
               </CardContent>
             </Card>
             <Card>
@@ -146,14 +161,6 @@ export function TenantDetailsDrawer({ tenant, isOpen, onClose, onAction }: Tenan
               Edit Details
             </Button>
             
-            <Button 
-              className="w-full" 
-              variant="outline"
-              onClick={() => onAction('manage-rooms', tenant)}
-            >
-              <Building2 className="h-4 w-4 mr-2" />
-              Manage Rooms
-            </Button>
             
             <Button 
               className="w-full" 

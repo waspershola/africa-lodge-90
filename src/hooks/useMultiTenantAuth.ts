@@ -89,7 +89,7 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
       // Use database setup_completed field instead of localStorage
       if (tenant.setup_completed === false || tenant.setup_completed === undefined) {
         console.log('Onboarding required - setup not completed');
-        window.location.href = '/onboarding';
+        // Don't redirect here - let the routing components handle it
         return true;
       }
     }
@@ -209,9 +209,9 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
           setTrialStatus(calculateTrialStatus(tenant));
 
           // Check if onboarding is required for new login
-          if (checkOnboardingRequired(userData, tenant)) {
-            return; // Redirected to onboarding
-          }
+          const onboardingRequired = checkOnboardingRequired(userData, tenant);
+          console.log('Onboarding check result:', onboardingRequired);
+          // Note: Don't redirect here, let routing components handle it
         }
       } else {
         console.log('No tenant ID - likely super admin');

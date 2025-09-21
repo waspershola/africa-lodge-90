@@ -1488,6 +1488,7 @@ export type Database = {
           name: string | null
           phone: string | null
           role: string
+          role_id: string | null
           shift_end: string | null
           shift_start: string | null
           temp_expires: string | null
@@ -1506,6 +1507,7 @@ export type Database = {
           name?: string | null
           phone?: string | null
           role: string
+          role_id?: string | null
           shift_end?: string | null
           shift_start?: string | null
           temp_expires?: string | null
@@ -1524,6 +1526,7 @@ export type Database = {
           name?: string | null
           phone?: string | null
           role?: string
+          role_id?: string | null
           shift_end?: string | null
           shift_start?: string | null
           temp_expires?: string | null
@@ -1532,6 +1535,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "users_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "users_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -1658,6 +1668,10 @@ export type Database = {
         Args: { tenant_uuid: string }
         Returns: boolean
       }
+      create_default_tenant_roles: {
+        Args: { tenant_uuid: string }
+        Returns: undefined
+      }
       custom_access_token_hook: {
         Args: { event: Json }
         Returns: Json
@@ -1674,6 +1688,12 @@ export type Database = {
       get_user_id: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_user_permissions: {
+        Args: { user_uuid: string }
+        Returns: {
+          permission_name: string
+        }[]
       }
       get_user_role: {
         Args: Record<PropertyKey, never>

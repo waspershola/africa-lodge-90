@@ -36,18 +36,25 @@ export function PricingConfigManager() {
       id: '',
       name: '',
       price: 0,
+      price_monthly: 0,
+      price_annual: 0,
       currency: 'NGN',
       description: '',
       features: [],
       room_capacity_min: 1,
       room_capacity_max: 25,
+      max_rooms: 25,
+      max_staff: 10,
       popular: false,
       trial_enabled: true,
       trial_duration_days: 14,
+      trial_days: 14,
       demo_video_url: '',
       cta_text: 'Start Free Trial',
       status: 'draft',
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
       updated_at: new Date().toISOString()
     };
     setEditingPlan(newPlan);

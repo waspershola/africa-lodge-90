@@ -1,17 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface PricingPlan {
   id: string;
   name: string;
   price: number;
+  price_monthly: number;
+  price_annual: number;
   currency: string;
   description: string;
   features: string[];
   room_capacity_min: number;
   room_capacity_max: number;
+  max_rooms: number;
+  max_staff: number;
   popular: boolean;
   trial_enabled: boolean;
   trial_duration_days: number;
+  trial_days: number;
   demo_video_url?: string;
   cta_text: string;
   status: 'active' | 'draft' | 'deprecated';
@@ -26,122 +32,53 @@ export interface UsePricingPlansReturn {
   refreshPlans: () => Promise<void>;
 }
 
-// Mock data for frontend development
-const mockPlans: PricingPlan[] = [
-  {
-    id: 'plan-starter',
-    name: 'Starter',
-    price: 35000,
-    currency: 'NGN',
-    description: 'Perfect for boutique hotels up to 25 rooms',
-    features: [
-      'Core bookings & front desk',
-      'Local payments (POS/Cash/Transfer)',
-      'Basic reports & analytics',
-      'Email notifications',
-      'Offline front desk (24hrs)'
-    ],
-    room_capacity_min: 1,
-    room_capacity_max: 25,
-    popular: false,
-    trial_enabled: true,
-    trial_duration_days: 14,
-    cta_text: 'Start Free Trial',
-    status: 'active',
-    created_at: '2024-01-01T00:00:00Z',
-    updated_at: '2024-01-01T00:00:00Z'
-  },
-  {
-    id: 'plan-growth',
-    name: 'Growth',
-    price: 65000,
-    currency: 'NGN',
-    description: 'Ideal for mid-size hotels 26-75 rooms',
-    features: [
-      'Everything in Starter',
-      'POS & F&B management',
-      'Room Service QR module',
-      'Extended reports & charts',
-      'Power & fuel tracking',
-      'WhatsApp notifications'
-    ],
-    room_capacity_min: 26,
-    room_capacity_max: 75,
-    popular: true,
-    trial_enabled: true,
-    trial_duration_days: 14,
-    demo_video_url: 'https://youtube.com/watch?v=example',
-    cta_text: 'Start Free Trial',
-    status: 'active',
-    created_at: '2024-01-01T00:00:00Z',
-    updated_at: '2024-01-01T00:00:00Z'
-  },
-  {
-    id: 'plan-pro',
-    name: 'Pro',
-    price: 120000,
-    currency: 'NGN',
-    description: 'Full-featured for large hotels 75+ rooms',
-    features: [
-      'Everything in Growth',
-      'Kiosk self check-in',
-      'Multi-property dashboard',
-      'Advanced analytics & AI',
-      'Custom integrations',
-      'Priority support'
-    ],
-    room_capacity_min: 76,
-    room_capacity_max: 9999,
-    popular: false,
-    trial_enabled: true,
-    trial_duration_days: 30,
-    demo_video_url: 'https://youtube.com/watch?v=example-pro',
-    cta_text: 'Contact Sales',
-    status: 'active',
-    created_at: '2024-01-01T00:00:00Z',
-    updated_at: '2024-01-01T00:00:00Z'
-  }
-];
-
 export const usePricingPlans = (): UsePricingPlansReturn => {
-  const [plans, setPlans] = useState<PricingPlan[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: plans = [], isLoading: loading, error, refetch } = useQuery({
+    queryKey: ['plans-real'],
+    queryFn: async (): Promise<PricingPlan[]> => {
+      const { data, error } = await supabase
+        .from('plans')
+        .select('*')
+        .order('price_monthly', { ascending: true });
 
-  const loadPlans = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // In production, this will be:
-      // const response = await fetch('/api/pricing-plans');
-      // const data = await response.json();
-      // setPlans(data.filter(plan => plan.status === 'active'));
-      
-      setPlans(mockPlans.filter(plan => plan.status === 'active'));
-    } catch (err) {
-      setError('Failed to load pricing plans');
-      console.error('Error loading plans:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+      if (error) throw error;
+
+      return data?.map(plan => ({
+        id: plan.id,
+        name: plan.name,
+        price: plan.price_monthly,
+        price_monthly: plan.price_monthly,
+        price_annual: plan.price_annual || 0,
+        currency: 'NGN',
+        description: `Perfect for hotels with up to ${plan.max_rooms} rooms`,
+        features: Object.keys(plan.features || {}),
+        room_capacity_min: plan.max_rooms <= 25 ? 1 : plan.max_rooms <= 75 ? 26 : 76,
+        room_capacity_max: plan.max_rooms,
+        max_rooms: plan.max_rooms,
+        max_staff: plan.max_staff,
+        popular: plan.name.toLowerCase().includes('growth'),
+        trial_enabled: true,
+        trial_duration_days: plan.trial_days || 14,
+        trial_days: plan.trial_days || 14,
+        demo_video_url: undefined,
+        cta_text: 'Start Free Trial',
+        status: 'active' as const,
+        created_at: plan.created_at,
+        updated_at: plan.updated_at
+      })) || [];
+    },
+    retry: 2,
+    staleTime: 300000, // 5 minutes
+  });
 
   const refreshPlans = async () => {
-    await loadPlans();
+    await refetch();
   };
 
-  useEffect(() => {
-    loadPlans();
-  }, []);
-
-  return {
-    plans,
-    loading,
-    error,
-    refreshPlans
+  return { 
+    plans, 
+    loading, 
+    error: error?.message || null, 
+    refreshPlans 
   };
 };

@@ -56,11 +56,13 @@ export function CreateTenantRealForm({ onSuccess }: CreateTenantRealFormProps) {
       setIsSubmitting(true);
       
       // Get default starter plan
-      const defaultPlan = plans.find(p => p.name.toLowerCase().includes('starter') || p.name.toLowerCase().includes('trial')) || plans[0];
+      const defaultPlan = plans.find(p => p.name.toLowerCase().includes('starter')) || plans[0];
       
       if (!defaultPlan) {
         throw new Error('No default plan available');
       }
+
+      console.log('Using plan:', defaultPlan.id, defaultPlan.name);
 
       // Ensure all required fields are present
       const createData: CreateTenantAndOwnerData = {

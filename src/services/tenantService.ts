@@ -191,20 +191,24 @@ export const tenantService = {
     return data;
   },
 
-  // Suspend tenant
-  async suspendTenant(tenantId: string): Promise<void> {
-    await this.updateTenant(tenantId, { subscription_status: 'suspended' });
-  },
-
   // Reactivate tenant
   async reactivateTenant(tenantId: string): Promise<void> {
     await this.updateTenant(tenantId, { subscription_status: 'active' });
   },
 
-  // Delete tenant (soft delete by suspension)
+  // Suspend tenant
+  async suspendTenant(tenantId: string): Promise<void> {
+    await this.updateTenant(tenantId, { subscription_status: 'suspended' });
+  },
+
+  // Delete tenant (hard delete)
   async deleteTenant(tenantId: string): Promise<void> {
-    // Instead of hard delete, suspend the tenant
-    await this.suspendTenant(tenantId);
+    const { error } = await supabase
+      .from('tenants')
+      .delete()
+      .eq('tenant_id', tenantId);
+
+    if (error) throw error;
   },
 
   // Get plans

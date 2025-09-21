@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { supabaseApi } from '@/lib/supabase-api';
 import { useToast } from '@/hooks/use-toast';
 
@@ -129,6 +130,89 @@ export const useCreateGuest = () => {
       queryClient.invalidateQueries({ queryKey: ['owner', 'guests'] });
       toast({ title: 'Guest created successfully' });
     },
+  });
+};
+
+export const useGlobalUsers = () => {
+  return useQuery({
+    queryKey: ['sa', 'global-users'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('users')
+        .select(`
+          *,
+          tenants(hotel_name, city)
+        `)
+        .or('role.eq.SUPER_ADMIN,is_platform_owner.eq.true');
+
+      if (error) throw error;
+
+      return {
+        data: data?.map(user => ({
+          id: user.id,
+          name: user.name || user.email,
+          email: user.email,
+          role: user.role === 'SUPER_ADMIN' ? 'platform-admin' : 'support-agent',
+          department: user.department || 'Operations',
+          status: user.is_active ? 'active' : 'inactive',
+          lastLogin: user.last_login || new Date().toISOString(),
+          permissions: ['platform-admin'],
+          assignedTenants: user.tenants ? [user.tenants.hotel_name] : []
+        })) || []
+      };
+    },
+  });
+};
+
+export const useCreateGlobalUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userData: any) => {
+      // Implementation for creating global users
+      console.log('Creating global user:', userData);
+      return userData;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'global-users'] });
+    }
+  });
+};
+
+export const useUpdateGlobalUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      console.log('Updating global user:', id, data);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'global-users'] });
+    }
+  });
+};
+
+export const useDeleteGlobalUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      console.log('Deleting global user:', id);
+      return { id };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'global-users'] });
+    }
+  });
+};
+
+export const useImpersonateUser = () => {
+  return useMutation({
+    mutationFn: async ({ userId, reason, durationMinutes }: { userId: string; reason: string; durationMinutes: number }) => {
+      const { data, error } = await supabase.functions.invoke('impersonate-user', {
+        body: { userId, reason, durationMinutes }
+      });
+      if (error) throw error;
+      return data;
+    }
   });
 };
 
@@ -541,37 +625,6 @@ export const useCreateFeatureFlag = () => useMutation({
   mutationFn: (data: any) => Promise.resolve({ id: '1', ...data }) 
 });
 
-export const useGlobalUsers = () => useQuery({ 
-  queryKey: ['global-users'], 
-  queryFn: () => Promise.resolve({ 
-    data: [
-      { 
-        id: '1', 
-        name: 'John Doe', 
-        email: 'john@example.com', 
-        role: 'admin',
-        status: 'active'
-      }
-    ] 
-  }) 
-});
-
-export const useCreateGlobalUser = () => useMutation({ 
-  mutationFn: (data: any) => Promise.resolve({ id: '1', ...data }) 
-});
-
-export const useUpdateGlobalUser = () => useMutation({ 
-  mutationFn: ({ id, data }: { id: string; data: any }) => Promise.resolve({ id, ...data }) 
-});
-
-export const useDeleteGlobalUser = () => useMutation({ 
-  mutationFn: (id: string) => Promise.resolve({ id, deleted: true }) 
-});
-
-export const useImpersonateUser = () => useMutation({ 
-  mutationFn: ({ userId, reason, durationMinutes }: { userId: string; reason?: string; durationMinutes?: number }) => 
-    Promise.resolve({ userId, impersonated: true, reason, durationMinutes }) 
-});
 
 export const usePlans = () => useQuery({ 
   queryKey: ['plans'], 

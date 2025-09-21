@@ -106,19 +106,22 @@ export default function TenantsReal() {
           console.log('Force logout for:', tenant.tenant_id);
         }
         break;
-      case 'suspend':
-        if (confirm(`Are you sure you want to suspend ${tenant.hotel_name}?`)) {
-          suspendTenant.mutate(tenant.tenant_id);
-        }
-        break;
-      case 'reactivate':
-        if (confirm(`Are you sure you want to reactivate ${tenant.hotel_name}?`)) {
-          reactivateTenant.mutate(tenant.tenant_id);
-        }
-        break;
       case 'delete':
-        if (confirm(`Are you sure you want to delete ${tenant.hotel_name}? This action cannot be undone.`)) {
-          deleteTenant.mutate(tenant.tenant_id);
+        if (confirm(`Are you sure you want to PERMANENTLY DELETE ${tenant.hotel_name}? This action cannot be undone and will remove all data.`)) {
+          try {
+            await deleteTenant.mutateAsync(tenant.tenant_id);
+          } catch (error) {
+            console.error('Delete failed:', error);
+          }
+        }
+        break;
+      case 'suspend':
+        if (confirm(`Are you sure you want to suspend ${tenant.hotel_name}? They will lose access but data will be preserved.`)) {
+          try {
+            await suspendTenant.mutateAsync(tenant.tenant_id);
+          } catch (error) {
+            console.error('Suspend failed:', error);
+          }
         }
         break;
       case 'edit':

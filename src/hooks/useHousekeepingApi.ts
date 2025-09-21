@@ -120,39 +120,39 @@ export function useHousekeepingApi() {
           room:rooms(room_number),
           assigned_user:users!housekeeping_tasks_assigned_to_fkey(name, email)
         `)
-        .eq('tenant_id', user.tenant_id)
+        .eq('tenant_id' as any, user.tenant_id as any)
         .order('created_at', { ascending: false })
         .limit(100);
 
       if (error) throw error;
 
-      const formattedTasks: HousekeepingTask[] = (data || []).map(task => ({
-        id: task.id,
-        tenant_id: task.tenant_id,
-        room_id: task.room_id,
-        title: task.title,
-        description: task.description,
-        task_type: task.task_type,
-        status: task.status as HousekeepingTask['status'],
-        priority: task.priority as HousekeepingTask['priority'],
-        assigned_to: task.assigned_to,
-        assigned_at: task.assigned_at,
-        created_by: task.created_by,
-        estimated_minutes: task.estimated_minutes,
-        actual_minutes: task.actual_minutes,
-        started_at: task.started_at,
-        completed_at: task.completed_at,
-        checklist: task.checklist,
-        qr_order_id: task.qr_order_id,
-        created_at: task.created_at,
-        updated_at: task.updated_at,
+      const formattedTasks: HousekeepingTask[] = (data || []).map((task: any) => ({
+        id: (task as any).id,
+        tenant_id: (task as any).tenant_id,
+        room_id: (task as any).room_id,
+        title: (task as any).title,
+        description: (task as any).description,
+        task_type: (task as any).task_type,
+        status: (task as any).status as HousekeepingTask['status'],
+        priority: (task as any).priority as HousekeepingTask['priority'],
+        assigned_to: (task as any).assigned_to,
+        assigned_at: (task as any).assigned_at,
+        created_by: (task as any).created_by,
+        estimated_minutes: (task as any).estimated_minutes,
+        actual_minutes: (task as any).actual_minutes,
+        started_at: (task as any).started_at,
+        completed_at: (task as any).completed_at,
+        checklist: (task as any).checklist,
+        qr_order_id: (task as any).qr_order_id,
+        created_at: (task as any).created_at,
+        updated_at: (task as any).updated_at,
         // Legacy compatibility
-        roomNumber: task.room?.room_number,
-        type: task.task_type as any,
-        assignedTo: task.assigned_user?.name,
-        assignedStaff: task.assigned_user?.name,
-        dueDate: task.assigned_at ? new Date(task.assigned_at) : undefined,
-        estimatedDuration: task.estimated_minutes,
+        roomNumber: (task as any).room?.room_number,
+        type: (task as any).task_type as any,
+        assignedTo: (task as any).assigned_user?.name,
+        assignedStaff: (task as any).assigned_user?.name,
+        dueDate: (task as any).assigned_at ? new Date((task as any).assigned_at) : undefined,
+        estimatedDuration: (task as any).estimated_minutes,
       }));
 
       setTasks(formattedTasks);
@@ -176,31 +176,31 @@ export function useHousekeepingApi() {
       const { data, error } = await supabase
         .from('supplies')
         .select('*')
-        .eq('tenant_id', user.tenant_id)
-        .eq('is_active', true)
+        .eq('tenant_id' as any, user.tenant_id as any)
+        .eq('is_active' as any, true as any)
         .order('name');
 
       if (error) throw error;
 
-      const formattedSupplies: Supply[] = (data || []).map(supply => ({
-        id: supply.id,
-        tenant_id: supply.tenant_id,
-        name: supply.name,
-        category: supply.category,
-        current_stock: supply.current_stock,
-        minimum_stock: supply.minimum_stock,
-        maximum_stock: supply.maximum_stock,
-        unit: supply.unit,
-        unit_cost: supply.unit_cost,
-        is_active: supply.is_active,
-        created_at: supply.created_at,
-        updated_at: supply.updated_at,
+      const formattedSupplies: Supply[] = (data || []).map((supply: any) => ({
+        id: (supply as any).id,
+        tenant_id: (supply as any).tenant_id,
+        name: (supply as any).name,
+        category: (supply as any).category,
+        current_stock: (supply as any).current_stock,
+        minimum_stock: (supply as any).minimum_stock,
+        maximum_stock: (supply as any).maximum_stock,
+        unit: (supply as any).unit,
+        unit_cost: (supply as any).unit_cost,
+        is_active: (supply as any).is_active,
+        created_at: (supply as any).created_at,
+        updated_at: (supply as any).updated_at,
         // Legacy compatibility
-        currentStock: supply.current_stock,
-        minimumStock: supply.minimum_stock,
-        maximumStock: supply.maximum_stock,
-        cost: supply.unit_cost,
-        status: supply.current_stock <= supply.minimum_stock ? 'low-stock' : 'in-stock'
+        currentStock: (supply as any).current_stock,
+        minimumStock: (supply as any).minimum_stock,
+        maximumStock: (supply as any).maximum_stock,
+        cost: (supply as any).unit_cost,
+        status: (supply as any).current_stock <= (supply as any).minimum_stock ? 'low-stock' : 'in-stock'
       }));
 
       setSupplies(formattedSupplies);
@@ -222,25 +222,25 @@ export function useHousekeepingApi() {
       const { data, error } = await supabase
         .from('audit_log')
         .select('*')
-        .eq('tenant_id', user.tenant_id)
-        .eq('resource_type', 'housekeeping_task')
+        .eq('tenant_id' as any, user.tenant_id as any)
+        .eq('resource_type' as any, 'housekeeping_task' as any)
         .order('created_at', { ascending: false })
         .limit(50);
 
       if (error) throw error;
 
-      const formattedLogs: AuditLog[] = (data || []).map(log => ({
-        id: log.id,
-        timestamp: new Date(log.created_at || ''),
-        staffMember: log.actor_email || 'Unknown',
-        staffId: log.actor_id || '',
-        action: log.action,
-        targetType: log.resource_type,
-        targetId: log.resource_id || '',
-        description: log.description || '',
-        metadata: log.metadata as Record<string, any>,
-        ipAddress: (log.ip_address as string) || '',
-        userAgent: log.user_agent || ''
+      const formattedLogs: AuditLog[] = (data || []).map((log: any) => ({
+        id: (log as any).id,
+        timestamp: new Date((log as any).created_at || ''),
+        staffMember: (log as any).actor_email || 'Unknown',
+        staffId: (log as any).actor_id || '',
+        action: (log as any).action,
+        targetType: (log as any).resource_type,
+        targetId: (log as any).resource_id || '',
+        description: (log as any).description || '',
+        metadata: ((log as any).metadata as Record<string, any>),
+        ipAddress: ((log as any).ip_address as string) || '',
+        userAgent: (log as any).user_agent || ''
       }));
 
       setAuditLogs(formattedLogs);
@@ -263,8 +263,8 @@ export function useHousekeepingApi() {
           assigned_to: user.id,
           assigned_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
-        })
-        .eq('id', taskId);
+        } as any)
+        .eq('id' as any, taskId as any);
 
       if (error) throw error;
 
@@ -281,7 +281,7 @@ export function useHousekeepingApi() {
           tenant_id: user.tenant_id,
           description: `Task assigned to ${user.email}`,
           new_values: { status: 'assigned', assigned_to: user.id }
-        }]);
+        } as any]);
 
       await loadTasks();
 
@@ -315,8 +315,8 @@ export function useHousekeepingApi() {
           completed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           actual_minutes: actualMinutes
-        })
-        .eq('id', taskId);
+        } as any)
+        .eq('id' as any, taskId as any);
 
       if (error) throw error;
 
@@ -333,7 +333,7 @@ export function useHousekeepingApi() {
           tenant_id: user.tenant_id,
           description: `Task completed${notes ? ` with notes: ${notes}` : ''}`,
           new_values: { status: 'completed', notes, actual_minutes: actualMinutes }
-        }]);
+        } as any]);
 
       await loadTasks();
 
@@ -374,7 +374,7 @@ export function useHousekeepingApi() {
           ...taskData,
           status: 'pending',
           created_by: user.id
-        }])
+        } as any])
         .select()
         .single();
 
@@ -386,14 +386,14 @@ export function useHousekeepingApi() {
         .insert([{
           action: 'task_created',
           resource_type: 'housekeeping_task',
-          resource_id: data.id,
+          resource_id: (data as any).id,
           actor_id: user.id,
           actor_email: user.email,
           actor_role: user.role,
           tenant_id: user.tenant_id,
           description: `Housekeeping task created: ${taskData.title}`,
           new_values: taskData
-        }]);
+        } as any]);
 
       await loadTasks();
 
@@ -438,7 +438,7 @@ export function useHousekeepingApi() {
           task_id: taskId,
           quantity_used: quantity,
           used_by: user.id
-        }]);
+        } as any]);
 
       if (usageError) throw usageError;
 
@@ -447,17 +447,16 @@ export function useHousekeepingApi() {
       const { data: currentSupply } = await supabase
         .from('supplies')
         .select('current_stock')
-        .eq('id', supplyId)
-        .single();
-      
+        .eq('id' as any, supplyId as any)
+
       if (currentSupply) {
         const { error: stockUpdateError } = await supabase
           .from('supplies')
           .update({ 
-            current_stock: Math.max(0, currentSupply.current_stock - quantity),
+            current_stock: Math.max(0, (currentSupply as any).current_stock - quantity),
             updated_at: new Date().toISOString()
-          })
-          .eq('id', supplyId);
+          } as any)
+          .eq('id' as any, supplyId as any);
         
         if (stockUpdateError) throw stockUpdateError;
       }

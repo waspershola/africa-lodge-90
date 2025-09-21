@@ -57,15 +57,21 @@ serve(async (req) => {
     // SECURITY: Verify caller is authenticated and has SUPER_ADMIN role
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error('No authorization header provided');
       throw new Error('No authorization header provided');
     }
 
     const token = authHeader.replace('Bearer ', '');
+    console.log('Token received, length:', token.length);
+    
     const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
     
     if (userError || !user) {
+      console.error('Auth error:', userError);
       throw new Error('Invalid authentication token');
     }
+
+    console.log('User authenticated:', user.id, user.email);
 
     // Check if user has SUPER_ADMIN role or is platform owner
     const { data: userData, error: roleError } = await supabaseAdmin
@@ -282,6 +288,7 @@ serve(async (req) => {
               success: true,
               tenant,
               tempPassword,
+              temp_password: tempPassword, // Send both field names for compatibility
               owner_id: authUserId,
               message: 'Tenant and owner created successfully'
             }),
@@ -322,14 +329,37 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in create-tenant-and-owner function:', error);
+    
+    // Provide more specific error information
+    let errorMessage = 'Internal server error';
+    let statusCode = 500;
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      
+      // Map specific errors to appropriate status codes
+      if (error.message.includes('authorization') || error.message.includes('authentication')) {
+        statusCode = 401;
+      } else if (error.message.includes('permission') || error.message.includes('access')) {
+        statusCode = 403;
+      } else if (error.message.includes('already exists') || error.message.includes('duplicate')) {
+        statusCode = 400;
+      }
+    }
+    
     return new Response(
       JSON.stringify({
-        error: error.message || 'Internal server error',
-        success: false
+        error: errorMessage,
+        success: false,
+        debug: {
+          timestamp: new Date().toISOString(),
+          error_type: error.constructor.name,
+          stack: error instanceof Error ? error.stack : undefined
+        }
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
+        status: statusCode,
       }
     );
   }

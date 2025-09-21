@@ -27,10 +27,14 @@ export const useCreateTenantAndOwner = () => {
   
   return useMutation({
     mutationFn: async (data: CreateTenantAndOwnerData) => {
+      console.log('Attempting to create tenant with data:', data);
+      
       // Call secure edge function directly instead of going through tenantService
       const { data: result, error } = await supabase.functions.invoke('create-tenant-and-owner', {
         body: data
       });
+
+      console.log('Edge function response:', { result, error });
 
       if (error) {
         console.error('Edge function error:', error);
@@ -38,12 +42,13 @@ export const useCreateTenantAndOwner = () => {
       }
 
       if (!result?.success) {
+        console.error('Edge function returned error:', result);
         throw new Error(result?.error || 'Unknown error occurred');
       }
 
       return { 
         tenant: result.tenant, 
-        tempPassword: result.temp_password // Use temp_password from edge function
+        tempPassword: result.tempPassword || result.temp_password // Handle both field names
       };
     },
     onSuccess: () => {

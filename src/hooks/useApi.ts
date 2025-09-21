@@ -168,9 +168,32 @@ export const useCreateGlobalUser = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (userData: any) => {
-      // Implementation for creating global users
-      console.log('Creating global user:', userData);
-      return userData;
+      console.log('Attempting to create global user:', userData);
+      
+      // Call the invite-user edge function to create platform staff
+      const { data, error } = await supabase.functions.invoke('invite-user', {
+        body: {
+          email: userData.email,
+          name: userData.name,
+          role: userData.role.toUpperCase().replace('-', '_'),
+          department: userData.department,
+          tenant_id: null // Global users don't belong to specific tenants
+        }
+      });
+
+      console.log('Invite user edge function response:', { data, error });
+
+      if (error) {
+        console.error('Failed to create global user:', error);
+        throw new Error(error.message || 'Failed to create global user');
+      }
+
+      if (!data?.success) {
+        console.error('Invite user function returned error:', data);
+        throw new Error(data?.error || 'Failed to create global user');
+      }
+
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sa', 'global-users'] });
@@ -182,8 +205,21 @@ export const useUpdateGlobalUser = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      console.log('Updating global user:', id, data);
-      return data;
+      const { error } = await supabase
+        .from('users')
+        .update({
+          name: data.name,
+          department: data.department,
+          role: data.role.toUpperCase().replace('-', '_')
+        })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Failed to update global user:', error);
+        throw new Error(error.message || 'Failed to update global user');
+      }
+
+      return { success: true };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sa', 'global-users'] });
@@ -195,8 +231,17 @@ export const useDeleteGlobalUser = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      console.log('Deleting global user:', id);
-      return { id };
+      const { error } = await supabase
+        .from('users')
+        .update({ is_active: false })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Failed to delete global user:', error);
+        throw new Error(error.message || 'Failed to delete global user');
+      }
+
+      return { success: true };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sa', 'global-users'] });

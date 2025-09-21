@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useGlobalUsers, useCreateGlobalUser, useUpdateGlobalUser, useDeleteGlobalUser, useTenants, useImpersonateUser } from '@/hooks/useApi';
 import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
-import ImpersonationModal from '@/components/sa/ImpersonationModal';
+import { ImpersonationModal } from '@/components/sa/ImpersonationModal';
 
 const GlobalUsers = () => {
   const { data: users, isLoading, error } = useGlobalUsers();
@@ -54,13 +54,13 @@ const GlobalUsers = () => {
     setImpersonationModalOpen(true);
   };
 
-  const handleImpersonationConfirm = (data: { reason: string; durationMinutes: number }) => {
+  const handleImpersonationConfirm = (details: { userId: string; reason: string; duration: number }) => {
     if (!userToImpersonate) return;
     
     impersonateUser.mutate({
       userId: userToImpersonate.id,
-      reason: data.reason,
-      durationMinutes: data.durationMinutes
+      reason: details.reason,
+      durationMinutes: details.duration
     });
     
     setImpersonationModalOpen(false);
@@ -360,7 +360,35 @@ const GlobalUsers = () => {
 
       {/* Impersonation Modal */}
       <ImpersonationModal
-        user={userToImpersonate}
+        tenant={userToImpersonate ? {
+          tenant_id: userToImpersonate.tenantId || '',
+          hotel_name: 'Global User',
+          hotel_slug: 'global-user',
+          owner_id: userToImpersonate.id,
+          owner_name: userToImpersonate.name,
+          owner_email: userToImpersonate.email,
+          subscription_status: 'active' as const,
+          plan_name: 'Admin',
+          plan_id: '',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          total_rooms: 0,
+          address: null,
+          brand_colors: null,
+          city: null,
+          country: 'Nigeria',
+          currency: 'NGN',
+          email: userToImpersonate.email,
+          logo_url: null,
+          onboarding_step: 'hotel_information',
+          phone: null,
+          receipt_template: 'default',
+          settings: {},
+          setup_completed: true,
+          timezone: 'Africa/Lagos',
+          trial_end: null,
+          trial_start: null
+        } : null}
         isOpen={impersonationModalOpen}
         onClose={() => setImpersonationModalOpen(false)}
         onConfirm={handleImpersonationConfirm}

@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Plus, Search, Edit, Trash2, Building2, Mail, MapPin, 
-  MoreHorizontal, Eye, UserCheck, Pause, Play, Filter 
+  MoreHorizontal, Eye, UserCheck, Pause, Play, Filter,
+  Crown, Key, RefreshCw, Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,7 +23,9 @@ import {
   useReactivateTenantReal 
 } from '@/hooks/useTenants';
 import { CreateTenantRealForm } from '@/components/sa/CreateTenantForm';
-import { AuthDebugInfo } from '@/components/sa/AuthDebugInfo';
+import { TenantDetailsDrawer } from '@/components/sa/TenantDetailsDrawer';
+import { ImpersonationModal } from '@/components/sa/ImpersonationModal';
+import { PasswordResetDialog } from '@/components/sa/PasswordResetDialog';
 import type { TenantWithOwner } from '@/services/tenantService';
 
 const fadeIn = {
@@ -43,6 +46,10 @@ export default function TenantsReal() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [selectedTenant, setSelectedTenant] = useState<TenantWithOwner | null>(null);
+  const [showTenantDetails, setShowTenantDetails] = useState(false);
+  const [showImpersonation, setShowImpersonation] = useState(false);
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
   
   const { data: tenants = [], isLoading, error, refetch } = useTenantsReal();
   const { data: metrics } = useTenantMetrics();
@@ -64,22 +71,59 @@ export default function TenantsReal() {
     return matchesSearch && matchesStatus;
   });
 
-  const handleDelete = async (tenantId: string) => {
-    if (confirm('Are you sure you want to suspend this tenant?')) {
-      deleteTenant.mutate(tenantId);
+  const handleAction = async (action: string, tenant: TenantWithOwner) => {
+    setSelectedTenant(tenant);
+    
+    switch (action) {
+      case 'view':
+        setShowTenantDetails(true);
+        break;
+      case 'impersonate':
+        setShowImpersonation(true);
+        break;
+      case 'reset-password':
+        setShowPasswordReset(true);
+        break;
+      case 'resend-invite':
+        // TODO: Implement resend invite
+        console.log('Resend invite for:', tenant.owner_email);
+        break;
+      case 'suspend':
+        if (confirm(`Are you sure you want to suspend ${tenant.hotel_name}?`)) {
+          suspendTenant.mutate(tenant.tenant_id);
+        }
+        break;
+      case 'reactivate':
+        if (confirm(`Are you sure you want to reactivate ${tenant.hotel_name}?`)) {
+          reactivateTenant.mutate(tenant.tenant_id);
+        }
+        break;
+      case 'delete':
+        if (confirm(`Are you sure you want to delete ${tenant.hotel_name}? This action cannot be undone.`)) {
+          deleteTenant.mutate(tenant.tenant_id);
+        }
+        break;
+      case 'edit':
+        // TODO: Open edit dialog
+        console.log('Edit tenant:', tenant.tenant_id);
+        break;
+      default:
+        console.log('Unknown action:', action);
     }
   };
 
-  const handleSuspend = async (tenantId: string) => {
-    if (confirm('Are you sure you want to suspend this tenant?')) {
-      suspendTenant.mutate(tenantId);
-    }
+  const handleImpersonation = (details: { userId: string; reason: string; duration: number }) => {
+    console.log('Impersonating user:', details);
+    // TODO: Implement actual impersonation
+    setShowImpersonation(false);
+    setSelectedTenant(null);
   };
 
-  const handleReactivate = async (tenantId: string) => {
-    if (confirm('Are you sure you want to reactivate this tenant?')) {
-      reactivateTenant.mutate(tenantId);
-    }
+  const handlePasswordReset = (email: string) => {
+    console.log('Resetting password for:', email);
+    // TODO: Implement password reset
+    setShowPasswordReset(false);
+    setSelectedTenant(null);
   };
 
   const getStatusBadge = (status: string) => {
@@ -135,8 +179,6 @@ export default function TenantsReal() {
       initial="initial"
       animate="animate"
     >
-      {/* Auth Debug Info */}
-      <AuthDebugInfo />
       
       {/* Header */}
       <motion.div variants={fadeIn} className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -291,14 +333,26 @@ export default function TenantsReal() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleAction('view', tenant)}>
                           <Eye className="h-4 w-4 mr-2" />
                           View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleAction('impersonate', tenant)}>
+                          <Crown className="h-4 w-4 mr-2" />
+                          Impersonate Owner
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleAction('reset-password', tenant)}>
+                          <Key className="h-4 w-4 mr-2" />
+                          Reset Password
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleAction('resend-invite', tenant)}>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Resend Invite
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         {tenant.subscription_status === 'active' || tenant.subscription_status === 'trialing' ? (
                           <DropdownMenuItem 
-                            onClick={() => handleSuspend(tenant.tenant_id)}
+                            onClick={() => handleAction('suspend', tenant)}
                             className="text-orange-600"
                           >
                             <Pause className="h-4 w-4 mr-2" />
@@ -306,7 +360,7 @@ export default function TenantsReal() {
                           </DropdownMenuItem>
                         ) : (
                           <DropdownMenuItem 
-                            onClick={() => handleReactivate(tenant.tenant_id)}
+                            onClick={() => handleAction('reactivate', tenant)}
                             className="text-green-600"
                           >
                             <Play className="h-4 w-4 mr-2" />
@@ -315,7 +369,7 @@ export default function TenantsReal() {
                         )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem 
-                          onClick={() => handleDelete(tenant.tenant_id)}
+                          onClick={() => handleAction('delete', tenant)}
                           className="text-destructive"
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
@@ -339,6 +393,39 @@ export default function TenantsReal() {
           />
         </motion.div>
       )}
+
+      {/* Tenant Details Drawer */}
+      <TenantDetailsDrawer
+        tenant={selectedTenant}
+        isOpen={showTenantDetails}
+        onClose={() => {
+          setShowTenantDetails(false);
+          setSelectedTenant(null);
+        }}
+        onAction={handleAction}
+      />
+
+      {/* Impersonation Modal */}
+      <ImpersonationModal
+        tenant={selectedTenant}
+        isOpen={showImpersonation}
+        onClose={() => {
+          setShowImpersonation(false);
+          setSelectedTenant(null);
+        }}
+        onConfirm={handleImpersonation}
+      />
+
+      {/* Password Reset Dialog */}
+      <PasswordResetDialog
+        tenant={selectedTenant}
+        isOpen={showPasswordReset}
+        onClose={() => {
+          setShowPasswordReset(false);
+          setSelectedTenant(null);
+        }}
+        onConfirm={handlePasswordReset}
+      />
     </motion.div>
   );
 }

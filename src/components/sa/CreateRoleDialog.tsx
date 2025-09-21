@@ -32,7 +32,7 @@ export function CreateRoleDialog({ open, onOpenChange, scope, tenantId }: Create
         name,
         description,
         scope,
-        tenant_id: scope === 'tenant' ? tenantId : undefined,
+        tenant_id: scope === 'tenant' ? (tenantId || null) : null,
         permissions: Array.from(selectedPermissions)
       });
       

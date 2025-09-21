@@ -21,6 +21,10 @@ const Roles = () => {
   const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = useState(false);
   const [activeScope, setActiveScope] = useState<'global' | 'tenant'>('global');
 
+  const handleTabChange = (value: string) => {
+    setActiveScope(value as 'global' | 'tenant');
+  };
+
   const handleCreateRole = (scope: 'global' | 'tenant') => {
     setActiveScope(scope);
     setIsCreateDialogOpen(true);
@@ -51,16 +55,16 @@ const Roles = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Global Role Management</h1>
-          <p className="text-muted-foreground">Manage platform-wide roles and permissions</p>
+          <h1 className="text-3xl font-bold text-foreground">Role Management</h1>
+          <p className="text-muted-foreground">Manage global roles and tenant role templates</p>
         </div>
-        <Button onClick={() => handleCreateRole('global')} className="bg-gradient-primary">
+        <Button onClick={() => handleCreateRole(activeScope)} className="bg-gradient-primary">
           <Plus className="h-4 w-4 mr-2" />
-          Create Global Role
+          {activeScope === 'global' ? 'Create Global Role' : 'Create Tenant Template'}
         </Button>
       </div>
 
-      <Tabs defaultValue="global" className="space-y-6">
+      <Tabs defaultValue="global" className="space-y-6" onValueChange={handleTabChange}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="global" className="flex items-center space-x-2">
             <Globe className="h-4 w-4" />

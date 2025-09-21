@@ -1714,6 +1714,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      strict_tenant_access: {
+        Args: { target_tenant_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       role_scope: "global" | "tenant"

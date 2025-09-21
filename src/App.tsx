@@ -94,7 +94,11 @@ const App = () => (
         <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/onboarding" element={<OnboardingWizard />} />
+          <Route path="/onboarding" element={
+            <TenantAwareLayout>
+              <OnboardingWizard />
+            </TenantAwareLayout>
+          } />
           <Route path="/qr/:sessionId" element={<QRPortal />} />
           <Route path="/qr-portal" element={<QRPortal />} />
           <Route path="/front-desk" element={

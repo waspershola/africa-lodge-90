@@ -49,8 +49,9 @@ export default function TenantAwareLayout({ children, requiredRole }: TenantAwar
     );
   }
 
-  // Redirect owners with incomplete setup to onboarding
-  if (user.role === 'OWNER' && tenant && tenant.setup_completed === false) {
+  // Redirect owners with incomplete setup to onboarding (unless already on onboarding page)
+  const isOnOnboardingPage = window.location.pathname === '/onboarding';
+  if (user.role === 'OWNER' && tenant && tenant.setup_completed === false && !isOnOnboardingPage) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center max-w-md">

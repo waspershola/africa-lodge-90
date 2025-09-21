@@ -51,8 +51,15 @@ export function useOnboarding() {
       setStatus(mockStatus);
 
       // Redirect to onboarding if required and not already there
-      if (mockStatus.isRequired && !window.location.pathname.includes('/onboarding')) {
+      // Prevent redirect loops by checking location more precisely
+      const isOnOnboardingPage = window.location.pathname === '/onboarding';
+      if (mockStatus.isRequired && !isOnOnboardingPage) {
+        console.log('Redirecting to onboarding - setup incomplete');
         navigate('/onboarding');
+      } else if (!mockStatus.isRequired && isOnOnboardingPage) {
+        // If setup is complete but user is on onboarding page, redirect to dashboard
+        console.log('Setup complete - redirecting to dashboard');
+        navigate('/owner-dashboard');
       }
     } catch (error) {
       console.error('Error checking onboarding status:', error);
@@ -305,9 +312,12 @@ export function useOnboarding() {
     }
   };
 
-  // Check status when user/tenant changes
+  // Check status when user/tenant changes, but not if we're on the onboarding page
   useEffect(() => {
-    checkOnboardingStatus();
+    // Prevent running the check on the onboarding page to avoid redirect loops
+    if (window.location.pathname !== '/onboarding') {
+      checkOnboardingStatus();
+    }
   }, [user, tenant, checkOnboardingStatus]);
 
   return {

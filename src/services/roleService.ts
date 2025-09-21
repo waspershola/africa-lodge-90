@@ -52,12 +52,16 @@ class RoleService {
         )
       `);
 
-    if (scope) {
-      query = query.eq('scope', scope);
-    }
-
-    if (tenantId && scope === 'tenant') {
-      query = query.eq('tenant_id', tenantId);
+    if (scope === 'global') {
+      query = query.eq('scope', 'global');
+    } else if (scope === 'tenant') {
+      if (tenantId) {
+        // Specific tenant roles
+        query = query.eq('scope', 'tenant').eq('tenant_id', tenantId);
+      } else {
+        // Tenant templates (tenant_id is null)
+        query = query.eq('scope', 'tenant').is('tenant_id', null);
+      }
     }
 
     const { data, error } = await query.order('created_at', { ascending: false });

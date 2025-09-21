@@ -28,14 +28,6 @@ export function CreateRoleDialog({ open, onOpenChange, scope, tenantId }: Create
     e.preventDefault();
     
     try {
-      console.log('Creating role with data:', {
-        name,
-        description,
-        scope,
-        tenant_id: scope === 'tenant' ? (tenantId || null) : null,
-        permissions: Array.from(selectedPermissions)
-      });
-      
       await createRole.mutateAsync({
         name,
         description,

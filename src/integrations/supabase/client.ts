@@ -9,12 +9,11 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
+    // Use localStorage in development, httpOnly cookies in production via server
     storage: typeof window !== 'undefined' ? localStorage : undefined,
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    flowType: 'pkce',
-    // Increase token refresh buffer to prevent premature expiry
-    refreshThreshold: 60 // Refresh 60 seconds before expiry
+    flowType: 'pkce'
   }
 });

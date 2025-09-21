@@ -65,32 +65,33 @@ export function useMaintenanceApi() {
           rooms:room_id (room_number),
           assigned_user:assigned_to (name)
         `)
-        .eq('tenant_id' as any, user.tenant_id as any)
+        .eq('tenant_id', user.tenant_id)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      setWorkOrders((data || []).map((order: any) => ({
-        id: (order as any).id,
-        tenant_id: (order as any).tenant_id,
-        work_order_number: (order as any).work_order_number,
-        room_id: (order as any).room_id,
-        title: (order as any).title,
-        description: (order as any).description,
-        category: (order as any).category,
-        priority: (order as any).priority as 'low' | 'medium' | 'high' | 'critical',
-        status: (order as any).status as 'pending' | 'in-progress' | 'completed' | 'escalated',
-        assigned_to: (order as any).assigned_to,
-        assigned_at: (order as any).assigned_at,
-        estimated_hours: (order as any).estimated_hours,
-        actual_hours: (order as any).actual_hours,
-        estimated_cost: (order as any).estimated_cost,
-        actual_cost: (order as any).actual_cost,
-        created_by: (order as any).created_by,
-        created_at: (order as any).created_at,
-        updated_at: (order as any).updated_at,
-        completed_at: (order as any).completed_at,
-        completion_notes: (order as any).completion_notes,
-        qr_order_id: (order as any).qr_order_id
+      setWorkOrders((data || []).map(order => ({
+        id: order.id,
+        tenant_id: order.tenant_id,
+        work_order_number: order.work_order_number,
+        room_id: order.room_id,
+        title: order.title,
+        description: order.description,
+        category: order.category,
+        priority: order.priority as 'low' | 'medium' | 'high' | 'critical',
+        status: order.status as 'pending' | 'in-progress' | 'completed' | 'escalated',
+        assigned_to: order.assigned_to,
+        assigned_at: order.assigned_at,
+        estimated_hours: order.estimated_hours,
+        actual_hours: order.actual_hours,
+        estimated_cost: order.estimated_cost,
+        actual_cost: order.actual_cost,
+        created_by: order.created_by,
+        created_at: order.created_at,
+        updated_at: order.updated_at,
+        completed_at: order.completed_at,
+        completion_notes: order.completion_notes,
+        qr_order_id: order.qr_order_id
       })));
     } catch (err: any) {
       toast({

@@ -20,18 +20,18 @@ export function MultiTenantAuthProvider({ children }: MultiTenantAuthProviderPro
         action,
         resource_type: 'AUTH',
         description,
-        actor_id: auth.user?.id || null,
-        actor_email: auth.user?.email || null,
-        actor_role: auth.user?.role || null,
-        tenant_id: auth.tenant?.tenant_id || null,
+        actor_id: auth.user?.id,
+        actor_email: auth.user?.email,
+        actor_role: auth.user?.role,
+        tenant_id: auth.tenant?.tenant_id,
         user_agent: navigator.userAgent,
         metadata: {
           timestamp: new Date().toISOString(),
           ...metadata
         }
-      } as any; // Use any to avoid type conflicts
+      };
 
-      await supabase.from('audit_log').insert(auditEntry);
+      await supabase.from('audit_log').insert([auditEntry]);
     } catch (err) {
       console.error('Error logging audit event:', err);
     }

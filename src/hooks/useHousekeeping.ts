@@ -88,31 +88,31 @@ export function useHousekeepingTasks() {
           rooms:room_id (room_number),
           assigned_user:assigned_to (name)
         `)
-        .eq('tenant_id' as any, user.tenant_id as any)
+        .eq('tenant_id', user.tenant_id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      setTasks((data || []).map((task: any) => ({
-        id: (task as any).id,
-        tenant_id: (task as any).tenant_id,
-        room_id: (task as any).room_id,
-        title: (task as any).title,
-        description: (task as any).description,
-        task_type: (task as any).task_type,
-        status: (task as any).status as 'pending' | 'in-progress' | 'completed' | 'delayed',
-        priority: (task as any).priority as 'low' | 'medium' | 'high' | 'urgent',
-        assigned_to: (task as any).assigned_to,
-        assigned_at: (task as any).assigned_at,
-        estimated_minutes: (task as any).estimated_minutes,
-        actual_minutes: (task as any).actual_minutes,
-        started_at: (task as any).started_at,
-        completed_at: (task as any).completed_at,
-        created_by: (task as any).created_by,
-        created_at: (task as any).created_at,
-        updated_at: (task as any).updated_at,
-        checklist: Array.isArray((task as any).checklist) ? ((task as any).checklist as unknown as ChecklistItem[]) : [],
-        qr_order_id: (task as any).qr_order_id
+      setTasks((data || []).map(task => ({
+        id: task.id,
+        tenant_id: task.tenant_id,
+        room_id: task.room_id,
+        title: task.title,
+        description: task.description,
+        task_type: task.task_type,
+        status: task.status as 'pending' | 'in-progress' | 'completed' | 'delayed',
+        priority: task.priority as 'low' | 'medium' | 'high' | 'urgent',
+        assigned_to: task.assigned_to,
+        assigned_at: task.assigned_at,
+        estimated_minutes: task.estimated_minutes,
+        actual_minutes: task.actual_minutes,
+        started_at: task.started_at,
+        completed_at: task.completed_at,
+        created_by: task.created_by,
+        created_at: task.created_at,
+        updated_at: task.updated_at,
+        checklist: Array.isArray(task.checklist) ? (task.checklist as unknown as ChecklistItem[]) : [],
+        qr_order_id: task.qr_order_id
       })));
       setError(null);
     } catch (err: any) {
@@ -138,8 +138,8 @@ export function useHousekeepingTasks() {
           assigned_to: user.id,
           assigned_at: new Date().toISOString(),
           started_at: new Date().toISOString()
-        } as any)
-        .eq('id' as any, taskId as any);
+        })
+        .eq('id', taskId);
 
       if (error) throw error;
 
@@ -155,7 +155,7 @@ export function useHousekeepingTasks() {
           actor_role: user.role,
           tenant_id: user.tenant_id,
           description: `Housekeeping task accepted by ${user.name || user.email}`
-        } as any]);
+        }]);
 
       await loadTasks();
       
@@ -182,8 +182,8 @@ export function useHousekeepingTasks() {
           status: 'completed',
           completed_at: new Date().toISOString(),
           actual_minutes: actualMinutes
-        } as any)
-        .eq('id' as any, taskId as any);
+        })
+        .eq('id', taskId);
 
       if (error) throw error;
 
@@ -200,7 +200,7 @@ export function useHousekeepingTasks() {
           tenant_id: user.tenant_id,
           description: `Housekeeping task completed by ${user.name || user.email}`,
           new_values: { notes, actual_minutes: actualMinutes }
-        } as any]);
+        }]);
 
       await loadTasks();
       
@@ -248,25 +248,25 @@ export function useHousekeepingSupplies() {
       const { data, error } = await supabase
         .from('supplies')
         .select('*')
-        .eq('tenant_id' as any, user.tenant_id as any)
-        .eq('is_active' as any, true as any)
+        .eq('tenant_id', user.tenant_id)
+        .eq('is_active', true)
         .order('name');
 
       if (error) throw error;
 
-      setSupplies((data || []).map((supply: any) => ({
-        id: (supply as any).id,
-        tenant_id: (supply as any).tenant_id,
-        name: (supply as any).name,
-        category: (supply as any).category as 'bedding' | 'bathroom' | 'cleaning' | 'amenities' | 'maintenance' | 'food',
-        current_stock: (supply as any).current_stock,
-        minimum_stock: (supply as any).minimum_stock,
-        maximum_stock: (supply as any).maximum_stock,
-        unit: (supply as any).unit,
-        unit_cost: (supply as any).unit_cost,
-        is_active: (supply as any).is_active,
-        created_at: (supply as any).created_at,
-        updated_at: (supply as any).updated_at
+      setSupplies((data || []).map(supply => ({
+        id: supply.id,
+        tenant_id: supply.tenant_id,
+        name: supply.name,
+        category: supply.category as 'bedding' | 'bathroom' | 'cleaning' | 'amenities' | 'maintenance' | 'food',
+        current_stock: supply.current_stock,
+        minimum_stock: supply.minimum_stock,
+        maximum_stock: supply.maximum_stock,
+        unit: supply.unit,
+        unit_cost: supply.unit_cost,
+        is_active: supply.is_active,
+        created_at: supply.created_at,
+        updated_at: supply.updated_at
       })));
       setError(null);
     } catch (err: any) {
@@ -294,7 +294,7 @@ export function useHousekeepingSupplies() {
           quantity_used: quantityUsed,
           used_by: user.id,
           tenant_id: user.tenant_id
-        } as any]);
+        }]);
 
       if (usageError) throw usageError;
 
@@ -305,8 +305,8 @@ export function useHousekeepingSupplies() {
         
         const { error: updateError } = await supabase
           .from('supplies')
-          .update({ current_stock: newStock } as any)
-          .eq('id' as any, supplyId as any);
+          .update({ current_stock: newStock })
+          .eq('id', supplyId);
 
         if (updateError) throw updateError;
       }
@@ -324,7 +324,7 @@ export function useHousekeepingSupplies() {
           tenant_id: user.tenant_id,
           description: `Used ${quantityUsed} units of supply`,
           new_values: { quantity_used: quantityUsed, room_id: roomId, notes }
-        } as any]);
+        }]);
 
       await loadSupplies();
       
@@ -370,35 +370,35 @@ export function useAuditLogs(filters?: { staff?: string; room?: string; action?:
       let query = supabase
         .from('audit_log')
         .select('*')
-        .eq('tenant_id' as any, user.tenant_id as any)
-        .in('resource_type' as any, ['housekeeping_task', 'supply'] as any)
+        .eq('tenant_id', user.tenant_id)
+        .in('resource_type', ['housekeeping_task', 'supply'])
         .order('created_at', { ascending: false })
         .limit(100);
 
       // Apply filters
       if (filters?.staff) {
-        query = query.eq('actor_id' as any, filters.staff as any);
+        query = query.eq('actor_id', filters.staff);
       }
       if (filters?.action) {
-        query = query.eq('action' as any, filters.action as any);
+        query = query.eq('action', filters.action);
       }
 
       const { data, error } = await query;
 
       if (error) throw error;
 
-      const auditLogs: AuditLog[] = (data || []).map((log: any) => ({
-        id: (log as any).id,
-        timestamp: (log as any).created_at || '',
-        staffMember: (log as any).actor_email || 'Unknown',
-        staffId: (log as any).actor_id || '',
-        action: (log as any).action,
-        targetType: (log as any).resource_type,
-        targetId: (log as any).resource_id || '',
-        description: (log as any).description || '',
-        oldValue: JSON.stringify((log as any).old_values),
-        newValue: JSON.stringify((log as any).new_values),
-        metadata: ((log as any).metadata as Record<string, any>) || {}
+      const auditLogs: AuditLog[] = (data || []).map(log => ({
+        id: log.id,
+        timestamp: log.created_at || '',
+        staffMember: log.actor_email || 'Unknown',
+        staffId: log.actor_id || '',
+        action: log.action,
+        targetType: log.resource_type,
+        targetId: log.resource_id || '',
+        description: log.description || '',
+        oldValue: JSON.stringify(log.old_values),
+        newValue: JSON.stringify(log.new_values),
+        metadata: log.metadata as Record<string, any> || {}
       }));
 
       setLogs(auditLogs);

@@ -143,83 +143,65 @@ const Roles = () => {
             <LoadingState />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Show all expected tenant role templates */}
-              {[
-                { 
-                  name: 'Owner', 
-                  description: 'Full control over the hotel', 
-                  permissions: 'All tenant permissions',
-                  expected_permissions: 27
-                },
-                { 
-                  name: 'Manager', 
-                  description: 'Day-to-day operations management', 
-                  permissions: 'Most operations',
-                  expected_permissions: 14
-                },
-                { 
-                  name: 'Front Desk', 
-                  description: 'Guest services and reservations', 
-                  permissions: 'Limited to front desk',
-                  expected_permissions: 6
-                },
-                { 
-                  name: 'Housekeeping', 
-                  description: 'Room maintenance and cleaning', 
-                  permissions: 'Housekeeping only',
-                  expected_permissions: 4
-                },
-                { 
-                  name: 'Accounting', 
-                  description: 'Financial management', 
-                  permissions: 'Billing and reports',
-                  expected_permissions: 6
-                },
-                { 
-                  name: 'Maintenance', 
-                  description: 'Facility maintenance', 
-                  permissions: 'Maintenance requests',
-                  expected_permissions: 4
-                }
-              ].map((template) => (
-                <Card key={template.name} className="hover:shadow-lg transition-shadow luxury-card">
+              {/* Show actual tenant role templates from database */}
+              {tenantTemplates?.map((role) => (
+                <Card key={role.id} className="hover:shadow-lg transition-shadow luxury-card">
                   <CardHeader>
                     <div className="flex justify-between items-start">
                       <div className="flex items-center space-x-2">
                         <Shield className="h-5 w-5 text-primary" />
                         <div>
-                          <CardTitle className="text-lg">{template.name}</CardTitle>
-                          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">
-                            System Template
+                          <CardTitle className="text-lg">{role.name}</CardTitle>
+                          <Badge className={role.is_system ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"}>
+                            {role.is_system ? "System Template" : "Custom Template"}
                           </Badge>
                         </div>
                       </div>
                       <div className="flex space-x-1">
-                        <Button size="sm" variant="ghost" disabled>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setSelectedRole(role);
+                            setIsPermissionsDialogOpen(true);
+                          }}
+                        >
                           <Shield className="h-4 w-4" />
                         </Button>
+                        {!role.is_system && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setSelectedRole(role);
+                              setIsEditDialogOpen(true);
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <CardDescription className="mb-4">
-                      {template.description}
+                      {role.description}
                     </CardDescription>
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Expected Permissions:</span>
-                        <span className="font-medium">{template.expected_permissions}</span>
+                        <span className="text-muted-foreground">Permissions:</span>
+                        <span className="font-medium">{role.permissions?.length || 0}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Created For:</span>
-                        <Badge variant="secondary">
-                          New tenants
+                        <span className="text-muted-foreground">Scope:</span>
+                        <Badge variant="secondary" className="capitalize">
+                          Template
                         </Badge>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Status:</span>
-                        <Badge variant="default">
-                          Active
+                        <span className="text-muted-foreground">Type:</span>
+                        <Badge variant={role.is_system ? "default" : "outline"}>
+                          {role.is_system ? "System" : "Custom"}
                         </Badge>
                       </div>
                     </div>

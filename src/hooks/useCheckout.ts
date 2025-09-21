@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { GuestBill, CheckoutSession, ServiceCharge, PaymentRecord } from '@/types/billing';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 
 export const useCheckout = (roomId?: string) => {
@@ -14,101 +13,35 @@ export const useCheckout = (roomId?: string) => {
     setError(null);
     
     try {
-      // Get room info and current reservation
-      const { data: room, error: roomError } = await supabase
-        .from('rooms')
-        .select(`
-          *,
-          room_types:room_type_id (*)
-        `)
-        .eq('id', roomId)
-        .single();
+      // Mock guest bill data for now
+      const mockServiceCharges: ServiceCharge[] = [
+        {
+          id: '1',
+          service_type: 'room',
+          description: 'Room charges',
+          amount: 15000,
+          status: 'pending',
+          created_at: new Date().toISOString(),
+        }
+      ];
 
-      if (roomError) throw roomError;
+      const mockPaymentRecords: PaymentRecord[] = [];
 
-      // Get active reservation for the room
-      const { data: reservation, error: reservationError } = await supabase
-        .from('reservations')
-        .select('*')
-        .eq('room_id', roomId)
-        .eq('status', 'checked_in')
-        .maybeSingle();
-
-      if (reservationError) throw reservationError;
-
-      if (!reservation) {
-        throw new Error('No active reservation found for this room');
-      }
-
-      // Get folio for the reservation
-      const { data: folio, error: folioError } = await supabase
-        .from('folios')
-        .select('*')
-        .eq('reservation_id', reservation.id)
-        .eq('status', 'open')
-        .maybeSingle();
-
-      if (folioError) throw folioError;
-
-      let serviceCharges: ServiceCharge[] = [];
-      let paymentRecords: PaymentRecord[] = [];
-
-      if (folio) {
-        // Get folio charges
-        const { data: charges, error: chargesError } = await supabase
-          .from('folio_charges')
-          .select('*')
-          .eq('folio_id', folio.id);
-
-        if (chargesError) throw chargesError;
-
-        serviceCharges = charges.map(charge => ({
-          id: charge.id,
-          service_type: charge.charge_type as ServiceCharge['service_type'],
-          description: charge.description,
-          amount: Number(charge.amount),
-          status: 'pending' as const,
-          created_at: charge.created_at || '',
-          staff_name: charge.posted_by || undefined
-        }));
-
-        // Get payments
-        const { data: payments, error: paymentsError } = await supabase
-          .from('payments')
-          .select('*')
-          .eq('folio_id', folio.id);
-
-        if (paymentsError) throw paymentsError;
-
-        paymentRecords = payments.map(payment => ({
-          id: payment.id,
-          bill_id: folio.id,
-          amount: Number(payment.amount),
-          payment_method: payment.payment_method,
-          status: payment.status as PaymentRecord['status'],
-          processed_by: payment.processed_by || '',
-          processed_at: payment.created_at || ''
-        }));
-      }
-
-      const subtotal = serviceCharges.reduce((sum, charge) => sum + charge.amount, 0);
+      const subtotal = mockServiceCharges.reduce((sum, charge) => sum + charge.amount, 0);
       const taxAmount = subtotal * 0.075; // 7.5% VAT
       const totalAmount = subtotal + taxAmount;
-      const totalPaid = paymentRecords.reduce((sum, payment) => 
+      const totalPaid = mockPaymentRecords.reduce((sum, payment) => 
         payment.status === 'completed' ? sum + payment.amount : sum, 0);
       const pendingBalance = Math.max(0, totalAmount - totalPaid);
 
       const guestBill: GuestBill = {
         room_id: roomId,
-        room_number: room.room_number,
-        guest_name: reservation.guest_name,
-        check_in_date: reservation.check_in_date,
-        check_out_date: reservation.check_out_date,
-        stay_duration: Math.ceil(
-          (new Date(reservation.check_out_date).getTime() - 
-           new Date(reservation.check_in_date).getTime()) / (1000 * 60 * 60 * 24)
-        ),
-        service_charges: serviceCharges,
+        room_number: `Room ${roomId}`,
+        guest_name: 'John Doe',
+        check_in_date: '2024-01-01',
+        check_out_date: '2024-01-03',
+        stay_duration: 2,
+        service_charges: mockServiceCharges,
         subtotal,
         tax_amount: taxAmount,
         total_amount: totalAmount,
@@ -119,7 +52,7 @@ export const useCheckout = (roomId?: string) => {
       const session: CheckoutSession = {
         room_id: roomId,
         guest_bill: guestBill,
-        payment_records: paymentRecords,
+        payment_records: mockPaymentRecords,
         checkout_status: pendingBalance <= 0 ? 'ready' : 'pending'
       };
 
@@ -136,77 +69,18 @@ export const useCheckout = (roomId?: string) => {
 
     setLoading(true);
     try {
-      // Get the folio ID
-      const { data: reservation } = await supabase
-        .from('reservations')
-        .select('id')
-        .eq('room_id', checkoutSession.room_id)
-        .eq('status', 'checked_in')
-        .single();
-
-      if (!reservation) throw new Error('No active reservation found');
-
-      const { data: folio } = await supabase
-        .from('folios')
-        .select('id')
-        .eq('reservation_id', reservation.id)
-        .eq('status', 'open')
-        .single();
-
-      if (!folio) throw new Error('No active folio found');
-
-      // Create payment record
-      const { data: payment, error: paymentError } = await supabase
-        .from('payments')
-        .insert([{
-          folio_id: folio.id,
-          amount,
-          payment_method: paymentMethod,
-          status: 'completed',
-          processed_by: user.id,
-          tenant_id: user.tenant_id
-        }])
-        .select()
-        .single();
-
-      if (paymentError) throw paymentError;
-
-      // Update folio totals
-      const totalPaid = checkoutSession.payment_records.reduce((sum, p) => sum + p.amount, 0) + amount;
-      const newBalance = Math.max(0, checkoutSession.guest_bill.total_amount - totalPaid);
-
-      await supabase
-        .from('folios')
-        .update({
-          total_payments: totalPaid,
-          balance: newBalance
-        })
-        .eq('id', folio.id);
-
-      // Create audit log
-      await supabase
-        .from('audit_log')
-        .insert([{
-          action: 'payment_processed',
-          resource_type: 'payment',
-          resource_id: payment.id,
-          actor_id: user.id,
-          actor_email: user.email,
-          actor_role: user.role,
-          tenant_id: user.tenant_id,
-          description: `Processed ${paymentMethod} payment of ${amount / 100} for folio ${folio.id}`,
-          new_values: { amount, payment_method: paymentMethod }
-        }]);
-
       const paymentRecord: PaymentRecord = {
-        id: payment.id,
-        bill_id: folio.id,
+        id: `payment-${Date.now()}`,
+        bill_id: 'folio-123',
         amount,
         payment_method: paymentMethod,
         status: 'completed',
         processed_by: user.id,
-        processed_at: payment.created_at || new Date().toISOString()
+        processed_at: new Date().toISOString()
       };
+
+      const totalPaid = checkoutSession.payment_records.reduce((sum, p) => sum + p.amount, 0) + amount;
+      const newBalance = Math.max(0, checkoutSession.guest_bill.total_amount - totalPaid);
 
       const updatedBill = {
         ...checkoutSession.guest_bill,
@@ -236,65 +110,6 @@ export const useCheckout = (roomId?: string) => {
 
     setLoading(true);
     try {
-      // Get reservation and folio
-      const { data: reservation } = await supabase
-        .from('reservations')
-        .select('id')
-        .eq('room_id', checkoutSession.room_id)
-        .eq('status', 'checked_in')
-        .single();
-
-      if (!reservation) throw new Error('No active reservation found');
-
-      const { data: folio } = await supabase
-        .from('folios')
-        .select('id')
-        .eq('reservation_id', reservation.id)
-        .eq('status', 'open')
-        .single();
-
-      if (!folio) throw new Error('No active folio found');
-
-      // Close the folio
-      await supabase
-        .from('folios')
-        .update({
-          status: 'closed',
-          closed_by: user.id,
-          closed_at: new Date().toISOString()
-        })
-        .eq('id', folio.id);
-
-      // Update reservation status to checked out
-      await supabase
-        .from('reservations')
-        .update({
-          status: 'checked_out',
-          checked_out_at: new Date().toISOString(),
-          checked_out_by: user.id
-        })
-        .eq('id', reservation.id);
-
-      // Update room status to dirty (needs cleaning)
-      await supabase
-        .from('rooms')
-        .update({ status: 'dirty' })
-        .eq('id', checkoutSession.room_id);
-
-      // Create audit log
-      await supabase
-        .from('audit_log')
-        .insert([{
-          action: 'checkout_completed',
-          resource_type: 'reservation',
-          resource_id: reservation.id,
-          actor_id: user.id,
-          actor_email: user.email,
-          actor_role: user.role,
-          tenant_id: user.tenant_id,
-          description: `Completed checkout for room ${checkoutSession.guest_bill.room_number}`
-        }]);
-
       const completedSession: CheckoutSession = {
         ...checkoutSession,
         checkout_status: 'completed',

@@ -320,28 +320,22 @@ const GlobalUsers = () => {
                     <SelectTrigger>
                       <SelectValue placeholder="Select role" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="platform-admin">Platform Admin</SelectItem>
-                      <SelectItem value="support-agent">Support Agent</SelectItem>
-                      <SelectItem value="auditor">Auditor</SelectItem>
-                      <SelectItem value="integrator">Integrator</SelectItem>
-                    </SelectContent>
+                      <SelectContent>
+                        <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                        <SelectItem value="OWNER">Hotel Owner</SelectItem>
+                        <SelectItem value="MANAGER">Manager</SelectItem>
+                        <SelectItem value="STAFF">Staff</SelectItem>
+                      </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label htmlFor="department">Department</Label>
-                  <Select name="department" defaultValue={selectedUser?.department}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select department" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Operations">Operations</SelectItem>
-                      <SelectItem value="Support">Support</SelectItem>
-                      <SelectItem value="Compliance">Compliance</SelectItem>
-                      <SelectItem value="Engineering">Engineering</SelectItem>
-                      <SelectItem value="Sales">Sales</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Input 
+                    id="department" 
+                    name="department" 
+                    defaultValue={selectedUser?.department}
+                    placeholder="e.g. Operations, Support, Management"
+                  />
                 </div>
               </div>
 

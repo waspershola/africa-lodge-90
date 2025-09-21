@@ -326,8 +326,9 @@ const Index = () => {
                 className="bg-transparent hover:bg-white/10 text-white border-white/30 text-lg px-8 py-6 font-semibold"
                 asChild
               >
-                <Link to="/qr-portal">
-                  View Features
+                <Link to="/signup">
+                  Start Free Trial
+                  <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
             </motion.div>

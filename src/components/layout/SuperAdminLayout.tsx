@@ -27,7 +27,6 @@ const navigation = [
   { name: 'Roles', href: '/sa/roles', icon: Shield },
   { name: 'Global Users', href: '/sa/global-users', icon: UserCheck },
   { name: 'Support', href: '/sa/support', icon: Headphones },
-  { name: 'Plans', href: '/sa/plans', icon: CreditCard },
   { name: 'Backups', href: '/sa/backups', icon: Database },
   { name: 'Wizard', href: '/sa/wizard', icon: Wand2 },
   { name: 'Advanced', href: '/sa/advanced', icon: Settings },

@@ -17,7 +17,6 @@ const createTenantSchema = z.object({
     .min(1, 'Slug is required')
     .max(50, 'Slug too long')
     .regex(/^[a-z0-9-]+$/, 'Slug can only contain lowercase letters, numbers, and hyphens'),
-  plan_id: z.string().min(1, 'Please select a plan'),
   owner_email: z.string().email('Please enter a valid email address'),
   owner_name: z.string().min(1, 'Owner name is required').max(100, 'Name too long'),
   city: z.string().min(1, 'City is required').max(50, 'City name too long'),
@@ -44,7 +43,6 @@ export function CreateTenantRealForm({ onSuccess }: CreateTenantRealFormProps) {
     defaultValues: {
       hotel_name: '',
       hotel_slug: '',
-      plan_id: '',
       owner_email: '',
       owner_name: '',
       city: 'Lagos',
@@ -56,13 +54,21 @@ export function CreateTenantRealForm({ onSuccess }: CreateTenantRealFormProps) {
   const onSubmit = async (data: CreateTenantForm) => {
     try {
       setIsSubmitting(true);
+      
+      // Get default starter plan
+      const defaultPlan = plans.find(p => p.name.toLowerCase().includes('starter') || p.name.toLowerCase().includes('trial')) || plans[0];
+      
+      if (!defaultPlan) {
+        throw new Error('No default plan available');
+      }
+
       // Ensure all required fields are present
       const createData: CreateTenantAndOwnerData = {
         hotel_name: data.hotel_name,
         hotel_slug: data.hotel_slug,
         owner_email: data.owner_email,
         owner_name: data.owner_name,
-        plan_id: data.plan_id,
+        plan_id: defaultPlan.id,
         city: data.city,
         address: data.address || '',
         phone: data.phone || '',
@@ -205,52 +211,29 @@ export function CreateTenantRealForm({ onSuccess }: CreateTenantRealFormProps) {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="plan_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Subscription Plan</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select plan" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {plansLoading ? (
-                          <SelectItem value="loading" disabled>Loading plans...</SelectItem>
-                        ) : (
-                          plans
-                            .filter(plan => plan.status === 'active')
-                            .map((plan) => (
-                              <SelectItem key={plan.id} value={plan.id}>
-                                {plan.name} - ₦{plan.price?.toLocaleString()}/month ({plan.room_capacity_min}-{plan.room_capacity_max === 9999 ? '∞' : plan.room_capacity_max} rooms)
-                              </SelectItem>
-                            ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="city"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>City</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Lagos" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            <FormField
+              control={form.control}
+              name="city"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>City</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Lagos" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            {plansLoading ? (
+              <div className="text-sm text-muted-foreground">
+                Loading plans to assign default starter plan...
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground bg-blue-50 p-3 rounded-lg">
+                <strong>Note:</strong> A default starter plan will be automatically assigned. The owner can upgrade during onboarding.
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField

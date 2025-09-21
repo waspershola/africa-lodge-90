@@ -92,6 +92,18 @@ export default function TenantsReal() {
         // TODO: Implement resend invite
         console.log('Resend invite for:', tenant.owner_email);
         break;
+      case 'pause-billing':
+        if (confirm(`Are you sure you want to pause billing for ${tenant.hotel_name}?`)) {
+          // TODO: Implement pause billing
+          console.log('Pause billing for:', tenant.tenant_id);
+        }
+        break;
+      case 'force-logout':
+        if (confirm(`Are you sure you want to force logout all users for ${tenant.hotel_name}?`)) {
+          // TODO: Implement force logout
+          console.log('Force logout for:', tenant.tenant_id);
+        }
+        break;
       case 'suspend':
         if (confirm(`Are you sure you want to suspend ${tenant.hotel_name}?`)) {
           suspendTenant.mutate(tenant.tenant_id);
@@ -356,6 +368,14 @@ export default function TenantsReal() {
                         <DropdownMenuItem onClick={() => handleAction('resend-invite', tenant)}>
                           <RefreshCw className="h-4 w-4 mr-2" />
                           Resend Invite
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleAction('pause-billing', tenant)}>
+                          <Pause className="h-4 w-4 mr-2" />
+                          Pause Billing
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleAction('force-logout', tenant)}>
+                          <UserCheck className="h-4 w-4 mr-2" />
+                          Force Logout
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => handleAction('edit', tenant)}>

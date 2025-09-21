@@ -4,11 +4,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useUpdateRole, usePermissions } from '@/hooks/useRoles';
+import { useUpdateRole, useDeleteRole, usePermissions } from '@/hooks/useRoles';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield } from 'lucide-react';
+import { Shield, Trash2 } from 'lucide-react';
 import { Role } from '@/services/roleService';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useMultiTenantAuth } from '@/hooks/useMultiTenantAuth';
 
 interface EditRoleDialogProps {
   open: boolean;
@@ -17,12 +19,22 @@ interface EditRoleDialogProps {
 }
 
 export function EditRoleDialog({ open, onOpenChange, role }: EditRoleDialogProps) {
+  const { user } = useMultiTenantAuth();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(new Set());
   
   const updateRole = useUpdateRole();
+  const deleteRole = useDeleteRole();
   const { data: permissions } = usePermissions();
+
+  // Check if user can edit this role
+  const canEdit = () => {
+    if (user?.role === 'SUPER_ADMIN') return true;
+    if (user?.role === 'OWNER' && role?.scope === 'tenant' && role.name !== 'Owner') return true;
+    if (user?.role === 'MANAGER' && role?.scope === 'tenant' && !['Owner', 'Manager'].includes(role.name)) return true;
+    return false;
+  };
 
   useEffect(() => {
     if (role) {
@@ -66,10 +78,19 @@ export function EditRoleDialog({ open, onOpenChange, role }: EditRoleDialogProps
     setSelectedPermissions(newPermissions);
   };
 
-  // Filter permissions based on role scope
+  const handleDelete = async () => {
+    try {
+      await deleteRole.mutateAsync(role.id);
+      onOpenChange(false);
+    } catch (error) {
+      // Error handled by hook
+    }
+  };
+
+  // Filter permissions based on scope and user role
   const filteredPermissions = permissions?.filter(p => {
-    if (role.scope === 'global') {
-      return p.module === 'tenants' || p.module === 'system';
+    if (role?.scope === 'global') {
+      return p.module === 'tenants' || p.module === 'system' || p.module === 'dashboard' || p.module === 'reports';
     } else {
       return p.module !== 'tenants' && p.module !== 'system';
     }
@@ -105,8 +126,8 @@ export function EditRoleDialog({ open, onOpenChange, role }: EditRoleDialogProps
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Enter role name"
-                disabled={role?.is_system}
                 required
+                disabled={role?.is_system || !canEdit()}
               />
             </div>
             <div>
@@ -116,16 +137,19 @@ export function EditRoleDialog({ open, onOpenChange, role }: EditRoleDialogProps
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe what this role can do"
-                disabled={role?.is_system}
+                disabled={role?.is_system || !canEdit()}
                 rows={3}
               />
             </div>
           </div>
 
-          {role?.is_system && (
+          {(role?.is_system || !canEdit()) && (
             <div className="bg-muted/50 p-4 rounded-lg">
               <p className="text-sm text-muted-foreground">
-                This is a system role. You can view its permissions but cannot modify the role name, description, or permissions.
+                {role?.is_system 
+                  ? 'This is a system role. You can only modify permissions for certain system roles.'
+                  : 'You do not have permission to modify this role.'
+                }
               </p>
             </div>
           )}
@@ -133,8 +157,8 @@ export function EditRoleDialog({ open, onOpenChange, role }: EditRoleDialogProps
           <div>
             <Label className="text-lg font-semibold">Permissions</Label>
             <p className="text-sm text-muted-foreground mb-4">
-              {role?.is_system 
-                ? 'View the permissions assigned to this system role'
+              {(role?.is_system && !canEdit()) 
+                ? 'View the permissions assigned to this role'
                 : 'Modify the permissions this role should have'
               }
             </p>
@@ -165,7 +189,7 @@ export function EditRoleDialog({ open, onOpenChange, role }: EditRoleDialogProps
                           id={permission.id}
                           checked={selectedPermissions.has(permission.id)}
                           onCheckedChange={(checked) => handlePermissionToggle(permission.id, checked)}
-                          disabled={role?.is_system}
+                          disabled={role?.is_system || !canEdit()}
                         />
                       </div>
                     ))}
@@ -175,23 +199,52 @@ export function EditRoleDialog({ open, onOpenChange, role }: EditRoleDialogProps
             </div>
           </div>
 
-          <div className="flex justify-end space-x-2 pt-4 border-t">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={updateRole.isPending}
-            >
-              Cancel
-            </Button>
-            {!role?.is_system && (
+          <div className="flex justify-between items-center pt-4 border-t">
+            <div>
+              {!role?.is_system && canEdit() && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" disabled={deleteRole.isPending}>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Role
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Role</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete this role? This action cannot be undone.
+                        All users with this role will lose their permissions.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+                        Delete Role
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
+            <div className="space-x-2">
               <Button
-                type="submit"
-                disabled={updateRole.isPending || !name.trim()}
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={updateRole.isPending}
               >
-                {updateRole.isPending ? 'Updating...' : 'Update Role'}
+                Cancel
               </Button>
-            )}
+              {canEdit() && (
+                <Button
+                  type="submit"
+                  disabled={updateRole.isPending || !name.trim()}
+                >
+                  {updateRole.isPending ? 'Updating...' : 'Update Role'}
+                </Button>
+              )}
+            </div>
           </div>
         </form>
       </DialogContent>

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useGlobalRoles, useTenantRoles } from '@/hooks/useRoles';
+import { useGlobalRoles, useTenantRoles, usePermissions, useRoles } from '@/hooks/useRoles';
 import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { CreateRoleDialog } from '@/components/sa/CreateRoleDialog';
@@ -13,6 +13,8 @@ import { PermissionsMatrixDialog } from '@/components/sa/PermissionsMatrixDialog
 
 const Roles = () => {
   const { data: globalRoles, isLoading: globalLoading, error: globalError } = useGlobalRoles();
+  const { data: tenantTemplates, isLoading: templatesLoading } = useRoles('tenant');
+  const { data: permissions } = usePermissions();
   const [selectedRole, setSelectedRole] = useState<any>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -122,38 +124,116 @@ const Roles = () => {
         </TabsContent>
 
         <TabsContent value="template" className="space-y-6">
-          <Card className="luxury-card">
-            <CardHeader>
-              <CardTitle>Tenant Role Templates</CardTitle>
-              <CardDescription>
-                Default roles that are created for each new tenant. These define the standard permissions structure.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[
-                  { name: 'Owner', description: 'Full control over the hotel', permissions: 'All tenant permissions' },
-                  { name: 'Manager', description: 'Day-to-day operations management', permissions: 'Most operations' },
-                  { name: 'Front Desk', description: 'Guest services and reservations', permissions: 'Limited to front desk' },
-                  { name: 'Housekeeping', description: 'Room maintenance and cleaning', permissions: 'Housekeeping only' },
-                  { name: 'Accounting', description: 'Financial management', permissions: 'Billing and reports' },
-                  { name: 'Maintenance', description: 'Facility maintenance', permissions: 'Maintenance requests' }
-                ].map((template) => (
-                  <Card key={template.name} className="bg-muted/50">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm">{template.name}</CardTitle>
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-foreground">Tenant Role Templates</h2>
+              <p className="text-muted-foreground">Default roles created for each new tenant</p>
+            </div>
+            <Button onClick={() => handleCreateRole('tenant')} variant="outline">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Template
+            </Button>
+          </div>
+
+          {templatesLoading ? (
+            <LoadingState />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {tenantTemplates
+                ?.filter((role: any) => role.is_system && !role.tenant_id)
+                ?.map((template: any) => (
+                <Card key={template.id} className="hover:shadow-lg transition-shadow luxury-card">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center space-x-2">
+                        <Shield className="h-5 w-5 text-primary" />
+                        <div>
+                          <CardTitle className="text-lg">{template.name}</CardTitle>
+                          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">
+                            Template
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="flex space-x-1">
+                        <Button size="sm" variant="ghost" onClick={() => handleViewPermissions(template)}>
+                          <Shield className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleEditRole(template)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="mb-4">
+                      {template.description}
+                    </CardDescription>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Permissions:</span>
+                        <span className="font-medium">{getPermissionCount(template.permissions)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Applied to:</span>
+                        <Badge variant="secondary">
+                          All new tenants
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              
+              {/* Add cards for roles that should exist but might not be created yet */}
+              {['Owner', 'Manager', 'Front Desk', 'Housekeeping', 'Accounting', 'Maintenance'].map((roleName) => {
+                const exists = tenantTemplates?.some((t: any) => t.name === roleName && t.is_system);
+                if (exists) return null;
+                
+                const descriptions = {
+                  'Owner': 'Full control over the hotel',
+                  'Manager': 'Day-to-day operations management',
+                  'Front Desk': 'Guest services and reservations',
+                  'Housekeeping': 'Room maintenance and cleaning',
+                  'Accounting': 'Financial management',
+                  'Maintenance': 'Facility maintenance'
+                };
+                
+                return (
+                  <Card key={roleName} className="border-dashed border-2 hover:border-primary transition-colors">
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-center space-x-2">
+                          <Shield className="h-5 w-5 text-muted-foreground" />
+                          <div>
+                            <CardTitle className="text-lg text-muted-foreground">{roleName}</CardTitle>
+                            <Badge variant="outline">Missing Template</Badge>
+                          </div>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => {
+                            setSelectedRole({ name: roleName, description: descriptions[roleName as keyof typeof descriptions], scope: 'tenant' });
+                            setIsCreateDialogOpen(true);
+                          }}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-xs text-muted-foreground mb-2">{template.description}</p>
-                      <Badge variant="outline" className="text-xs">
-                        {template.permissions}
-                      </Badge>
+                      <CardDescription className="mb-4">
+                        {descriptions[roleName as keyof typeof descriptions]}
+                      </CardDescription>
+                      <p className="text-sm text-muted-foreground">
+                        Click the + button to create this template
+                      </p>
                     </CardContent>
                   </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                );
+              })}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 

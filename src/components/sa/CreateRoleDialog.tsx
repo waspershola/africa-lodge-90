@@ -68,7 +68,7 @@ export function CreateRoleDialog({ open, onOpenChange, scope, tenantId }: Create
   // Filter permissions based on scope
   const filteredPermissions = permissions?.filter(p => {
     if (scope === 'global') {
-      return p.module === 'tenants' || p.module === 'system';
+      return p.module === 'tenants' || p.module === 'system' || p.module === 'dashboard' || p.module === 'reports';
     } else {
       return p.module !== 'tenants' && p.module !== 'system';
     }

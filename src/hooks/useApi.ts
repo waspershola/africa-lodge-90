@@ -74,6 +74,60 @@ export const useCreateGlobalUser = () => {
   });
 };
 
+export const useUpdateGlobalUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          name: data.name,
+          department: data.department,
+          role: data.role
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+      return { success: true };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'global-users'] });
+      toast.success('Global user updated successfully');
+    }
+  });
+};
+
+export const useDeleteGlobalUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('users')
+        .update({ is_active: false })
+        .eq('id', id);
+
+      if (error) throw error;
+      return { success: true };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sa', 'global-users'] });
+      toast.success('Global user deleted successfully');
+    }
+  });
+};
+
+export const useImpersonateUser = () => {
+  return useMutation({
+    mutationFn: async ({ userId, reason, durationMinutes }: { userId: string; reason: string; durationMinutes: number }) => {
+      const { data, error } = await supabase.functions.invoke('impersonate-user', {
+        body: { userId, reason, durationMinutes }
+      });
+      if (error) throw error;
+      return data;
+    }
+  });
+};
+
 // Dashboard Data with real Supabase data
 export const useDashboardData = () => {
   return useQuery({
@@ -158,6 +212,7 @@ export const useMetrics = () => {
 
       const activeUsers = users?.filter(u => u.is_active).length || 0;
       const totalTenants = tenants?.length || 0;
+      const totalRevenue = Math.floor(Math.random() * 1000000) + 2000000;
 
       const last6Months = [];
       for (let i = 5; i >= 0; i--) {
@@ -180,11 +235,21 @@ export const useMetrics = () => {
 
       return {
         data: {
-          totalRevenue: Math.floor(Math.random() * 1000000) + 2000000,
+          totalRevenue,
           totalTenants,
           activeUsers,
+          overview: {
+            totalRevenue,
+            mrr: Math.floor(totalRevenue / 12),
+            activeTenants: totalTenants,
+            totalTenants,
+            avgOccupancy: 75,
+            growthRate: 12.5,
+            monthlyActiveUsers: activeUsers
+          },
           trends: {
-            revenue: last6Months
+            revenue: last6Months,
+            tenants: last6Months
           }
         }
       };
@@ -192,8 +257,134 @@ export const useMetrics = () => {
   });
 };
 
-// Placeholder for other hooks that were in the original file
+// All required hooks as placeholders
 export const useReservations = () => useQuery({ queryKey: ['reservations'], queryFn: () => Promise.resolve([]) });
+export const useCreateReservation = () => useMutation({ mutationFn: (data: any) => Promise.resolve(data) });
+export const useUpdateReservation = () => useMutation({ mutationFn: ({ id, updates }: any) => Promise.resolve({ id, updates }) });
+export const useDeleteReservation = () => useMutation({ mutationFn: (id: string) => Promise.resolve(id) });
+export const useCancelReservation = () => useMutation({ mutationFn: (id: string) => Promise.resolve(id) });
+export const useRefundReservation = () => useMutation({ mutationFn: (id: string) => Promise.resolve(id) });
+
 export const useRooms = () => useQuery({ queryKey: ['rooms'], queryFn: () => Promise.resolve([]) });
+export const useRoomTypes = () => useQuery({ queryKey: ['room-types'], queryFn: () => Promise.resolve([]) });
+export const useCreateRoomType = () => useMutation({ mutationFn: (data: any) => Promise.resolve(data) });
+export const useUpdateRoomType = () => useMutation({ mutationFn: ({ id, updates }: any) => Promise.resolve({ id, updates }) });
+export const useDeleteRoomType = () => useMutation({ mutationFn: ({ id }: { id: string }) => Promise.resolve(id) });
+export const useRoomAvailability = () => useQuery({ queryKey: ['room-availability'], queryFn: () => Promise.resolve([]) });
+
 export const useUsers = () => useQuery({ queryKey: ['users'], queryFn: () => Promise.resolve([]) });
+export const useStaff = () => useQuery({ queryKey: ['staff'], queryFn: () => Promise.resolve([]) });
+export const useCreateStaff = () => useMutation({ mutationFn: (data: any) => Promise.resolve(data) });
+export const useUpdateStaffMember = () => useMutation({ mutationFn: ({ id, updates }: any) => Promise.resolve({ id, updates }) });
+export const useDeleteStaffMember = () => useMutation({ mutationFn: ({ id }: { id: string }) => Promise.resolve(id) });
+export const useInviteStaff = () => useMutation({ mutationFn: (data: any) => Promise.resolve(data) });
+
+export const useGuests = () => useQuery({ queryKey: ['guests'], queryFn: () => Promise.resolve([]) });
+export const useCreateGuest = () => useMutation({ mutationFn: (data: any) => Promise.resolve(data) });
+export const useGuestProfiles = () => useQuery({ queryKey: ['guest-profiles'], queryFn: () => Promise.resolve([]) });
+
+export const useCompanies = () => useQuery({ queryKey: ['companies'], queryFn: () => Promise.resolve([]) });
+export const useImportOTAReservation = () => useMutation({ mutationFn: (data: any) => Promise.resolve(data) });
+export const useAssignRoom = () => useMutation({ mutationFn: ({ reservationId, roomId }: any) => Promise.resolve({ reservationId, roomId }) });
+export const useCheckInGuest = () => useMutation({ mutationFn: (reservationId: string) => Promise.resolve(reservationId) });
+export const useCheckOutGuest = () => useMutation({ mutationFn: (reservationId: string) => Promise.resolve(reservationId) });
+export const useCheckRoomConflicts = () => useMutation({ mutationFn: (data: any) => Promise.resolve({ hasConflicts: false }) });
+
+export const useRoles = () => useQuery({ queryKey: ['roles'], queryFn: () => Promise.resolve([]) });
+export const useDeleteRole = () => useMutation({ mutationFn: ({ id }: { id: string }) => Promise.resolve(id) });
+
 export const useTenants = () => useQuery({ queryKey: ['tenants'], queryFn: () => Promise.resolve({ data: [] }) });
+export const useTenant = () => useQuery({ queryKey: ['tenant'], queryFn: () => Promise.resolve({}) });
+export const useUpdateTenant = () => useMutation({ mutationFn: ({ id, updates }: any) => Promise.resolve({ id, updates }) });
+
+export const useOwnerOverview = () => useQuery({ 
+  queryKey: ['owner', 'overview'], 
+  queryFn: () => Promise.resolve({
+    totalRooms: 0,
+    occupiedRooms: 0,
+    availableRooms: 0,
+    revenue: 0,
+    reservations: 0
+  })
+});
+
+// Super Admin specific hooks
+export const useToggleEmergencyMode = () => useMutation({ mutationFn: (enabled: boolean) => Promise.resolve({ enabled }) });
+export const useBackupJobs = () => useQuery({ queryKey: ['backup-jobs'], queryFn: () => Promise.resolve({ data: [] }) });
+export const useCreateBackup = () => useMutation({ mutationFn: (data: any) => Promise.resolve(data) });
+export const useRestoreBackup = () => useMutation({ mutationFn: (id: string) => Promise.resolve(id) });
+export const useDeleteBackup = () => useMutation({ mutationFn: (id: string) => Promise.resolve(id) });
+
+export const useFeatureFlags = () => useQuery({ queryKey: ['feature-flags'], queryFn: () => Promise.resolve({ data: [] }) });
+export const useUpdateFeatureFlag = () => useMutation({ mutationFn: ({ id, data }: any) => Promise.resolve({ id, data }) });
+export const useCreateFeatureFlag = () => useMutation({ mutationFn: (data: any) => Promise.resolve(data) });
+
+export const usePlans = () => useQuery({ queryKey: ['plans'], queryFn: () => Promise.resolve({ data: [] }) });
+export const useCreatePlan = () => useMutation({ mutationFn: (data: any) => Promise.resolve(data) });
+export const useUpdatePlan = () => useMutation({ mutationFn: ({ id, data }: any) => Promise.resolve({ id, data }) });
+export const useDeletePlan = () => useMutation({ mutationFn: (id: string) => Promise.resolve(id) });
+export const usePlanMetrics = () => useQuery({ 
+  queryKey: ['plan-metrics'], 
+  queryFn: () => Promise.resolve({ 
+    data: {
+      adoption: [
+        { planName: 'basic', count: 10, percentage: 30 },
+        { planName: 'pro', count: 20, percentage: 60 },
+        { planName: 'enterprise', count: 5, percentage: 10 }
+      ],
+      revenue: [
+        { planName: 'basic', amount: 1000, percentage: 20 },
+        { planName: 'pro', amount: 3000, percentage: 60 },
+        { planName: 'enterprise', amount: 1000, percentage: 20 }
+      ],
+      trialConversions: [
+        { planName: 'basic', conversions: 8, trials: 25, conversionRate: 32 },
+        { planName: 'pro', conversions: 15, trials: 30, conversionRate: 50 },
+        { planName: 'enterprise', conversions: 3, trials: 10, conversionRate: 30 }
+      ],
+      churn: [
+        { planName: 'basic', churned: 2, total: 10, churnRate: 20, retained: 8 },
+        { planName: 'pro', churned: 1, total: 20, churnRate: 5, retained: 19 },
+        { planName: 'enterprise', churned: 0, total: 5, churnRate: 0, retained: 5 }
+      ]
+    } 
+  }) 
+});
+export const useSendInvoiceReminder = () => useMutation({ mutationFn: (data: any) => Promise.resolve(data) });
+export const useCheckSubscriptionExpiry = () => useMutation({ 
+  mutationFn: () => Promise.resolve({ 
+    data: {
+      expired: [],
+      expiringSoon: [],
+      totalChecked: 0
+    } 
+  }) 
+});
+
+export const usePolicies = () => useQuery({ 
+  queryKey: ['policies'], 
+  queryFn: () => Promise.resolve({ 
+    data: {
+      defaultOfflineWindow: 24,
+      minOfflineWindow: 1,
+      maxOfflineWindow: 168,
+      tenantOverrides: [],
+      rateLimit: { requestsPerMinute: 100 },
+      maxFileSize: 50
+    } 
+  }) 
+});
+export const useUpdatePolicy = () => useMutation({ mutationFn: ({ id, data }: any) => Promise.resolve({ id, data }) });
+
+export const useSupportTickets = () => useQuery({ queryKey: ['support-tickets'], queryFn: () => Promise.resolve({ data: [] }) });
+export const useUpdateSupportTicket = () => useMutation({ mutationFn: ({ id, data }: any) => Promise.resolve({ id, data }) });
+export const useBroadcastMessage = () => useMutation({ mutationFn: (data: { title: string; message: string; targetTenants: any[] }) => Promise.resolve(data) });
+export const useCreateAnnouncement = () => useMutation({ mutationFn: (data: any) => Promise.resolve(data) });
+
+// Add missing hooks
+export const useAnnouncements = () => useQuery({ queryKey: ['announcements'], queryFn: () => Promise.resolve({ data: [] }) });
+export const useTemplates = () => useQuery({ queryKey: ['templates'], queryFn: () => Promise.resolve({ data: [] }) });
+export const useCreateTemplate = () => useMutation({ mutationFn: (data: any) => Promise.resolve(data) });
+export const useUpdateTemplate = () => useMutation({ mutationFn: ({ id, data }: any) => Promise.resolve({ id, data }) });
+export const useDeleteTemplate = () => useMutation({ mutationFn: ({ id }: { id: string }) => Promise.resolve(id) });
+export const useCreateTenant = () => useMutation({ mutationFn: (data: any) => Promise.resolve(data) });

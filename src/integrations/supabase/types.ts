@@ -1484,6 +1484,7 @@ export type Database = {
           force_reset: boolean | null
           id: string
           is_active: boolean | null
+          is_platform_owner: boolean | null
           last_login: string | null
           name: string | null
           phone: string | null
@@ -1503,6 +1504,7 @@ export type Database = {
           force_reset?: boolean | null
           id?: string
           is_active?: boolean | null
+          is_platform_owner?: boolean | null
           last_login?: string | null
           name?: string | null
           phone?: string | null
@@ -1522,6 +1524,7 @@ export type Database = {
           force_reset?: boolean | null
           id?: string
           is_active?: boolean | null
+          is_platform_owner?: boolean | null
           last_login?: string | null
           name?: string | null
           phone?: string | null

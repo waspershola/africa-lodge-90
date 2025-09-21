@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { tenantService, CreateTenantAndOwnerData, TenantWithOwner } from '@/services/tenantService';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useTenantsReal = () => {
   return useQuery({
@@ -26,16 +27,24 @@ export const useCreateTenantAndOwner = () => {
   
   return useMutation({
     mutationFn: async (data: CreateTenantAndOwnerData) => {
-      const result = await tenantService.createTenantAndOwner(data);
-      
-      // Send temporary password email
-      await tenantService.sendTempPasswordEmail(
-        data.owner_email,
-        data.hotel_name,
-        result.tempPassword
-      );
-      
-      return result;
+      // Call secure edge function directly instead of going through tenantService
+      const { data: result, error } = await supabase.functions.invoke('create-tenant-and-owner', {
+        body: data
+      });
+
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(`Failed to create tenant and owner: ${error.message}`);
+      }
+
+      if (!result?.success) {
+        throw new Error(result?.error || 'Unknown error occurred');
+      }
+
+      return { 
+        tenant: result.tenant, 
+        tempPassword: result.temp_password // Use temp_password from edge function
+      };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenants-real'] });

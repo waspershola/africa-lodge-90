@@ -73,6 +73,7 @@ export default function StaffInviteModal({ open, onOpenChange }: StaffInviteModa
         department: formData.department,
         tenant_id: 'current-tenant-id', // This should come from auth context
         is_active: true,
+        is_platform_owner: false, // Regular staff members are not platform owners
         force_reset: true,
         last_login: null,
         shift_start: null,

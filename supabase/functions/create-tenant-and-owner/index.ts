@@ -43,17 +43,44 @@ serve(async (req) => {
   }
 
   try {
-    // Create Supabase client with service role key
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
+    // Create Supabase client with service role key (server-side only)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
       }
-    );
+    });
+
+    // SECURITY: Verify caller is authenticated and has SUPER_ADMIN role
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('No authorization header provided');
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (userError || !user) {
+      throw new Error('Invalid authentication token');
+    }
+
+    // Check if user has SUPER_ADMIN role or is platform owner
+    const { data: userData, error: roleError } = await supabaseAdmin
+      .from('users')
+      .select('role, is_platform_owner')
+      .eq('id', user.id)
+      .single();
+
+    if (roleError || !userData) {
+      throw new Error('User not found in system');
+    }
+
+    if (userData.role !== 'SUPER_ADMIN' && !userData.is_platform_owner) {
+      throw new Error('Insufficient permissions - SUPER_ADMIN or platform owner required');
+    }
 
     const requestData: CreateTenantRequest = await req.json();
     

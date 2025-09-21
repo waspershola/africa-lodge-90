@@ -197,6 +197,18 @@ serve(async (req) => {
       tenantId = tenant.tenant_id;
       console.log('Tenant created:', tenantId);
 
+      // Create default roles for this tenant
+      const { error: defaultRolesError } = await supabaseAdmin.rpc('create_default_tenant_roles', {
+        tenant_uuid: tenantId
+      });
+
+      if (defaultRolesError) {
+        console.error('Failed to create default roles:', defaultRolesError);
+        throw new Error(`Failed to create default tenant roles: ${defaultRolesError.message}`);
+      }
+
+      console.log('Default tenant roles created');
+
       try {
         // Step 2: Create user in Supabase Auth
         const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -245,6 +257,20 @@ serve(async (req) => {
 
             console.log('User record updated with temp password');
           } else {
+            // Get Owner role_id from roles table for this tenant
+            const { data: ownerRole, error: roleError } = await supabaseAdmin
+              .from('roles')
+              .select('id')
+              .eq('name', 'Owner')
+              .eq('scope', 'tenant')
+              .eq('tenant_id', tenantId)
+              .single();
+
+            if (roleError || !ownerRole) {
+              console.error('Failed to find Owner role for tenant:', roleError);
+              throw new Error('Owner role not found for tenant');
+            }
+
             // Create user record in users table
             const { error: userError } = await supabaseAdmin
               .from('users')
@@ -252,7 +278,8 @@ serve(async (req) => {
                 id: authUserId,
                 email: requestData.owner_email,
                 name: requestData.owner_name,
-                role: 'OWNER',
+                role: 'OWNER', // Legacy field
+                role_id: ownerRole.id, // New role system
                 tenant_id: tenantId,
                 force_reset: true,
                 temp_password_hash: tempPasswordHash,

@@ -225,9 +225,9 @@ export function InviteUserDialog({ tenantId, onSuccess }: InviteUserDialogProps)
                         ) : (
                           // Global roles (Super Admin context)
                           <>
-                            <SelectItem value="OWNER">Hotel Owner</SelectItem>
-                            <SelectItem value="MANAGER">Manager</SelectItem>
-                            <SelectItem value="STAFF">Staff</SelectItem>
+                            <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                            <SelectItem value="PLATFORM_ADMIN">Platform Admin</SelectItem>
+                            <SelectItem value="SUPPORT_STAFF">Support Staff</SelectItem>
                           </>
                         )}
                       </SelectContent>

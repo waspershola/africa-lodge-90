@@ -145,6 +145,26 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
+    // Get role_id from roles table
+    const { data: roleData, error: roleError } = await supabaseAdmin
+      .from('roles')
+      .select('id')
+      .eq('name', role === 'SUPER_ADMIN' ? 'Super Admin' : 
+                  role === 'PLATFORM_ADMIN' ? 'Platform Admin' : 
+                  role === 'SUPPORT_STAFF' ? 'Support Staff' : role)
+      .eq('scope', tenant_id ? 'tenant' : 'global')
+      .eq('tenant_id', tenant_id || null)
+      .single();
+
+    if (roleError || !roleData) {
+      console.error('Failed to find role:', roleError);
+      await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
+      return new Response(JSON.stringify({ error: 'Invalid role specified' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Insert user into public.users table
     const { error: userInsertError } = await supabaseAdmin
       .from('users')
@@ -152,7 +172,8 @@ const handler = async (req: Request): Promise<Response> => {
         id: newUser.user.id,
         email,
         name,
-        role,
+        role, // Keep legacy role field for backward compatibility
+        role_id: roleData.id, // New role system
         tenant_id: tenant_id || null,
         department,
         force_reset: true,

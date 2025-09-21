@@ -249,26 +249,35 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
       console.log('Auth state loading completed');
       setIsLoading(false);
       
-      // Force token refresh if user exists but JWT claims are missing
-      const checkAndRefreshToken = async () => {
-        if (session?.user) {
-          const claims = JSON.parse(atob(session.access_token.split('.')[1]));
-          console.log('Current JWT claims:', claims);
-          
-          // If role is missing from JWT but user exists, force refresh
-          if (!claims.user_metadata?.role && !claims.role) {
-            console.log('JWT missing role claims, forcing refresh...');
+      // Set up automatic token refresh to prevent expiry
+      const setupAutoRefresh = () => {
+        // Refresh token every 50 minutes (before 60 minute expiry)
+        const refreshInterval = setInterval(async () => {
+          if (session?.user) {
+            console.log('Auto-refreshing session token...');
             const { error } = await supabase.auth.refreshSession();
             if (error) {
-              console.error('Failed to refresh session:', error);
+              console.error('Auto-refresh failed:', error);
+              clearInterval(refreshInterval);
             } else {
-              console.log('Session refreshed successfully');
+              console.log('Session auto-refreshed successfully');
             }
+          } else {
+            clearInterval(refreshInterval);
           }
-        }
+        }, 50 * 60 * 1000); // 50 minutes
+
+        return refreshInterval;
       };
       
-      checkAndRefreshToken();
+      const refreshInterval = setupAutoRefresh();
+      
+      // Cleanup interval on unmount
+      return () => {
+        if (refreshInterval) {
+          clearInterval(refreshInterval);
+        }
+      };
     }
   };
 

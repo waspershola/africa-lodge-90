@@ -1558,6 +1558,15 @@ export type Database = {
         Args: { event: Json }
         Returns: Json
       }
+      debug_auth_context: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          auth_uid_result: string
+          debug_message: string
+          user_exists: boolean
+          user_role: string
+        }[]
+      }
       get_user_id: {
         Args: Record<PropertyKey, never>
         Returns: string

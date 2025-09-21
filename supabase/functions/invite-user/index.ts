@@ -57,12 +57,15 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Verify caller permissions
+    // Check caller permissions
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(
       authHeader.replace('Bearer ', '')
     );
 
+    console.log('Auth check result:', { user: !!user, error: !!authError });
+
     if (authError || !user) {
+      console.error('Auth error:', authError);
       return new Response(JSON.stringify({ error: 'Invalid authentication' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -76,7 +79,10 @@ const handler = async (req: Request): Promise<Response> => {
       .eq('id', user.id)
       .single();
 
+    console.log('Caller permissions check:', { callerData });
+
     if (!callerData || (callerData.role !== 'SUPER_ADMIN' && !['OWNER', 'MANAGER'].includes(callerData.role))) {
+      console.error('Insufficient permissions:', callerData);
       return new Response(JSON.stringify({ error: 'Insufficient permissions' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -85,8 +91,17 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { email, name, role, tenant_id, department }: InviteUserRequest = await req.json();
 
+    console.log('Starting invite-user function with body:', {
+      email,
+      name,
+      role,
+      tenant_id,
+      department
+    });
+
     // Validate required fields
     if (!email || !name || !role) {
+      console.error('Missing required fields:', { email: !!email, name: !!name, role: !!role });
       return new Response(JSON.stringify({ error: 'Email, name, and role are required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

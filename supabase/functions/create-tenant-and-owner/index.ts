@@ -64,27 +64,33 @@ serve(async (req) => {
     const token = authHeader.replace('Bearer ', '');
     console.log('Token received, length:', token.length);
     
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    const { data: authUser, error: authError } = await supabaseAdmin.auth.getUser(token);
     
-    if (userError || !user) {
-      console.error('Auth error:', userError);
+    console.log('Authentication result:', { authUser: !!authUser, error: !!authError });
+    
+    if (authError || !authUser) {
+      console.error('Auth error:', authError);
       throw new Error('Invalid authentication token');
     }
 
-    console.log('User authenticated:', user.id, user.email);
+    console.log('User authenticated:', authUser.id, authUser.email);
 
     // Check if user has SUPER_ADMIN role or is platform owner
     const { data: userData, error: roleError } = await supabaseAdmin
       .from('users')
       .select('role, is_platform_owner')
-      .eq('id', user.id)
+      .eq('id', authUser.id)
       .single();
 
+    console.log('User role check:', { userData, roleError });
+
     if (roleError || !userData) {
+      console.error('Role error:', roleError);
       throw new Error('User not found in system');
     }
 
     if (userData.role !== 'SUPER_ADMIN' && !userData.is_platform_owner) {
+      console.error('Insufficient permissions:', userData);
       throw new Error('Insufficient permissions - SUPER_ADMIN or platform owner required');
     }
 
@@ -248,7 +254,7 @@ serve(async (req) => {
             console.log('User record created');
           }
 
-          // Step 4: Update tenant with owner_id
+          // Step 5: Update tenant with owner_id
           const { error: updateError } = await supabaseAdmin
             .from('tenants')
             .update({ owner_id: authUserId } as any)

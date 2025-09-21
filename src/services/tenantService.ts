@@ -180,6 +180,8 @@ export const tenantService = {
 
   // Update tenant
   async updateTenant(tenantId: string, updates: Partial<Tenant>): Promise<Tenant> {
+    console.log('Updating tenant:', tenantId, 'with updates:', updates);
+    
     const { data, error } = await supabase
       .from('tenants')
       .update(updates)
@@ -187,18 +189,27 @@ export const tenantService = {
       .select()
       .single();
 
-    if (error) throw error;
+    console.log('Update result:', { data, error });
+    
+    if (error) {
+      console.error('Update error:', error);
+      throw error;
+    }
     return data;
   },
 
   // Reactivate tenant
   async reactivateTenant(tenantId: string): Promise<void> {
-    await this.updateTenant(tenantId, { subscription_status: 'active' });
+    console.log('Reactivating tenant:', tenantId);
+    const result = await this.updateTenant(tenantId, { subscription_status: 'active' });
+    console.log('Reactivation result:', result);
   },
 
   // Suspend tenant
   async suspendTenant(tenantId: string): Promise<void> {
-    await this.updateTenant(tenantId, { subscription_status: 'suspended' });
+    console.log('Suspending tenant:', tenantId);
+    const result = await this.updateTenant(tenantId, { subscription_status: 'suspended' });
+    console.log('Suspension result:', result);
   },
 
   // Delete tenant (hard delete)

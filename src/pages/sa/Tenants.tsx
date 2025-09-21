@@ -124,6 +124,15 @@ export default function TenantsReal() {
           }
         }
         break;
+      case 'reactivate':
+        if (confirm(`Are you sure you want to reactivate ${tenant.hotel_name}? They will regain full access.`)) {
+          try {
+            await reactivateTenant.mutateAsync(tenant.tenant_id);
+          } catch (error) {
+            console.error('Reactivation failed:', error);
+          }
+        }
+        break;
       case 'edit':
         setShowEditDialog(true);
         break;

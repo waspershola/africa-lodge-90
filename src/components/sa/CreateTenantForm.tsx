@@ -58,6 +58,9 @@ export function CreateTenantRealForm({ onSuccess }: CreateTenantRealFormProps) {
       // Get default starter plan
       const defaultPlan = plans.find(p => p.name.toLowerCase().includes('starter')) || plans[0];
       
+      console.log('Available plans:', plans);
+      console.log('Selected default plan:', defaultPlan);
+      
       if (!defaultPlan) {
         throw new Error('No default plan available');
       }
@@ -75,7 +78,11 @@ export function CreateTenantRealForm({ onSuccess }: CreateTenantRealFormProps) {
         address: data.address || '',
         phone: data.phone || '',
       };
+      
+      console.log('Final create data:', createData);
       const result = await createTenantAndOwner.mutateAsync(createData);
+      console.log('Create result:', result);
+      
       setCreatedTenant(result);
       setShowPassword(true);
       form.reset();

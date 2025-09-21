@@ -58,19 +58,21 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Use service role key to verify the token and get user
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(
+    const { data: authResult, error: authError } = await supabaseAdmin.auth.getUser(
       authHeader.replace('Bearer ', '')
     );
 
-    console.log('Auth check result:', { user: !!user, error: !!authError });
+    console.log('Auth check result:', { user: !!authResult?.user, error: !!authError });
 
-    if (authError || !user) {
+    if (authError || !authResult?.user) {
       console.error('Auth error:', authError);
       return new Response(JSON.stringify({ error: 'Invalid authentication' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    const user = authResult.user;
 
     // Check if caller is super admin or owner/manager
     const { data: callerData } = await supabaseAdmin
@@ -109,8 +111,9 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Check if user already exists
-    const { data: existingUser } = await supabaseAdmin.auth.admin.getUserByEmail(email);
-    if (existingUser.user) {
+    const { data: usersList } = await supabaseAdmin.auth.admin.listUsers();
+    const existingUser = usersList?.users?.find(u => u.email === email);
+    if (existingUser) {
       return new Response(JSON.stringify({ error: 'User with this email already exists' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -66,20 +66,20 @@ serve(async (req) => {
     
     const { data: authUser, error: authError } = await supabaseAdmin.auth.getUser(token);
     
-    console.log('Authentication result:', { authUser: !!authUser, error: !!authError });
+    console.log('Authentication result:', { authUser: !!authUser?.user, error: !!authError });
     
-    if (authError || !authUser) {
+    if (authError || !authUser?.user) {
       console.error('Auth error:', authError);
       throw new Error('Invalid authentication token');
     }
 
-    console.log('User authenticated:', authUser.id, authUser.email);
+    console.log('User authenticated:', authUser.user.id, authUser.user.email);
 
     // Check if user has SUPER_ADMIN role or is platform owner
     const { data: userData, error: roleError } = await supabaseAdmin
       .from('users')
       .select('role, is_platform_owner')
-      .eq('id', authUser.id)
+      .eq('id', authUser.user.id)
       .single();
 
     console.log('User role check:', { userData, roleError });
@@ -124,8 +124,22 @@ serve(async (req) => {
     }
 
     // Check if user already exists with this email in auth
-    const { data: existingAuthUser } = await supabaseAdmin.auth.admin.listUsers();
-    const userAlreadyExists = existingAuthUser?.users?.find(u => u.email === requestData.owner_email);
+    const { data: existingAuthUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+    if (listError) {
+      console.error('Error listing users:', listError);
+      return new Response(
+        JSON.stringify({
+          error: 'Failed to check existing users',
+          success: false
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+        }
+      );
+    }
+    
+    const userAlreadyExists = existingAuthUsers?.users?.find(u => u.email === requestData.owner_email);
     if (userAlreadyExists) {
       console.log('User already exists in auth:', requestData.owner_email);
       return new Response(

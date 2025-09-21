@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { supabaseApi } from '@/lib/supabase-api';
 import { useToast } from '@/hooks/use-toast';
 
@@ -170,35 +171,39 @@ export const useCreateGlobalUser = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (userData: any) => {
-      console.log('Attempting to create global user:', userData);
+      console.log('Creating global user with data:', userData);
       
-      // Call the invite-user edge function to create platform staff
+      // Map role from form to database format
+      const dbRole = userData.role === 'platform-admin' ? 'SUPER_ADMIN' : 
+                     userData.role === 'support-agent' ? 'SUPPORT' :
+                     userData.role === 'auditor' ? 'AUDITOR' : 'STAFF';
+      
+      // Using the invite-user edge function for creating global users
       const { data, error } = await supabase.functions.invoke('invite-user', {
         body: {
           email: userData.email,
           name: userData.name,
-          role: userData.role.toUpperCase().replace('-', '_'),
-          department: userData.department,
-          tenant_id: null // Global users don't belong to specific tenants
+          role: dbRole,
+          department: userData.department || 'Operations',
+          tenant_id: null // Global users don't belong to a specific tenant
         }
       });
 
-      console.log('Invite user edge function response:', { data, error });
-
       if (error) {
-        console.error('Failed to create global user:', error);
+        console.error('Error creating global user:', error);
         throw new Error(error.message || 'Failed to create global user');
       }
 
-      if (!data?.success) {
-        console.error('Invite user function returned error:', data);
-        throw new Error(data?.error || 'Failed to create global user');
-      }
-
+      console.log('Global user created successfully:', data);
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sa', 'global-users'] });
+      queryClient.invalidateQueries({ queryKey: ['globalUsers'] });
+      toast.success('Global user created successfully');
+    },
+    onError: (error: Error) => {
+      console.error('Failed to create global user:', error);
+      toast.error(`Failed to create global user: ${error.message}`);
     }
   });
 };

@@ -64,7 +64,7 @@ serve(async (req) => {
     const token = authHeader.replace('Bearer ', '');
     console.log('Token received, length:', token.length);
     
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserByAccessToken(token);
+    const { data: authUser, error: authError } = await supabaseAdmin.auth.getUser(token);
     
     console.log('Authentication result:', { authUser: !!authUser, error: !!authError });
     

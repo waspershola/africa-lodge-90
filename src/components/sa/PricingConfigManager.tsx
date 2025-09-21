@@ -1,117 +1,191 @@
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect } from 'react';
+import { Plus, Edit, Trash2, Search, ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Eye, 
-  EyeOff, 
-  Save, 
-  RotateCcw,
-  DollarSign,
-  Users,
-  Calendar,
-  Video,
-  Settings
-} from 'lucide-react';
-import { usePricingPlans, PricingPlan } from '@/hooks/usePricingPlans';
+import { LoadingState } from '@/components/ui/loading-state';
+import { ErrorState } from '@/components/ui/error-state';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+interface PricingPlan {
+  id: string;
+  name: string;
+  price_monthly: number;
+  price_annual?: number;
+  max_rooms: number;
+  max_staff: number;
+  features: string[];
+  trial_days: number;
+  created_at: string;
+  updated_at: string;
+}
 
 export function PricingConfigManager() {
+  const [plans, setPlans] = useState<PricingPlan[]>([]);
+  const [loading, setLoading] = useState(true);
   const [editingPlan, setEditingPlan] = useState<PricingPlan | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
-  
-  const { plans, loading, refreshPlans } = usePricingPlans();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<'name' | 'price' | 'created_at'>('created_at');
 
-  const createNewPlan = () => {
-    const newPlan: PricingPlan = {
+  // Fetch plans from Supabase
+  const fetchPlans = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('plans')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching plans:', error);
+        toast.error('Failed to fetch pricing plans');
+        return;
+      }
+
+      // Transform the data to ensure features is always a string array
+      const transformedData = data?.map(plan => ({
+        ...plan,
+        features: Array.isArray(plan.features) ? 
+          plan.features.map(f => typeof f === 'string' ? f : String(f)) : 
+          typeof plan.features === 'string' ? [plan.features] : [],
+        trial_days: plan.trial_days || 14,
+        price_annual: plan.price_annual || undefined,
+        created_at: plan.created_at || new Date().toISOString(),
+        updated_at: plan.updated_at || new Date().toISOString()
+      })) || [];
+
+      setPlans(transformedData);
+    } catch (error) {
+      console.error('Error fetching plans:', error);
+      toast.error('Failed to fetch pricing plans');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load plans on component mount
+  useEffect(() => {
+    fetchPlans();
+  }, []);
+
+  if (loading) return <LoadingState />;
+
+  const filteredPlans = plans.filter(plan => {
+    const matchesSearch = plan.name.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
+  }).sort((a, b) => {
+    switch (sortBy) {
+      case 'name':
+        return a.name.localeCompare(b.name);
+      case 'price':
+        return a.price_monthly - b.price_monthly;
+      case 'created_at':
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      default:
+        return 0;
+    }
+  });
+
+  const handleCreatePlan = () => {
+    setEditingPlan({
       id: '',
       name: '',
-      price: 0,
       price_monthly: 0,
       price_annual: 0,
-      currency: 'NGN',
-      description: '',
+      max_rooms: 10,
+      max_staff: 5,
       features: [],
-      room_capacity_min: 1,
-      room_capacity_max: 25,
-      max_rooms: 25,
-      max_staff: 10,
-      popular: false,
-      trial_enabled: true,
-      trial_duration_days: 14,
       trial_days: 14,
-      demo_video_url: '',
-      cta_text: 'Start Free Trial',
-      status: 'draft',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
-    };
-    setEditingPlan(newPlan);
+    });
     setIsCreating(true);
-    setHasChanges(true);
   };
 
-  const editPlan = (plan: PricingPlan) => {
-    setEditingPlan({ ...plan });
+  const handleEditPlan = (plan: PricingPlan) => {
+    setEditingPlan(plan);
     setIsCreating(false);
-    setHasChanges(false);
   };
 
-  const savePlan = async () => {
+  const handleSavePlan = async () => {
     if (!editingPlan) return;
-    
+
     try {
-      // In production, this will call the API
-      console.log('Saving plan:', editingPlan);
-      
+      if (isCreating) {
+        const { error } = await supabase
+          .from('plans')
+          .insert({
+            name: editingPlan.name,
+            price_monthly: editingPlan.price_monthly,
+            price_annual: editingPlan.price_annual,
+            max_rooms: editingPlan.max_rooms,
+            max_staff: editingPlan.max_staff,
+            features: editingPlan.features,
+            trial_days: editingPlan.trial_days
+          });
+
+        if (error) throw error;
+        toast.success('Plan created successfully');
+      } else {
+        const { error } = await supabase
+          .from('plans')
+          .update({
+            name: editingPlan.name,
+            price_monthly: editingPlan.price_monthly,
+            price_annual: editingPlan.price_annual,
+            max_rooms: editingPlan.max_rooms,
+            max_staff: editingPlan.max_staff,
+            features: editingPlan.features,
+            trial_days: editingPlan.trial_days,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editingPlan.id);
+
+        if (error) throw error;
+        toast.success('Plan updated successfully');
+      }
+
       setEditingPlan(null);
       setIsCreating(false);
-      setHasChanges(false);
-      await refreshPlans();
+      fetchPlans();
     } catch (error) {
-      console.error('Failed to save plan:', error);
+      console.error('Error saving plan:', error);
+      toast.error('Failed to save plan');
     }
   };
 
-  const cancelEdit = () => {
-    setEditingPlan(null);
-    setIsCreating(false);
-    setHasChanges(false);
-  };
-
-  const togglePlanStatus = async (planId: string, currentStatus: string) => {
-    const newStatus = currentStatus === 'active' ? 'draft' : 'active';
-    console.log(`Toggling plan ${planId} from ${currentStatus} to ${newStatus}`);
-    await refreshPlans();
-  };
-
-  const deletePlan = async (planId: string) => {
-    if (confirm('Are you sure you want to delete this pricing plan?')) {
-      console.log('Deleting plan:', planId);
-      await refreshPlans();
+  const handleDeletePlan = async (planId: string) => {
+    if (!confirm('Are you sure you want to delete this plan? This action cannot be undone.')) {
+      return;
     }
-  };
 
-  const updateEditingPlan = (updates: Partial<PricingPlan>) => {
-    if (editingPlan) {
-      setEditingPlan({ ...editingPlan, ...updates });
-      setHasChanges(true);
+    try {
+      const { error } = await supabase
+        .from('plans')
+        .delete()
+        .eq('id', planId);
+
+      if (error) throw error;
+      toast.success('Plan deleted successfully');
+      fetchPlans();
+    } catch (error) {
+      console.error('Error deleting plan:', error);
+      toast.error('Failed to delete plan');
     }
   };
 
   const addFeature = () => {
     if (editingPlan) {
-      updateEditingPlan({ 
-        features: [...editingPlan.features, 'New feature'] 
+      setEditingPlan({
+        ...editingPlan,
+        features: [...editingPlan.features, 'New feature']
       });
     }
   };
@@ -120,14 +194,14 @@ export function PricingConfigManager() {
     if (editingPlan) {
       const newFeatures = [...editingPlan.features];
       newFeatures[index] = value;
-      updateEditingPlan({ features: newFeatures });
+      setEditingPlan({ ...editingPlan, features: newFeatures });
     }
   };
 
   const removeFeature = (index: number) => {
     if (editingPlan) {
       const newFeatures = editingPlan.features.filter((_, i) => i !== index);
-      updateEditingPlan({ features: newFeatures });
+      setEditingPlan({ ...editingPlan, features: newFeatures });
     }
   };
 
@@ -135,252 +209,224 @@ export function PricingConfigManager() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold">Pricing Configuration</h2>
-          <p className="text-muted-foreground">Manage pricing plans displayed on the homepage</p>
+          <h1 className="text-3xl font-bold text-foreground">Pricing Configuration</h1>
+          <p className="text-muted-foreground">Manage subscription plans and pricing tiers</p>
         </div>
-        <Button onClick={createNewPlan} className="bg-gradient-primary">
-          <Plus className="mr-2 h-4 w-4" />
+        <Button onClick={handleCreatePlan} className="bg-primary hover:bg-primary/90">
+          <Plus className="h-4 w-4 mr-2" />
           Create Plan
         </Button>
       </div>
 
-      {/* Plans Overview */}
-      <div className="grid gap-4">
-        {plans.map((plan) => (
-          <Card key={plan.id}>
-            <CardHeader className="pb-4">
+      {/* Filters and Search */}
+      <div className="flex space-x-4 items-center">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Search plans..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+          <SelectTrigger className="w-[150px]">
+            <ArrowUpDown className="h-4 w-4 mr-2" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="created_at">Created Date</SelectItem>
+            <SelectItem value="name">Name</SelectItem>
+            <SelectItem value="price">Price</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Plans Grid */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {filteredPlans?.map((plan) => (
+          <Card key={plan.id} className="relative">
+            <CardHeader>
               <div className="flex justify-between items-start">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <CardTitle className="text-lg">{plan.name}</CardTitle>
-                    <Badge variant={plan.status === 'active' ? 'default' : 'secondary'}>
-                      {plan.status}
-                    </Badge>
-                    {plan.popular && (
-                      <Badge variant="outline" className="text-accent border-accent">
-                        Most Popular
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="text-2xl font-bold text-primary mt-1">
-                    ₦{plan.price.toLocaleString()}/month
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {plan.description}
-                  </p>
+                  <CardTitle className="text-xl">{plan.name}</CardTitle>
+                  <CardDescription>
+                    Up to {plan.max_rooms} rooms • {plan.max_staff} staff members
+                  </CardDescription>
                 </div>
-                <div className="flex gap-2">
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <div className="text-3xl font-bold">
+                    ₦{plan.price_monthly.toLocaleString()}
+                    <span className="text-sm font-normal text-muted-foreground">/month</span>
+                  </div>
+                  {plan.price_annual && (
+                    <div className="text-sm text-muted-foreground">
+                      ₦{plan.price_annual.toLocaleString()}/year
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <p className="text-sm font-medium mb-2">Features:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {plan.features.map((feature, index) => (
+                      <Badge key={index} variant="outline" className="text-xs">
+                        {feature.replace('_', ' ')}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="text-sm text-muted-foreground">
+                  {plan.trial_days} day trial • Created {new Date(plan.created_at).toLocaleDateString()}
+                </div>
+
+                <div className="flex space-x-2">
                   <Button
-                    variant="outline"
                     size="sm"
-                    onClick={() => togglePlanStatus(plan.id, plan.status)}
+                    variant="outline"
+                    onClick={() => handleEditPlan(plan)}
+                    className="flex-1"
                   >
-                    {plan.status === 'active' ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
                   </Button>
                   <Button
-                    variant="outline"
                     size="sm"
-                    onClick={() => editPlan(plan)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
                     variant="destructive"
-                    size="sm"
-                    onClick={() => deletePlan(plan.id)}
+                    onClick={() => handleDeletePlan(plan.id)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <Users className="h-4 w-4" />
-                  {plan.room_capacity_min}-{plan.room_capacity_max === 9999 ? '∞' : plan.room_capacity_max} rooms
-                </div>
-                {plan.trial_enabled && (
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    {plan.trial_duration_days}-day trial
-                  </div>
-                )}
-                {plan.demo_video_url && (
-                  <div className="flex items-center gap-1">
-                    <Video className="h-4 w-4" />
-                    Demo video
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Edit/Create Plan Modal */}
-      {editingPlan && (
-        <Card className="fixed inset-4 z-50 overflow-auto bg-background shadow-2xl border-2">
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                {isCreating ? 'Create New Plan' : `Edit ${editingPlan.name}`}
-              </CardTitle>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={cancelEdit}>
+      {/* Edit/Create Plan Dialog */}
+      <Dialog open={!!editingPlan} onOpenChange={() => setEditingPlan(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {isCreating ? 'Create New Plan' : 'Edit Plan'}
+            </DialogTitle>
+            <DialogDescription>
+              Configure pricing and features for this subscription plan
+            </DialogDescription>
+          </DialogHeader>
+
+          {editingPlan && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="name">Plan Name</Label>
+                  <Input
+                    id="name"
+                    value={editingPlan.name}
+                    onChange={(e) => setEditingPlan({ ...editingPlan, name: e.target.value })}
+                    placeholder="e.g., Starter, Professional"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="trial_days">Trial Days</Label>
+                  <Input
+                    id="trial_days"
+                    type="number"
+                    value={editingPlan.trial_days}
+                    onChange={(e) => setEditingPlan({ ...editingPlan, trial_days: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="price_monthly">Monthly Price (₦)</Label>
+                  <Input
+                    id="price_monthly"
+                    type="number"
+                    step="0.01"
+                    value={editingPlan.price_monthly}
+                    onChange={(e) => setEditingPlan({ ...editingPlan, price_monthly: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="price_annual">Annual Price (₦)</Label>
+                  <Input
+                    id="price_annual"
+                    type="number"
+                    step="0.01"
+                    value={editingPlan.price_annual || ''}
+                    onChange={(e) => setEditingPlan({ ...editingPlan, price_annual: parseFloat(e.target.value) || undefined })}
+                    placeholder="Optional"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="max_rooms">Maximum Rooms</Label>
+                  <Input
+                    id="max_rooms"
+                    type="number"
+                    value={editingPlan.max_rooms}
+                    onChange={(e) => setEditingPlan({ ...editingPlan, max_rooms: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="max_staff">Maximum Staff</Label>
+                  <Input
+                    id="max_staff"
+                    type="number"
+                    value={editingPlan.max_staff}
+                    onChange={(e) => setEditingPlan({ ...editingPlan, max_staff: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label>Features</Label>
+                <div className="space-y-2">
+                  {editingPlan.features.map((feature, index) => (
+                    <div key={index} className="flex gap-2">
+                      <Input
+                        value={feature}
+                        onChange={(e) => updateFeature(index, e.target.value)}
+                        placeholder="Feature description"
+                      />
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => removeFeature(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button variant="outline" onClick={addFeature}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Feature
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setEditingPlan(null)}>
                   Cancel
                 </Button>
-                <Button 
-                  onClick={savePlan}
-                  className="bg-gradient-primary"
-                  disabled={!hasChanges}
-                >
-                  <Save className="mr-2 h-4 w-4" />
-                  {isCreating ? 'Create Plan' : 'Save Changes'}
+                <Button onClick={handleSavePlan}>
+                  {isCreating ? 'Create Plan' : 'Update Plan'}
                 </Button>
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="name">Plan Name</Label>
-                <Input
-                  id="name"
-                  value={editingPlan.name}
-                  onChange={(e) => updateEditingPlan({ name: e.target.value })}
-                  placeholder="e.g., Growth"
-                />
-              </div>
-              <div>
-                <Label htmlFor="price">Monthly Price (₦)</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  value={editingPlan.price}
-                  onChange={(e) => updateEditingPlan({ price: Number(e.target.value) })}
-                  placeholder="65000"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="description">Description</Label>
-              <Input
-                id="description"
-                value={editingPlan.description}
-                onChange={(e) => updateEditingPlan({ description: e.target.value })}
-                placeholder="Ideal for mid-size hotels..."
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="min-rooms">Min Rooms</Label>
-                <Input
-                  id="min-rooms"
-                  type="number"
-                  value={editingPlan.room_capacity_min}
-                  onChange={(e) => updateEditingPlan({ room_capacity_min: Number(e.target.value) })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="max-rooms">Max Rooms</Label>
-                <Input
-                  id="max-rooms"
-                  type="number"
-                  value={editingPlan.room_capacity_max === 9999 ? '' : editingPlan.room_capacity_max}
-                  onChange={(e) => updateEditingPlan({ 
-                    room_capacity_max: e.target.value ? Number(e.target.value) : 9999 
-                  })}
-                  placeholder="Leave empty for unlimited"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label>Features</Label>
-              <div className="space-y-2">
-                {editingPlan.features.map((feature, index) => (
-                  <div key={index} className="flex gap-2">
-                    <Input
-                      value={feature}
-                      onChange={(e) => updateFeature(index, e.target.value)}
-                      placeholder="Feature description"
-                    />
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => removeFeature(index)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button variant="outline" onClick={addFeature}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Feature
-                </Button>
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="demo-video">Demo Video URL (optional)</Label>
-              <Input
-                id="demo-video"
-                value={editingPlan.demo_video_url || ''}
-                onChange={(e) => updateEditingPlan({ demo_video_url: e.target.value })}
-                placeholder="https://youtube.com/watch?v=..."
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="cta-text">Call-to-Action Text</Label>
-              <Input
-                id="cta-text"
-                value={editingPlan.cta_text}
-                onChange={(e) => updateEditingPlan({ cta_text: e.target.value })}
-                placeholder="Start Free Trial"
-              />
-            </div>
-
-            <Separator />
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="popular"
-                  checked={editingPlan.popular}
-                  onCheckedChange={(checked) => updateEditingPlan({ popular: checked })}
-                />
-                <Label htmlFor="popular">Mark as most popular</Label>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="trial"
-                  checked={editingPlan.trial_enabled}
-                  onCheckedChange={(checked) => updateEditingPlan({ trial_enabled: checked })}
-                />
-                <Label htmlFor="trial">Enable free trial</Label>
-              </div>
-            </div>
-
-            {editingPlan.trial_enabled && (
-              <div>
-                <Label htmlFor="trial-days">Trial Duration (days)</Label>
-                <Input
-                  id="trial-days"
-                  type="number"
-                  value={editingPlan.trial_duration_days}
-                  onChange={(e) => updateEditingPlan({ trial_duration_days: Number(e.target.value) })}
-                />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -77,21 +77,63 @@ export function useOnboarding() {
     }
   };
 
-  // Save progress to Supabase
+  // Save progress to Supabase with atomic updates
   const saveProgress = async (step: string, data: any, completed = false) => {
     if (!user || !tenant) return;
 
     try {
-      // Update tenant onboarding step and setup completion status
+      console.log('Saving onboarding progress:', { step, completed, data });
+
+      // Prepare update data - only include non-null values
+      const updateData: any = {
+        onboarding_step: step,
+        updated_at: new Date().toISOString()
+      };
+
+      // Only update setup_completed if explicitly setting it to true
+      if (completed === true) {
+        updateData.setup_completed = true;
+      }
+
+      // Save specific step data to appropriate tenant fields
+      if (data) {
+        if (step === 'hotel_information' && data.hotelInfo) {
+          Object.assign(updateData, {
+            hotel_name: data.hotelInfo.name,
+            address: data.hotelInfo.address,
+            city: data.hotelInfo.city,
+            country: data.hotelInfo.country,
+            timezone: data.hotelInfo.timezone,
+            phone: data.hotelInfo.phone,
+            email: data.hotelInfo.supportEmail,
+            currency: data.hotelInfo.currency
+          });
+        }
+        
+        if (step === 'plan_confirmation' && data.plan) {
+          updateData.plan_id = data.plan.id;
+        }
+
+        if (step === 'branding' && data.branding) {
+          updateData.brand_colors = data.branding.colors;
+          updateData.logo_url = data.branding.logoUrl;
+        }
+
+        // Store full progress data in settings for complex data
+        const currentSettings = (tenant as any).settings || {};
+        updateData.settings = {
+          ...currentSettings,
+          onboarding_progress: {
+            ...(currentSettings.onboarding_progress || {}),
+            [step]: data
+          }
+        };
+      }
+
+      // Update tenant record atomically
       const { error: tenantError } = await supabase
         .from('tenants')
-        .update({
-          onboarding_step: step,
-          setup_completed: completed,
-          updated_at: new Date().toISOString(),
-          // Save onboarding data to settings if provided
-          ...(data && { settings: data })
-        })
+        .update(updateData)
         .eq('tenant_id', tenant.tenant_id);
 
       if (tenantError) throw tenantError;
@@ -99,53 +141,45 @@ export function useOnboarding() {
       // Create audit log
       await supabase
         .from('audit_log')
-        .insert([{
-          action: completed ? 'onboarding_completed' : 'onboarding_step_completed',
+        .insert({
+          action: completed ? 'onboarding_completed' : 'onboarding_progress',
           resource_type: 'tenant',
           resource_id: tenant.tenant_id,
+          description: completed 
+            ? 'Onboarding process completed'
+            : `Onboarding step completed: ${step}`,
           actor_id: user.id,
           actor_email: user.email,
           actor_role: user.role,
           tenant_id: tenant.tenant_id,
-          description: `Onboarding ${completed ? 'completed' : `step ${step} completed`}`,
-          new_values: { step, completed, data }
-        }]);
+          metadata: {
+            step,
+            completed,
+            progress_data: data ? Object.keys(data) : []
+          }
+        });
 
       // Update local state
       setStatus(prev => ({
         ...prev,
         currentStep: step,
-        setupCompleted: completed,
-        lastUpdated: new Date().toISOString(),
+        setupCompleted: completed || prev.setupCompleted,
+        lastUpdated: new Date().toISOString()
       }));
 
-      // Also save to localStorage as fallback
-      const progress = {
+      // Also update localStorage as backup
+      localStorage.setItem(`onboarding_${user.id}`, JSON.stringify({
         currentStep: step,
-        data,
         completed,
-        lastUpdated: new Date().toISOString(),
-      };
-      localStorage.setItem(`onboarding_${user.id}`, JSON.stringify(progress));
+        data,
+        lastUpdated: new Date().toISOString()
+      }));
 
-      console.log(`Onboarding progress saved: ${user.email} completed step ${step}`);
+      console.log('Onboarding progress saved successfully');
+      
     } catch (error) {
       console.error('Error saving onboarding progress:', error);
-      // Fallback to localStorage
-      const progress = {
-        currentStep: step,
-        data,
-        completed,
-        lastUpdated: new Date().toISOString(),
-      };
-      localStorage.setItem(`onboarding_${user.id}`, JSON.stringify(progress));
-      
-      setStatus(prev => ({
-        ...prev,
-        currentStep: step,
-        setupCompleted: completed,
-        lastUpdated: progress.lastUpdated,
-      }));
+      throw error;
     }
   };
 

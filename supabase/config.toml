@@ -14,3 +14,12 @@ verify_jwt = false
 
 [functions.send-temp-password]
 verify_jwt = false
+
+[functions.invite-user]
+verify_jwt = true
+
+[functions.impersonate-user]
+verify_jwt = true
+
+[functions.stop-impersonation]
+verify_jwt = true

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { 
   Plus, Search, Edit, Trash2, Building2, Mail, MapPin, 
   MoreHorizontal, Eye, UserCheck, Pause, Play, Filter,
-  Crown, Key, RefreshCw, Settings
+  Crown, Key, RefreshCw, Settings, UserPlus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,7 @@ import { TenantDetailsDrawer } from '@/components/sa/TenantDetailsDrawer';
 import { ImpersonationModal } from '@/components/sa/ImpersonationModal';
 import { PasswordResetDialog } from '@/components/sa/PasswordResetDialog';
 import { EditTenantDialog } from '@/components/sa/EditTenantDialog';
+import { InviteUserDialog } from '@/components/sa/InviteUserDialog';
 
 import type { TenantWithOwner } from '@/services/tenantService';
 
@@ -53,6 +54,7 @@ export default function TenantsReal() {
   const [showImpersonation, setShowImpersonation] = useState(false);
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
   
   
   const { data: tenants = [], isLoading, error, refetch } = useTenantsReal();
@@ -121,6 +123,9 @@ export default function TenantsReal() {
         break;
       case 'edit':
         setShowEditDialog(true);
+        break;
+      case 'invite-staff':
+        setShowInviteDialog(true);
         break;
       default:
         console.log('Unknown action:', action);
@@ -377,6 +382,10 @@ export default function TenantsReal() {
                           <UserCheck className="h-4 w-4 mr-2" />
                           Force Logout
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleAction('invite-staff', tenant)}>
+                          <UserPlus className="h-4 w-4 mr-2" />
+                          Invite Staff
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => handleAction('edit', tenant)}>
                           <Settings className="h-4 w-4 mr-2" />
@@ -467,6 +476,16 @@ export default function TenantsReal() {
         onClose={() => {
           setShowEditDialog(false);
           setSelectedTenant(null);
+        }}
+      />
+
+      {/* Invite User Dialog */}
+      <InviteUserDialog
+        tenantId={selectedTenant?.tenant_id}
+        onSuccess={() => {
+          setShowInviteDialog(false);
+          setSelectedTenant(null);
+          refetch(); // Refresh tenant list
         }}
       />
 

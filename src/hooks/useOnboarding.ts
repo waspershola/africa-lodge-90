@@ -29,7 +29,16 @@ export function useOnboarding() {
 
   // Check if onboarding is required from Supabase
   const checkOnboardingStatus = useCallback(async () => {
-    if (!user || !tenant) return;
+    console.log('useOnboarding: checkOnboardingStatus called', { 
+      user: user?.email, 
+      tenant: tenant?.hotel_name,
+      pathname: window.location.pathname 
+    });
+
+    if (!user || !tenant) {
+      console.log('useOnboarding: Missing user or tenant, skipping check');
+      return;
+    }
 
     try {
       // Check tenant setup_completed status
@@ -41,6 +50,8 @@ export function useOnboarding() {
 
       if (error) throw error;
 
+      console.log('useOnboarding: Tenant data from DB', tenantData);
+
       const mockStatus = {
         isRequired: !tenantData.setup_completed && tenantData.subscription_status === 'trialing',
         currentStep: tenantData.onboarding_step || 'hotel_information',
@@ -48,17 +59,24 @@ export function useOnboarding() {
         lastUpdated: new Date().toISOString(),
       };
 
+      console.log('useOnboarding: Calculated status', mockStatus);
       setStatus(mockStatus);
 
       // Redirect to onboarding if required and not already there
       // Prevent redirect loops by checking location more precisely
       const isOnOnboardingPage = window.location.pathname === '/onboarding';
+      console.log('useOnboarding: Navigation check', { 
+        isRequired: mockStatus.isRequired, 
+        isOnOnboardingPage,
+        currentPath: window.location.pathname 
+      });
+
       if (mockStatus.isRequired && !isOnOnboardingPage) {
-        console.log('Redirecting to onboarding - setup incomplete');
+        console.log('useOnboarding: Redirecting to onboarding - setup incomplete');
         navigate('/onboarding');
       } else if (!mockStatus.isRequired && isOnOnboardingPage) {
         // If setup is complete but user is on onboarding page, redirect to dashboard
-        console.log('Setup complete - redirecting to dashboard');
+        console.log('useOnboarding: Setup complete - redirecting to dashboard');
         navigate('/owner-dashboard');
       }
     } catch (error) {
@@ -70,6 +88,7 @@ export function useOnboarding() {
         setupCompleted: getStoredProgress()?.completed || false,
         lastUpdated: getStoredProgress()?.lastUpdated,
       };
+      console.log('useOnboarding: Using fallback status', fallbackStatus);
       setStatus(fallbackStatus);
     }
   }, [user, tenant, navigate]);

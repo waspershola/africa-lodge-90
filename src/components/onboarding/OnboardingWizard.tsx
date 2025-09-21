@@ -125,14 +125,23 @@ export function OnboardingWizard() {
   
   // Update current step when tenant changes (for fail-safe recovery)
   useEffect(() => {
+    console.log('OnboardingWizard: tenant effect triggered', { 
+      tenant: tenant?.hotel_name,
+      onboarding_step: tenant?.onboarding_step,
+      setup_completed: tenant?.setup_completed,
+      currentStep 
+    });
+    
     if (tenant) {
       const newStep = getInitialStep();
+      console.log(`Calculated step: ${newStep}, current step: ${currentStep}`);
+      
       if (newStep !== currentStep) {
         console.log(`Tenant changed - updating step from ${currentStep} to ${newStep}`);
         setCurrentStep(newStep);
       }
     }
-  }, [tenant?.onboarding_step]);
+  }, [tenant?.onboarding_step, tenant?.setup_completed]);
   
   // Initialize with saved data or defaults
   const [onboardingData, setOnboardingData] = useState<OnboardingData>(() => {

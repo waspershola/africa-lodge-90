@@ -9,6 +9,7 @@ type Plan = Database['public']['Tables']['plans']['Row'];
 export interface TenantWithOwner extends Tenant {
   owner_email?: string;
   owner_name?: string;
+  owner_phone?: string;
   plan_name?: string;
   total_rooms?: number;
 }
@@ -65,7 +66,7 @@ export const tenantService = {
         if (tenantWithOwnerId.owner_id) {
           const ownerResult = await supabase
             .from('users')
-            .select('email, name')
+            .select('email, name, phone')
             .eq('id', tenantWithOwnerId.owner_id)
             .single();
           owner = ownerResult.data;
@@ -80,7 +81,8 @@ export const tenantService = {
         return {
           ...tenant,
           owner_email: owner?.email,
-          owner_name: owner?.name,
+          owner_name: owner?.name || owner?.email, // Fallback to email if name is null
+          owner_phone: owner?.phone,
           plan_name: tenant.plans?.name,
           total_rooms: count || 0
         };

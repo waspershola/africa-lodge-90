@@ -26,6 +26,8 @@ import { CreateTenantRealForm } from '@/components/sa/CreateTenantForm';
 import { TenantDetailsDrawer } from '@/components/sa/TenantDetailsDrawer';
 import { ImpersonationModal } from '@/components/sa/ImpersonationModal';
 import { PasswordResetDialog } from '@/components/sa/PasswordResetDialog';
+import { EditTenantDialog } from '@/components/sa/EditTenantDialog';
+import { RoomManagementDialog } from '@/components/sa/RoomManagementDialog';
 import type { TenantWithOwner } from '@/services/tenantService';
 
 const fadeIn = {
@@ -50,6 +52,8 @@ export default function TenantsReal() {
   const [showTenantDetails, setShowTenantDetails] = useState(false);
   const [showImpersonation, setShowImpersonation] = useState(false);
   const [showPasswordReset, setShowPasswordReset] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showRoomManagement, setShowRoomManagement] = useState(false);
   
   const { data: tenants = [], isLoading, error, refetch } = useTenantsReal();
   const { data: metrics } = useTenantMetrics();
@@ -104,8 +108,10 @@ export default function TenantsReal() {
         }
         break;
       case 'edit':
-        // TODO: Open edit dialog
-        console.log('Edit tenant:', tenant.tenant_id);
+        setShowEditDialog(true);
+        break;
+      case 'manage-rooms':
+        setShowRoomManagement(true);
         break;
       default:
         console.log('Unknown action:', action);
@@ -305,15 +311,20 @@ export default function TenantsReal() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{tenant.owner_name || 'N/A'}</div>
-                      <div className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Mail className="h-3 w-3" />
-                        {tenant.owner_email || 'N/A'}
-                      </div>
-                    </div>
-                  </TableCell>
+                   <TableCell>
+                     <div>
+                       <div className="font-medium">{tenant.owner_name || 'N/A'}</div>
+                       <div className="text-sm text-muted-foreground flex items-center gap-1">
+                         <Mail className="h-3 w-3" />
+                         {tenant.owner_email || 'N/A'}
+                       </div>
+                       {tenant.owner_phone && (
+                         <div className="text-xs text-muted-foreground">
+                           {tenant.owner_phone}
+                         </div>
+                       )}
+                     </div>
+                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">{tenant.plan_name || 'N/A'}</Badge>
                   </TableCell>
@@ -348,6 +359,15 @@ export default function TenantsReal() {
                         <DropdownMenuItem onClick={() => handleAction('resend-invite', tenant)}>
                           <RefreshCw className="h-4 w-4 mr-2" />
                           Resend Invite
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => handleAction('edit', tenant)}>
+                          <Settings className="h-4 w-4 mr-2" />
+                          Edit Details
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleAction('manage-rooms', tenant)}>
+                          <Building2 className="h-4 w-4 mr-2" />
+                          Manage Rooms
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         {tenant.subscription_status === 'active' || tenant.subscription_status === 'trialing' ? (
@@ -425,6 +445,27 @@ export default function TenantsReal() {
           setSelectedTenant(null);
         }}
         onConfirm={handlePasswordReset}
+      />
+
+      {/* Edit Tenant Dialog */}
+      <EditTenantDialog
+        tenant={selectedTenant}
+        isOpen={showEditDialog}
+        onClose={() => {
+          setShowEditDialog(false);
+          setSelectedTenant(null);
+        }}
+      />
+
+      {/* Room Management Dialog */}
+      <RoomManagementDialog
+        tenant={selectedTenant}
+        isOpen={showRoomManagement}
+        onClose={() => {
+          setShowRoomManagement(false);
+          setSelectedTenant(null);
+        }}
+        onRoomsUpdate={refetch}
       />
     </motion.div>
   );

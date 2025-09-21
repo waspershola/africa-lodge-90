@@ -104,6 +104,9 @@ export function TenantDetailsDrawer({ tenant, isOpen, onClose, onAction }: Tenan
               <div>
                 <div className="font-medium">{tenant.owner_name || 'Unknown'}</div>
                 <div className="text-sm text-muted-foreground">{tenant.owner_email || 'No email'}</div>
+                {tenant.owner_phone && (
+                  <div className="text-sm text-muted-foreground">{tenant.owner_phone}</div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -141,6 +144,15 @@ export function TenantDetailsDrawer({ tenant, isOpen, onClose, onAction }: Tenan
             >
               <Settings className="h-4 w-4 mr-2" />
               Edit Details
+            </Button>
+            
+            <Button 
+              className="w-full" 
+              variant="outline"
+              onClick={() => onAction('manage-rooms', tenant)}
+            >
+              <Building2 className="h-4 w-4 mr-2" />
+              Manage Rooms
             </Button>
             
             <Button 

@@ -57,8 +57,8 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Check caller permissions
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(
+    // Use service role key to verify the token and get user
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.admin.getUserByAccessToken(
       authHeader.replace('Bearer ', '')
     );
 

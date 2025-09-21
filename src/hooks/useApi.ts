@@ -139,13 +139,15 @@ export const useGlobalUsers = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('users')
-        .select(`
-          *,
-          tenants(hotel_name, city)
-        `)
-        .or('role.eq.SUPER_ADMIN,is_platform_owner.eq.true');
+        .select('*')
+        .or('role.eq.SUPER_ADMIN,is_platform_owner.eq.true')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Failed to fetch global users:', error);
+        throw new Error(error.message || 'Failed to fetch global users');
+      }
 
       return {
         data: data?.map(user => ({
@@ -156,8 +158,8 @@ export const useGlobalUsers = () => {
           department: user.department || 'Operations',
           status: user.is_active ? 'active' : 'inactive',
           lastLogin: user.last_login || new Date().toISOString(),
-          permissions: ['platform-admin'],
-          assignedTenants: user.tenants ? [user.tenants.hotel_name] : []
+          permissions: ['platform.manage'],
+          assignedTenants: []
         })) || []
       };
     },

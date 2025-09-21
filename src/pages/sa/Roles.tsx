@@ -70,7 +70,7 @@ const Roles = () => {
             <Globe className="h-4 w-4" />
             <span>Global Roles</span>
           </TabsTrigger>
-          <TabsTrigger value="template" className="flex items-center space-x-2">
+          <TabsTrigger value="tenant" className="flex items-center space-x-2">
             <Building className="h-4 w-4" />
             <span>Tenant Templates</span>
           </TabsTrigger>
@@ -127,7 +127,7 @@ const Roles = () => {
           </div>
         </TabsContent>
 
-        <TabsContent value="template" className="space-y-6">
+        <TabsContent value="tenant" className="space-y-6">
           <div className="flex justify-between items-center mb-6">
             <div>
               <h2 className="text-2xl font-bold text-foreground">Tenant Role Templates</h2>

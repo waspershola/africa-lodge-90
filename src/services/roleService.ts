@@ -46,7 +46,7 @@ class RoleService {
       .from('roles')
       .select(`
         *,
-        role_permissions!inner(
+        role_permissions(
           permission_id,
           permissions(*)
         )

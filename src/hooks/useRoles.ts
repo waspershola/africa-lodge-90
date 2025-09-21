@@ -5,7 +5,12 @@ import { roleService, CreateRoleData, UpdateRoleData } from '@/services/roleServ
 export const useRoles = (scope?: 'global' | 'tenant', tenantId?: string) => {
   return useQuery({
     queryKey: ['roles', scope, tenantId],
-    queryFn: () => roleService.getRoles(scope, tenantId),
+    queryFn: async () => {
+      console.log('Fetching roles with scope:', scope, 'tenantId:', tenantId);
+      const result = await roleService.getRoles(scope, tenantId);
+      console.log('Roles result:', result);
+      return result;
+    },
     retry: 2,
     staleTime: 30000,
   });
@@ -14,7 +19,12 @@ export const useRoles = (scope?: 'global' | 'tenant', tenantId?: string) => {
 export const useGlobalRoles = () => {
   return useQuery({
     queryKey: ['roles', 'global'],
-    queryFn: () => roleService.getGlobalRoles(),
+    queryFn: async () => {
+      console.log('Fetching global roles...');
+      const result = await roleService.getGlobalRoles();
+      console.log('Global roles result:', result);
+      return result;
+    },
     retry: 2,
     staleTime: 30000,
   });

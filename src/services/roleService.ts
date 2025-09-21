@@ -66,7 +66,10 @@ class RoleService {
 
     const { data, error } = await query.order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching roles:', error);
+      throw error;
+    }
 
     // Transform the data to include permissions array
     return data?.map(role => ({

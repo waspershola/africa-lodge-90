@@ -69,6 +69,7 @@ export default function StaffInviteModal({ open, onOpenChange }: StaffInviteModa
         email: formData.email,
         phone: formData.phone || '',
         role: formData.role,
+        role_id: null, // Will be set based on role mapping in backend
         department: formData.department,
         tenant_id: 'current-tenant-id', // This should come from auth context
         is_active: true,

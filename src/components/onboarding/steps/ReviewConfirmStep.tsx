@@ -205,7 +205,7 @@ export function ReviewConfirmStep({ data }: ReviewConfirmStepProps) {
             <div>
               <div className="text-sm font-medium">Hotel Logo</div>
               <div className="text-muted-foreground">
-                {data.branding.logo ? '✓ Uploaded' : 'Not uploaded'}
+                {data.branding.logoUrl ? '✓ Uploaded' : 'Not uploaded'}
               </div>
             </div>
           </CardContent>

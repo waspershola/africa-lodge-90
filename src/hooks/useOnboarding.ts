@@ -195,22 +195,63 @@ export function useOnboarding() {
     if (!user || !tenant) return;
 
     try {
-      // Mark setup as completed in Supabase
+      console.log('Starting onboarding completion process...');
+      
+      // Update tenant with completion data
+      const updateData: any = {
+        setup_completed: true,
+        onboarding_step: 'completed',
+        updated_at: new Date().toISOString(),
+      };
+
+      // Save hotel information
+      if (finalData.hotelInfo) {
+        Object.assign(updateData, {
+          hotel_name: finalData.hotelInfo.name,
+          address: finalData.hotelInfo.address,
+          city: finalData.hotelInfo.city,
+          country: finalData.hotelInfo.country,
+          timezone: finalData.hotelInfo.timezone,
+          phone: finalData.hotelInfo.phone,
+          email: finalData.hotelInfo.supportEmail,
+          currency: finalData.hotelInfo.currency
+        });
+      }
+
+      // Save branding data
+      if (finalData.branding) {
+        updateData.brand_colors = {
+          primary: finalData.branding.primaryColor,
+          secondary: finalData.branding.secondaryColor
+        };
+        updateData.receipt_template = finalData.branding.receiptFormat;
+        if (finalData.branding.logoUrl) {
+          updateData.logo_url = finalData.branding.logoUrl;
+        }
+      }
+
+      // Save plan selection
+      if (finalData.plan) {
+        updateData.plan_id = finalData.plan.id;
+      }
+
+      // Store complete settings
+      updateData.settings = {
+        onboarding_completed_at: new Date().toISOString(),
+        onboarding_data: finalData
+      };
+
+      console.log('Updating tenant with completion data:', updateData);
+
       const { error: tenantError } = await supabase
         .from('tenants')
-        .update({
-          setup_completed: true,
-          onboarding_step: 'completed',
-          updated_at: new Date().toISOString(),
-          // Merge final data with existing settings
-          settings: {
-            onboarding_completed_at: new Date().toISOString(),
-            ...finalData
-          }
-        })
+        .update(updateData)
         .eq('tenant_id', tenant.tenant_id);
 
-      if (tenantError) throw tenantError;
+      if (tenantError) {
+        console.error('Error updating tenant:', tenantError);
+        throw tenantError;
+      }
 
       // Create audit log
       await supabase
@@ -227,19 +268,25 @@ export function useOnboarding() {
           new_values: { setup_completed: true, final_data: finalData }
         }]);
 
-      // Mark as completed locally
-      await saveProgress('completed', finalData, true);
-      
-      // Update status
-      setStatus(prev => ({ ...prev, isRequired: false, setupCompleted: true }));
+      // Update local status immediately
+      setStatus({
+        isRequired: false,
+        currentStep: 'completed',
+        setupCompleted: true,
+        lastUpdated: new Date().toISOString()
+      });
+
+      console.log('Onboarding completed successfully, redirecting...');
 
       toast({
         title: "🎉 Setup Complete!",
         description: "Your hotel is now ready for business.",
       });
 
-      // Redirect to owner dashboard
-      navigate('/owner-dashboard');
+      // Force redirect to dashboard
+      setTimeout(() => {
+        window.location.href = '/owner-dashboard';
+      }, 1000);
       
       return { success: true };
     } catch (error) {

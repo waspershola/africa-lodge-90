@@ -107,88 +107,33 @@ export function OwnerSetupStep({ data, updateData }: OwnerSetupStepProps) {
           </CardContent>
         </Card>
 
-        {/* Security Settings */}
+        {/* Contact & Communication */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Shield className="h-5 w-5" />
-              <span>Security Settings</span>
+              <span>Communication Preferences</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {hasTemporaryPassword ? (
-              <>
-                <Alert>
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>
-                    You're using a temporary password. Please set a new secure password.
-                  </AlertDescription>
-                </Alert>
-
-                <div>
-                  <Label htmlFor="currentPassword">Current Temporary Password</Label>
-                  <Input
-                    id="currentPassword"
-                    type="password"
-                    value={passwordSetup.current}
-                    onChange={(e) => setPasswordSetup(prev => ({ ...prev, current: e.target.value }))}
-                    placeholder="Enter temporary password"
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="newPassword">New Password</Label>
-                  <Input
-                    id="newPassword"
-                    type="password"
-                    value={passwordSetup.new}
-                    onChange={(e) => setPasswordSetup(prev => ({ ...prev, new: e.target.value }))}
-                    placeholder="Create a strong password"
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    value={passwordSetup.confirm}
-                    onChange={(e) => setPasswordSetup(prev => ({ ...prev, confirm: e.target.value }))}
-                    placeholder="Confirm your password"
-                    className="mt-1"
-                  />
-                </div>
-
-                <Button onClick={handlePasswordUpdate} className="w-full">
-                  Update Password
-                </Button>
-              </>
-            ) : (
-              <div className="text-center py-8">
-                <Shield className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                <h4 className="font-medium text-green-800 mb-2">Account Secure</h4>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Your password is set and your account is secure.
-                </p>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setHasTemporaryPassword(true)}
-                >
-                  Change Password
-                </Button>
-              </div>
-            )}
+            <div className="text-center py-8">
+              <Shield className="h-12 w-12 text-green-500 mx-auto mb-4" />
+              <h4 className="font-medium text-green-800 mb-2">Account Ready</h4>
+              <p className="text-sm text-muted-foreground mb-4">
+                Your account is set up and ready to use. You can manage additional security settings from your dashboard.
+              </p>
+            </div>
 
             <div className="border-t pt-4">
-              <h5 className="font-medium mb-2">Two-Factor Authentication</h5>
+              <h5 className="font-medium mb-2">Email Notifications</h5>
               <p className="text-sm text-muted-foreground mb-3">
-                Add an extra layer of security to your account (recommended)
+                We'll send important updates and security alerts to your email
               </p>
-              <Button variant="outline" size="sm">
-                Setup 2FA Later
-              </Button>
+              <div className="text-sm text-muted-foreground">
+                ✓ Account security alerts<br />
+                ✓ System maintenance notifications<br />
+                ✓ Billing and subscription updates
+              </div>
             </div>
           </CardContent>
         </Card>

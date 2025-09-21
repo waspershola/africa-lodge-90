@@ -19,8 +19,8 @@ import { HotelInformationStep } from './steps/HotelInformationStep';
 import { TemplateSelectionStep } from './steps/TemplateSelectionStep';
 import { PlanConfirmationStep } from './steps/PlanConfirmationStep';
 import { OwnerSetupStep } from './steps/OwnerSetupStep';
-import { BrandingStep } from './steps/BrandingStep';
-import { DocumentsStep } from './steps/DocumentsStep';
+import { EnhancedBrandingStep } from './steps/EnhancedBrandingStep';
+import { EnhancedDocumentsStep } from './steps/EnhancedDocumentsStep';
 import { PermissionsStep } from './steps/PermissionsStep';
 import { AuditTransparencyStep } from './steps/AuditTransparencyStep';
 import { ReviewConfirmStep } from './steps/ReviewConfirmStep';
@@ -57,7 +57,7 @@ export interface OnboardingData {
     emergencyContact?: string;
   };
   branding: {
-    logo?: File;
+    logoUrl?: string;
     primaryColor: string;
     secondaryColor: string;
     receiptFormat: 'pdf' | 'pos' | 'both';
@@ -158,6 +158,7 @@ export function OnboardingWizard() {
         primaryColor: '#2563eb',
         secondaryColor: '#1e40af',
         receiptFormat: 'both',
+        logoUrl: '',
       },
       documents: {
         policies: [],
@@ -255,9 +256,9 @@ export function OnboardingWizard() {
       case 3:
         return <OwnerSetupStep data={onboardingData} updateData={updateData} />;
       case 4:
-        return <BrandingStep data={onboardingData} updateData={updateData} />;
+        return <EnhancedBrandingStep data={onboardingData} updateData={updateData} />;
       case 5:
-        return <DocumentsStep data={onboardingData} updateData={updateData} />;
+        return <EnhancedDocumentsStep data={onboardingData} updateData={updateData} />;
       case 6:
         return <PermissionsStep data={onboardingData} updateData={updateData} />;
       case 7:

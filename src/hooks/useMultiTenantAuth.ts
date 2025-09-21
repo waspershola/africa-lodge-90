@@ -44,12 +44,15 @@ export interface UseMultiTenantAuthReturn {
   error: string | null;
   trialStatus: TrialStatus | null;
   needsPasswordReset: boolean;
+  isImpersonating: boolean;
+  impersonationData: any | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  resetPassword: (newPassword: string) => Promise<void>;
+  stopImpersonation: () => Promise<void>;
   hasAccess: (requiredRole: string) => boolean;
   hasPermission: (permission: string) => boolean;
   refreshAuth: () => Promise<void>;
-  resetPassword: (newPassword: string) => Promise<void>;
 }
 
 export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
@@ -60,6 +63,8 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
   const [error, setError] = useState<string | null>(null);
   const [trialStatus, setTrialStatus] = useState<TrialStatus | null>(null);
   const [needsPasswordReset, setNeedsPasswordReset] = useState(false);
+  const [isImpersonating, setIsImpersonating] = useState(false);
+  const [impersonationData, setImpersonationData] = useState<any | null>(null);
 
   // ... keep existing code ...
 
@@ -401,6 +406,31 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
     await loadAuthState();
   };
 
+  // Stop impersonation function
+  const stopImpersonation = async () => {
+    try {
+      if (!impersonationData?.session_token) {
+        console.warn('No active impersonation session');
+        return;
+      }
+
+      const { error } = await supabase.functions.invoke('stop-impersonation', {
+        body: { session_token: impersonationData.session_token }
+      });
+
+      if (error) throw error;
+
+      setIsImpersonating(false);
+      setImpersonationData(null);
+      
+      // Redirect to super admin dashboard
+      window.location.href = '/sa/dashboard';
+    } catch (err) {
+      console.error('Failed to stop impersonation:', err);
+      setError(err instanceof Error ? err.message : 'Failed to stop impersonation');
+    }
+  };
+
   // Set up auth state listener
   useEffect(() => {
     let initialLoadDone = false;
@@ -446,12 +476,15 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
     error,
     trialStatus,
     needsPasswordReset,
+    isImpersonating,
+    impersonationData,
     login,
     logout,
+    resetPassword,
+    stopImpersonation,
     hasAccess,
     hasPermission,
-    refreshAuth,
-    resetPassword
+    refreshAuth
   };
 }
 

@@ -349,6 +349,39 @@ export type Database = {
           },
         ]
       }
+      impersonations: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          impersonated_user_id: string
+          original_user_id: string
+          reason: string
+          session_token: string
+          started_at: string
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          impersonated_user_id: string
+          original_user_id: string
+          reason: string
+          session_token: string
+          started_at?: string
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          impersonated_user_id?: string
+          original_user_id?: string
+          reason?: string
+          session_token?: string
+          started_at?: string
+        }
+        Relationships: []
+      }
       menu_categories: {
         Row: {
           created_at: string | null

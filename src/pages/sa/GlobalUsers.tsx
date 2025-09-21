@@ -315,16 +315,15 @@ const GlobalUsers = () => {
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="role">Role</Label>
+                  <Label htmlFor="role">Global Role</Label>
                   <Select name="role" defaultValue={selectedUser?.role}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select role" />
+                      <SelectValue placeholder="Select global role" />
                     </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
-                        <SelectItem value="OWNER">Hotel Owner</SelectItem>
-                        <SelectItem value="MANAGER">Manager</SelectItem>
-                        <SelectItem value="STAFF">Staff</SelectItem>
+                        <SelectItem value="PLATFORM_ADMIN">Platform Admin</SelectItem>
+                        <SelectItem value="SUPPORT_STAFF">Support Staff</SelectItem>
                       </SelectContent>
                   </Select>
                 </div>

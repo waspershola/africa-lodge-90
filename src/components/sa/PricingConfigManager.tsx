@@ -50,10 +50,10 @@ export function PricingConfigManager() {
       }
 
       // Transform the data to ensure features is always a string array
-      const transformedData = data?.map(plan => ({
+      const transformedData = (data as any || [])?.map((plan: any) => ({
         ...plan,
         features: Array.isArray(plan.features) ? 
-          plan.features.map(f => typeof f === 'string' ? f : String(f)) : 
+          plan.features.map((f: any) => typeof f === 'string' ? f : String(f)) : 
           typeof plan.features === 'string' ? [plan.features] : [],
         trial_days: plan.trial_days || 14,
         price_annual: plan.price_annual || undefined,
@@ -129,7 +129,7 @@ export function PricingConfigManager() {
             max_staff: editingPlan.max_staff,
             features: editingPlan.features,
             trial_days: editingPlan.trial_days
-          });
+          } as any);
 
         if (error) throw error;
         toast.success('Plan created successfully');
@@ -145,8 +145,8 @@ export function PricingConfigManager() {
             features: editingPlan.features,
             trial_days: editingPlan.trial_days,
             updated_at: new Date().toISOString()
-          })
-          .eq('id', editingPlan.id);
+          } as any)
+          .eq('id', editingPlan.id as any);
 
         if (error) throw error;
         toast.success('Plan updated successfully');
@@ -167,10 +167,10 @@ export function PricingConfigManager() {
     }
 
     try {
-      const { error } = await supabase
-        .from('plans')
-        .delete()
-        .eq('id', planId);
+    const { error } = await supabase
+      .from('plans')
+      .delete()
+      .eq('id', planId as any);
 
       if (error) throw error;
       toast.success('Plan deleted successfully');

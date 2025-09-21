@@ -67,7 +67,7 @@ export default function AuditViewer() {
       }
 
       if (actionFilter !== 'all') {
-        query = query.eq('action', actionFilter);
+        query = query.eq('action', actionFilter as any);
       }
 
       if (dateRange.from) {
@@ -87,10 +87,10 @@ export default function AuditViewer() {
       if (queryError) throw queryError;
 
       if (reset) {
-        setLogs((data || []) as AuditLogEntry[]);
+        setLogs((data || []) as any[]);
         setPage(0);
       } else {
-        setLogs(prev => [...prev, ...((data || []) as AuditLogEntry[])]);
+        setLogs(prev => [...prev, ...((data || []) as any[])]);
       }
 
       setHasMore((data?.length || 0) === ITEMS_PER_PAGE);

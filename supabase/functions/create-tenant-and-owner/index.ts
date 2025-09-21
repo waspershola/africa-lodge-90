@@ -8,13 +8,11 @@ const corsHeaders = {
 
 interface CreateTenantRequest {
   hotel_name: string;
-  hotel_slug: string;
-  owner_email: string;
   owner_name: string;
-  plan_id: string;
+  email: string;
   city?: string;
-  address?: string;
   phone?: string;
+  password: string;
 }
 
 // Generate secure temporary password
@@ -54,66 +52,37 @@ serve(async (req) => {
       }
     });
 
-    // SECURITY: Verify caller is authenticated and has SUPER_ADMIN role
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.error('No authorization header provided');
-      throw new Error('No authorization header provided');
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    console.log('Token received, length:', token.length);
-    
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
-    console.log('Authentication result:', { authUser: !!authUser?.user, error: !!authError });
-    
-    if (authError || !authUser?.user) {
-      console.error('Auth error:', authError);
-      throw new Error('Invalid authentication token');
-    }
-
-    console.log('User authenticated:', authUser.user.id, authUser.user.email);
-
-    // Check if user has SUPER_ADMIN role or is platform owner
-    const { data: userData, error: roleError } = await supabaseAdmin
-      .from('users')
-      .select('role, is_platform_owner')
-      .eq('id', authUser.user.id)
-      .single();
-
-    console.log('User role check:', { userData, roleError });
-
-    if (roleError || !userData) {
-      console.error('Role error:', roleError);
-      throw new Error('User not found in system');
-    }
-
-    if (userData.role !== 'SUPER_ADMIN' && !userData.is_platform_owner) {
-      console.error('Insufficient permissions:', userData);
-      throw new Error('Insufficient permissions - SUPER_ADMIN or platform owner required');
-    }
+    // This is a public signup endpoint - no authentication required
+    console.log('Processing public signup request...');
 
     const requestData: CreateTenantRequest = await req.json();
     
     console.log('Creating tenant and owner:', {
       hotel_name: requestData.hotel_name,
-      owner_email: requestData.owner_email,
-      plan_id: requestData.plan_id
+      email: requestData.email
     });
+
+    // Get default plan
+    const { data: defaultPlan } = await supabaseAdmin
+      .from('plans')
+      .select('id')
+      .limit(1)
+      .single();
+      
+    const planId = defaultPlan?.id || '550e8400-e29b-41d4-a716-446655440000'; // fallback plan ID
 
     // Check if user already exists with this email in public.users table
     const { data: existingUser } = await supabaseAdmin
       .from('users')
       .select('id, email')
-      .eq('email', requestData.owner_email)
+      .eq('email', requestData.email)
       .single();
 
     if (existingUser) {
-      console.log('User already exists in users table:', requestData.owner_email);
+      console.log('User already exists in users table:', requestData.email);
       return new Response(
         JSON.stringify({
-          error: `A user with email ${requestData.owner_email} already exists`,
+          error: `A user with email ${requestData.email} already exists`,
           success: false
         }),
         {
@@ -139,12 +108,12 @@ serve(async (req) => {
       );
     }
     
-    const userAlreadyExists = existingAuthUsers?.users?.find(u => u.email === requestData.owner_email);
+    const userAlreadyExists = existingAuthUsers?.users?.find(u => u.email === requestData.email);
     if (userAlreadyExists) {
-      console.log('User already exists in auth:', requestData.owner_email);
+      console.log('User already exists in auth:', requestData.email);
       return new Response(
         JSON.stringify({
-          error: `A user with email ${requestData.owner_email} already exists`,
+          error: `A user with email ${requestData.email} already exists`,
           success: false
         }),
         {
@@ -154,28 +123,27 @@ serve(async (req) => {
       );
     }
 
-    const tempPassword = generateTempPassword();
-    const tempPasswordHash = await hashPassword(tempPassword);
-    const tempExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    // Use provided password instead of generating temporary one
+    const userPassword = requestData.password;
 
     let tenantId: string;
     let authUserId: string;
 
     try {
       // Step 1: Create tenant record
+      const hotel_slug = requestData.hotel_name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
       const tenantData = {
         hotel_name: requestData.hotel_name,
-        hotel_slug: requestData.hotel_slug,
-        plan_id: requestData.plan_id,
+        hotel_slug: hotel_slug,
+        plan_id: planId,
         subscription_status: 'trialing',
         trial_start: new Date().toISOString(),
         trial_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
         setup_completed: false,
         onboarding_step: 'hotel_information',
         city: requestData.city || '',
-        address: requestData.address || '',
         phone: requestData.phone || '',
-        email: requestData.owner_email,
+        email: requestData.email,
         currency: 'NGN',
         timezone: 'Africa/Lagos',
         country: 'Nigeria',
@@ -200,8 +168,8 @@ serve(async (req) => {
       try {
         // Step 2: Create user in Supabase Auth
         const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-          email: requestData.owner_email,
-          password: tempPassword,
+          email: requestData.email,
+          password: userPassword,
           email_confirm: true,
           user_metadata: {
             name: requestData.owner_name,
@@ -228,13 +196,13 @@ serve(async (req) => {
 
           if (existingUserRecord) {
             console.log('User record already exists, updating with temp password');
-            // Update existing user record with temp password
+            // Update existing user record
             const { error: updateError } = await supabaseAdmin
               .from('users')
               .update({
-                force_reset: true,
-                temp_password_hash: tempPasswordHash,
-                temp_expires: tempExpires.toISOString(),
+                force_reset: false,
+                temp_password_hash: null,
+                temp_expires: null,
               })
               .eq('id', authUserId);
 
@@ -250,13 +218,13 @@ serve(async (req) => {
               .from('users')
               .insert({
                 id: authUserId,
-                email: requestData.owner_email,
+                email: requestData.email,
                 name: requestData.owner_name,
                 role: 'OWNER',
                 tenant_id: tenantId,
-                force_reset: true,
-                temp_password_hash: tempPasswordHash,
-                temp_expires: tempExpires.toISOString(),
+                force_reset: false,
+                temp_password_hash: null,
+                temp_expires: null,
                 is_active: true
               });
 
@@ -281,36 +249,14 @@ serve(async (req) => {
 
           console.log('Tenant updated with owner_id');
 
-          // Step 5: Send temporary password email
-          try {
-            const { error: emailError } = await supabaseAdmin.functions.invoke('send-temp-password', {
-              body: {
-                to_email: requestData.owner_email,
-                hotel_name: requestData.hotel_name,
-                temp_password: tempPassword,
-                login_url: `${req.headers.get('origin') || 'http://localhost:3000'}/`
-              }
-            });
-
-            if (emailError) {
-              console.error('Email sending error (non-critical):', emailError);
-              // Don't fail the whole process for email issues
-            } else {
-              console.log('Temporary password email sent');
-            }
-          } catch (emailError) {
-            console.error('Email sending failed (non-critical):', emailError);
-            // Continue without failing
-          }
+          // Note: No welcome email needed for regular signup
 
           return new Response(
             JSON.stringify({
               success: true,
               tenant,
-              tempPassword,
-              temp_password: tempPassword, // Send both field names for compatibility
               owner_id: authUserId,
-              message: 'Tenant and owner created successfully'
+              message: 'Account created successfully! You can now sign in.'
             }),
             {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },

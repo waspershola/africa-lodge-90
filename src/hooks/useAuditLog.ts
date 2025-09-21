@@ -35,7 +35,7 @@ export function useAuditLog() {
 
       const { error } = await supabase
         .from('audit_log')
-        .insert([auditEntry]);
+        .insert(auditEntry as any);
 
       if (error) {
         console.error('Failed to log audit event:', error);

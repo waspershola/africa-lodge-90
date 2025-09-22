@@ -9,7 +9,7 @@ const corsHeaders = {
 interface SuspendUserRequest {
   user_id: string;
   reason?: string;
-  suspend: boolean; // true = suspend, false = unsuspend
+  action: 'suspend' | 'unsuspend';
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -23,7 +23,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    // Initialize Supabase client with service role key (bypasses RLS)
+    // Initialize Supabase client with service role key
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -32,16 +32,19 @@ const handler = async (req: Request): Promise<Response> => {
     // Verify the caller is authenticated and is a super admin
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error(`[${operationId}] No authorization header provided`);
       return new Response(JSON.stringify({ error: 'Authorization required' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Use service role key to verify the token and get user
+    // Verify the token and get user
     const { data: authResult, error: authError } = await supabaseAdmin.auth.getUser(
       authHeader.replace('Bearer ', '')
     );
+
+    console.log(`[${operationId}] Auth check result:`, { user: !!authResult?.user, error: !!authError });
 
     if (authError || !authResult?.user) {
       console.error(`[${operationId}] Auth error:`, authError);
@@ -51,13 +54,13 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    const user = authResult.user;
+    const callerUser = authResult.user;
 
-    // Check if caller is super admin
+    // Check if caller is super admin or owner/manager
     const { data: callerData, error: callerError } = await supabaseAdmin
       .from('users')
-      .select('role, tenant_id, email')
-      .eq('id', user.id)
+      .select('role, tenant_id')
+      .eq('id', callerUser.id)
       .maybeSingle();
 
     if (callerError) {
@@ -68,76 +71,102 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    if (!callerData || callerData.role !== 'SUPER_ADMIN') {
+    console.log(`[${operationId}] Caller permissions check:`, { callerData });
+
+    if (!callerData || (callerData.role !== 'SUPER_ADMIN' && !['OWNER', 'MANAGER'].includes(callerData.role))) {
       console.error(`[${operationId}] Insufficient permissions:`, callerData);
-      return new Response(JSON.stringify({ error: 'Only super admins can suspend/unsuspend users' }), {
+      return new Response(JSON.stringify({ error: 'Insufficient permissions' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const { user_id, reason, suspend }: SuspendUserRequest = await req.json();
+    const { user_id, reason, action }: SuspendUserRequest = await req.json();
 
-    console.log(`[${operationId}] Processing suspend request:`, {
+    console.log(`[${operationId}] Processing ${action} request:`, {
       user_id,
-      suspend,
       reason,
-      caller: callerData.email
+      action
     });
 
     // Validate required fields
-    if (!user_id) {
-      console.error(`[${operationId}] Missing user_id`);
-      return new Response(JSON.stringify({ error: 'User ID is required' }), {
+    if (!user_id || !action) {
+      console.error(`[${operationId}] Missing required fields:`, { user_id: !!user_id, action: !!action });
+      return new Response(JSON.stringify({ error: 'User ID and action are required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Check if target user exists and get their info
-    const { data: targetUser, error: targetUserError } = await supabaseAdmin
+    if (!['suspend', 'unsuspend'].includes(action)) {
+      return new Response(JSON.stringify({ error: 'Action must be "suspend" or "unsuspend"' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Get user details before suspending
+    const { data: targetUser, error: userError } = await supabaseAdmin
       .from('users')
-      .select('id, email, name, role, is_active, is_platform_owner, tenant_id')
+      .select('id, email, name, role, tenant_id, is_active')
       .eq('id', user_id)
       .maybeSingle();
 
-    if (targetUserError || !targetUser) {
-      console.error(`[${operationId}] Target user not found:`, targetUserError);
+    if (userError || !targetUser) {
+      console.error(`[${operationId}] Failed to find target user:`, userError);
       return new Response(JSON.stringify({ error: 'User not found' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Prevent suspending platform owner
-    if (targetUser.is_platform_owner && suspend) {
-      console.error(`[${operationId}] Attempted to suspend platform owner`);
-      return new Response(JSON.stringify({ error: 'Cannot suspend platform owner' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    console.log(`[${operationId}] Target user:`, targetUser);
 
     // Prevent self-suspension
-    if (user_id === user.id && suspend) {
-      console.error(`[${operationId}] User attempted to suspend themselves`);
-      return new Response(JSON.stringify({ error: 'Cannot suspend your own account' }), {
+    if (targetUser.id === callerUser.id) {
+      return new Response(JSON.stringify({ error: 'Cannot suspend/unsuspend yourself' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Prevent suspending super admins (unless caller is also super admin)
+    if (targetUser.role === 'SUPER_ADMIN' && callerData.role !== 'SUPER_ADMIN') {
+      return new Response(JSON.stringify({ error: 'Cannot suspend super administrators' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log(`[${operationId}] Target user found:`, {
-      email: targetUser.email,
-      role: targetUser.role,
-      current_status: targetUser.is_active
-    });
+    // Check tenant access for non-super-admin callers
+    if (callerData.role !== 'SUPER_ADMIN') {
+      if (targetUser.tenant_id !== callerData.tenant_id) {
+        return new Response(JSON.stringify({ error: 'Cannot manage users from other tenants' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
-    // Update user status in database
+    const newActiveStatus = action === 'unsuspend';
+    const isAlreadyInDesiredState = targetUser.is_active === newActiveStatus;
+
+    if (isAlreadyInDesiredState) {
+      return new Response(JSON.stringify({ 
+        success: true,
+        message: `User is already ${action === 'suspend' ? 'suspended' : 'active'}`,
+        user: targetUser
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Update user status in public.users table
     const { error: updateError } = await supabaseAdmin
       .from('users')
-      .update({
-        is_active: !suspend, // suspend=true means is_active=false
+      .update({ 
+        is_active: newActiveStatus,
         updated_at: new Date().toISOString()
       })
       .eq('id', user_id);
@@ -145,44 +174,27 @@ const handler = async (req: Request): Promise<Response> => {
     if (updateError) {
       console.error(`[${operationId}] Failed to update user status:`, updateError);
       return new Response(JSON.stringify({ 
-        error: 'Failed to update user status',
-        details: updateError.message 
+        error: `Failed to ${action} user`,
+        details: updateError.message
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Try to suspend/unsuspend auth session (this may not be available in all Supabase versions)
-    let authActionResult = null;
-    try {
-      if (suspend) {
-        // For suspension, we could optionally sign out all sessions
-        console.log(`[${operationId}] Note: Auth session management not implemented - user can still login but is_active=false will prevent access`);
-        authActionResult = 'User marked as inactive in database';
-      } else {
-        console.log(`[${operationId}] User unsuspended and can now login normally`);
-        authActionResult = 'User reactivated in database';
-      }
-    } catch (authError) {
-      console.warn(`[${operationId}] Auth action failed (this is non-fatal):`, authError);
-      authActionResult = 'Database updated, auth session unchanged';
-    }
-
     // Log audit event
     await supabaseAdmin
       .from('audit_log')
       .insert({
-        actor_id: user.id,
-        action: suspend ? 'user_suspended' : 'user_unsuspended',
+        actor_id: callerUser.id,
+        action: `user_${action}ed`,
         resource_type: 'user',
         resource_id: user_id,
-        description: `User ${targetUser.email} ${suspend ? 'suspended' : 'unsuspended'} by ${callerData.email}`,
+        description: `${action === 'suspend' ? 'Suspended' : 'Unsuspended'} user ${targetUser.email}${reason ? `: ${reason}` : ''}`,
         metadata: {
           target_email: targetUser.email,
           target_role: targetUser.role,
-          reason: reason || 'No reason provided',
-          auth_action_result: authActionResult
+          reason
         }
       });
 
@@ -191,19 +203,19 @@ const handler = async (req: Request): Promise<Response> => {
     
     console.log(`[${operationId}] suspend-user function completed successfully`, {
       duration_ms: duration,
-      action: suspend ? 'suspended' : 'unsuspended',
-      target_user: targetUser.email
+      action,
+      user_id
     });
 
     return new Response(JSON.stringify({
       success: true,
-      message: `User ${suspend ? 'suspended' : 'unsuspended'} successfully`,
+      message: `User ${action === 'suspend' ? 'suspended' : 'unsuspended'} successfully`,
       user: {
         id: targetUser.id,
         email: targetUser.email,
-        is_active: !suspend
+        name: targetUser.name,
+        is_active: newActiveStatus
       },
-      auth_action: authActionResult,
       debug_info: {
         operation_id: operationId,
         duration_ms: duration

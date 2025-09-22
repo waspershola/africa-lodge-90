@@ -75,7 +75,7 @@ export function CreateGlobalUserDialog({ onSuccess }: CreateGlobalUserDialogProp
       setIsSubmitting(true);
 
       const result = await callEdgeFunction({
-        functionName: 'create-global-user',
+        functionName: 'create-global-user-fixed',
         body: {
           email: data.email,
           name: data.name,

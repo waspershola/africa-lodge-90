@@ -33,7 +33,10 @@ const handler = async (req: Request): Promise<Response> => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       console.error(`[${operationId}] No authorization header provided`);
-      return new Response(JSON.stringify({ error: 'Authorization required' }), {
+      return new Response(JSON.stringify({ 
+        error: 'Authorization required',
+        code: 'AUTH_REQUIRED'
+      }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -48,7 +51,17 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (authError || !authResult?.user) {
       console.error(`[${operationId}] Auth error:`, authError);
-      return new Response(JSON.stringify({ error: 'Invalid authentication' }), {
+      
+      // Check if it's a token expiry error
+      const isTokenExpired = authError?.message?.toLowerCase().includes('expired') || 
+                           authError?.message?.toLowerCase().includes('invalid') ||
+                           authError?.status === 401;
+      
+      return new Response(JSON.stringify({ 
+        error: isTokenExpired ? 'Token expired' : 'Invalid authentication',
+        code: isTokenExpired ? 'TOKEN_EXPIRED' : 'AUTH_INVALID',
+        message: isTokenExpired ? 'Your session has expired. Please log in again.' : 'Authentication failed.'
+      }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

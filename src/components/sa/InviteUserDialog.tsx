@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { UserPlus, Mail, Copy, CheckCircle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { callEdgeFunction } from "@/lib/api-utils";
 import { toast } from 'sonner';
 import { useGlobalRoles, useTenantRoles } from '@/hooks/useRoles';
 
@@ -61,81 +61,51 @@ export function InviteUserDialog({ tenantId, onSuccess }: InviteUserDialogProps)
     try {
       setIsSubmitting(true);
 
-      const { data: result, error } = await supabase.functions.invoke('invite-user', {
+      const result = await callEdgeFunction({
+        functionName: 'invite-user',
         body: {
           email: data.email,
           name: data.name,
           role: data.role,
           tenant_id: tenantId || null,
           department: data.department || null
-        }
+        },
+        showErrorToast: false // We'll handle errors manually for better UX
       });
 
-      if (error) {
-        console.error('Edge function error:', error);
+      if (result.success && result.data) {
+        setInviteResult(result.data);
+        form.reset();
         
-        // Handle specific error types for better UX
-        if (error.message?.includes('already exists')) {
-          throw new Error('A user with this email already exists in the system');
-        } else if (error.message?.includes('role not found') || error.message?.includes('Role not found')) {
-          throw new Error('The selected role is not available. Please try a different role or contact support.');
-        } else if (error.message?.includes('permission') || error.message?.includes('Insufficient permissions')) {
-          throw new Error('You do not have permission to invite users with this role');
-        } else if (error.message?.includes('authentication') || error.message?.includes('Invalid authentication')) {
-          throw new Error('Your session has expired. Please refresh the page and try again.');
+        if (result.data.email_sent) {
+          toast.success('User invited successfully! Invitation email sent.');
         } else {
-          throw new Error(error.message || 'Failed to invite user - please try again');
+          toast.warning('User created but email failed. Please share the temporary password manually.');
         }
-      }
 
-      if (!result?.success) {
-        console.error('Function returned error:', result);
-        
-        // Handle structured error responses from the edge function
-        if (result?.error) {
-          if (result.error.includes('already exists')) {
-            throw new Error('A user with this email already exists');
-          } else if (result.error.includes('role') && result.available_roles) {
-            throw new Error(`Role not found. Available roles: ${result.available_roles.join(', ')}`);
-          } else {
-            throw new Error(result.error);
-          }
-        } else {
-          throw new Error('Failed to invite user - please try again');
+        if (onSuccess) {
+          onSuccess();
         }
-      }
-
-      setInviteResult(result);
-      form.reset();
-      
-      if (result.email_sent) {
-        toast.success('User invited successfully! Invitation email sent.');
       } else {
-        toast.warning('User created but email failed. Please share the temporary password manually.');
-      }
-
-      if (onSuccess) {
-        onSuccess();
+        // Handle structured error responses with better UX
+        const errorMessage = result.error || 'Failed to invite user';
+        
+        if (errorMessage.includes('already exists')) {
+          toast.error('A user with this email already exists in the system');
+        } else if (errorMessage.includes('role not found') || errorMessage.includes('not found')) {
+          toast.error('The selected role is not available. Please try a different role.');
+        } else if (errorMessage.includes('permission')) {
+          toast.error('You do not have permission to invite users with this role');
+        } else if (result.code === 'TOKEN_EXPIRED') {
+          toast.error('Your session has expired. Please refresh the page and try again.');
+        } else {
+          toast.error(errorMessage);
+        }
       }
 
     } catch (error: any) {
       console.error('Failed to invite user:', error);
-      
-      // Show more specific error messages
-      let errorMessage = 'Failed to invite user';
-      if (error.message?.includes('already exists')) {
-        errorMessage = 'A user with this email already exists';
-      } else if (error.message?.includes('not found') || error.message?.includes('not available')) {
-        errorMessage = 'The selected role is not available';
-      } else if (error.message?.includes('permission')) {
-        errorMessage = 'You do not have permission to perform this action';
-      } else if (error.message?.includes('session') || error.message?.includes('authentication')) {
-        errorMessage = 'Your session has expired. Please refresh the page and try again.';
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      toast.error(errorMessage);
+      toast.error(error.message || 'Failed to invite user - please try again');
     } finally {
       setIsSubmitting(false);
     }

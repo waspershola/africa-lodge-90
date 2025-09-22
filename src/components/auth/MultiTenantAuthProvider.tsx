@@ -1,8 +1,10 @@
 import { createContext, useContext, ReactNode } from 'react';
 import { useMultiTenantAuth, UseMultiTenantAuthReturn } from '@/hooks/useMultiTenantAuth';
+import { useSessionHeartbeat } from '@/hooks/useSessionHeartbeat';
 import { supabase } from '@/integrations/supabase/client';
 import { ForcePasswordResetDialog } from '@/components/auth/ForcePasswordResetDialog';
 import { ImpersonationBanner } from '@/components/auth/ImpersonationBanner';
+import { toast } from 'sonner';
 
 const MultiTenantAuthContext = createContext<UseMultiTenantAuthReturn | undefined>(undefined);
 
@@ -12,6 +14,23 @@ interface MultiTenantAuthProviderProps {
 
 export function MultiTenantAuthProvider({ children }: MultiTenantAuthProviderProps) {
   const auth = useMultiTenantAuth();
+
+  // Set up session heartbeat to prevent token expiry
+  useSessionHeartbeat({
+    enabled: !!auth.user, // Only when user is logged in
+    intervalMinutes: 10, // Check every 10 minutes
+    onSessionExpired: () => {
+      toast.error('Your session has expired. Please log in again.', {
+        duration: 10000,
+        action: {
+          label: 'Login',
+          onClick: () => {
+            auth.logout();
+          }
+        }
+      });
+    }
+  });
 
   // Create audit logging function without circular dependency
   const logAuditEvent = async (action: string, description: string, metadata?: Record<string, any>) => {

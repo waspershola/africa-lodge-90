@@ -56,7 +56,11 @@ const handler = async (req: Request): Promise<Response> => {
     // Verify the caller is authenticated and is a super admin
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Authorization required' }), {
+      console.error(`[${operationId}] No authorization header provided`);
+      return new Response(JSON.stringify({ 
+        error: 'Authorization required',
+        code: 'AUTH_REQUIRED'
+      }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -71,7 +75,17 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (authError || !authResult?.user) {
       console.error('Auth error:', authError);
-      return new Response(JSON.stringify({ error: 'Invalid authentication' }), {
+      
+      // Check if it's a token expiry error
+      const isTokenExpired = authError?.message?.toLowerCase().includes('expired') || 
+                           authError?.message?.toLowerCase().includes('invalid') ||
+                           authError?.status === 401;
+      
+      return new Response(JSON.stringify({ 
+        error: isTokenExpired ? 'Token expired' : 'Invalid authentication',
+        code: isTokenExpired ? 'TOKEN_EXPIRED' : 'AUTH_INVALID',
+        message: isTokenExpired ? 'Your session has expired. Please log in again.' : 'Authentication failed.'
+      }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -169,47 +183,64 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Map frontend role names to database role names and legacy role field
-    const roleMappings: { [key: string]: { dbName: string; legacyRole: string } } = {
-      // Global roles - match exact database names
-      'Super Admin': { dbName: 'Super Admin', legacyRole: 'SUPER_ADMIN' },
-      'Platform Admin': { dbName: 'Platform Admin', legacyRole: 'PLATFORM_ADMIN' },
-      'Support Staff': { dbName: 'Support Staff', legacyRole: 'SUPPORT_STAFF' },
-      'Sales': { dbName: 'Sales', legacyRole: 'SALES' },
-      // Tenant roles  
-      'Owner': { dbName: 'Owner', legacyRole: 'OWNER' },
-      'Manager': { dbName: 'Manager', legacyRole: 'MANAGER' },
-      'Front Desk': { dbName: 'Front Desk', legacyRole: 'FRONT_DESK' },
-      'Housekeeping': { dbName: 'Housekeeping', legacyRole: 'HOUSEKEEPING' },
-      'Maintenance': { dbName: 'Maintenance', legacyRole: 'MAINTENANCE' },
-      'Accounting': { dbName: 'Accounting', legacyRole: 'ACCOUNTING' }
+    // Normalize role name for consistent lookup (handle case variations)
+    const normalizeRoleName = (roleName: string): string => {
+      const normalized = roleName.trim().toLowerCase();
+      
+      // Map common variations to canonical names
+      const roleAliases: { [key: string]: string } = {
+        'super admin': 'Super Admin',
+        'super_admin': 'Super Admin',
+        'superadmin': 'Super Admin',
+        'platform admin': 'Platform Admin', 
+        'platform_admin': 'Platform Admin',
+        'platformadmin': 'Platform Admin',
+        'support staff': 'Support Staff',
+        'support_staff': 'Support Staff',
+        'supportstaff': 'Support Staff',
+        'sales': 'Sales',
+        'owner': 'Owner',
+        'manager': 'Manager',
+        'front desk': 'Front Desk',
+        'front_desk': 'Front Desk',
+        'frontdesk': 'Front Desk',
+        'housekeeping': 'Housekeeping',
+        'maintenance': 'Maintenance',
+        'accounting': 'Accounting'
+      };
+      
+      return roleAliases[normalized] || roleName;
     };
 
-    const roleMapping = roleMappings[role];
-    if (!roleMapping) {
-      console.error('Invalid role provided:', role, 'Available roles:', Object.keys(roleMappings));
-      return new Response(JSON.stringify({ 
-        success: false,
-        error: 'Invalid role specified',
-        available_roles: Object.keys(roleMappings)
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    // Legacy role mapping for backward compatibility
+    const legacyRoleMap: { [key: string]: string } = {
+      'Super Admin': 'SUPER_ADMIN',
+      'Platform Admin': 'PLATFORM_ADMIN',
+      'Support Staff': 'SUPPORT_STAFF',
+      'Sales': 'SALES',
+      'Owner': 'OWNER',
+      'Manager': 'MANAGER',
+      'Front Desk': 'FRONT_DESK',
+      'Housekeeping': 'HOUSEKEEPING',
+      'Maintenance': 'MAINTENANCE',
+      'Accounting': 'ACCOUNTING'
+    };
 
-    console.log('Looking for role:', { 
-      frontendRole: role, 
-      dbName: roleMapping.dbName, 
+    const canonicalRoleName = normalizeRoleName(role);
+    const legacyRole = legacyRoleMap[canonicalRoleName] || role.toUpperCase().replace(' ', '_');
+
+    console.log(`[${operationId}] Role normalization:`, { 
+      originalRole: role,
+      canonicalName: canonicalRoleName,
+      legacyRole,
       scope: tenant_id ? 'tenant' : 'global',
       tenant_id 
     });
 
-    // Get role_id from roles table using case-insensitive lookup
+    // First try exact match, then case-insensitive, then similar names
     let roleQuery = supabaseAdmin
       .from('roles')
-      .select('id, name, scope')
-      .ilike('name', roleMapping.dbName)
+      .select('id, name, scope, tenant_id')
       .eq('scope', tenant_id ? 'tenant' : 'global');
     
     // Handle tenant_id filtering properly
@@ -218,18 +249,39 @@ const handler = async (req: Request): Promise<Response> => {
     } else {
       roleQuery = roleQuery.is('tenant_id', null);
     }
-    
-    const { data: roleData, error: roleError } = await roleQuery.maybeSingle();
 
-    console.log(`[${operationId}] Role query result:`, { 
+    // Try multiple lookup strategies
+    let roleData = null;
+    let roleError = null;
+    
+    // Strategy 1: Exact match
+    const { data: exactMatch, error: exactError } = await roleQuery.eq('name', canonicalRoleName);
+    if (exactMatch && exactMatch.length > 0) {
+      roleData = exactMatch[0];
+    } else {
+      // Strategy 2: Case-insensitive match
+      const { data: caseInsensitive, error: caseError } = await roleQuery.ilike('name', canonicalRoleName);
+      if (caseInsensitive && caseInsensitive.length > 0) {
+        roleData = caseInsensitive[0];
+      } else {
+        // Strategy 3: Partial match (for variations like "Support Staff" vs "Support")
+        const { data: partialMatch, error: partialError } = await roleQuery.ilike('name', `%${canonicalRoleName.split(' ')[0]}%`);
+        if (partialMatch && partialMatch.length > 0) {
+          roleData = partialMatch[0];
+        } else {
+          roleError = caseError || partialError || exactError;
+        }
+      }
+    }
+
+    console.log(`[${operationId}] Role lookup result:`, { 
       roleData, 
-      roleError, 
-      searchTerm: roleMapping.dbName,
-      scope: tenant_id ? 'tenant' : 'global' 
+      roleError,
+      searchStrategies: ['exact', 'case-insensitive', 'partial']
     });
 
     if (roleError || !roleData) {
-      console.error(`[${operationId}] Failed to find role:`, roleError);
+      console.error(`[${operationId}] Failed to find role after all strategies:`, roleError);
       
       // Get available roles for better error message
       const { data: availableRoles, error: availableRolesError } = await supabaseAdmin
@@ -239,45 +291,71 @@ const handler = async (req: Request): Promise<Response> => {
       
       console.log(`[${operationId}] Available roles:`, availableRoles);
       
-      // Clean up auth user if role lookup failed
+      // DON'T delete auth user immediately - flag as pending instead
       try {
-        await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
-        console.log(`[${operationId}] Auth user cleaned up after role lookup failure`);
-      } catch (cleanupError) {
-        console.error(`[${operationId}] Failed to cleanup auth user:`, cleanupError);
+        await supabaseAdmin
+          .from('users')
+          .insert({
+            id: newUser.user.id,
+            email,
+            name,
+            role: legacyRole,
+            role_id: null, // Mark as pending role assignment
+            tenant_id: tenant_id || null,
+            department,
+            force_reset: true,
+            temp_password_hash: await hashPassword(tempPassword),
+            temp_expires: tempExpires.toISOString(),
+            is_active: false // Keep inactive until role is assigned
+          });
+        
+        console.log(`[${operationId}] User created with pending role assignment`);
+      } catch (pendingUserError) {
+        console.error(`[${operationId}] Failed to create pending user:`, pendingUserError);
+        
+        // Only now cleanup auth user if we can't even create pending record
+        try {
+          await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
+          console.log(`[${operationId}] Auth user cleaned up after total failure`);
+        } catch (cleanupError) {
+          console.error(`[${operationId}] Failed to cleanup auth user:`, cleanupError);
+        }
       }
       
       return new Response(JSON.stringify({ 
         success: false,
-        error: `Role '${roleMapping.dbName}' not found for ${tenant_id ? 'tenant' : 'global'} scope`,
-        requested_role: roleMapping.dbName,
+        error: `Role '${canonicalRoleName}' not found for ${tenant_id ? 'tenant' : 'global'} scope`,
+        requested_role: canonicalRoleName,
         scope: tenant_id ? 'tenant' : 'global',
         available_roles: availableRoles?.map(r => r.name) || [],
+        pending_user_id: newUser.user.id,
+        message: 'User created but role assignment pending. Please assign a valid role manually.',
         debug_info: {
           operation_id: operationId,
           role_error: roleError?.message,
           available_roles_error: availableRolesError?.message
         }
       }), {
-        status: 400,
+        status: 422, // Unprocessable Entity - partial success
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Insert user into public.users table with correct legacy role
+    // Insert user into public.users table with role_id as authoritative source
     const { error: userInsertError } = await supabaseAdmin
       .from('users')
       .insert({
         id: newUser.user.id,
         email,
         name,
-        role: roleMapping.legacyRole, // Use mapped legacy role
-        role_id: roleData.id, // New role system
+        role: legacyRole, // Legacy role for backward compatibility
+        role_id: roleData.id, // Authoritative role reference
         tenant_id: tenant_id || null,
         department,
         force_reset: true,
         temp_password_hash: tempPasswordHash,
-        temp_expires: tempExpires.toISOString()
+        temp_expires: tempExpires.toISOString(),
+        is_active: true // User is fully created and ready
       });
 
     if (userInsertError) {

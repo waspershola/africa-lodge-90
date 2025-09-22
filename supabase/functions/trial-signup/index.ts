@@ -303,8 +303,10 @@ const handler = async (req: Request): Promise<Response> => {
         throw new Error(`Failed to update tenant owner: ${updateError.message}`);
       }
 
-      // Step 6: Send welcome email
+      // Step 6: Send welcome email (non-critical - don't fail if this fails)
       let emailSent = false;
+      let emailError = null;
+      
       try {
         const loginUrl = `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '')}.lovable.app`;
         
@@ -325,7 +327,7 @@ const handler = async (req: Request): Promise<Response> => {
               </div>
               
               <a href="${loginUrl}" style="display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0;">
-                Start Your Trial
+                Start Your Trial Now
               </a>
               
               <p>Your trial includes:</p>
@@ -346,16 +348,57 @@ const handler = async (req: Request): Promise<Response> => {
         console.log('Welcome email sent successfully:', emailResult);
         emailSent = true;
       } catch (error) {
-        console.error('Failed to send welcome email:', error);
+        console.error('Failed to send welcome email (non-critical):', error);
+        emailError = error.message;
+        // Continue anyway - email failure shouldn't break trial signup
       }
+
+      // Log audit event for trial signup
+      await supabaseAdmin
+        .from('audit_log')
+        .insert({
+          actor_id: authUserId,
+          action: 'trial_signup_completed',
+          resource_type: 'tenant',
+          resource_id: tenantId,
+          description: `Trial signup completed for ${hotel_name}`,
+          metadata: {
+            hotel_name,
+            owner_email,
+            plan_id: starterPlan.id,
+            email_sent: emailSent,
+            email_error: emailError
+          }
+        });
+
+      console.log(`[${operationId}] Trial signup completed successfully`, {
+        tenant_id: tenantId,
+        user_id: authUserId,
+        email_sent: emailSent,
+        duration_ms: Date.now() - startTime
+      });
 
       return new Response(JSON.stringify({
         success: true,
-        tenant,
+        tenant: {
+          id: tenantId,
+          hotel_name,
+          plan_id: starterPlan.id,
+          subscription_status: 'trialing'
+        },
+        user: {
+          id: authUserId,
+          email: owner_email,
+          name: owner_name
+        },
         email_sent: emailSent,
         message: emailSent 
           ? 'Trial account created successfully! Welcome email sent.'
-          : 'Trial account created successfully! You can now sign in.'
+          : 'Trial account created successfully! You can now sign in.',
+        debug_info: {
+          operation_id: operationId,
+          duration_ms: Date.now() - startTime
+        }
       }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

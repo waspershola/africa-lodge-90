@@ -84,8 +84,10 @@ serve(async (req) => {
       password: tempPassword,
       email_confirm: true,
       user_metadata: {
+        role: roleData.name,
         role_id: roleData.id,
-        scope: 'global'
+        scope: 'global',
+        tenant_id: null
       }
     });
 

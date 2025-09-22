@@ -109,25 +109,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     try {
-      // Delete from Supabase Auth first (this is the critical operation)
-      console.log('Deleting user from Supabase Auth...');
-      const { error: deleteAuthError } = await supabaseClient.auth.admin.deleteUser(user_id);
-
-      if (deleteAuthError) {
-        console.error('Failed to delete auth user:', deleteAuthError);
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: 'Failed to delete user from authentication system', 
-            details: deleteAuthError.message 
-          }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      console.log('Auth user deleted successfully');
-
-      // Delete from users table
+      // First, try to delete from users table (this cleans up our records)
       console.log('Deleting user record from database...');
       const { error: deleteUserError } = await supabaseClient
         .from('users')
@@ -136,8 +118,6 @@ const handler = async (req: Request): Promise<Response> => {
 
       if (deleteUserError) {
         console.error('Failed to delete user record:', deleteUserError);
-        // Auth user is already deleted, so we just log this error
-        console.error('Warning: Auth user deleted but database record remains');
         return new Response(
           JSON.stringify({ 
             success: false, 
@@ -149,6 +129,29 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       console.log('User record deleted successfully');
+
+      // Then try to delete from Supabase Auth (this might fail if user already deleted)
+      console.log('Deleting user from Supabase Auth...');
+      const { error: deleteAuthError } = await supabaseClient.auth.admin.deleteUser(user_id);
+
+      if (deleteAuthError) {
+        // This is OK if user was already deleted from auth
+        if (deleteAuthError.message?.includes('User not found')) {
+          console.log('User was already deleted from auth (this is OK)');
+        } else {
+          console.error('Failed to delete auth user:', deleteAuthError);
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'Failed to delete user from authentication system', 
+              details: deleteAuthError.message 
+            }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      } else {
+        console.log('Auth user deleted successfully');
+      }
     } catch (error) {
       console.error('Unexpected error during user deletion:', error);
       return new Response(

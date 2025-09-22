@@ -138,10 +138,8 @@ export const useDeleteGlobalUser = () => {
       });
 
       if (error) {
-        console.error('Delete user error:', error);
-        // Try to extract more specific error information
-        const errorMessage = error.message || 'Edge Function returned a non-2xx status code';
-        throw new Error(`Failed to delete user: ${errorMessage}`);
+        console.error('Delete user error details:', error);
+        throw new Error(`Failed to delete user: ${error.message || 'Edge Function returned a non-2xx status code'}`);
       }
       
       if (!data?.success) {

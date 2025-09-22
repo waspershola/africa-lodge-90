@@ -90,20 +90,54 @@ const handler = async (req: Request): Promise<Response> => {
       .from('plans')
       .select('id, name')
       .ilike('name', 'Starter')
-      .single();
+      .maybeSingle();
 
-    if (planError || !starterPlan) {
+    if (planError) {
       console.error('Plan lookup error:', planError);
-      console.log('Available plans check...');
-      const { data: allPlans } = await supabaseAdmin.from('plans').select('name');
-      console.log('Available plans:', allPlans);
       return new Response(JSON.stringify({ 
         success: false, 
-        error: `Starter plan not found. Available plans: ${allPlans?.map(p => p.name).join(', ')}` 
+        error: `Database error looking up plan: ${planError.message}` 
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    if (!starterPlan) {
+      console.log('Starter plan not found, checking available plans...');
+      const { data: allPlans } = await supabaseAdmin.from('plans').select('name');
+      console.log('Available plans:', allPlans);
+      
+      // Try to find any plan that looks like a starter/trial plan
+      const fallbackPlan = allPlans?.find(p => 
+        p.name.toLowerCase().includes('starter') ||
+        p.name.toLowerCase().includes('trial') ||
+        p.name.toLowerCase().includes('basic')
+      );
+      
+      if (fallbackPlan) {
+        const { data: planData } = await supabaseAdmin
+          .from('plans')
+          .select('id, name')
+          .eq('name', fallbackPlan.name)
+          .single();
+        
+        if (planData) {
+          console.log(`Using fallback plan: ${planData.name}`);
+          starterPlan.id = planData.id;
+          starterPlan.name = planData.name;
+        }
+      }
+      
+      if (!starterPlan) {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: `No suitable plan found. Available plans: ${allPlans?.map(p => p.name).join(', ')}` 
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     console.log(`Found plan: ${starterPlan.name} with ID: ${starterPlan.id}`);

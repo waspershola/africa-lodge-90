@@ -110,6 +110,23 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
+    console.log('Starting invite-user function with body:', {
+      email,
+      name,
+      role,
+      tenant_id,
+      department
+    });
+
+    // Validate required fields
+    if (!email || !name || !role) {
+      console.error('Missing required fields:', { email: !!email, name: !!name, role: !!role });
+      return new Response(JSON.stringify({ error: 'Email, name, and role are required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Check if user already exists in auth or public users
     const { data: usersList } = await supabaseAdmin.auth.admin.listUsers();
     const existingAuthUser = usersList?.users?.find(u => u.email === email);

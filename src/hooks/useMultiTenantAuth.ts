@@ -428,6 +428,9 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
           setTimeout(() => {
             loadUserProfile(session.user);
           }, 0);
+          
+          // Set up aggressive token refresh for active sessions
+          setupRefresh(session);
         }
       } else if (event === 'SIGNED_OUT') {
         console.log('User signed out, clearing state');
@@ -444,46 +447,62 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
       } else if (event === 'TOKEN_REFRESHED') {
         console.log('Token refreshed, updating session');
         setSession(session);
+        setError(null);
       }
     });
 
     // Set up automatic token refresh - more aggressive approach
-    const setupRefresh = () => {
+    const setupRefresh = (session: any) => {
       if (refreshInterval) {
         clearInterval(refreshInterval);
       }
       
-      refreshInterval = setInterval(async () => {
-        try {
-          const { data: { session: currentSession } } = await supabase.auth.getSession();
-          if (currentSession) {
-            const now = Math.floor(Date.now() / 1000);
-            const expiresAt = currentSession.expires_at || 0;
-            
-            // Refresh 5 minutes before expiry
-            if (expiresAt - now < 300) {
-              console.log('Token expiring soon, refreshing...');
-              const { error } = await supabase.auth.refreshSession();
-              if (error) {
-                console.error('Token refresh failed:', error);
-                // Force re-authentication if refresh fails
-                await supabase.auth.signOut();
-              } else {
-                console.log('Session refreshed successfully');
-                setError(null);
+      if (session) {
+        refreshInterval = setInterval(async () => {
+          try {
+            const { data: { session: currentSession } } = await supabase.auth.getSession();
+            if (currentSession) {
+              const now = Math.floor(Date.now() / 1000);
+              const expiresAt = currentSession.expires_at || 0;
+              
+              // Refresh 10 minutes before expiry (600 seconds)
+              if (expiresAt - now < 600) {
+                console.log('Token expiring soon, refreshing proactively...');
+                const { data, error } = await supabase.auth.refreshSession();
+                if (error) {
+                  console.error('Proactive token refresh failed:', error);
+                  // Force logout on refresh failure to prevent session loops
+                  await supabase.auth.signOut();
+                } else {
+                  console.log('Session refreshed proactively');
+                  setSession(data.session);
+                  setError(null);
+                }
               }
             }
+          } catch (error) {
+            console.error('Error in token refresh interval:', error);
+            // Clear refresh interval if there are persistent errors
+            if (refreshInterval) {
+              clearInterval(refreshInterval);
+              refreshInterval = null;
+            }
           }
-        } catch (error) {
-          console.error('Error in token refresh interval:', error);
-        }
-      }, 30 * 1000); // Check every 30 seconds
+        }, 30 * 1000); // Check every 30 seconds
+      }
     };
 
     // Load initial auth state
-    loadAuthState().finally(() => {
+    loadAuthState().finally(async () => {
       initialLoadDone = true;
-      setupRefresh(); // Start refresh monitoring after initial load
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (currentSession) {
+          setupRefresh(currentSession); // Start refresh monitoring after initial load
+        }
+      } catch (error) {
+        console.error('Error setting up refresh after initial load:', error);
+      }
       console.log('Initial auth state loading completed');
     });
 

@@ -28,7 +28,6 @@ import {
   useResetGlobalUserPassword,
   type GlobalUser 
 } from '@/hooks/useGlobalUsers';
-import { InviteUserDialog } from './InviteUserDialog';
 import { format } from 'date-fns';
 import { useMultiTenantAuth } from '@/hooks/useMultiTenantAuth';
 
@@ -121,7 +120,6 @@ export function GlobalUsersTable() {
             <Shield className="h-5 w-5" />
             Global Users ({filteredUsers.length})
           </CardTitle>
-          <InviteUserDialog onSuccess={() => refetch()} />
         </div>
         
         <div className="flex gap-4 items-center">

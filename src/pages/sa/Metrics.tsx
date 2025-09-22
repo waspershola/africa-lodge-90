@@ -1,12 +1,7 @@
-import { motion } from 'framer-motion';
-import { TrendingUp, Users, Building2, DollarSign, Database, Shield, HardDrive, Download, Upload, RefreshCw } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { LoadingState } from '@/components/ui/loading-state';
-import { ErrorState } from '@/components/ui/error-state';
-import { useMetrics } from '@/hooks/useApi';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import React from 'react';
+import { SystemMonitoring } from '@/components/sa/SystemMonitoring';
+import { EdgeFunctionMonitoring } from '@/components/sa/EdgeFunctionMonitoring';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const fadeIn = {
   initial: { opacity: 0, y: 20 },
@@ -23,26 +18,32 @@ const staggerChildren = {
 };
 
 export default function Metrics() {
-  const { data: metricsData, isLoading, error, refetch } = useMetrics();
-
-  if (isLoading) return <LoadingState message="Loading metrics..." />;
-  if (error) return <ErrorState message="Failed to load metrics" onRetry={refetch} />;
-
-  const metrics = metricsData?.data;
-  if (!metrics) return <ErrorState message="No metrics data available" />;
-
   return (
-    <motion.div 
-      className="space-y-6"
-      variants={staggerChildren}
-      initial="initial"
-      animate="animate"
-    >
-      {/* Header */}
-      <motion.div variants={fadeIn}>
-        <h1 className="text-2xl font-bold display-heading text-gradient mb-1">Metrics</h1>
-        <p className="text-muted-foreground">Platform performance and business intelligence</p>
-      </motion.div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Production Monitoring</h1>
+        <p className="text-muted-foreground">
+          Comprehensive system monitoring and observability dashboard
+        </p>
+      </div>
+
+      <Tabs defaultValue="system" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="system">System Health</TabsTrigger>
+          <TabsTrigger value="functions">Edge Functions</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="system">
+          <SystemMonitoring />
+        </TabsContent>
+
+        <TabsContent value="functions">
+          <EdgeFunctionMonitoring />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
 
       {/* KPI Cards */}
       <motion.div variants={fadeIn} className="grid grid-cols-1 md:grid-cols-4 gap-6">

@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Hotel Management System API - Phase 4 Testing",
-    "description": "Comprehensive API test collection for hotel management system with multi-tenant architecture and real-time features",
+    "name": "Production Edge Functions Test Suite",
+    "description": "Comprehensive API test collection for critical production edge functions",
     "version": "2.0.0",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },

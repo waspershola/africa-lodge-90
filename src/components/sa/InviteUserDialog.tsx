@@ -38,9 +38,12 @@ export function InviteUserDialog({ tenantId, onSuccess }: InviteUserDialogProps)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [inviteResult, setInviteResult] = useState<{
     success: boolean;
-    email_sent: boolean;
+    email_sent?: boolean;
     temp_password?: string;
-    message: string;
+    message?: string;
+    error?: string;
+    debug_info?: any;
+    code?: string;
   } | null>(null);
 
   // Fetch appropriate roles based on context
@@ -89,18 +92,26 @@ export function InviteUserDialog({ tenantId, onSuccess }: InviteUserDialogProps)
       } else {
         // Handle structured error responses with better UX
         const errorMessage = result.error || 'Failed to invite user';
+        const errorDetails = result.data?.details || '';
+        const fullErrorMessage = errorDetails ? `${errorMessage}: ${errorDetails}` : errorMessage;
         
         if (errorMessage.includes('already exists')) {
           toast.error('A user with this email already exists in the system');
         } else if (errorMessage.includes('role not found') || errorMessage.includes('not found')) {
-          toast.error('The selected role is not available. Please try a different role.');
-        } else if (errorMessage.includes('permission')) {
-          toast.error('You do not have permission to invite users with this role');
-        } else if (result.code === 'TOKEN_EXPIRED') {
-          toast.error('Your session has expired. Please refresh the page and try again.');
+          toast.error('The specified role was not found. Please check the role name and try again.');
+        } else if (errorMessage.includes('authentication') || errorMessage.includes('auth')) {
+          toast.error('Failed to create user authentication account. Please try again or contact support.');
         } else {
-          toast.error(errorMessage);
+          toast.error(fullErrorMessage);
         }
+        
+        // Set detailed error info for debugging
+        setInviteResult({
+          success: false,
+          error: fullErrorMessage,
+          debug_info: result.data?.debug_info,
+          code: result.data?.code
+        });
       }
 
     } catch (error: any) {

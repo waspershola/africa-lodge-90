@@ -164,20 +164,90 @@ const handler = async (req: Request): Promise<Response> => {
     const tempExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     // Create user in Supabase Auth (unverified)
-    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password: tempPassword,
-      email_confirm: false, // Don't require email confirmation
-      user_metadata: {
-        role,
-        tenant_id,
-        name
-      }
-    });
+    console.log(`[${operationId}] Creating auth user with email: ${email}`);
+    console.log(`[${operationId}] User metadata:`, { role, name, tenant_id });
+    
+    // Prepare user metadata (handle null values explicitly)
+    const userMetadata: any = {
+      role: role || 'UNKNOWN',
+      name: name || 'Unknown User'
+    };
+    
+    // Only add tenant_id if it's not null/undefined
+    if (tenant_id) {
+      userMetadata.tenant_id = tenant_id;
+    }
+    
+    console.log(`[${operationId}] Final user metadata:`, userMetadata);
+    
+    let authUser;
+    try {
+      const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password: tempPassword,
+        email_confirm: false, // Don't require email confirmation
+        user_metadata: userMetadata
+      });
 
-    if (createError || !newUser.user) {
-      console.error('Failed to create auth user:', createError);
-      return new Response(JSON.stringify({ error: 'Failed to create user account' }), {
+      if (createError) {
+        console.error(`[${operationId}] Supabase auth createUser error:`, {
+          message: createError.message,
+          status: createError.status,
+          code: createError.code,
+          details: createError
+        });
+        
+        // Return a proper error response instead of throwing
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: 'Failed to create authentication account',
+          details: createError.message,
+          code: createError.code || 'AUTH_CREATE_ERROR',
+          debug_info: {
+            operation_id: operationId,
+            auth_error: createError.message
+          }
+        }), {
+          status: 400, // Use 400 instead of 500 for known errors
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (!newUser?.user) {
+        console.error(`[${operationId}] No user returned from auth creation`);
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: 'Failed to create authentication account - no user returned',
+          code: 'AUTH_NO_USER',
+          debug_info: {
+            operation_id: operationId
+          }
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      authUser = newUser.user;
+      console.log(`[${operationId}] Auth user created successfully:`, authUser.id);
+      
+    } catch (authError: any) {
+      console.error(`[${operationId}] Unexpected error during auth user creation:`, {
+        error: authError,
+        message: authError?.message,
+        stack: authError?.stack
+      });
+      
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'Unexpected error during account creation',
+        details: authError?.message || 'Unknown error',
+        code: 'AUTH_UNEXPECTED_ERROR',
+        debug_info: {
+          operation_id: operationId,
+          error_type: authError?.name || 'Unknown'
+        }
+      }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -296,7 +366,7 @@ const handler = async (req: Request): Promise<Response> => {
         await supabaseAdmin
           .from('users')
           .insert({
-            id: newUser.user.id,
+            id: authUser.id,
             email,
             name,
             role: legacyRole,
@@ -315,7 +385,7 @@ const handler = async (req: Request): Promise<Response> => {
         
         // Only now cleanup auth user if we can't even create pending record
         try {
-          await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
+          await supabaseAdmin.auth.admin.deleteUser(authUser.id);
           console.log(`[${operationId}] Auth user cleaned up after total failure`);
         } catch (cleanupError) {
           console.error(`[${operationId}] Failed to cleanup auth user:`, cleanupError);
@@ -328,7 +398,7 @@ const handler = async (req: Request): Promise<Response> => {
         requested_role: canonicalRoleName,
         scope: tenant_id ? 'tenant' : 'global',
         available_roles: availableRoles?.map(r => r.name) || [],
-        pending_user_id: newUser.user.id,
+        pending_user_id: authUser.id,
         message: 'User created but role assignment pending. Please assign a valid role manually.',
         debug_info: {
           operation_id: operationId,
@@ -345,7 +415,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { error: userInsertError } = await supabaseAdmin
       .from('users')
       .insert({
-        id: newUser.user.id,
+        id: authUser.id,
         email,
         name,
         role: legacyRole, // Legacy role for backward compatibility
@@ -362,7 +432,7 @@ const handler = async (req: Request): Promise<Response> => {
       console.error('Failed to create user record:', userInsertError);
       // Clean up auth user if profile creation failed
       try {
-        await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
+        await supabaseAdmin.auth.admin.deleteUser(authUser.id);
         console.log('Auth user cleaned up after user profile creation failure');
       } catch (cleanupError) {
         console.error('Failed to cleanup auth user:', cleanupError);
@@ -428,7 +498,7 @@ const handler = async (req: Request): Promise<Response> => {
         actor_id: user.id,
         action: 'user_invited',
         resource_type: 'user',
-        resource_id: newUser.user.id,
+        resource_id: authUser.id,
         description: `Invited user ${email} with role ${role}`,
         metadata: {
           email,
@@ -445,13 +515,13 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`[${operationId}] invite-user function completed successfully`, {
       duration_ms: duration,
       email_sent: emailSent,
-      user_id: newUser.user.id
+      user_id: authUser.id
     });
 
     return new Response(JSON.stringify({
       success: true,
       user: {
-        id: newUser.user.id,
+        id: authUser.id,
         email,
         name,
         role

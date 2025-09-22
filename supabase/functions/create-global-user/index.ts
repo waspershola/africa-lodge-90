@@ -139,6 +139,7 @@ serve(async (req) => {
         email: authUser.user!.email!,
         name: name || null,
         phone: phone || null,
+        address: address || null,
         role: roleData.name,
         role_id: roleData.id,
         tenant_id: null, // Global users have no tenant

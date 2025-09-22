@@ -31,16 +31,18 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Extract the JWT token
+    // Extract the JWT token and verify with service role key
     const token = authHeader.replace('Bearer ', '');
     
-    // Set the session to verify the user
+    // Use service role key to verify the token and get user  
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+    
+    console.log('Delete user auth check:', { hasUser: !!user, error: authError?.message });
     
     if (authError || !user) {
       console.error('Authentication error:', authError);
       return new Response(
-        JSON.stringify({ success: false, error: 'Invalid authentication' }),
+        JSON.stringify({ success: false, error: 'Invalid authentication token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

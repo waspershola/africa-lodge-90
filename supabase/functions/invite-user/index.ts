@@ -146,33 +146,45 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Map frontend role names to database role names and legacy role field
-    const roleMappings = {
-      // Global roles
+    const roleMappings: { [key: string]: { dbName: string; legacyRole: string } } = {
+      // Global roles - match exact database names
       'Super Admin': { dbName: 'Super Admin', legacyRole: 'SUPER_ADMIN' },
       'Platform Admin': { dbName: 'Platform Admin', legacyRole: 'PLATFORM_ADMIN' },
       'Support Staff': { dbName: 'Support Staff', legacyRole: 'SUPPORT_STAFF' },
-      'sales': { dbName: 'sales', legacyRole: 'SALES' },
+      'Sales': { dbName: 'Sales', legacyRole: 'SALES' },
       // Tenant roles  
-      'Owner': { dbName: 'HOTEL_OWNER', legacyRole: 'OWNER' },
-      'Manager': { dbName: 'HOTEL_MANAGER', legacyRole: 'MANAGER' },
-      'Front Desk': { dbName: 'FRONT_DESK', legacyRole: 'FRONT_DESK' },
-      'Housekeeping': { dbName: 'HOUSEKEEPING', legacyRole: 'HOUSEKEEPING' },
-      'Maintenance': { dbName: 'MAINTENANCE', legacyRole: 'MAINTENANCE' }
+      'Owner': { dbName: 'Owner', legacyRole: 'OWNER' },
+      'Manager': { dbName: 'Manager', legacyRole: 'MANAGER' },
+      'Front Desk': { dbName: 'Front Desk', legacyRole: 'FRONT_DESK' },
+      'Housekeeping': { dbName: 'Housekeeping', legacyRole: 'HOUSEKEEPING' },
+      'Maintenance': { dbName: 'Maintenance', legacyRole: 'MAINTENANCE' },
+      'Accounting': { dbName: 'Accounting', legacyRole: 'ACCOUNTING' }
     };
 
     const roleMapping = roleMappings[role];
     if (!roleMapping) {
-      console.error('Invalid role provided:', role);
-      return new Response(JSON.stringify({ error: 'Invalid role specified' }), {
+      console.error('Invalid role provided:', role, 'Available roles:', Object.keys(roleMappings));
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'Invalid role specified',
+        available_roles: Object.keys(roleMappings)
+      }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    console.log('Looking for role:', { 
+      frontendRole: role, 
+      dbName: roleMapping.dbName, 
+      scope: tenant_id ? 'tenant' : 'global',
+      tenant_id 
+    });
+
     // Get role_id from roles table using the correct database role name
     let roleQuery = supabaseAdmin
       .from('roles')
-      .select('id')
+      .select('id, name, scope')
       .eq('name', roleMapping.dbName)
       .eq('scope', tenant_id ? 'tenant' : 'global');
     
@@ -185,10 +197,25 @@ const handler = async (req: Request): Promise<Response> => {
     
     const { data: roleData, error: roleError } = await roleQuery.single();
 
+    console.log('Role query result:', { roleData, roleError });
+
     if (roleError || !roleData) {
       console.error('Failed to find role:', roleError);
+      console.log('Available roles in database:');
+      const { data: availableRoles } = await supabaseAdmin
+        .from('roles')
+        .select('name, scope, tenant_id')
+        .eq('scope', tenant_id ? 'tenant' : 'global');
+      console.log('Available roles:', availableRoles);
+      
+      // Clean up auth user if profile creation failed
       await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
-      return new Response(JSON.stringify({ error: 'Invalid role specified' }), {
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'Role not found in database',
+        requested_role: roleMapping.dbName,
+        scope: tenant_id ? 'tenant' : 'global'
+      }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -214,7 +241,11 @@ const handler = async (req: Request): Promise<Response> => {
       console.error('Failed to create user record:', userInsertError);
       // Clean up auth user if profile creation failed
       await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
-      return new Response(JSON.stringify({ error: 'Failed to create user profile' }), {
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'Failed to create user profile',
+        details: userInsertError.message 
+      }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -298,9 +329,12 @@ const handler = async (req: Request): Promise<Response> => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in invite-user function:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ 
+      success: false,
+      error: error.message || 'Internal server error' 
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

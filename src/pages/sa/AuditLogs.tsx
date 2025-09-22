@@ -1,4 +1,5 @@
 import { AuditLogViewer } from '@/components/common/AuditLogViewer';
+import { AuditLogExporter } from '@/components/sa/AuditLogExporter';
 
 export default function AuditLogs() {
   return (
@@ -10,7 +11,10 @@ export default function AuditLogs() {
         </p>
       </div>
       
-      <AuditLogViewer />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <AuditLogViewer />
+        <AuditLogExporter />
+      </div>
     </div>
   );
 }

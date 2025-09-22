@@ -5,21 +5,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { DatePickerWithRange } from '@/components/ui/date-range-picker';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import type { DateRange } from 'react-day-picker';
 
 interface AuditLogExporterProps {
   className?: string;
 }
 
 interface ExportFilters {
-  dateRange: {
-    from: Date | null;
-    to: Date | null;
-  };
+  dateRange: DateRange | undefined;
   action?: string;
   actorId?: string;
   resourceType?: string;
@@ -28,13 +26,13 @@ interface ExportFilters {
 
 export function AuditLogExporter({ className }: AuditLogExporterProps) {
   const [filters, setFilters] = useState<ExportFilters>({
-    dateRange: { from: null, to: null }
+    dateRange: undefined
   });
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
 
   const handleExport = async (format: 'csv' | 'json') => {
-    if (!filters.dateRange.from || !filters.dateRange.to) {
+    if (!filters.dateRange?.from || !filters.dateRange?.to) {
       toast({
         title: "Date range required",
         description: "Please select a date range for the export",
@@ -83,7 +81,6 @@ export function AuditLogExporter({ className }: AuditLogExporterProps) {
         toast({
           title: "No data found",
           description: "No audit logs match the selected criteria",
-          variant: "destructive",
         });
         return;
       }
@@ -128,8 +125,6 @@ export function AuditLogExporter({ className }: AuditLogExporterProps) {
       'Description',
       'IP Address',
       'User Agent',
-      'Old Values',
-      'New Values',
       'Metadata',
       'Created At'
     ];
@@ -148,8 +143,6 @@ export function AuditLogExporter({ className }: AuditLogExporterProps) {
         `"${(row.description || '').replace(/"/g, '""')}"`,
         `"${row.ip_address || ''}"`,
         `"${(row.user_agent || '').replace(/"/g, '""')}"`,
-        `"${row.old_values ? JSON.stringify(row.old_values).replace(/"/g, '""') : ''}"`,
-        `"${row.new_values ? JSON.stringify(row.new_values).replace(/"/g, '""') : ''}"`,
         `"${row.metadata ? JSON.stringify(row.metadata).replace(/"/g, '""') : ''}"`,
         `"${row.created_at || ''}"`
       ].join(','))
@@ -208,12 +201,11 @@ export function AuditLogExporter({ className }: AuditLogExporterProps) {
         {/* Date Range Filter */}
         <div className="space-y-2">
           <Label>Date Range (Required)</Label>
-          <DateRangePicker
-            from={filters.dateRange.from}
-            to={filters.dateRange.to}
-            onUpdate={(range) => setFilters(prev => ({
+          <DatePickerWithRange
+            dateRange={filters.dateRange}
+            setDateRange={(range) => setFilters(prev => ({
               ...prev,
-              dateRange: { from: range.from || null, to: range.to || null }
+              dateRange: range
             }))}
           />
         </div>
@@ -282,20 +274,6 @@ export function AuditLogExporter({ className }: AuditLogExporterProps) {
             onChange={(e) => setFilters(prev => ({ 
               ...prev, 
               actorId: e.target.value || undefined 
-            }))}
-          />
-        </div>
-
-        {/* Tenant ID Filter */}
-        <div className="space-y-2">
-          <Label htmlFor="tenantId">Tenant ID (Optional)</Label>
-          <Input
-            id="tenantId"
-            placeholder="Filter by specific tenant ID"
-            value={filters.tenantId || ''}
-            onChange={(e) => setFilters(prev => ({ 
-              ...prev, 
-              tenantId: e.target.value || undefined 
             }))}
           />
         </div>

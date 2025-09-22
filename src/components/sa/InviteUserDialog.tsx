@@ -71,9 +71,13 @@ export function InviteUserDialog({ tenantId, onSuccess }: InviteUserDialogProps)
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to invoke invite function');
+      }
 
       if (!result?.success) {
+        console.error('Function returned error:', result);
         throw new Error(result?.error || 'Failed to invite user');
       }
 
@@ -92,7 +96,20 @@ export function InviteUserDialog({ tenantId, onSuccess }: InviteUserDialogProps)
 
     } catch (error: any) {
       console.error('Failed to invite user:', error);
-      toast.error(error.message || 'Failed to invite user');
+      
+      // Show more specific error messages
+      let errorMessage = 'Failed to invite user';
+      if (error.message?.includes('already exists')) {
+        errorMessage = 'A user with this email already exists';
+      } else if (error.message?.includes('not found')) {
+        errorMessage = 'The selected role is not available';
+      } else if (error.message?.includes('permission')) {
+        errorMessage = 'You do not have permission to perform this action';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

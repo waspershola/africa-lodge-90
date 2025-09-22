@@ -63,10 +63,18 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Check if user already exists
+    // Check if user already exists in auth or public users
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const existingUser = existingUsers?.users?.find(u => u.email === owner_email);
-    if (existingUser) {
+    const existingAuthUser = existingUsers?.users?.find(u => u.email === owner_email);
+    
+    // Also check public users table
+    const { data: existingPublicUser } = await supabaseAdmin
+      .from('users')
+      .select('id, email')
+      .eq('email', owner_email)
+      .maybeSingle();
+    
+    if (existingAuthUser || existingPublicUser) {
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'A user with this email already exists' 
@@ -279,22 +287,34 @@ const handler = async (req: Request): Promise<Response> => {
       });
 
     } catch (error) {
-      // Rollback: Clean up tenant and auth user if created
-      if (tenantId) {
-        try {
-          await supabaseAdmin.from('tenants').delete().eq('tenant_id', tenantId);
-          console.log('Tenant rolled back');
-        } catch (rollbackError) {
-          console.error('Failed to rollback tenant:', rollbackError);
-        }
-      }
+      console.error('Trial signup error during transaction:', error);
       
+      // Rollback: Clean up in reverse order
       if (authUserId) {
         try {
+          // Delete from public.users first
+          await supabaseAdmin.from('users').delete().eq('id', authUserId);
+          console.log('Public user record rolled back');
+          
+          // Then delete from auth
           await supabaseAdmin.auth.admin.deleteUser(authUserId);
           console.log('Auth user rolled back');
         } catch (rollbackError) {
           console.error('Failed to rollback auth user:', rollbackError);
+        }
+      }
+      
+      if (tenantId) {
+        try {
+          // Delete roles first (if any were created)
+          await supabaseAdmin.from('roles').delete().eq('tenant_id', tenantId);
+          console.log('Tenant roles rolled back');
+          
+          // Then delete tenant
+          await supabaseAdmin.from('tenants').delete().eq('tenant_id', tenantId);
+          console.log('Tenant rolled back');
+        } catch (rollbackError) {
+          console.error('Failed to rollback tenant:', rollbackError);
         }
       }
       

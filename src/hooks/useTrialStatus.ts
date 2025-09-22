@@ -90,16 +90,27 @@ export const useTrialStatus = (): UseTrialStatusReturn => {
       setLoading(true);
       setError(null);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Make API call to trial-signup function
+      const { data: result, error } = await supabase.functions.invoke('trial-signup', {
+        body: {
+          hotel_name: 'Demo Hotel', // These will be provided by signup form
+          owner_email: 'demo@example.com',
+          owner_name: 'Demo Owner',
+          plan_id: planId
+        }
+      });
+
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to start trial');
+      }
+
+      if (!result?.success) {
+        console.error('Function returned error:', result);
+        throw new Error(result?.error || 'Failed to start trial signup');
+      }
       
-      // In production, this will be:
-      // const response = await fetch('/api/start-trial', {
-      //   method: 'POST',
-      //   body: JSON.stringify({ plan_id: planId })
-      // });
-      
-      // Mock starting trial
+      // Mock starting trial for now
       localStorage.setItem('hasActiveTrial', 'true');
       
       const newTrial: TrialStatus = {
@@ -116,9 +127,22 @@ export const useTrialStatus = (): UseTrialStatusReturn => {
       };
       
       setTrial(newTrial);
-    } catch (err) {
-      setError('Failed to start trial');
+    } catch (err: any) {
       console.error('Error starting trial:', err);
+      
+      // Show more specific error messages
+      let errorMessage = 'Failed to start trial';
+      if (err.message?.includes('already exists')) {
+        errorMessage = 'An account with this email already exists';
+      } else if (err.message?.includes('plan not available')) {
+        errorMessage = 'The selected plan is not available';
+      } else if (err.message?.includes('tenant')) {
+        errorMessage = 'Failed to create hotel account';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

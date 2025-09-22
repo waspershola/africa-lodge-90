@@ -57,8 +57,13 @@ export const useCreateGlobalUser = () => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to invoke invite function');
+      }
+      
       if (!data?.success) {
+        console.error('Function returned error:', data);
         throw new Error(data?.error || 'Failed to create global user');
       }
 
@@ -70,7 +75,20 @@ export const useCreateGlobalUser = () => {
     },
     onError: (error: any) => {
       console.error('Failed to create global user:', error);
-      toast.error(error.message || 'Failed to create global user');
+      
+      // Show more specific error messages
+      let errorMessage = 'Failed to create global user';
+      if (error.message?.includes('already exists')) {
+        errorMessage = 'A user with this email already exists';
+      } else if (error.message?.includes('not found')) {
+        errorMessage = 'The selected role is not available';
+      } else if (error.message?.includes('permission')) {
+        errorMessage = 'You do not have permission to perform this action';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
     },
   });
 };
@@ -116,8 +134,13 @@ export const useDeleteGlobalUser = () => {
         body: { user_id: userId }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to invoke delete function');
+      }
+      
       if (!data?.success) {
+        console.error('Function returned error:', data);
         throw new Error(data?.error || 'Failed to delete user');
       }
 
@@ -128,7 +151,21 @@ export const useDeleteGlobalUser = () => {
       toast.success('User deleted successfully');
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to delete user');
+      console.error('Failed to delete user:', error);
+      
+      // Show more specific error messages
+      let errorMessage = 'Failed to delete user';
+      if (error.message?.includes('platform owner')) {
+        errorMessage = 'Cannot delete platform owner';
+      } else if (error.message?.includes('not found')) {
+        errorMessage = 'User not found';
+      } else if (error.message?.includes('permission')) {
+        errorMessage = 'You do not have permission to perform this action';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
     },
   });
 };
@@ -142,8 +179,13 @@ export const useResetGlobalUserPassword = () => {
         body: { user_id: userId }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to invoke password reset function');
+      }
+      
       if (!data?.success) {
+        console.error('Function returned error:', data);
         throw new Error(data?.error || 'Failed to reset password');
       }
 
@@ -154,7 +196,21 @@ export const useResetGlobalUserPassword = () => {
       toast.success('Password reset email sent');
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to reset password');
+      console.error('Failed to reset password:', error);
+      
+      // Show more specific error messages
+      let errorMessage = 'Failed to reset password';
+      if (error.message?.includes('platform owner')) {
+        errorMessage = 'Cannot reset platform owner password';
+      } else if (error.message?.includes('not found')) {
+        errorMessage = 'User not found';
+      } else if (error.message?.includes('permission')) {
+        errorMessage = 'You do not have permission to perform this action';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
     },
   });
 };

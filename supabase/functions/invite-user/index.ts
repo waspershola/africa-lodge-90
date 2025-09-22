@@ -110,11 +110,22 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Check if user already exists
+    // Check if user already exists in auth or public users
     const { data: usersList } = await supabaseAdmin.auth.admin.listUsers();
-    const existingUser = usersList?.users?.find(u => u.email === email);
-    if (existingUser) {
-      return new Response(JSON.stringify({ error: 'User with this email already exists' }), {
+    const existingAuthUser = usersList?.users?.find(u => u.email === email);
+    
+    // Also check public users table
+    const { data: existingPublicUser } = await supabaseAdmin
+      .from('users')
+      .select('id, email')
+      .eq('email', email)
+      .maybeSingle();
+    
+    if (existingAuthUser || existingPublicUser) {
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'User with this email already exists' 
+      }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -208,13 +219,20 @@ const handler = async (req: Request): Promise<Response> => {
         .eq('scope', tenant_id ? 'tenant' : 'global');
       console.log('Available roles:', availableRoles);
       
-      // Clean up auth user if profile creation failed
-      await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
+      // Clean up auth user if role lookup failed
+      try {
+        await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
+        console.log('Auth user cleaned up after role lookup failure');
+      } catch (cleanupError) {
+        console.error('Failed to cleanup auth user:', cleanupError);
+      }
+      
       return new Response(JSON.stringify({ 
         success: false,
-        error: 'Role not found in database',
+        error: `Role '${roleMapping.dbName}' not found for ${tenant_id ? 'tenant' : 'global'} scope`,
         requested_role: roleMapping.dbName,
-        scope: tenant_id ? 'tenant' : 'global'
+        scope: tenant_id ? 'tenant' : 'global',
+        available_roles: availableRoles?.map(r => r.name) || []
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -240,11 +258,18 @@ const handler = async (req: Request): Promise<Response> => {
     if (userInsertError) {
       console.error('Failed to create user record:', userInsertError);
       // Clean up auth user if profile creation failed
-      await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
+      try {
+        await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
+        console.log('Auth user cleaned up after user profile creation failure');
+      } catch (cleanupError) {
+        console.error('Failed to cleanup auth user:', cleanupError);
+      }
+      
       return new Response(JSON.stringify({ 
         success: false,
         error: 'Failed to create user profile',
-        details: userInsertError.message 
+        details: userInsertError.message,
+        hint: userInsertError.code === '23505' ? 'User may already exist in system' : null
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

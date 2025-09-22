@@ -424,6 +424,9 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
       if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
         if (session?.user) {
           console.log('Auth event triggered profile load for:', session.user.email);
+          // Clear any previous error state on successful auth
+          setError(null);
+          
           // Use setTimeout to prevent potential deadlock
           setTimeout(() => {
             loadUserProfile(session.user);
@@ -431,6 +434,9 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
           
           // Set up aggressive token refresh for active sessions
           setupRefresh(session);
+        } else if (event === 'INITIAL_SESSION' && !session) {
+          console.log('Initial session check - no session found');
+          setIsLoading(false);
         }
       } else if (event === 'SIGNED_OUT') {
         console.log('User signed out, clearing state');
@@ -440,10 +446,12 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
         setIsImpersonating(false);
         setImpersonationData(null);
         setNeedsPasswordReset(false);
+        setError(null);
         if (refreshInterval) {
           clearInterval(refreshInterval);
           refreshInterval = null;
         }
+        setIsLoading(false);
       } else if (event === 'TOKEN_REFRESHED') {
         console.log('Token refreshed, updating session');
         setSession(session);
@@ -451,7 +459,7 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
       }
     });
 
-    // Set up automatic token refresh - more aggressive approach
+    // Set up automatic token refresh - enhanced approach with graceful degradation
     const setupRefresh = (session: any) => {
       if (refreshInterval) {
         clearInterval(refreshInterval);
@@ -470,22 +478,78 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
                 console.log('Token expiring soon, refreshing proactively...');
                 const { data, error } = await supabase.auth.refreshSession();
                 if (error) {
-                  console.error('Proactive token refresh failed:', error);
-                  // Force logout on refresh failure to prevent session loops
-                  await supabase.auth.signOut();
+                  console.error('Proactive token refresh failed:', error.message);
+                  
+                  // Handle specific error cases more gracefully
+                  if (error.message?.includes('refresh_token_not_found') || 
+                      error.message?.includes('Invalid Refresh Token') ||
+                      error.status === 400) {
+                    console.log('Token completely invalid, forcing clean logout');
+                    // Clear all local state first
+                    setUser(null);
+                    setTenant(null);
+                    setSession(null);
+                    setTrialStatus(null);
+                    setIsImpersonating(false);
+                    setImpersonationData(null);
+                    setError(null);
+                    
+                    // Clear refresh interval
+                    if (refreshInterval) {
+                      clearInterval(refreshInterval);
+                      refreshInterval = null;
+                    }
+                    
+                    // Force clean logout without causing additional errors
+                    try {
+                      await supabase.auth.signOut({ scope: 'local' });
+                    } catch (signOutError) {
+                      console.log('Sign out also failed, clearing locally only');
+                    }
+                    
+                    // Redirect to home page after clean logout
+                    setTimeout(() => {
+                      window.location.href = '/';
+                    }, 100);
+                    return;
+                  } else {
+                    // For other errors, just force logout
+                    await supabase.auth.signOut();
+                  }
                 } else {
                   console.log('Session refreshed proactively');
                   setSession(data.session);
                   setError(null);
                 }
               }
+            } else {
+              console.log('No current session found during refresh check');
+              // Clean up refresh interval if no session
+              if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+              }
             }
           } catch (error) {
             console.error('Error in token refresh interval:', error);
-            // Clear refresh interval if there are persistent errors
-            if (refreshInterval) {
-              clearInterval(refreshInterval);
-              refreshInterval = null;
+            
+            // If we get auth errors during refresh checking, handle gracefully
+            if (error instanceof Error && 
+                (error.message?.includes('refresh_token_not_found') || 
+                 error.message?.includes('Invalid Refresh Token'))) {
+              console.log('Session completely invalid during refresh check, cleaning up');
+              
+              // Clear all state and intervals
+              if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+              }
+              
+              setUser(null);
+              setTenant(null);
+              setSession(null);
+              setTrialStatus(null);
+              setError(null);
             }
           }
         }, 30 * 1000); // Check every 30 seconds

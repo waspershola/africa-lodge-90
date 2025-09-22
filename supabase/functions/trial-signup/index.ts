@@ -76,15 +76,15 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Get the basic plan (assuming it exists)
-    const { data: basicPlan } = await supabaseAdmin
+    // Get the Starter plan (use existing plan instead of Basic)
+    const { data: starterPlan } = await supabaseAdmin
       .from('plans')
       .select('id')
-      .eq('name', 'Basic')
+      .eq('name', 'Starter')
       .single();
 
-    if (!basicPlan) {
-      console.error('Basic plan not found');
+    if (!starterPlan) {
+      console.error('Starter plan not found');
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'Trial plan not available' 
@@ -115,7 +115,7 @@ const handler = async (req: Request): Promise<Response> => {
         .insert({
           hotel_name,
           hotel_slug,
-          plan_id: basicPlan.id,
+          plan_id: starterPlan.id,
           subscription_status: 'trialing',
           trial_start: new Date().toISOString(),
           trial_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),

@@ -248,36 +248,6 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
     } finally {
       console.log('Auth state loading completed');
       setIsLoading(false);
-      
-      // Set up automatic token refresh to prevent expiry
-      const setupAutoRefresh = () => {
-        // Refresh token every 50 minutes (before 60 minute expiry)
-        const refreshInterval = setInterval(async () => {
-          if (session?.user) {
-            console.log('Auto-refreshing session token...');
-            const { error } = await supabase.auth.refreshSession();
-            if (error) {
-              console.error('Auto-refresh failed:', error);
-              clearInterval(refreshInterval);
-            } else {
-              console.log('Session auto-refreshed successfully');
-            }
-          } else {
-            clearInterval(refreshInterval);
-          }
-        }, 50 * 60 * 1000); // 50 minutes
-
-        return refreshInterval;
-      };
-      
-      const refreshInterval = setupAutoRefresh();
-      
-      // Cleanup interval on unmount
-      return () => {
-        if (refreshInterval) {
-          clearInterval(refreshInterval);
-        }
-      };
     }
   };
 
@@ -440,9 +410,10 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
     }
   };
 
-  // Set up auth state listener
+  // Set up auth state listener and auto-refresh
   useEffect(() => {
     let initialLoadDone = false;
+    let refreshInterval: NodeJS.Timeout | null = null;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state change event:', event, session ? 'Session exists' : 'No session');
@@ -458,6 +429,29 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
         setUser(null);
         setTenant(null);
         setTrialStatus(null);
+        // Clear refresh interval on logout
+        if (refreshInterval) {
+          clearInterval(refreshInterval);
+          refreshInterval = null;
+        }
+      }
+
+      // Set up automatic token refresh when user signs in
+      if (event === 'SIGNED_IN' && session?.user && !refreshInterval) {
+        console.log('Setting up auto-refresh for session...');
+        refreshInterval = setInterval(async () => {
+          console.log('Auto-refreshing session token...');
+          const { error } = await supabase.auth.refreshSession();
+          if (error) {
+            console.error('Auto-refresh failed:', error);
+            if (refreshInterval) {
+              clearInterval(refreshInterval);
+              refreshInterval = null;
+            }
+          } else {
+            console.log('Session auto-refreshed successfully');
+          }
+        }, 50 * 60 * 1000); // 50 minutes
       }
     });
 
@@ -467,7 +461,12 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
       console.log('Initial auth state loading completed');
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    };
   }, []);
 
   // Update trial status when tenant changes

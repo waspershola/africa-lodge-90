@@ -17,6 +17,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { UserPlus, Mail, Copy, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useGlobalRoles, useTenantRoles } from '@/hooks/useRoles';
 
 const inviteUserSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -41,6 +42,10 @@ export function InviteUserDialog({ tenantId, onSuccess }: InviteUserDialogProps)
     temp_password?: string;
     message: string;
   } | null>(null);
+
+  // Fetch appropriate roles based on context
+  const { data: globalRoles, isLoading: loadingGlobalRoles } = useGlobalRoles();
+  const { data: tenantRoles, isLoading: loadingTenantRoles } = useTenantRoles(tenantId || '');
 
   const form = useForm<InviteUserForm>({
     resolver: zodResolver(inviteUserSchema),
@@ -213,21 +218,30 @@ export function InviteUserDialog({ tenantId, onSuccess }: InviteUserDialogProps)
                       </FormControl>
                       <SelectContent>
                         {tenantId ? (
-                          // Tenant-specific roles
+                          // Tenant-specific roles from database
                           <>
-                            <SelectItem value="MANAGER">Manager</SelectItem>
-                            <SelectItem value="FRONT_DESK">Front Desk</SelectItem>
-                            <SelectItem value="HOUSEKEEPING">Housekeeping</SelectItem>
-                            <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
-                            <SelectItem value="POS">POS Staff</SelectItem>
-                            <SelectItem value="STAFF">General Staff</SelectItem>
+                            {loadingTenantRoles ? (
+                              <SelectItem value="" disabled>Loading roles...</SelectItem>
+                            ) : (
+                              tenantRoles?.map((role) => (
+                                <SelectItem key={role.id} value={role.name}>
+                                  {role.name}
+                                </SelectItem>
+                              ))
+                            )}
                           </>
                         ) : (
-                          // Global roles (Super Admin context)
+                          // Global roles from database
                           <>
-                            <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
-                            <SelectItem value="PLATFORM_ADMIN">Platform Admin</SelectItem>
-                            <SelectItem value="SUPPORT_STAFF">Support Staff</SelectItem>
+                            {loadingGlobalRoles ? (
+                              <SelectItem value="" disabled>Loading roles...</SelectItem>
+                            ) : (
+                              globalRoles?.map((role) => (
+                                <SelectItem key={role.id} value={role.name}>
+                                  {role.name}
+                                </SelectItem>
+                              ))
+                            )}
                           </>
                         )}
                       </SelectContent>

@@ -30,15 +30,19 @@ import {
 } from '@/hooks/useGlobalUsers';
 import { InviteUserDialog } from './InviteUserDialog';
 import { format } from 'date-fns';
+import { useMultiTenantAuth } from '@/hooks/useMultiTenantAuth';
 
 export function GlobalUsersTable() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   
-  const { data: users = [], isLoading, error } = useGlobalUsers();
+  const { user: currentUser } = useMultiTenantAuth();
+  const { data: users = [], isLoading, error, refetch } = useGlobalUsers();
   const updateUser = useUpdateGlobalUser();
   const deleteUser = useDeleteGlobalUser();
   const resetPassword = useResetGlobalUserPassword();
+
+  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = !searchQuery || 
@@ -74,8 +78,8 @@ export function GlobalUsersTable() {
   };
 
   const handleToggleStatus = async (user: GlobalUser) => {
-    if (user.is_platform_owner) {
-      return; // Prevent any changes to platform owner
+    if (user.is_platform_owner || !isSuperAdmin) {
+      return; // Prevent any changes to platform owner or non-super admin users
     }
 
     await updateUser.mutateAsync({
@@ -85,7 +89,7 @@ export function GlobalUsersTable() {
   };
 
   const handleDelete = async (user: GlobalUser) => {
-    if (user.is_platform_owner) {
+    if (user.is_platform_owner || !isSuperAdmin) {
       return; // Should never reach here due to UI guards
     }
 
@@ -117,7 +121,7 @@ export function GlobalUsersTable() {
             <Shield className="h-5 w-5" />
             Global Users ({filteredUsers.length})
           </CardTitle>
-          <InviteUserDialog onSuccess={() => {}} />
+          <InviteUserDialog onSuccess={() => refetch()} />
         </div>
         
         <div className="flex gap-4 items-center">
@@ -246,7 +250,7 @@ export function GlobalUsersTable() {
                             Reset Password
                           </DropdownMenuItem>
                           
-                          {!user.is_platform_owner && (
+                          {!user.is_platform_owner && isSuperAdmin && (
                             <>
                               <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
                                 {user.is_active ? (

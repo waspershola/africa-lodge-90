@@ -112,29 +112,16 @@ export const useDeleteGlobalUser = () => {
   
   return useMutation({
     mutationFn: async (userId: string) => {
-      // First check if this is the platform owner
-      const { data: user } = await supabase
-        .from('users')
-        .select('is_platform_owner, email')
-        .eq('id', userId)
-        .single();
-
-      if (user?.is_platform_owner) {
-        throw new Error('Cannot delete platform owner');
-      }
-
-      // Delete from auth first
-      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
-      if (authError) throw authError;
-
-      // Then delete from users table (should cascade)
-      const { error } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', userId);
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { user_id: userId }
+      });
 
       if (error) throw error;
-      return userId;
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to delete user');
+      }
+
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['global-users'] });

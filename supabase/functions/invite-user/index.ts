@@ -146,15 +146,22 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Get role_id from roles table
-    const { data: roleData, error: roleError } = await supabaseAdmin
+    let roleQuery = supabaseAdmin
       .from('roles')
       .select('id')
       .eq('name', role === 'SUPER_ADMIN' ? 'Super Admin' : 
                   role === 'PLATFORM_ADMIN' ? 'Platform Admin' : 
                   role === 'SUPPORT_STAFF' ? 'Support Staff' : role)
-      .eq('scope', tenant_id ? 'tenant' : 'global')
-      .eq('tenant_id', tenant_id || null)
-      .single();
+      .eq('scope', tenant_id ? 'tenant' : 'global');
+    
+    // Handle tenant_id filtering properly
+    if (tenant_id) {
+      roleQuery = roleQuery.eq('tenant_id', tenant_id);
+    } else {
+      roleQuery = roleQuery.is('tenant_id', null);
+    }
+    
+    const { data: roleData, error: roleError } = await roleQuery.single();
 
     if (roleError || !roleData) {
       console.error('Failed to find role:', roleError);

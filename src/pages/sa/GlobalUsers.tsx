@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useGlobalUsers } from "@/hooks/useGlobalUsers";
 import { GlobalUsersTable } from "@/components/sa/GlobalUsersTable";
+import { CreateGlobalUserDialog } from "@/components/sa/CreateGlobalUserDialog";
 import { callEdgeFunction } from "@/lib/api-utils";
 
 export default function GlobalUsers() {
@@ -32,6 +33,7 @@ export default function GlobalUsers() {
           <h1 className="text-3xl font-bold">Global Users</h1>
           <p className="text-muted-foreground">Manage platform administrators and support staff</p>
         </div>
+        <CreateGlobalUserDialog onSuccess={refetch} />
       </div>
 
       <GlobalUsersTable />

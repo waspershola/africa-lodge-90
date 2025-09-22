@@ -86,32 +86,23 @@ serve(async (req) => {
       .replace(/=/g, '');
     console.log('Generated temporary password for user');
 
-    // Check if user already exists
-    const { data: usersList, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+    // Check if user already exists in our database first
+    const { data: existingDbUser } = await supabaseAdmin
+      .from('users')
+      .select('id, email')
+      .eq('email', email)
+      .maybeSingle();
     
-    if (listError) {
-      console.error('Error listing users:', listError);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Failed to check existing users',
-          code: 'USER_CHECK_ERROR'
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    const existingUser = usersList.users.find(user => user.email === email);
-    
-    if (existingUser) {
+    if (existingDbUser) {
+      console.log('User already exists in database:', existingDbUser.email);
       return new Response(
         JSON.stringify({ 
           success: false, 
           error: 'User with this email already exists',
           code: 'USER_EXISTS',
           existing_user: {
-            id: existingUser.id,
-            email: existingUser.email,
+            id: existingDbUser.id,
+            email: existingDbUser.email,
             can_reset_password: true
           }
         }),

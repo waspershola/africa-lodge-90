@@ -107,6 +107,31 @@ export const useUpdateGlobalUser = () => {
       userId: string; 
       updates: Partial<Pick<GlobalUser, 'name' | 'role' | 'department' | 'is_active'>>; 
     }) => {
+      // Use the suspend-user edge function for is_active changes
+      if ('is_active' in updates) {
+        const { data, error } = await supabase.functions.invoke('suspend-user', {
+          body: { 
+            user_id: userId,
+            suspend: !updates.is_active,
+            reason: updates.is_active ? 'Account reactivated by admin' : 'Account suspended by admin'
+          }
+        });
+
+        if (error) {
+          console.error('Suspend user error:', error);
+          throw new Error(`Failed to update user status: ${error.message || 'Edge Function error'}`);
+        }
+        
+        if (!data?.success) {
+          const errorMessage = data?.error || 'Failed to update user status';
+          console.error('Suspend user failed:', errorMessage);
+          throw new Error(errorMessage);
+        }
+        
+        return data;
+      }
+      
+      // For other updates, use direct database update
       const { data, error } = await supabase
         .from('users')
         .update(updates)
@@ -123,7 +148,21 @@ export const useUpdateGlobalUser = () => {
       toast.success('User updated successfully');
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to update user');
+      console.error('Failed to update user:', error);
+      
+      // Show more specific error messages
+      let errorMessage = 'Failed to update user';
+      if (error.message?.includes('platform owner')) {
+        errorMessage = 'Cannot modify platform owner';
+      } else if (error.message?.includes('not found')) {
+        errorMessage = 'User not found';
+      } else if (error.message?.includes('permission')) {
+        errorMessage = 'You do not have permission to perform this action';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
     },
   });
 };

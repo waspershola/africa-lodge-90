@@ -6,6 +6,9 @@ verify_jwt = true
 [functions.create-user]
 verify_jwt = false
 
+[functions.delete-user]
+verify_jwt = true
+
 [functions.paystack-webhook]
 verify_jwt = false
 
@@ -23,3 +26,9 @@ verify_jwt = true
 
 [functions.stop-impersonation]
 verify_jwt = true
+
+[functions.suspend-user]
+verify_jwt = true
+
+[functions.trial-signup]
+verify_jwt = false

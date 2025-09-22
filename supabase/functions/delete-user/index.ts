@@ -164,12 +164,36 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log(`User ${targetUser.email} deleted successfully by super admin ${userData?.role}`);
+    // Log audit event
+    try {
+      await supabaseClient
+        .from('audit_log')
+        .insert({
+          actor_id: user.id,
+          action: 'user_deleted',
+          resource_type: 'user',
+          resource_id: user_id,
+          description: `User ${targetUser.email} deleted by super admin`,
+          metadata: {
+            target_email: targetUser.email,
+            target_role: targetUser.role,
+            deleted_by: user.email
+          }
+        });
+    } catch (auditError) {
+      console.warn('Failed to log audit event:', auditError);
+    }
+
+    console.log(`User ${targetUser.email} deleted successfully by super admin ${user.email}`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'User deleted successfully' 
+        message: 'User deleted successfully',
+        deleted_user: {
+          email: targetUser.email,
+          role: targetUser.role
+        }
       }),
       { 
         status: 200, 

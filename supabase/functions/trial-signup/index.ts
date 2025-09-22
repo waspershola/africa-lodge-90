@@ -179,11 +179,11 @@ const handler = async (req: Request): Promise<Response> => {
           brand_colors: {}
         })
         .select()
-        .single();
+        .maybeSingle();
 
-      if (tenantError) {
+      if (tenantError || !tenant) {
         console.error('Tenant creation error:', tenantError);
-        throw new Error(`Failed to create tenant: ${tenantError.message}`);
+        throw new Error(`Failed to create tenant: ${tenantError?.message || 'No tenant returned'}`);
       }
 
       tenantId = tenant.tenant_id;
@@ -226,17 +226,17 @@ const handler = async (req: Request): Promise<Response> => {
         .eq('name', 'Owner')
         .eq('scope', 'tenant')
         .eq('tenant_id', tenantId)
-        .single();
+        .maybeSingle();
 
       if (roleError || !ownerRole) {
         console.error('Failed to find Owner role for tenant:', roleError);
         throw new Error('Owner role not found for tenant');
       }
 
-      // Step 4: Create user record
+      // Step 4: Create user record (with upsert to handle duplicates)
       const { error: userError } = await supabaseAdmin
         .from('users')
-        .insert({
+        .upsert({
           id: authUserId,
           email: owner_email,
           name: owner_name,
@@ -247,6 +247,8 @@ const handler = async (req: Request): Promise<Response> => {
           temp_password_hash: tempPasswordHash,
           temp_expires: tempExpires.toISOString(),
           is_active: true
+        }, {
+          onConflict: 'id'
         });
 
       if (userError) {

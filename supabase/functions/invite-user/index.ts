@@ -223,7 +223,7 @@ const handler = async (req: Request): Promise<Response> => {
       roleQuery = roleQuery.is('tenant_id', null);
     }
     
-    const { data: roleData, error: roleError } = await roleQuery.single();
+    const { data: roleData, error: roleError } = await roleQuery.maybeSingle();
 
     console.log('Role query result:', { roleData, roleError });
 

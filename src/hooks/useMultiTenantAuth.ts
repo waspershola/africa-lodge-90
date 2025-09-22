@@ -402,8 +402,8 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
       setIsImpersonating(false);
       setImpersonationData(null);
       
-      // Redirect to super admin dashboard
-      window.location.href = '/sa/dashboard';
+      // Redirect to super admin dashboard (use location.replace)
+      location.replace('/sa/dashboard');
     } catch (err) {
       console.error('Failed to stop impersonation:', err);
       setError(err instanceof Error ? err.message : 'Failed to stop impersonation');
@@ -507,9 +507,9 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
                       console.log('Sign out also failed, clearing locally only');
                     }
                     
-                    // Redirect to home page after clean logout
+                    // Redirect to home page after clean logout (use location.replace to avoid history issues)
                     setTimeout(() => {
-                      window.location.href = '/';
+                      location.replace('/');
                     }, 100);
                     return;
                   } else {
@@ -552,7 +552,7 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
               setError(null);
             }
           }
-        }, 30 * 1000); // Check every 30 seconds
+        }, 5 * 60 * 1000); // Check every 5 minutes instead of 30 seconds
       }
     };
 

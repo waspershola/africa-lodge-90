@@ -91,7 +91,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Delete from auth.users (this will cascade to public.users due to foreign key)
+    // Delete from auth.users first, then public.users
     const { error: deleteAuthError } = await supabaseClient.auth.admin.deleteUser(user_id);
     
     if (deleteAuthError) {
@@ -100,6 +100,17 @@ const handler = async (req: Request): Promise<Response> => {
         JSON.stringify({ success: false, error: deleteAuthError.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Also delete from public.users table explicitly
+    const { error: deletePublicError } = await supabaseClient
+      .from('users')
+      .delete()
+      .eq('id', user_id);
+    
+    if (deletePublicError) {
+      console.error('Error deleting user from public.users:', deletePublicError);
+      // Don't return error here as auth user is already deleted
     }
 
     console.log(`User ${targetUser.email} deleted successfully by super admin ${userData?.role}`);

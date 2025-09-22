@@ -145,13 +145,11 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Get role_id from roles table
+    // Get role_id from roles table - role name comes directly from frontend
     let roleQuery = supabaseAdmin
       .from('roles')
       .select('id')
-      .eq('name', role === 'SUPER_ADMIN' ? 'Super Admin' : 
-                  role === 'PLATFORM_ADMIN' ? 'Platform Admin' : 
-                  role === 'SUPPORT_STAFF' ? 'Support Staff' : role)
+      .eq('name', role) // Use role name directly as sent from frontend
       .eq('scope', tenant_id ? 'tenant' : 'global');
     
     // Handle tenant_id filtering properly

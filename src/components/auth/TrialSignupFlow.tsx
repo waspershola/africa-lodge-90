@@ -31,6 +31,7 @@ import {
   Star
 } from 'lucide-react';
 import { usePricingPlans } from '@/hooks/usePricingPlans';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TrialSignupData {
   hotel_name: string;
@@ -83,6 +84,11 @@ export function TrialSignupFlow({ open, onOpenChange, selectedPlanId, onSuccess 
       return;
     }
 
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return;
+    }
+
     if (!formData.hotel_name || !formData.owner_name || !formData.email || !formData.plan_id) {
       setError('Please fill in all required fields');
       return;
@@ -92,20 +98,43 @@ export function TrialSignupFlow({ open, onOpenChange, selectedPlanId, onSuccess 
     setError(null);
 
     try {
-      // Simulate API call to create trial account
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Call the trial-signup edge function
+      const { data, error } = await supabase.functions.invoke('trial-signup', {
+        body: {
+          hotel_name: formData.hotel_name,
+          owner_name: formData.owner_name,
+          owner_email: formData.email,
+          phone: formData.phone,
+          city: formData.location,
+          country: 'Nigeria',
+          password: formData.password
+        }
+      });
+
+      if (error) {
+        console.error('Trial signup error:', error);
+        throw error;
+      }
+
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to create trial account');
+      }
       
-      // In production, this would:
-      // 1. Create Supabase Auth user
-      // 2. Insert tenant record with trial status
-      // 3. Send welcome email
-      // 4. Redirect to dashboard with trial banner
-      
-      console.log('Trial signup:', formData);
       setStep('success');
-      onSuccess?.(); // Call success callback
-    } catch (err) {
-      setError('Failed to create trial account. Please try again.');
+      onSuccess?.();
+    } catch (err: any) {
+      console.error('Trial signup failed:', err);
+      
+      // Handle specific error cases
+      if (err.message?.includes('already exists')) {
+        setError('An account with this email already exists. Please use a different email or try signing in.');
+      } else if (err.message?.includes('permissions')) {
+        setError('There was a permissions issue. Please try again or contact support.');
+      } else if (err.message?.includes('not found')) {
+        setError('Service not available. Please contact support.');
+      } else {
+        setError(err.message || 'Failed to create trial account. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -143,10 +172,10 @@ export function TrialSignupFlow({ open, onOpenChange, selectedPlanId, onSuccess 
               className="w-full bg-gradient-primary"
               onClick={() => {
                 onOpenChange(false);
-                window.location.href = '/owner-dashboard';
+                window.location.href = '/';
               }}
             >
-              Go to Dashboard
+              Go to Login
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>

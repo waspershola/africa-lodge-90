@@ -16,6 +16,7 @@ interface TrialSignupRequest {
   city?: string;
   country?: string;
   phone?: string;
+  password: string;
 }
 
 // Generate secure temporary password
@@ -48,15 +49,26 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { hotel_name, owner_email, owner_name, city, country, phone }: TrialSignupRequest = await req.json();
+    const { hotel_name, owner_email, owner_name, city, country, phone, password }: TrialSignupRequest = await req.json();
 
     console.log('Starting trial signup:', { hotel_name, owner_email, owner_name });
 
     // Validate required fields
-    if (!hotel_name || !owner_email || !owner_name) {
+    if (!hotel_name || !owner_email || !owner_name || !password) {
       return new Response(JSON.stringify({ 
         success: false, 
-        error: 'Hotel name, owner email, and owner name are required' 
+        error: 'Hotel name, owner email, owner name, and password are required' 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Validate password strength
+    if (password.length < 8) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'Password must be at least 8 characters long' 
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -77,7 +89,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (existingAuthUser || existingPublicUser) {
       return new Response(JSON.stringify({ 
         success: false, 
-        error: 'A user with this email already exists' 
+        error: 'A user with this email already exists. Please use a different email or try signing in.' 
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -148,9 +160,9 @@ const handler = async (req: Request): Promise<Response> => {
       .replace(/\s+/g, '-')
       .substring(0, 50);
 
-    // Generate temporary password
-    const tempPassword = generateTempPassword();
-    const tempPasswordHash = await hashPassword(tempPassword);
+    // Use provided password
+    const userPassword = password;
+    const tempPasswordHash = await hashPassword(password); // For backup reference
     const tempExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     let tenantId: string;
@@ -202,8 +214,8 @@ const handler = async (req: Request): Promise<Response> => {
       // Step 2: Create user in Supabase Auth
       const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email: owner_email,
-        password: tempPassword,
-        email_confirm: false,
+        password: userPassword, // Use the user's chosen password
+        email_confirm: true, // Auto-confirm email
         user_metadata: {
           name: owner_name,
           role: 'OWNER',
@@ -243,9 +255,9 @@ const handler = async (req: Request): Promise<Response> => {
           role: 'OWNER',
           role_id: ownerRole.id,
           tenant_id: tenantId,
-          force_reset: true,
-          temp_password_hash: tempPasswordHash,
-          temp_expires: tempExpires.toISOString(),
+          force_reset: false, // No need to force password reset since they set their own
+          temp_password_hash: null, // No temporary password needed
+          temp_expires: null,
           is_active: true
         }, {
           onConflict: 'id'
@@ -285,10 +297,8 @@ const handler = async (req: Request): Promise<Response> => {
               <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
                 <h3>Your Login Details:</h3>
                 <p><strong>Email:</strong> ${owner_email}</p>
-                <p><strong>Temporary Password:</strong> <code style="background: #e5e7eb; padding: 4px 8px; border-radius: 4px;">${tempPassword}</code></p>
+                <p><strong>Password:</strong> Use the password you just created during signup</p>
               </div>
-              
-              <p><strong>Important:</strong> You must change this password on your first login.</p>
               
               <a href="${loginUrl}" style="display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0;">
                 Start Your Trial
@@ -319,10 +329,9 @@ const handler = async (req: Request): Promise<Response> => {
         success: true,
         tenant,
         email_sent: emailSent,
-        temp_password: emailSent ? null : tempPassword,
         message: emailSent 
           ? 'Trial account created successfully! Welcome email sent.'
-          : `Trial account created. Temporary password: ${tempPassword}`
+          : 'Trial account created successfully! You can now sign in.'
       }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

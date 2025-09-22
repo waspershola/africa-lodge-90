@@ -34,8 +34,18 @@ const SignUp = () => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.hotelName || !formData.ownerName || !formData.email) {
+    if (!formData.hotelName || !formData.ownerName || !formData.email || !formData.password) {
       toast.error('Please fill in all required fields');
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+
+    if (formData.password.length < 8) {
+      toast.error('Password must be at least 8 characters long');
       return;
     }
 
@@ -50,7 +60,8 @@ const SignUp = () => {
           owner_email: formData.email,
           phone: formData.phone,
           city: formData.city,
-          country: 'Nigeria' // Default country
+          country: 'Nigeria', // Default country
+          password: formData.password
         }
       });
 
@@ -63,11 +74,7 @@ const SignUp = () => {
         throw new Error(data?.error || 'Failed to create trial account');
       }
 
-      if (data.email_sent) {
-        toast.success('Trial account created successfully! Please check your email for login instructions.');
-      } else {
-        toast.success(`Trial account created! Your temporary password: ${data.temp_password}`);
-      }
+      toast.success('Trial account created successfully! You can now sign in with your credentials.');
       
       // Redirect to login page
       navigate('/', { 
@@ -79,7 +86,17 @@ const SignUp = () => {
 
     } catch (error: any) {
       console.error('Trial signup failed:', error);
-      toast.error(error.message || 'Failed to create trial account. Please try again.');
+      
+      // Handle specific error cases
+      if (error.message?.includes('already exists')) {
+        toast.error('An account with this email already exists. Please use a different email or try signing in.');
+      } else if (error.message?.includes('permissions')) {
+        toast.error('There was a permissions issue. Please try again or contact support.');
+      } else if (error.message?.includes('not found')) {
+        toast.error('Service not available. Please contact support.');
+      } else {
+        toast.error(error.message || 'Failed to create trial account. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -129,7 +146,7 @@ const SignUp = () => {
             </CardDescription>
             <div className="flex justify-center mt-4">
               <Badge className="bg-success/10 text-success border-success/20">
-                30-day free trial • No credit card required
+                14-Day Free Trial
               </Badge>
             </div>
           </CardHeader>
@@ -216,8 +233,36 @@ const SignUp = () => {
               <div className="space-y-4">
                 <h3 className="font-semibold text-foreground flex items-center gap-2">
                   <Lock className="h-4 w-4" />
-                  Trial Information
+                  Create Password
                 </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      name="password"
+                      type="password"
+                      placeholder="Create Password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      className="pl-10"
+                      minLength={8}
+                      required
+                    />
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      name="confirmPassword"
+                      type="password"
+                      placeholder="Confirm Password"
+                      value={formData.confirmPassword}
+                      onChange={handleInputChange}
+                      className="pl-10"
+                      minLength={8}
+                      required
+                    />
+                  </div>
+                </div>
                 <div className="bg-gradient-subtle p-4 rounded-lg border">
                   <div className="flex items-center gap-2 mb-2">
                     <Badge className="bg-success/20 text-success border-success/30">
@@ -225,7 +270,7 @@ const SignUp = () => {
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Your trial includes full access to all features. We'll send you a temporary password to get started.
+                    Your trial includes full access to all features. We'll send you a temporary password to get started only.
                   </p>
                 </div>
               </div>
@@ -233,7 +278,7 @@ const SignUp = () => {
               <Button
                 type="submit"
                 className="w-full bg-gradient-primary shadow-luxury hover:shadow-hover text-lg py-6"
-                disabled={isLoading}
+                disabled={isLoading || !formData.password || formData.password !== formData.confirmPassword}
               >
                 {isLoading ? (
                   <>

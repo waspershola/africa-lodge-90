@@ -15,6 +15,8 @@ interface InviteUserRequest {
   role: string;
   tenant_id?: string;
   department?: string;
+  set_temp_password?: boolean;
+  reset_existing?: boolean;
 }
 
 // Generate secure temporary password
@@ -118,14 +120,16 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    const { email, name, role, tenant_id, department }: InviteUserRequest = await req.json();
+    const { email, name, role, tenant_id, department, set_temp_password, reset_existing }: InviteUserRequest = await req.json();
 
     console.log(`[${operationId}] Processing invite request:`, {
       email,
       name,
       role,
       tenant_id,
-      department
+      department,
+      set_temp_password,
+      reset_existing
     });
 
     // Validate required fields
@@ -144,16 +148,177 @@ const handler = async (req: Request): Promise<Response> => {
     // Also check public users table
     const { data: existingPublicUser } = await supabaseAdmin
       .from('users')
-      .select('id, email')
+      .select('id, email, force_reset, temp_password_hash')
       .eq('email', email)
       .maybeSingle();
     
     if (existingAuthUser || existingPublicUser) {
+      // For global users, we can reset their password and force reset if requested
+      if (!tenant_id && (callerData.role === 'SUPER_ADMIN') && reset_existing) {
+        console.log(`[${operationId}] Resetting existing user password as requested`);
+        
+        // Generate new temporary password
+        const newTempPassword = generateTempPassword();
+        const newTempPasswordHash = await hashPassword(newTempPassword);
+        const newTempExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+        
+        let userId = existingPublicUser?.id || existingAuthUser?.id;
+        
+        try {
+          // Update auth user password
+          if (existingAuthUser) {
+            const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(
+              existingAuthUser.id,
+              { password: newTempPassword }
+            );
+            
+            if (updateAuthError) {
+              console.error(`[${operationId}] Failed to update auth password:`, updateAuthError);
+              return new Response(JSON.stringify({
+                success: false,
+                error: 'Failed to reset user password',
+                code: 'PASSWORD_RESET_FAILED'
+              }), {
+                status: 500,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              });
+            }
+            userId = existingAuthUser.id;
+          }
+          
+          // Update public user record
+          const { error: updatePublicError } = await supabaseAdmin
+            .from('users')
+            .update({
+              force_reset: true,
+              temp_password_hash: newTempPasswordHash,
+              temp_expires: newTempExpires.toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId);
+          
+          if (updatePublicError) {
+            console.error(`[${operationId}] Failed to update public user:`, updatePublicError);
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'Failed to update user record',
+              code: 'USER_UPDATE_FAILED'
+            }), {
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+          
+          // Try to send reset email
+          let emailSent = false;
+          try {
+            const loginUrl = `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '')}.lovable.app`;
+            
+            await resend.emails.send({
+              from: 'LuxuryHotelSaaS <noreply@mail.luxuryhotelsaas.com>',
+              to: [email],
+              subject: 'Password Reset - LuxuryHotelSaaS',
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                  <h1 style="color: #1f2937;">Password Reset - LuxuryHotelSaaS</h1>
+                  <p>Hello ${name},</p>
+                  <p>Your password has been reset by an administrator.</p>
+                  
+                  <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h3>Your New Login Details:</h3>
+                    <p><strong>Email:</strong> ${email}</p>
+                    <p><strong>Temporary Password:</strong> <code style="background: #e5e7eb; padding: 4px 8px; border-radius: 4px;">${newTempPassword}</code></p>
+                  </div>
+                  
+                  <p><strong>Important:</strong> You must change this password on your next login. This temporary password expires in 24 hours.</p>
+                  
+                  <a href="${loginUrl}" style="display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0;">
+                    Login to Your Account
+                  </a>
+                  
+                  <p>Best regards,<br>The LuxuryHotelSaaS Team</p>
+                </div>
+              `,
+            });
+            emailSent = true;
+          } catch (emailError) {
+            console.error(`[${operationId}] Failed to send reset email:`, emailError);
+          }
+          
+          // Log audit event
+          await supabaseAdmin
+            .from('audit_log')
+            .insert({
+              actor_id: user.id,
+              action: 'user_password_reset',
+              resource_type: 'user',
+              resource_id: userId,
+              description: `Reset password for user ${email}`,
+              metadata: {
+                email,
+                role,
+                email_sent: emailSent
+              }
+            });
+          
+          return new Response(JSON.stringify({
+            success: true,
+            user: {
+              id: userId,
+              email,
+              name,
+              role
+            },
+            email_sent: emailSent,
+            temp_password: emailSent ? null : newTempPassword,
+            message: emailSent 
+              ? 'Password reset successfully! Reset email sent.'
+              : `Password reset but email failed. Temporary password: ${newTempPassword}`,
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+          
+        } catch (resetError: any) {
+          console.error(`[${operationId}] Error during password reset:`, resetError);
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to reset user password',
+            code: 'PASSWORD_RESET_ERROR',
+            details: resetError.message
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+      
+      // Standard existing user response
+      if (!tenant_id && (callerData.role === 'SUPER_ADMIN')) {
+        console.log(`[${operationId}] User exists but caller is super admin - offering password reset option`);
+        
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: 'User with this email already exists',
+          code: 'USER_EXISTS',
+          existing_user: {
+            id: existingPublicUser?.id || existingAuthUser?.id,
+            email: email,
+            can_reset_password: true
+          },
+          message: 'User already exists. You can reset their password if needed.'
+        }), {
+          status: 409, // Conflict - more appropriate than 400
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
       return new Response(JSON.stringify({ 
         success: false,
-        error: 'User with this email already exists' 
+        error: 'User with this email already exists',
+        code: 'USER_EXISTS'
       }), {
-        status: 400,
+        status: 409,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -422,9 +587,9 @@ const handler = async (req: Request): Promise<Response> => {
         role_id: roleData.id, // Authoritative role reference
         tenant_id: tenant_id || null,
         department,
-        force_reset: true,
-        temp_password_hash: tempPasswordHash,
-        temp_expires: tempExpires.toISOString(),
+        force_reset: set_temp_password || false, // Force reset if temp password requested
+        temp_password_hash: set_temp_password ? tempPasswordHash : null,
+        temp_expires: set_temp_password ? tempExpires.toISOString() : null,
         is_active: true // User is fully created and ready
       });
 
@@ -469,10 +634,13 @@ const handler = async (req: Request): Promise<Response> => {
             <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
               <h3>Your Login Details:</h3>
               <p><strong>Email:</strong> ${email}</p>
-              <p><strong>Temporary Password:</strong> <code style="background: #e5e7eb; padding: 4px 8px; border-radius: 4px;">${tempPassword}</code></p>
+              ${set_temp_password ? `
+                <p><strong>Temporary Password:</strong> <code style="background: #e5e7eb; padding: 4px 8px; border-radius: 4px;">${tempPassword}</code></p>
+                <p style="color: #dc2626; font-weight: 500;">⚠️ You must change this password on your first login. This temporary password expires in 24 hours.</p>
+              ` : `
+                <p><strong>Password:</strong> <code style="background: #e5e7eb; padding: 4px 8px; border-radius: 4px;">${tempPassword}</code></p>
+              `}
             </div>
-            
-            <p><strong>Important:</strong> You must change this password on your first login. This temporary password expires in 24 hours.</p>
             
             <a href="${loginUrl}" style="display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0;">
               Login to Your Account
@@ -529,8 +697,8 @@ const handler = async (req: Request): Promise<Response> => {
       email_sent: emailSent,
       temp_password: emailSent ? null : tempPassword, // Only return password if email failed
       message: emailSent 
-        ? 'User invited successfully! Invitation email sent.'
-        : `User created but email failed to send. Temporary password: ${tempPassword}`,
+        ? `User ${set_temp_password ? 'created with temporary password' : 'invited'} successfully! ${set_temp_password ? 'Password reset' : 'Invitation'} email sent.`
+        : `User created but email failed to send. ${set_temp_password ? 'Temporary' : ''} Password: ${tempPassword}`,
       debug_info: {
         operation_id: operationId,
         duration_ms: duration

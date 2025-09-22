@@ -38,7 +38,19 @@ export async function callEdgeFunction<T = any>({
       
       // Handle specific error types
       if (error.message?.includes('returned a non-2xx status code')) {
-        // Try to get more details from the response
+        // For non-2xx responses, the actual response might be in the data field
+        // or we need to extract it differently
+        if (data && typeof data === 'object' && (data.success === false || data.error)) {
+          // We have structured error data from the edge function
+          return {
+            success: false,
+            error: data.error || data.message || 'Edge function error',
+            code: data.code || 'EDGE_FUNCTION_ERROR',
+            data: data
+          };
+        }
+        
+        // Fallback error message
         const errorMessage = 'Edge function failed with non-2xx status';
         
         if (showErrorToast) {

@@ -14,7 +14,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { UserPlus, Mail, Copy, CheckCircle } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { UserPlus, Mail, Copy, CheckCircle, AlertCircle } from 'lucide-react';
 import { callEdgeFunction } from "@/lib/api-utils";
 import { toast } from 'sonner';
 import { useGlobalRoles, useTenantRoles } from '@/hooks/useRoles';
@@ -24,6 +25,8 @@ const inviteUserSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name too long'),
   role: z.string().min(1, 'Please select a role'),
   department: z.string().optional(),
+  setTempPassword: z.boolean().optional(),
+  resetExisting: z.boolean().optional(),
 });
 
 type InviteUserForm = z.infer<typeof inviteUserSchema>;
@@ -44,6 +47,11 @@ export function InviteUserDialog({ tenantId, onSuccess }: InviteUserDialogProps)
     error?: string;
     debug_info?: any;
     code?: string;
+    existing_user?: {
+      id: string;
+      email: string;
+      can_reset_password: boolean;
+    };
   } | null>(null);
 
   // Fetch appropriate roles based on context
@@ -57,6 +65,8 @@ export function InviteUserDialog({ tenantId, onSuccess }: InviteUserDialogProps)
       name: '',
       role: '',
       department: '',
+      setTempPassword: false,
+      resetExisting: false,
     },
   });
 
@@ -64,17 +74,19 @@ export function InviteUserDialog({ tenantId, onSuccess }: InviteUserDialogProps)
     try {
       setIsSubmitting(true);
 
-      const result = await callEdgeFunction({
-        functionName: 'invite-user',
-        body: {
-          email: data.email,
-          name: data.name,
-          role: data.role,
-          tenant_id: tenantId || null,
-          department: data.department || null
-        },
-        showErrorToast: false // We'll handle errors manually for better UX
-      });
+        const result = await callEdgeFunction({
+          functionName: 'invite-user',
+          body: {
+            email: data.email,
+            name: data.name,
+            role: data.role,
+            tenant_id: tenantId || null,
+            department: data.department || null,
+            set_temp_password: data.setTempPassword || false,
+            reset_existing: data.resetExisting || false
+          },
+          showErrorToast: false // We'll handle errors manually for better UX
+        });
 
       if (result.success && result.data) {
         setInviteResult(result.data);
@@ -95,7 +107,16 @@ export function InviteUserDialog({ tenantId, onSuccess }: InviteUserDialogProps)
         const errorDetails = result.data?.details || '';
         const fullErrorMessage = errorDetails ? `${errorMessage}: ${errorDetails}` : errorMessage;
         
-        if (errorMessage.includes('already exists')) {
+        if (result.data?.code === 'USER_EXISTS' && result.data?.existing_user?.can_reset_password) {
+          // Show the existing user info with reset option
+          setInviteResult({
+            success: false,
+            error: errorMessage,
+            code: result.data.code,
+            existing_user: result.data.existing_user
+          });
+          return; // Don't show toast, let user decide
+        } else if (errorMessage.includes('already exists')) {
           toast.error('A user with this email already exists in the system');
         } else if (errorMessage.includes('role not found') || errorMessage.includes('not found')) {
           toast.error('The specified role was not found. Please check the role name and try again.');
@@ -149,37 +170,75 @@ export function InviteUserDialog({ tenantId, onSuccess }: InviteUserDialogProps)
 
         {inviteResult ? (
           <div className="space-y-4">
-            <Alert className={inviteResult.email_sent ? "border-green-200 bg-green-50" : "border-yellow-200 bg-yellow-50"}>
-              <CheckCircle className={`h-4 w-4 ${inviteResult.email_sent ? "text-green-600" : "text-yellow-600"}`} />
-              <AlertDescription>
-                <div className="space-y-2">
-                  <p className="font-medium">{inviteResult.message}</p>
-                  
-                  {!inviteResult.email_sent && inviteResult.temp_password && (
-                    <div className="bg-white border rounded p-3">
-                      <p className="text-sm font-medium text-gray-700 mb-1">
-                        Temporary Password:
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <code className="text-lg font-mono bg-gray-100 px-2 py-1 rounded flex-1">
-                          {inviteResult.temp_password}
-                        </code>
+            {inviteResult.existing_user ? (
+              // Existing user - show reset options
+              <Alert className="border-yellow-200 bg-yellow-50">
+                <AlertCircle className="h-4 w-4 text-yellow-600" />
+                <AlertDescription>
+                  <div className="space-y-3">
+                    <p className="font-medium">User already exists:</p>
+                    <p className="text-sm">{inviteResult.existing_user.email}</p>
+                    
+                    {inviteResult.existing_user.can_reset_password && (
+                      <div className="flex gap-3 pt-2">
+                        <Button 
+                          size="sm"
+                          onClick={() => {
+                            // Reset with temporary password
+                            form.setValue('resetExisting', true);
+                            form.setValue('setTempPassword', true);
+                            setInviteResult(null);
+                          }}
+                          className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                        >
+                          Reset Password
+                        </Button>
                         <Button 
                           size="sm" 
                           variant="outline"
-                          onClick={() => copyToClipboard(inviteResult.temp_password!)}
+                          onClick={() => setInviteResult(null)}
                         >
-                          <Copy className="h-3 w-3" />
+                          Try Different Email
                         </Button>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Please share this password with the user. They will be prompted to change it on first login.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </AlertDescription>
-            </Alert>
+                    )}
+                  </div>
+                </AlertDescription>
+              </Alert>
+            ) : (
+              // Success or error result
+              <Alert className={inviteResult.success && inviteResult.email_sent ? "border-green-200 bg-green-50" : "border-yellow-200 bg-yellow-50"}>
+                <CheckCircle className={`h-4 w-4 ${inviteResult.success && inviteResult.email_sent ? "text-green-600" : "text-yellow-600"}`} />
+                <AlertDescription>
+                  <div className="space-y-2">
+                    <p className="font-medium">{inviteResult.message}</p>
+                    
+                    {!inviteResult.email_sent && inviteResult.temp_password && (
+                      <div className="bg-white border rounded p-3">
+                        <p className="text-sm font-medium text-gray-700 mb-1">
+                          Temporary Password:
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <code className="text-lg font-mono bg-gray-100 px-2 py-1 rounded flex-1">
+                            {inviteResult.temp_password}
+                          </code>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => copyToClipboard(inviteResult.temp_password!)}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Please share this password with the user. They will be prompted to change it on first login.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
 
             <div className="flex gap-3">
               <Button onClick={handleClose} className="flex-1">
@@ -288,6 +347,43 @@ export function InviteUserDialog({ tenantId, onSuccess }: InviteUserDialogProps)
                   </FormItem>
                 )}
               />
+
+              {/* Global user options */}
+              {!tenantId && (
+                <div className="space-y-4 pt-2 border-t">
+                  <FormField
+                    control={form.control}
+                    name="setTempPassword"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-sm font-medium">
+                            Set temporary password
+                          </FormLabel>
+                          <p className="text-xs text-muted-foreground">
+                            User will be forced to change password on first login
+                          </p>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {form.watch('resetExisting') && (
+                    <Alert className="border-blue-200 bg-blue-50">
+                      <AlertCircle className="h-4 w-4 text-blue-600" />
+                      <AlertDescription className="text-sm">
+                        This will reset the existing user's password and force them to change it on next login.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
 
               <div className="flex gap-3 pt-4">
                 <Button

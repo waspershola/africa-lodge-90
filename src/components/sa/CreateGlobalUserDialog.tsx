@@ -21,6 +21,9 @@ import { useGlobalRoles } from '@/hooks/useRoles';
 
 const createGlobalUserSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
+  name: z.string().min(1, 'Name is required').max(100, 'Name is too long'),
+  phone: z.string().optional(),
+  address: z.string().optional(),
   role: z.string().min(1, 'Please select a role'),
 });
 
@@ -48,6 +51,8 @@ export function CreateGlobalUserDialog({ onSuccess }: CreateGlobalUserDialogProp
     user?: {
       id: string;
       email: string;
+      name?: string | null;
+      phone?: string | null;
       role: string;
     };
   } | null>(null);
@@ -58,6 +63,9 @@ export function CreateGlobalUserDialog({ onSuccess }: CreateGlobalUserDialogProp
     resolver: zodResolver(createGlobalUserSchema),
     defaultValues: {
       email: '',
+      name: '',
+      phone: '',
+      address: '',
       role: '',
     },
   });
@@ -70,6 +78,9 @@ export function CreateGlobalUserDialog({ onSuccess }: CreateGlobalUserDialogProp
         functionName: 'create-global-user',
         body: {
           email: data.email,
+          name: data.name,
+          phone: data.phone,
+          address: data.address,
           role: data.role,
         },
         showErrorToast: false // We'll handle errors manually
@@ -167,7 +178,9 @@ export function CreateGlobalUserDialog({ onSuccess }: CreateGlobalUserDialogProp
                         User Details:
                       </p>
                       <div className="text-sm space-y-1">
+                        <p><span className="font-medium">Name:</span> {createResult.user?.name || 'Not provided'}</p>
                         <p><span className="font-medium">Email:</span> {createResult.user?.email}</p>
+                        <p><span className="font-medium">Phone:</span> {createResult.user?.phone || 'Not provided'}</p>
                         <p><span className="font-medium">Role:</span> {createResult.user?.role}</p>
                       </div>
                     </div>
@@ -267,12 +280,54 @@ export function CreateGlobalUserDialog({ onSuccess }: CreateGlobalUserDialogProp
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="John Doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="email"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Email Address</FormLabel>
                     <FormControl>
                       <Input type="email" placeholder="admin@company.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone Number (Optional)</FormLabel>
+                    <FormControl>
+                      <Input type="tel" placeholder="+1 (555) 123-4567" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Address (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="123 Main St, City, Country" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

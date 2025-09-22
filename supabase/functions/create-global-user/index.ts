@@ -22,7 +22,7 @@ serve(async (req) => {
       }
     });
 
-    const { email, role } = await req.json();
+    const { email, role, name, phone, address } = await req.json();
 
     if (!email || !role) {
       return new Response(
@@ -35,7 +35,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('Creating global user:', { email, role });
+    console.log('Creating global user:', { email, role, name, phone, address });
 
     // Look up the role in the database (global scope only)
     const { data: roleData, error: roleError } = await supabaseAdmin
@@ -77,8 +77,13 @@ serve(async (req) => {
       );
     }
 
-    // Generate secure temporary password
-    const tempPassword = crypto.randomBytes(12).toString('base64url');
+    // Generate secure temporary password using Web Crypto API
+    const randomBytes = new Uint8Array(12);
+    crypto.getRandomValues(randomBytes);
+    const tempPassword = btoa(String.fromCharCode(...randomBytes))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
     console.log('Generated temporary password for user');
 
     // Check if user already exists
@@ -132,6 +137,8 @@ serve(async (req) => {
       .insert({
         id: authUser.user!.id,
         email: authUser.user!.email!,
+        name: name || null,
+        phone: phone || null,
         role: roleData.name,
         role_id: roleData.id,
         tenant_id: null, // Global users have no tenant
@@ -169,6 +176,8 @@ serve(async (req) => {
         user: {
           id: authUser.user!.id,
           email: authUser.user!.email,
+          name: name || null,
+          phone: phone || null,
           role: roleData.name
         }
       }),

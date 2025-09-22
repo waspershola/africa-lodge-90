@@ -84,23 +84,29 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Get the Starter plan (use existing plan instead of Basic)
-    const { data: starterPlan } = await supabaseAdmin
+    // Get the Starter plan (case-insensitive)
+    console.log('Looking up Starter plan...');
+    const { data: starterPlan, error: planError } = await supabaseAdmin
       .from('plans')
-      .select('id')
-      .eq('name', 'Starter')
+      .select('id, name')
+      .ilike('name', 'Starter')
       .single();
 
-    if (!starterPlan) {
-      console.error('Starter plan not found');
+    if (planError || !starterPlan) {
+      console.error('Plan lookup error:', planError);
+      console.log('Available plans check...');
+      const { data: allPlans } = await supabaseAdmin.from('plans').select('name');
+      console.log('Available plans:', allPlans);
       return new Response(JSON.stringify({ 
         success: false, 
-        error: 'Trial plan not available' 
+        error: `Starter plan not found. Available plans: ${allPlans?.map(p => p.name).join(', ')}` 
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    console.log(`Found plan: ${starterPlan.name} with ID: ${starterPlan.id}`);
 
     // Generate hotel slug
     const hotel_slug = hotel_name.toLowerCase()

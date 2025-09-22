@@ -65,11 +65,14 @@ const handler = async (req: Request): Promise<Response> => {
     const { user_id }: DeleteUserRequest = await req.json();
 
     if (!user_id) {
+      console.error('Missing user_id in request');
       return new Response(
         JSON.stringify({ success: false, error: 'User ID is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    console.log(`Attempting to delete user: ${user_id}`);
 
     // Check if target user is platform owner
     const { data: targetUser, error: targetUserError } = await supabaseClient
@@ -86,7 +89,10 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    console.log(`Target user found: ${targetUser.email} (role: ${targetUser.role})`);
+
     if (targetUser.is_platform_owner) {
+      console.error('Attempted to delete platform owner');
       return new Response(
         JSON.stringify({ success: false, error: 'Cannot delete platform owner' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -95,32 +101,64 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Prevent self-deletion
     if (user_id === user.id) {
+      console.error('User attempted to delete themselves');
       return new Response(
         JSON.stringify({ success: false, error: 'Cannot delete your own account' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Delete from auth.users first, then public.users
-    const { error: deleteAuthError } = await supabaseClient.auth.admin.deleteUser(user_id);
-    
-    if (deleteAuthError) {
-      console.error('Error deleting user from auth:', deleteAuthError);
+    try {
+      // Delete from Supabase Auth first (this is the critical operation)
+      console.log('Deleting user from Supabase Auth...');
+      const { error: deleteAuthError } = await supabaseClient.auth.admin.deleteUser(user_id);
+
+      if (deleteAuthError) {
+        console.error('Failed to delete auth user:', deleteAuthError);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Failed to delete user from authentication system', 
+            details: deleteAuthError.message 
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Auth user deleted successfully');
+
+      // Delete from users table
+      console.log('Deleting user record from database...');
+      const { error: deleteUserError } = await supabaseClient
+        .from('users')
+        .delete()
+        .eq('id', user_id);
+
+      if (deleteUserError) {
+        console.error('Failed to delete user record:', deleteUserError);
+        // Auth user is already deleted, so we just log this error
+        console.error('Warning: Auth user deleted but database record remains');
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Failed to delete user record from database', 
+            details: deleteUserError.message 
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('User record deleted successfully');
+    } catch (error) {
+      console.error('Unexpected error during user deletion:', error);
       return new Response(
-        JSON.stringify({ success: false, error: deleteAuthError.message }),
+        JSON.stringify({ 
+          success: false, 
+          error: 'Unexpected error during deletion',
+          details: error instanceof Error ? error.message : 'Unknown error'
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-    }
-
-    // Also delete from public.users table explicitly
-    const { error: deletePublicError } = await supabaseClient
-      .from('users')
-      .delete()
-      .eq('id', user_id);
-    
-    if (deletePublicError) {
-      console.error('Error deleting user from public.users:', deletePublicError);
-      // Don't return error here as auth user is already deleted
     }
 
     console.log(`User ${targetUser.email} deleted successfully by super admin ${userData?.role}`);

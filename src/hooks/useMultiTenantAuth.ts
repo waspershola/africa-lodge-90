@@ -415,63 +415,80 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
     let initialLoadDone = false;
     let refreshInterval: NodeJS.Timeout | null = null;
 
+    console.log('Setting up auth state listener...');
+    
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state change event:', event, session ? 'Session exists' : 'No session');
       setSession(session);
       
-      // Only load profile for auth events after initial load to prevent duplicates
-      if (initialLoadDone && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
         if (session?.user) {
           console.log('Auth event triggered profile load for:', session.user.email);
-          await loadUserProfile(session.user);
+          // Use setTimeout to prevent potential deadlock
+          setTimeout(() => {
+            loadUserProfile(session.user);
+          }, 0);
         }
       } else if (event === 'SIGNED_OUT') {
+        console.log('User signed out, clearing state');
         setUser(null);
         setTenant(null);
-        setTrialStatus(null);
-        // Clear refresh interval on logout
+        setSession(null);
+        setIsImpersonating(false);
+        setImpersonationData(null);
+        setNeedsPasswordReset(false);
         if (refreshInterval) {
           clearInterval(refreshInterval);
           refreshInterval = null;
         }
-      }
-
-      // Set up automatic token refresh when user signs in
-      if (event === 'SIGNED_IN' && session?.user && !refreshInterval) {
-        console.log('Setting up auto-refresh for session...');
-        // Set up session monitoring and auto-refresh with better error handling
-        refreshInterval = setInterval(async () => {
-          console.log('Checking session status and auto-refreshing...');
-          const { error } = await supabase.auth.refreshSession();
-          if (error) {
-            console.error('Session refresh failed:', error);
-            // Clear interval on persistent errors to prevent spam
-            if (error.message.includes('refresh_token_not_found') || 
-                error.message.includes('invalid_grant') ||
-                error.message.includes('session_not_found')) {
-              console.log('Critical session error, clearing refresh interval');
-              if (refreshInterval) {
-                clearInterval(refreshInterval);
-                refreshInterval = null;
-              }
-              // Optionally trigger re-authentication flow
-              setError('Session expired. Please log in again.');
-            }
-          } else {
-            console.log('Session refreshed successfully');
-            setError(null); // Clear any previous errors
-          }
-        }, 10 * 60 * 1000); // Check every 10 minutes instead of 50
+      } else if (event === 'TOKEN_REFRESHED') {
+        console.log('Token refreshed, updating session');
+        setSession(session);
       }
     });
 
-    // Load initial auth state only once
+    // Set up automatic token refresh - more aggressive approach
+    const setupRefresh = () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+      
+      refreshInterval = setInterval(async () => {
+        try {
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
+          if (currentSession) {
+            const now = Math.floor(Date.now() / 1000);
+            const expiresAt = currentSession.expires_at || 0;
+            
+            // Refresh 5 minutes before expiry
+            if (expiresAt - now < 300) {
+              console.log('Token expiring soon, refreshing...');
+              const { error } = await supabase.auth.refreshSession();
+              if (error) {
+                console.error('Token refresh failed:', error);
+                // Force re-authentication if refresh fails
+                await supabase.auth.signOut();
+              } else {
+                console.log('Session refreshed successfully');
+                setError(null);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error in token refresh interval:', error);
+        }
+      }, 30 * 1000); // Check every 30 seconds
+    };
+
+    // Load initial auth state
     loadAuthState().finally(() => {
       initialLoadDone = true;
+      setupRefresh(); // Start refresh monitoring after initial load
       console.log('Initial auth state loading completed');
     });
 
     return () => {
+      console.log('Cleaning up auth listener and refresh interval');
       subscription.unsubscribe();
       if (refreshInterval) {
         clearInterval(refreshInterval);

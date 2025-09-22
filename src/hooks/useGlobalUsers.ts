@@ -58,13 +58,16 @@ export const useCreateGlobalUser = () => {
       });
 
       if (error) {
-        console.error('Edge function error:', error);
-        throw new Error(error.message || 'Failed to invoke invite function');
+        console.error('Invite user error:', error);
+        // Try to extract more specific error information  
+        const errorMessage = error.message || 'Edge Function returned a non-2xx status code';
+        throw new Error(`Failed to invite user: ${errorMessage}`);
       }
       
       if (!data?.success) {
-        console.error('Function returned error:', data);
-        throw new Error(data?.error || 'Failed to create global user');
+        const errorMessage = data?.error || 'Failed to create global user';
+        console.error('Invite user failed:', errorMessage);
+        throw new Error(errorMessage);
       }
 
       return data;
@@ -135,13 +138,16 @@ export const useDeleteGlobalUser = () => {
       });
 
       if (error) {
-        console.error('Edge function error:', error);
-        throw new Error(error.message || 'Failed to invoke delete function');
+        console.error('Delete user error:', error);
+        // Try to extract more specific error information
+        const errorMessage = error.message || 'Edge Function returned a non-2xx status code';
+        throw new Error(`Failed to delete user: ${errorMessage}`);
       }
       
       if (!data?.success) {
-        console.error('Function returned error:', data);
-        throw new Error(data?.error || 'Failed to delete user');
+        const errorMessage = data?.error || 'Failed to delete user';
+        console.error('Delete user failed:', errorMessage);
+        throw new Error(errorMessage);
       }
 
       return data;

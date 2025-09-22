@@ -39,6 +39,11 @@ const hashPassword = async (password: string): Promise<string> => {
 };
 
 const handler = async (req: Request): Promise<Response> => {
+  const startTime = Date.now();
+  const operationId = crypto.randomUUID();
+  
+  console.log(`[${operationId}] trial-signup function started`, { timestamp: new Date().toISOString() });
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -97,7 +102,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Get the Starter plan (case-insensitive)
-    console.log('Looking up Starter plan...');
+    console.log(`[${operationId}] Looking up Starter plan...`);
     const { data: starterPlan, error: planError } = await supabaseAdmin
       .from('plans')
       .select('id, name')
@@ -105,10 +110,14 @@ const handler = async (req: Request): Promise<Response> => {
       .maybeSingle();
 
     if (planError) {
-      console.error('Plan lookup error:', planError);
+      console.error(`[${operationId}] Plan lookup error:`, planError);
       return new Response(JSON.stringify({ 
         success: false, 
-        error: `Database error looking up plan: ${planError.message}` 
+        error: `Database error looking up plan: ${planError.message}`,
+        debug_info: {
+          operation_id: operationId,
+          error_details: planError
+        }
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -116,11 +125,25 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     if (!starterPlan) {
-      console.log('Starter plan not found, checking available plans...');
-      const { data: allPlans } = await supabaseAdmin.from('plans').select('name');
-      console.log('Available plans:', allPlans);
+      console.log(`[${operationId}] Starter plan not found, checking available plans...`);
+      const { data: allPlans, error: allPlansError } = await supabaseAdmin.from('plans').select('name, id');
+      console.log(`[${operationId}] Available plans:`, allPlans);
       
-      // Try to find any plan that looks like a starter/trial plan
+      if (allPlansError) {
+        console.error(`[${operationId}] Error fetching all plans:`, allPlansError);
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: `Failed to fetch available plans: ${allPlansError.message}`,
+          debug_info: {
+            operation_id: operationId
+          }
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      // Try to find any plan that looks like a starter/trial plan (case-insensitive)
       const fallbackPlan = allPlans?.find(p => 
         p.name.toLowerCase().includes('starter') ||
         p.name.toLowerCase().includes('trial') ||
@@ -128,23 +151,17 @@ const handler = async (req: Request): Promise<Response> => {
       );
       
       if (fallbackPlan) {
-        const { data: planData } = await supabaseAdmin
-          .from('plans')
-          .select('id, name')
-          .eq('name', fallbackPlan.name)
-          .single();
-        
-        if (planData) {
-          console.log(`Using fallback plan: ${planData.name}`);
-          starterPlan.id = planData.id;
-          starterPlan.name = planData.name;
-        }
-      }
-      
-      if (!starterPlan) {
+        console.log(`[${operationId}] Using fallback plan: ${fallbackPlan.name}`);
+        // Assign the found plan data
+        Object.assign(starterPlan || {}, { id: fallbackPlan.id, name: fallbackPlan.name });
+      } else {
         return new Response(JSON.stringify({ 
           success: false, 
-          error: `No suitable plan found. Available plans: ${allPlans?.map(p => p.name).join(', ')}` 
+          error: `No suitable plan found. Available plans: ${allPlans?.map(p => p.name).join(', ') || 'none'}`,
+          debug_info: {
+            operation_id: operationId,
+            available_plans: allPlans
+          }
         }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -152,7 +169,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    console.log(`Found plan: ${starterPlan.name} with ID: ${starterPlan.id}`);
+    console.log(`[${operationId}] Found plan: ${starterPlan?.name} with ID: ${starterPlan?.id}`);
 
     // Generate hotel slug
     const hotel_slug = hotel_name.toLowerCase()
@@ -231,18 +248,25 @@ const handler = async (req: Request): Promise<Response> => {
       authUserId = authUser.user.id;
       console.log('Auth user created:', authUserId);
 
-      // Step 3: Get Owner role for this tenant
+      // Step 3: Get Owner role for this tenant (case-insensitive)
       const { data: ownerRole, error: roleError } = await supabaseAdmin
         .from('roles')
         .select('id')
-        .eq('name', 'Owner')
+        .ilike('name', 'Owner')
         .eq('scope', 'tenant')
         .eq('tenant_id', tenantId)
         .maybeSingle();
 
       if (roleError || !ownerRole) {
-        console.error('Failed to find Owner role for tenant:', roleError);
-        throw new Error('Owner role not found for tenant');
+        console.error(`[${operationId}] Failed to find Owner role for tenant:`, roleError);
+        // Get available roles for debugging
+        const { data: availableRoles } = await supabaseAdmin
+          .from('roles')
+          .select('name, scope, tenant_id')
+          .eq('scope', 'tenant')
+          .eq('tenant_id', tenantId);
+        console.log(`[${operationId}] Available tenant roles:`, availableRoles);
+        throw new Error(`Owner role not found for tenant ${tenantId}. Available roles: ${availableRoles?.map(r => r.name).join(', ') || 'none'}`);
       }
 
       // Step 4: Create user record (with upsert to handle duplicates)
@@ -373,10 +397,24 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
   } catch (error: any) {
-    console.error('Error in trial-signup function:', error);
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    
+    console.error(`[${operationId}] Error in trial-signup function:`, {
+      error: error.message,
+      stack: error.stack,
+      duration_ms: duration,
+      timestamp: new Date().toISOString()
+    });
+    
     return new Response(JSON.stringify({ 
       success: false, 
-      error: error.message || 'Trial signup failed' 
+      error: error.message || 'Trial signup failed',
+      debug_info: {
+        operation_id: operationId,
+        duration_ms: duration,
+        timestamp: new Date().toISOString()
+      }
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

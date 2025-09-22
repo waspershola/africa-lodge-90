@@ -37,6 +37,11 @@ const hashPassword = async (password: string): Promise<string> => {
 };
 
 serve(async (req) => {
+  const startTime = Date.now();
+  const operationId = crypto.randomUUID();
+  
+  console.log(`[${operationId}] create-tenant-and-owner function started`, { timestamp: new Date().toISOString() });
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -80,7 +85,7 @@ serve(async (req) => {
       .from('users')
       .select('role, is_platform_owner')
       .eq('id', authUser.user.id)
-      .single();
+      .maybeSingle();
 
     console.log('User role check:', { userData, roleError });
 
@@ -103,11 +108,11 @@ serve(async (req) => {
     });
 
     // Check if user already exists with this email in public.users table
-    const { data: existingUser } = await supabaseAdmin
+    const { data: existingUser, error: existingUserError } = await supabaseAdmin
       .from('users')
       .select('id, email')
       .eq('email', requestData.owner_email)
-      .single();
+      .maybeSingle();
 
     if (existingUser) {
       console.log('User already exists in users table:', requestData.owner_email);
@@ -236,7 +241,7 @@ serve(async (req) => {
             .from('users')
             .select('id')
             .eq('id', authUserId)
-            .single();
+            .maybeSingle();
 
           if (existingUserRecord) {
             console.log('User record already exists, updating with temp password');
@@ -257,18 +262,25 @@ serve(async (req) => {
 
             console.log('User record updated with temp password');
           } else {
-            // Get Owner role_id from roles table for this tenant
+            // Get Owner role_id from roles table for this tenant (case-insensitive)
             const { data: ownerRole, error: roleError } = await supabaseAdmin
               .from('roles')
               .select('id')
-              .eq('name', 'Owner')
+              .ilike('name', 'Owner')
               .eq('scope', 'tenant')
               .eq('tenant_id', tenantId)
-              .single();
+              .maybeSingle();
 
             if (roleError || !ownerRole) {
-              console.error('Failed to find Owner role for tenant:', roleError);
-              throw new Error('Owner role not found for tenant');
+              console.error(`[${operationId}] Failed to find Owner role for tenant:`, roleError);
+              // Get available roles for debugging
+              const { data: availableRoles } = await supabaseAdmin
+                .from('roles')
+                .select('name, scope, tenant_id')
+                .eq('scope', 'tenant')
+                .eq('tenant_id', tenantId);
+              console.log(`[${operationId}] Available tenant roles:`, availableRoles);
+              throw new Error(`Owner role not found for tenant ${tenantId}. Available roles: ${availableRoles?.map(r => r.name).join(', ')}`);
             }
 
             // Create user record in users table
@@ -330,6 +342,15 @@ serve(async (req) => {
             // Continue without failing
           }
 
+          const endTime = Date.now();
+          const duration = endTime - startTime;
+          
+          console.log(`[${operationId}] create-tenant-and-owner function completed successfully`, {
+            duration_ms: duration,
+            tenant_id: tenantId,
+            owner_id: authUserId
+          });
+
           return new Response(
             JSON.stringify({
               success: true,
@@ -337,7 +358,11 @@ serve(async (req) => {
               tempPassword,
               temp_password: tempPassword, // Send both field names for compatibility
               owner_id: authUserId,
-              message: 'Tenant and owner created successfully'
+              message: 'Tenant and owner created successfully',
+              debug_info: {
+                operation_id: operationId,
+                duration_ms: duration
+              }
             }),
             {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -375,7 +400,15 @@ serve(async (req) => {
     }
 
   } catch (error) {
-    console.error('Error in create-tenant-and-owner function:', error);
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    
+    console.error(`[${operationId}] Error in create-tenant-and-owner function:`, {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      duration_ms: duration,
+      timestamp: new Date().toISOString()
+    });
     
     // Provide more specific error information
     let errorMessage = 'Internal server error';
@@ -391,6 +424,8 @@ serve(async (req) => {
         statusCode = 403;
       } else if (error.message.includes('already exists') || error.message.includes('duplicate')) {
         statusCode = 400;
+      } else if (error.message.includes('not found')) {
+        statusCode = 404;
       }
     }
     
@@ -398,9 +433,11 @@ serve(async (req) => {
       JSON.stringify({
         error: errorMessage,
         success: false,
-        debug: {
+        debug_info: {
+          operation_id: operationId,
           timestamp: new Date().toISOString(),
-          error_type: error.constructor.name,
+          duration_ms: duration,
+          error_type: error instanceof Error ? error.constructor.name : 'Unknown',
           stack: error instanceof Error ? error.stack : undefined
         }
       }),

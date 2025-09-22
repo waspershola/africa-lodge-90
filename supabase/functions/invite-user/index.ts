@@ -37,6 +37,11 @@ const hashPassword = async (password: string): Promise<string> => {
 };
 
 const handler = async (req: Request): Promise<Response> => {
+  const startTime = Date.now();
+  const operationId = crypto.randomUUID();
+  
+  console.log(`[${operationId}] invite-user function started`, { timestamp: new Date().toISOString() });
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -75,16 +80,24 @@ const handler = async (req: Request): Promise<Response> => {
     const user = authResult.user;
 
     // Check if caller is super admin or owner/manager
-    const { data: callerData } = await supabaseAdmin
+    const { data: callerData, error: callerError } = await supabaseAdmin
       .from('users')
       .select('role, tenant_id')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
-    console.log('Caller permissions check:', { callerData });
+    if (callerError) {
+      console.error(`[${operationId}] Failed to fetch caller data:`, callerError);
+      return new Response(JSON.stringify({ error: 'Failed to verify user permissions' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log(`[${operationId}] Caller permissions check:`, { callerData });
 
     if (!callerData || (callerData.role !== 'SUPER_ADMIN' && !['OWNER', 'MANAGER'].includes(callerData.role))) {
-      console.error('Insufficient permissions:', callerData);
+      console.error(`[${operationId}] Insufficient permissions:`, callerData);
       return new Response(JSON.stringify({ error: 'Insufficient permissions' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -93,7 +106,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { email, name, role, tenant_id, department }: InviteUserRequest = await req.json();
 
-    console.log('Starting invite-user function with body:', {
+    console.log(`[${operationId}] Processing invite request:`, {
       email,
       name,
       role,
@@ -103,24 +116,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Validate required fields
     if (!email || !name || !role) {
-      console.error('Missing required fields:', { email: !!email, name: !!name, role: !!role });
-      return new Response(JSON.stringify({ error: 'Email, name, and role are required' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    console.log('Starting invite-user function with body:', {
-      email,
-      name,
-      role,
-      tenant_id,
-      department
-    });
-
-    // Validate required fields
-    if (!email || !name || !role) {
-      console.error('Missing required fields:', { email: !!email, name: !!name, role: !!role });
+      console.error(`[${operationId}] Missing required fields:`, { email: !!email, name: !!name, role: !!role });
       return new Response(JSON.stringify({ error: 'Email, name, and role are required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -209,11 +205,11 @@ const handler = async (req: Request): Promise<Response> => {
       tenant_id 
     });
 
-    // Get role_id from roles table using the correct database role name
+    // Get role_id from roles table using case-insensitive lookup
     let roleQuery = supabaseAdmin
       .from('roles')
       .select('id, name, scope')
-      .eq('name', roleMapping.dbName)
+      .ilike('name', roleMapping.dbName)
       .eq('scope', tenant_id ? 'tenant' : 'global');
     
     // Handle tenant_id filtering properly
@@ -225,23 +221,30 @@ const handler = async (req: Request): Promise<Response> => {
     
     const { data: roleData, error: roleError } = await roleQuery.maybeSingle();
 
-    console.log('Role query result:', { roleData, roleError });
+    console.log(`[${operationId}] Role query result:`, { 
+      roleData, 
+      roleError, 
+      searchTerm: roleMapping.dbName,
+      scope: tenant_id ? 'tenant' : 'global' 
+    });
 
     if (roleError || !roleData) {
-      console.error('Failed to find role:', roleError);
-      console.log('Available roles in database:');
-      const { data: availableRoles } = await supabaseAdmin
+      console.error(`[${operationId}] Failed to find role:`, roleError);
+      
+      // Get available roles for better error message
+      const { data: availableRoles, error: availableRolesError } = await supabaseAdmin
         .from('roles')
         .select('name, scope, tenant_id')
         .eq('scope', tenant_id ? 'tenant' : 'global');
-      console.log('Available roles:', availableRoles);
+      
+      console.log(`[${operationId}] Available roles:`, availableRoles);
       
       // Clean up auth user if role lookup failed
       try {
         await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
-        console.log('Auth user cleaned up after role lookup failure');
+        console.log(`[${operationId}] Auth user cleaned up after role lookup failure`);
       } catch (cleanupError) {
-        console.error('Failed to cleanup auth user:', cleanupError);
+        console.error(`[${operationId}] Failed to cleanup auth user:`, cleanupError);
       }
       
       return new Response(JSON.stringify({ 
@@ -249,7 +252,12 @@ const handler = async (req: Request): Promise<Response> => {
         error: `Role '${roleMapping.dbName}' not found for ${tenant_id ? 'tenant' : 'global'} scope`,
         requested_role: roleMapping.dbName,
         scope: tenant_id ? 'tenant' : 'global',
-        available_roles: availableRoles?.map(r => r.name) || []
+        available_roles: availableRoles?.map(r => r.name) || [],
+        debug_info: {
+          operation_id: operationId,
+          role_error: roleError?.message,
+          available_roles_error: availableRolesError?.message
+        }
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -353,6 +361,15 @@ const handler = async (req: Request): Promise<Response> => {
         }
       });
 
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    
+    console.log(`[${operationId}] invite-user function completed successfully`, {
+      duration_ms: duration,
+      email_sent: emailSent,
+      user_id: newUser.user.id
+    });
+
     return new Response(JSON.stringify({
       success: true,
       user: {
@@ -365,17 +382,35 @@ const handler = async (req: Request): Promise<Response> => {
       temp_password: emailSent ? null : tempPassword, // Only return password if email failed
       message: emailSent 
         ? 'User invited successfully! Invitation email sent.'
-        : `User created but email failed to send. Temporary password: ${tempPassword}`
+        : `User created but email failed to send. Temporary password: ${tempPassword}`,
+      debug_info: {
+        operation_id: operationId,
+        duration_ms: duration
+      }
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error: any) {
-    console.error('Error in invite-user function:', error);
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    
+    console.error(`[${operationId}] Error in invite-user function:`, {
+      error: error.message,
+      stack: error.stack,
+      duration_ms: duration,
+      timestamp: new Date().toISOString()
+    });
+    
     return new Response(JSON.stringify({ 
       success: false,
-      error: error.message || 'Internal server error' 
+      error: error.message || 'Internal server error',
+      debug_info: {
+        operation_id: operationId,
+        duration_ms: duration,
+        timestamp: new Date().toISOString()
+      }
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

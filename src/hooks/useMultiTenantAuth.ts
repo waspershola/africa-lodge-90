@@ -439,19 +439,29 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
       // Set up automatic token refresh when user signs in
       if (event === 'SIGNED_IN' && session?.user && !refreshInterval) {
         console.log('Setting up auto-refresh for session...');
+        // Set up session monitoring and auto-refresh with better error handling
         refreshInterval = setInterval(async () => {
-          console.log('Auto-refreshing session token...');
+          console.log('Checking session status and auto-refreshing...');
           const { error } = await supabase.auth.refreshSession();
           if (error) {
-            console.error('Auto-refresh failed:', error);
-            if (refreshInterval) {
-              clearInterval(refreshInterval);
-              refreshInterval = null;
+            console.error('Session refresh failed:', error);
+            // Clear interval on persistent errors to prevent spam
+            if (error.message.includes('refresh_token_not_found') || 
+                error.message.includes('invalid_grant') ||
+                error.message.includes('session_not_found')) {
+              console.log('Critical session error, clearing refresh interval');
+              if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+              }
+              // Optionally trigger re-authentication flow
+              setError('Session expired. Please log in again.');
             }
           } else {
-            console.log('Session auto-refreshed successfully');
+            console.log('Session refreshed successfully');
+            setError(null); // Clear any previous errors
           }
-        }, 50 * 60 * 1000); // 50 minutes
+        }, 10 * 60 * 1000); // Check every 10 minutes instead of 50
       }
     });
 

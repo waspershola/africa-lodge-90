@@ -1,6 +1,6 @@
 project_id = "dxisnnjsbuuiunjmzzqj"
 
-[functions.create-global-user]
+[functions.create-global-user-fixed]
 verify_jwt = true
 
 [functions.create-tenant-and-owner]

@@ -93,10 +93,13 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
       has_temp_password: !!user.temp_password_hash,
       user_email: user.email 
     });
-    if (user.force_reset && user.temp_password_hash) {
-      console.log('Password reset required - user has temporary password');
+    
+    // Force reset if explicitly marked OR if user has temp password
+    if (user.force_reset) {
+      console.log('Password reset required - force_reset flag is true');
       return true;
     }
+    
     return false;
   };
 

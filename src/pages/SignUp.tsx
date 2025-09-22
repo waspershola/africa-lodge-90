@@ -34,53 +34,52 @@ const SignUp = () => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match');
-      return;
-    }
-
-    if (formData.password.length < 8) {
-      toast.error('Password must be at least 8 characters long');
+    if (!formData.hotelName || !formData.ownerName || !formData.email) {
+      toast.error('Please fill in all required fields');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // Create the tenant and owner using the edge function
-      const { data, error } = await supabase.functions.invoke('create-tenant-and-owner', {
+      // Create trial account using the trial-signup edge function
+      const { data, error } = await supabase.functions.invoke('trial-signup', {
         body: {
           hotel_name: formData.hotelName,
           owner_name: formData.ownerName,
-          email: formData.email,
+          owner_email: formData.email,
           phone: formData.phone,
           city: formData.city,
-          password: formData.password
+          country: 'Nigeria' // Default country
         }
       });
 
       if (error) {
-        console.error('Signup error:', error);
+        console.error('Trial signup error:', error);
         throw error;
       }
 
       if (!data?.success) {
-        throw new Error(data?.error || 'Failed to create account');
+        throw new Error(data?.error || 'Failed to create trial account');
       }
 
-      toast.success('Account created successfully! Please check your email for verification.');
+      if (data.email_sent) {
+        toast.success('Trial account created successfully! Please check your email for login instructions.');
+      } else {
+        toast.success(`Trial account created! Your temporary password: ${data.temp_password}`);
+      }
       
       // Redirect to login page
       navigate('/', { 
         state: { 
-          message: 'Account created! Please sign in to continue.',
+          message: 'Your 14-day free trial is ready! Please sign in to continue.',
           email: formData.email 
         }
       });
 
     } catch (error: any) {
-      console.error('Signup failed:', error);
-      toast.error(error.message || 'Failed to create account. Please try again.');
+      console.error('Trial signup failed:', error);
+      toast.error(error.message || 'Failed to create trial account. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -217,39 +216,18 @@ const SignUp = () => {
               <div className="space-y-4">
                 <h3 className="font-semibold text-foreground flex items-center gap-2">
                   <Lock className="h-4 w-4" />
-                  Security
+                  Trial Information
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      name="password"
-                      type="password"
-                      placeholder="Create Password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      className="pl-10"
-                      minLength={8}
-                      required
-                    />
+                <div className="bg-gradient-subtle p-4 rounded-lg border">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge className="bg-success/20 text-success border-success/30">
+                      14-Day Free Trial
+                    </Badge>
                   </div>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      name="confirmPassword"
-                      type="password"
-                      placeholder="Confirm Password"
-                      value={formData.confirmPassword}
-                      onChange={handleInputChange}
-                      className="pl-10"
-                      minLength={8}
-                      required
-                    />
-                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Your trial includes full access to all features. We'll send you a temporary password to get started.
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Password must be at least 8 characters long
-                </p>
               </div>
 
               <Button

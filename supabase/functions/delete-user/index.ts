@@ -72,14 +72,14 @@ const handler = async (req: Request): Promise<Response> => {
     // Check if target user is platform owner
     const { data: targetUser, error: targetUserError } = await supabaseClient
       .from('users')
-      .select('is_platform_owner, email')
+      .select('is_platform_owner, email, role')
       .eq('id', user_id)
       .single();
 
     if (targetUserError) {
       console.error('Error fetching target user:', targetUserError);
       return new Response(
-        JSON.stringify({ success: false, error: 'User not found' }),
+        JSON.stringify({ success: false, error: 'User not found in system' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -87,6 +87,14 @@ const handler = async (req: Request): Promise<Response> => {
     if (targetUser.is_platform_owner) {
       return new Response(
         JSON.stringify({ success: false, error: 'Cannot delete platform owner' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Prevent self-deletion
+    if (user_id === user.id) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Cannot delete your own account' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

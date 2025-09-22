@@ -145,11 +145,35 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Get role_id from roles table - role name comes directly from frontend
+    // Map frontend role names to database role names and legacy role field
+    const roleMappings = {
+      // Global roles
+      'Super Admin': { dbName: 'Super Admin', legacyRole: 'SUPER_ADMIN' },
+      'Platform Admin': { dbName: 'Platform Admin', legacyRole: 'PLATFORM_ADMIN' },
+      'Support Staff': { dbName: 'Support Staff', legacyRole: 'SUPPORT_STAFF' },
+      'sales': { dbName: 'sales', legacyRole: 'SALES' },
+      // Tenant roles  
+      'Owner': { dbName: 'HOTEL_OWNER', legacyRole: 'OWNER' },
+      'Manager': { dbName: 'HOTEL_MANAGER', legacyRole: 'MANAGER' },
+      'Front Desk': { dbName: 'FRONT_DESK', legacyRole: 'FRONT_DESK' },
+      'Housekeeping': { dbName: 'HOUSEKEEPING', legacyRole: 'HOUSEKEEPING' },
+      'Maintenance': { dbName: 'MAINTENANCE', legacyRole: 'MAINTENANCE' }
+    };
+
+    const roleMapping = roleMappings[role];
+    if (!roleMapping) {
+      console.error('Invalid role provided:', role);
+      return new Response(JSON.stringify({ error: 'Invalid role specified' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Get role_id from roles table using the correct database role name
     let roleQuery = supabaseAdmin
       .from('roles')
       .select('id')
-      .eq('name', role) // Use role name directly as sent from frontend
+      .eq('name', roleMapping.dbName)
       .eq('scope', tenant_id ? 'tenant' : 'global');
     
     // Handle tenant_id filtering properly
@@ -170,14 +194,14 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Insert user into public.users table
+    // Insert user into public.users table with correct legacy role
     const { error: userInsertError } = await supabaseAdmin
       .from('users')
       .insert({
         id: newUser.user.id,
         email,
         name,
-        role, // Keep legacy role field for backward compatibility
+        role: roleMapping.legacyRole, // Use mapped legacy role
         role_id: roleData.id, // New role system
         tenant_id: tenant_id || null,
         department,

@@ -276,11 +276,34 @@ export function EnhancedStaffInvitationDialog({
         
         onSuccess?.();
       } else {
-        // Show error toast but still allow temp password display
-        toast.error(`❌ ${result.error || 'Failed to send invitation'}`);
+        // Show specific error messages based on error type
+        let errorMessage = result.error || 'Failed to send invitation';
         
+        if (result.error?.includes('already registered in another tenant')) {
+          errorMessage = 'Email Already Used in Another Tenant';
+          toast.error(
+            `❌ ${errorMessage}\n\nThis email is already registered under another tenant. Please remove the user from their current tenant first, or use a different email address.`,
+            { duration: 8000 }
+          );
+        } else if (result.error?.includes('already exists in this tenant')) {
+          errorMessage = 'User Already Exists';
+          toast.error(
+            `❌ ${errorMessage}\n\nA user with this email already exists in your tenant. Please check your staff directory or use a different email.`,
+            { duration: 6000 }
+          );
+        } else if (result.error?.includes('Failed to connect')) {
+          errorMessage = 'Connection Failed';
+          toast.error(
+            `❌ ${errorMessage}\n\nUnable to connect to the invitation service. Please check your internet connection and try again.`,
+            { duration: 6000 }
+          );
+        } else {
+          toast.error(`❌ ${errorMessage}`);
+        }
+        
+        // Show additional info if temp password is available
         if (result.temp_password) {
-          toast.info('💡 Temporary password generated for manual sharing.');
+          toast.info('💡 Temporary password generated for manual sharing.', { duration: 4000 });
         }
       }
     } catch (error) {
@@ -924,7 +947,24 @@ export function EnhancedStaffInvitationDialog({
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    {inviteResult?.error || 'Failed to send invitation. Please try again.'}
+                    {inviteResult?.error?.includes('already registered in another tenant') ? (
+                      <div className="space-y-2">
+                        <div className="font-medium">Email Already Used in Another Tenant</div>
+                        <div>This email address is already registered under a different tenant. Please remove the user from their current tenant first, or use a different email address.</div>
+                      </div>
+                    ) : inviteResult?.error?.includes('already exists in this tenant') ? (
+                      <div className="space-y-2">
+                        <div className="font-medium">User Already Exists</div>
+                        <div>A user with this email already exists in your tenant. Please check your staff directory or use a different email address.</div>
+                      </div>
+                    ) : inviteResult?.error?.includes('Failed to connect') ? (
+                      <div className="space-y-2">
+                        <div className="font-medium">Connection Failed</div>
+                        <div>Unable to connect to the invitation service. Please check your internet connection and try again.</div>
+                      </div>
+                    ) : (
+                      inviteResult?.error || 'Failed to send invitation. Please try again.'
+                    )}
                   </AlertDescription>
                 </Alert>
 

@@ -126,35 +126,73 @@ serve(async (req) => {
 
     console.log('Generated temporary password for user');
 
-    // Check if user already exists (simple check)
-    const { data: existingUser } = await supabaseAdmin
+    // Check for global email uniqueness across ALL tenants
+    const { data: existingUsers, error: checkError } = await supabaseAdmin
       .from('users')
-      .select('id, email, is_active')
-      .eq('email', email)
-      .maybeSingle();
+      .select('id, email, is_active, tenant_id')
+      .eq('email', email);
 
-    // If active user exists, return error
-    if (existingUser && existingUser.is_active) {
+    if (checkError) {
+      console.error('Error checking existing users:', checkError);
       return new Response(JSON.stringify({ 
         success: false,
-        error: 'User already exists and is active',
-        details: `A user with email ${email} already exists in the system.` 
+        error: 'Failed to validate email uniqueness',
+        details: checkError.message,
+        temp_password: !send_email ? tempPassword : undefined
       }), {
-        status: 400,
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Clean up existing inactive user if exists
-    if (existingUser && !existingUser.is_active) {
-      console.log('Cleaning up existing inactive user');
-      const { error: deleteError } = await supabaseAdmin
-        .from('users')
-        .delete()
-        .eq('email', email);
+    // Check if email exists in ANY tenant (global uniqueness)
+    if (existingUsers && existingUsers.length > 0) {
+      const activeUser = existingUsers.find(u => u.is_active);
       
-      if (deleteError) {
-        console.error('Failed to clean up inactive user:', deleteError);
+      if (activeUser) {
+        // Check if it's in a different tenant
+        if (activeUser.tenant_id !== tenant_id) {
+          return new Response(JSON.stringify({ 
+            success: false,
+            error: 'Email already registered in another tenant',
+            details: `This email is already registered under another tenant. Please remove the user from their current tenant before reassigning, or use a different email address.`,
+            temp_password: !send_email ? tempPassword : undefined
+          }), {
+            status: 409, // Conflict status code
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        } else {
+          // Same tenant - user already exists
+          return new Response(JSON.stringify({ 
+            success: false,
+            error: 'User already exists in this tenant',
+            details: `A user with email ${email} already exists in your tenant and is active.`,
+            temp_password: !send_email ? tempPassword : undefined
+          }), {
+            status: 409,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+      
+      // If we have inactive users, clean them up
+      const inactiveUsers = existingUsers.filter(u => !u.is_active);
+      if (inactiveUsers.length > 0) {
+        console.log('Cleaning up inactive users for email:', email);
+        for (const inactiveUser of inactiveUsers) {
+          // Delete from users table
+          await supabaseAdmin
+            .from('users')
+            .delete()
+            .eq('id', inactiveUser.id);
+          
+          // Delete from auth if exists
+          try {
+            await supabaseAdmin.auth.admin.deleteUser(inactiveUser.id, false);
+          } catch (authError) {
+            console.warn('Failed to delete auth user (may not exist):', authError);
+          }
+        }
       }
     }
 
@@ -173,12 +211,27 @@ serve(async (req) => {
 
     if (authError) {
       console.error('Error creating auth user:', authError);
+      
+      // Provide specific error messages based on the error type
+      let errorMessage = 'Failed to create user account';
+      let errorDetails = authError.message;
+      
+      if (authError.message?.includes('already_registered')) {
+        errorMessage = 'Email already registered';
+        errorDetails = 'This email address is already registered in the system.';
+      } else if (authError.message?.includes('invalid_email')) {
+        errorMessage = 'Invalid email address';
+        errorDetails = 'Please provide a valid email address.';
+      } else if (authError.message?.includes('password')) {
+        errorMessage = 'Password creation failed';
+        errorDetails = 'Unable to create secure password for user.';
+      }
+      
       return new Response(JSON.stringify({ 
         success: false,
-        error: 'Failed to create user account',
-        details: authError.message,
-        // Still return temp password for manual sharing
-        temp_password: tempPassword 
+        error: errorMessage,
+        details: errorDetails,
+        temp_password: !send_email ? tempPassword : undefined
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -239,8 +292,7 @@ serve(async (req) => {
         success: false,
         error: 'Failed to create user profile',
         details: profileError.message,
-        // Still return temp password for manual sharing
-        temp_password: tempPassword
+        temp_password: !send_email ? tempPassword : undefined
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -328,15 +380,15 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in invite-user-enhanced function:', error);
     
-    // Generate a temp password even for errors
+    // Generate emergency temp password for manual sharing if email not being sent
     const emergencyTempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
     
     return new Response(JSON.stringify({ 
       success: false,
       error: 'Internal server error',
       details: error.message,
-      // Provide emergency temp password for manual user creation
-      temp_password: emergencyTempPassword
+      // Only provide temp password if email is not being sent
+      temp_password: !send_email ? emergencyTempPassword : undefined
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

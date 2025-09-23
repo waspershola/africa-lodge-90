@@ -70,10 +70,10 @@ export const useStaffInvites = () => {
       if (error) {
         console.error('Supabase function invoke error:', error);
         
-        // Return a structured error response
+        // Return a structured error response with better messaging
         return { 
           success: false, 
-          error: 'Network error occurred while sending invitation',
+          error: 'Failed to connect to invitation service',
           details: error.message 
         };
       }
@@ -96,7 +96,8 @@ export const useStaffInvites = () => {
       
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       
-      toast.error(`❌ Failed to send invitation: ${errorMessage}`);
+      // Don't show duplicate toast - let the calling component handle it
+      console.error('Unexpected error during invitation:', errorMessage);
       
       return { 
         success: false, 

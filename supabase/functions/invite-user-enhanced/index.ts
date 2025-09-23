@@ -328,59 +328,16 @@ serve(async (req) => {
 
     console.log('Auth user ready:', authUserId);
 
-    // Handle user profile in public.users table
+    // Handle user profile in public.users table using UPSERT
     let profileError = null;
     
-    // Check if public user already exists
-    const existingPublicUser = existingUsers?.find(u => u.id === authUserId);
+    console.log('Creating/updating public user profile for:', authUserId);
     
-    if (existingPublicUser) {
-      // Update existing public user
-      const { error: updateError } = await supabaseAdmin
-        .from('users')
-        .update({
-          email,
-          name,
-          role,
-          tenant_id: tenant_id || null,
-          department,
-          force_reset: true,
-          temp_expires: tempExpires.toISOString(),
-          is_active: true,
-          invited_by: tenant_id || null,
-          invitation_status: 'pending',
-          
-          // Additional profile fields
-          phone: phone || null,
-          address: address || null,
-          nin: nin || null,
-          date_of_birth: date_of_birth || null,
-          nationality: nationality || null,
-          employee_id: employee_id || null,
-          hire_date: hire_date || null,
-          employment_type: employment_type || 'full-time',
-          emergency_contact_name: emergency_contact_name || null,
-          emergency_contact_phone: emergency_contact_phone || null,
-          emergency_contact_relationship: emergency_contact_relationship || null,
-          next_of_kin_name: next_of_kin_name || null,
-          next_of_kin_phone: next_of_kin_phone || null,
-          next_of_kin_relationship: next_of_kin_relationship || null,
-          bank_name: bank_name || null,
-          account_number: account_number || null,
-          passport_number: passport_number || null,
-          drivers_license: drivers_license || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', authUserId);
-      
-      profileError = updateError;
-      console.log('Updated existing public user profile');
-    } else {
-      // Create new user profile in public.users table
-      const { error: insertError } = await supabaseAdmin
-        .from('users')
-        .insert({
-          id: authUserId,
+    // Use UPSERT to handle both insert and update cases
+    const { error: upsertError } = await supabaseAdmin
+      .from('users')
+      .upsert({
+        id: authUserId,
         email,
         name,
         role,
@@ -409,13 +366,15 @@ serve(async (req) => {
         next_of_kin_relationship: next_of_kin_relationship || null,
         bank_name: bank_name || null,
         account_number: account_number || null,
-          passport_number: passport_number || null,
-          drivers_license: drivers_license || null
-        });
-      
-      profileError = insertError;
-      console.log('Created new public user profile');
-    }
+        passport_number: passport_number || null,
+        drivers_license: drivers_license || null,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'id'
+      });
+    
+    profileError = upsertError;
+    console.log('User profile upserted successfully');
 
     if (profileError) {
       console.error('Error with user profile:', profileError);

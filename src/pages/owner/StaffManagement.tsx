@@ -1,9 +1,5 @@
-import { StaffInvitationInterface } from '@/components/owner/StaffInvitationInterface';
+import { StaffManagementDashboard } from '@/components/owner/staff/StaffManagementDashboard';
 
 export default function StaffManagement() {
-  return (
-    <div className="space-y-6">
-      <StaffInvitationInterface />
-    </div>
-  );
+  return <StaffManagementDashboard />;
 }

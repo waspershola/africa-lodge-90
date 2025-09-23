@@ -119,7 +119,7 @@ const App = () => (
             <Route index element={<OwnerDashboardPage />} />
             <Route path="dashboard" element={<OwnerDashboardPage />} />
             <Route path="configuration" element={<Configuration />} />
-            <Route path="staff-management" element={<StaffManagement />} />
+            <Route path="staff" element={<StaffManagement />} />
             <Route path="financials" element={<Financials />} />
             <Route path="billing" element={<EnhancedBilling />} />
             <Route path="qr-manager" element={<QRManager />} />

@@ -88,26 +88,27 @@ export default function QuickBookingForm({ onClose }: QuickBookingFormProps) {
   // Available rooms based on selection
   const availableRooms = roomAvailability
     .filter(room => room.status === 'available' && 
-      (!formData.roomType || room.roomType.toLowerCase().includes(formData.roomType)))
+      (!formData.roomType || room.room_types?.name?.toLowerCase().includes(formData.roomType)))
     .map(room => ({
-      number: room.roomNumber,
-      type: room.roomType,
-      capacity: room.capacity,
-      price: room.price
+      number: room.room_number,
+      type: room.room_types?.name || 'Standard',
+      capacity: (room.room_types as any)?.max_occupancy || 2,
+      price: room.room_types?.base_rate || 0
     }));
 
   // Filtered guest profiles
-  const filteredGuests = guestProfiles.filter(guest =>
-    guest.name.toLowerCase().includes(guestSearchTerm.toLowerCase()) ||
-    guest.email.toLowerCase().includes(guestSearchTerm.toLowerCase()) ||
-    guest.phone.includes(guestSearchTerm)
-  );
+  const filteredGuests = guestProfiles.filter(guest => {
+    const fullName = `${guest.first_name} ${guest.last_name}`;
+    return fullName.toLowerCase().includes(guestSearchTerm.toLowerCase()) ||
+      guest.email?.toLowerCase().includes(guestSearchTerm.toLowerCase()) ||
+      guest.phone?.includes(guestSearchTerm);
+  });
 
   const handleGuestSelect = (guest: any) => {
     setSelectedGuest(guest);
-    setFormData({
-      ...formData,
-      guestName: guest.name,
+      setFormData({
+        ...formData,
+        guestName: `${guest.first_name} ${guest.last_name}`,
       email: guest.email,
       phone: guest.phone
     });
@@ -336,22 +337,23 @@ export default function QuickBookingForm({ onClose }: QuickBookingFormProps) {
                       >
                         <div className="flex items-center justify-between">
                           <div>
-                            <div className="font-medium">{guest.name}</div>
+                            <div className="font-medium">{guest.first_name} {guest.last_name}</div>
                             <div className="text-sm text-muted-foreground">{guest.email}</div>
                             <div className="text-sm text-muted-foreground">{guest.phone}</div>
                           </div>
                           <div className="text-right">
-                            <Badge className={getVIPBadge(guest.vipStatus)}>
-                              {guest.vipStatus}
+                            <Badge className={getVIPBadge(guest.vip_status)}>
+                              {guest.vip_status}
                             </Badge>
                             <div className="text-xs text-muted-foreground mt-1">
-                              {guest.totalStays} stays
+                              {guest.total_stays} stays
                             </div>
                           </div>
                         </div>
                         {guest.preferences && (
                           <div className="text-xs text-muted-foreground mt-2">
-                            Preferences: {guest.preferences}
+                            Preferences: {typeof guest.preferences === 'object' && guest.preferences ? 
+                              JSON.stringify(guest.preferences) : 'None'}
                           </div>
                         )}
                       </div>

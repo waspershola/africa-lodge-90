@@ -42,19 +42,26 @@ export default function GuestDirectory({ onGuestSelect, onNewGuest }: GuestDirec
 
   const filteredGuests = guests
     .filter(guest => {
-      const matchesSearch = guest.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      const fullName = `${guest.first_name} ${guest.last_name}`;
+      const matchesSearch = fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         guest.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         guest.phone?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || guest.is_active;
-      const matchesTier = tierFilter === 'all'; // Always true since no loyalty tier in user schema
+      const matchesStatus = statusFilter === 'all'; // All guests are active in our new schema
+      const matchesTier = tierFilter === 'all' || guest.vip_status === tierFilter;
       return matchesSearch && matchesStatus && matchesTier;
     })
     .sort((a, b) => {
+      const fullNameA = `${a.first_name} ${a.last_name}`;
+      const fullNameB = `${b.first_name} ${b.last_name}`;
+      
       switch (sortBy) {
-        case 'name': return a.name?.localeCompare(b.name || '') || 0;
-        case 'totalSpent': return 0; // No spending data in user schema
-        case 'totalStays': return 0; // No stays data in user schema  
-        case 'lastStay': return 0; // No stay data in user schema
+        case 'name': return fullNameA?.localeCompare(fullNameB || '') || 0;
+        case 'totalSpent': return (b.total_spent || 0) - (a.total_spent || 0);
+        case 'totalStays': return (b.total_stays || 0) - (a.total_stays || 0);
+        case 'lastStay': 
+          const dateA = a.last_stay_date ? new Date(a.last_stay_date).getTime() : 0;
+          const dateB = b.last_stay_date ? new Date(b.last_stay_date).getTime() : 0;
+          return dateB - dateA;
         default: return 0;
       }
     });
@@ -127,23 +134,23 @@ export default function GuestDirectory({ onGuestSelect, onNewGuest }: GuestDirec
               <div className="flex items-center gap-3 mb-4">
                 <Avatar className="h-12 w-12">
                   <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                    {guest.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                    {`${guest.first_name[0]}${guest.last_name[0]}`.toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
                   <div className="font-semibold flex items-center gap-2 mb-1">
-                    {guest.name}
+                    {guest.first_name} {guest.last_name}
                   </div>
                   <div className="text-sm text-muted-foreground mb-2">{guest.email}</div>
                   <div className="flex items-center gap-2">
                     <Badge 
-                      variant={guest.is_active ? "default" : "secondary"} 
-                      className={guest.is_active ? "bg-success/10 text-success border-success/20" : ""}
+                      variant="default"
+                      className="bg-success/10 text-success border-success/20"
                     >
-                      {guest.is_active ? 'Active' : 'Inactive'}
+                      Active
                     </Badge>
                     <Badge variant="secondary" className="text-xs">
-                      {guest.role.toUpperCase()}
+                      {guest.vip_status.toUpperCase()}
                     </Badge>
                   </div>
                 </div>
@@ -151,12 +158,12 @@ export default function GuestDirectory({ onGuestSelect, onNewGuest }: GuestDirec
 
               <div className="grid grid-cols-3 gap-2 text-center text-sm">
                 <div>
-                  <div className="font-bold">0</div>
+                  <div className="font-bold">{guest.total_stays || 0}</div>
                   <div className="text-xs text-muted-foreground">Stays</div>
                 </div>
                 <div>
-                  <div className="font-bold">0</div>
-                  <div className="text-xs text-muted-foreground">Nights</div>
+                  <div className="font-bold">₦{(guest.total_spent || 0).toLocaleString()}</div>
+                  <div className="text-xs text-muted-foreground">Spent</div>
                 </div>
                 <div>
                   <div className="font-bold">₦0</div>

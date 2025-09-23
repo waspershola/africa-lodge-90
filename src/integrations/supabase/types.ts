@@ -1857,7 +1857,44 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      mv_daily_revenue_by_tenant: {
+        Row: {
+          avg_room_rate: number | null
+          completed_revenue: number | null
+          reservations_count: number | null
+          revenue_date: string | null
+          room_revenue: number | null
+          tenant_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
+      revenue_by_payment_method: {
+        Row: {
+          avg_transaction_amount: number | null
+          payment_date: string | null
+          payment_method: string | null
+          tenant_id: string | null
+          total_amount: number | null
+          transaction_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
     }
     Functions: {
       can_access_tenant: {
@@ -1867,6 +1904,14 @@ export type Database = {
       create_default_tenant_roles: {
         Args: { tenant_uuid: string }
         Returns: undefined
+      }
+      create_reservation_atomic: {
+        Args: {
+          p_guest_data: Json
+          p_reservation_data: Json
+          p_tenant_id: string
+        }
+        Returns: Json
       }
       custom_access_token_hook: {
         Args: { event: Json }
@@ -1880,6 +1925,26 @@ export type Database = {
           user_exists: boolean
           user_role: string
         }[]
+      }
+      fn_adr: {
+        Args: { end_date?: string; start_date?: string; tenant_uuid: string }
+        Returns: number
+      }
+      fn_daily_revenue: {
+        Args: { end_date?: string; start_date?: string; tenant_uuid: string }
+        Returns: {
+          available_rooms: number
+          occupancy_rate: number
+          occupied_rooms: number
+          payment_revenue: number
+          revenue_date: string
+          room_revenue: number
+          total_revenue: number
+        }[]
+      }
+      fn_revpar: {
+        Args: { end_date?: string; start_date?: string; tenant_uuid: string }
+        Returns: number
       }
       get_user_id: {
         Args: Record<PropertyKey, never>
@@ -1906,6 +1971,10 @@ export type Database = {
       is_super_admin_direct: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      refresh_revenue_views: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       strict_tenant_access: {
         Args: { target_tenant_id: string }

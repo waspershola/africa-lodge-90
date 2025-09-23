@@ -257,20 +257,252 @@ export const useMetrics = () => {
   });
 };
 
-// All required hooks as placeholders
-export const useReservations = () => useQuery({ queryKey: ['reservations'], queryFn: () => Promise.resolve([]) });
-export const useCreateReservation = () => useMutation({ mutationFn: (data: any) => Promise.resolve(data) });
-export const useUpdateReservation = () => useMutation({ mutationFn: ({ id, updates }: any) => Promise.resolve({ id, updates }) });
-export const useDeleteReservation = () => useMutation({ mutationFn: (id: string) => Promise.resolve(id) });
-export const useCancelReservation = () => useMutation({ mutationFn: (id: string) => Promise.resolve(id) });
-export const useRefundReservation = () => useMutation({ mutationFn: (id: string) => Promise.resolve(id) });
+// Reservations API with real Supabase integration
+export const useReservations = () => {
+  return useQuery({
+    queryKey: ['reservations'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('reservations')
+        .select(`
+          *,
+          rooms:room_id (room_number, room_types:room_type_id (name)),
+          guests:guest_id (first_name, last_name, email, phone, vip_status)
+        `)
+        .order('created_at', { ascending: false });
 
-export const useRooms = () => useQuery({ queryKey: ['rooms'], queryFn: () => Promise.resolve([]) });
-export const useRoomTypes = () => useQuery({ queryKey: ['room-types'], queryFn: () => Promise.resolve([]) });
-export const useCreateRoomType = () => useMutation({ mutationFn: (data: any) => Promise.resolve(data) });
-export const useUpdateRoomType = () => useMutation({ mutationFn: ({ id, updates }: any) => Promise.resolve({ id, updates }) });
-export const useDeleteRoomType = () => useMutation({ mutationFn: ({ id }: { id: string }) => Promise.resolve(id) });
-export const useRoomAvailability = () => useQuery({ queryKey: ['room-availability'], queryFn: () => Promise.resolve([]) });
+      if (error) throw new Error(error.message);
+      return data || [];
+    },
+  });
+};
+
+export const useCreateReservation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (reservationData: any) => {
+      const { data, error } = await supabase.rpc('create_reservation_atomic', {
+        p_tenant_id: reservationData.tenant_id,
+        p_guest_data: {
+          first_name: reservationData.guest_first_name,
+          last_name: reservationData.guest_last_name,
+          email: reservationData.guest_email,
+          phone: reservationData.guest_phone,
+          guest_id_number: reservationData.guest_id_number,
+          nationality: reservationData.nationality,
+          address: reservationData.address
+        },
+        p_reservation_data: {
+          room_id: reservationData.room_id,
+          check_in_date: reservationData.check_in_date,
+          check_out_date: reservationData.check_out_date,
+          adults: reservationData.adults || 1,
+          children: reservationData.children || 0,
+          room_rate: reservationData.room_rate,
+          total_amount: reservationData.total_amount
+        }
+      });
+
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+      queryClient.invalidateQueries({ queryKey: ['owner', 'overview'] });
+    },
+  });
+};
+
+export const useUpdateReservation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
+      const { data, error } = await supabase
+        .from('reservations')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['owner', 'overview'] });
+    },
+  });
+};
+
+export const useDeleteReservation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('reservations')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw new Error(error.message);
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
+    },
+  });
+};
+
+export const useCancelReservation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await supabase
+        .from('reservations')
+        .update({ status: 'cancelled' })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
+    },
+  });
+};
+
+export const useRefundReservation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await supabase
+        .from('reservations')
+        .update({ status: 'refunded' })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
+    },
+  });
+};
+
+// Rooms API with real Supabase integration
+export const useRooms = () => {
+  return useQuery({
+    queryKey: ['rooms'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('rooms')
+        .select(`
+          *,
+          room_types:room_type_id (name, base_rate, max_occupancy, amenities)
+        `)
+        .order('room_number');
+
+      if (error) throw new Error(error.message);
+      return data || [];
+    },
+  });
+};
+
+export const useRoomTypes = () => {
+  return useQuery({
+    queryKey: ['room-types'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('room_types')
+        .select('*')
+        .order('name');
+
+      if (error) throw new Error(error.message);
+      return data || [];
+    },
+  });
+};
+
+export const useCreateRoomType = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (roomTypeData: any) => {
+      const { data, error } = await supabase
+        .from('room_types')
+        .insert(roomTypeData)
+        .select()
+        .single();
+
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['room-types'] });
+    },
+  });
+};
+
+export const useUpdateRoomType = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
+      const { data, error } = await supabase
+        .from('room_types')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['room-types'] });
+    },
+  });
+};
+
+export const useDeleteRoomType = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id }: { id: string }) => {
+      const { error } = await supabase
+        .from('room_types')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw new Error(error.message);
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['room-types'] });
+    },
+  });
+};
+
+export const useRoomAvailability = () => {
+  return useQuery({
+    queryKey: ['room-availability'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('rooms')
+        .select(`
+          id,
+          room_number,
+          status,
+          room_types:room_type_id (name, base_rate)
+        `)
+        .in('status', ['available', 'maintenance']);
+
+      if (error) throw new Error(error.message);
+      return data || [];
+    },
+  });
+};
 
 export const useUsers = () => useQuery({ queryKey: ['users'], queryFn: () => Promise.resolve([]) });
 export const useStaff = () => useQuery({ queryKey: ['staff'], queryFn: () => Promise.resolve([]) });
@@ -279,9 +511,65 @@ export const useUpdateStaffMember = () => useMutation({ mutationFn: ({ id, updat
 export const useDeleteStaffMember = () => useMutation({ mutationFn: ({ id }: { id: string }) => Promise.resolve(id) });
 export const useInviteStaff = () => useMutation({ mutationFn: (data: any) => Promise.resolve(data) });
 
-export const useGuests = () => useQuery({ queryKey: ['guests'], queryFn: () => Promise.resolve([]) });
-export const useCreateGuest = () => useMutation({ mutationFn: (data: any) => Promise.resolve(data) });
-export const useGuestProfiles = () => useQuery({ queryKey: ['guest-profiles'], queryFn: () => Promise.resolve([]) });
+// Guests API with real Supabase integration
+export const useGuests = () => {
+  return useQuery({
+    queryKey: ['guests'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('guests')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw new Error(error.message);
+      return data || [];
+    },
+  });
+};
+
+export const useCreateGuest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (guestData: any) => {
+      const { data, error } = await supabase
+        .from('guests')
+        .insert(guestData)
+        .select()
+        .single();
+
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+    },
+  });
+};
+
+export const useGuestProfiles = () => {
+  return useQuery({
+    queryKey: ['guest-profiles'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('guests')
+        .select(`
+          *,
+          reservations:reservations!guest_id (
+            id,
+            reservation_number,
+            check_in_date,
+            check_out_date,
+            total_amount,
+            status
+          )
+        `)
+        .order('total_spent', { ascending: false });
+
+      if (error) throw new Error(error.message);
+      return data || [];
+    },
+  });
+};
 
 export const useCompanies = () => useQuery({ queryKey: ['companies'], queryFn: () => Promise.resolve([]) });
 export const useImportOTAReservation = () => useMutation({ mutationFn: (data: any) => Promise.resolve(data) });

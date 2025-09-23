@@ -128,7 +128,7 @@ describe('Room Management Integration', () => {
       }
 
       // Mock room update
-      vi.mocked(supabase.from).mockImplementation((table) => {
+      vi.mocked(supabase.from).mockImplementation((table: any) => {
         if (table === 'rooms') {
           return {
             update: vi.fn().mockReturnValue({

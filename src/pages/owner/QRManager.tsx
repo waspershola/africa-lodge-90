@@ -44,17 +44,21 @@ export default function QRManagerPage() {
         .select(`
           *,
           rooms:room_id (room_number),
-          qr_orders:qr_orders (id, status, service_type)
+          qr_orders:qr_orders!qr_code_id (id, status, service_type, created_at)
         `)
         .eq('tenant_id', user.tenant_id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(50); // Add pagination limit
 
-      if (error) throw error;
+      if (error) {
+        console.error('QR codes fetch error:', error);
+        throw error;
+      }
 
       return (data || []).map(qr => ({
         id: qr.qr_token,
         scope: 'Room' as const,
-        assignedTo: qr.rooms?.room_number || `Room ${qr.room_id}`,
+        assignedTo: qr.rooms?.room_number || (qr.room_id ? `Room ${qr.room_id}` : 'Location'),
         servicesEnabled: qr.services || [],
         status: (qr.is_active ? 'Active' : 'Inactive') as 'Active' | 'Inactive',
         pendingRequests: qr.qr_orders?.filter(order => order.status === 'pending').length || 0,
@@ -62,7 +66,8 @@ export default function QRManagerPage() {
         createdBy: 'System'
       }));
     },
-    enabled: !!user?.tenant_id
+    enabled: !!user?.tenant_id,
+    staleTime: 30000 // Cache for 30 seconds
   });
 
   // Get branding settings from tenant info
@@ -154,17 +159,44 @@ export default function QRManagerPage() {
     try {
       const qrToken = `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
+      // Extract room number if it's a room QR code
+      let roomId = null;
+      if (newQRData.scope === 'Room' && newQRData.assignedTo) {
+        // Try to find matching room by room number
+        const roomNumber = newQRData.assignedTo.replace('Room ', '').trim();
+        const { data: room } = await supabase
+          .from('rooms')
+          .select('id')
+          .eq('tenant_id', user.tenant_id)
+          .eq('room_number', roomNumber)
+          .single();
+        
+        roomId = room?.id || null;
+      }
+
+      // Generate QR code URL - make it accessible from any device
+      const qrCodeUrl = `${window.location.origin}/qr/${qrToken}`;
+      
       const { error } = await supabase
         .from('qr_codes')
         .insert([{
           tenant_id: user.tenant_id,
           qr_token: qrToken,
-          room_id: null, // Will need to be set based on assignment
+          room_id: roomId,
           services: newQRData.servicesEnabled,
-          is_active: newQRData.status === 'Active'
+          is_active: newQRData.status === 'Active',
+          qr_code_url: qrCodeUrl,
+          label: newQRData.assignedTo,
+          scan_type: newQRData.scope.toLowerCase()
         }]);
 
-      if (error) throw error;
+      if (error) {
+        // Check if it's a duplicate room constraint error
+        if (error.code === '23505' && error.message.includes('unique_active_room_per_tenant')) {
+          throw new Error(`QR code already exists for ${newQRData.assignedTo}. Please deactivate the existing QR code first.`);
+        }
+        throw error;
+      }
       
       await refetch();
       toast({
@@ -172,6 +204,7 @@ export default function QRManagerPage() {
         description: `QR code for ${newQRData.assignedTo} has been generated successfully`
       });
     } catch (err: any) {
+      console.error('QR creation error:', err);
       toast({
         title: "Error", 
         description: err.message || "Failed to create QR code",

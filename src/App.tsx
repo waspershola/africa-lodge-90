@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import SignUp from "./pages/SignUp";
 import NotFound from "./pages/NotFound";
-import { QRPortal } from "./components/qr-portal/QRPortal";
+import QRPortal from '@/pages/QRPortal';
 import FrontDeskDashboard from "./components/FrontDeskDashboard";
 import OwnerDashboard from "./components/OwnerDashboard";
 import { MultiTenantAuthProvider } from "./components/auth/MultiTenantAuthProvider";
@@ -103,8 +103,8 @@ const App = () => (
               <OnboardingWizard />
             </TenantAwareLayout>
           } />
-          <Route path="/qr/:sessionId" element={<QRPortal />} />
-          <Route path="/qr-portal" element={<QRPortal />} />
+          <Route path="/qr/:slug" element={<QRPortal />} />
+          <Route path="/qr-portal/:slug" element={<QRPortal />} />
           <Route path="/front-desk" element={
             <TenantAwareLayout requiredRole="FRONT_DESK">
               <FrontDeskDashboard />

@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { QRCodeData } from '@/pages/owner/QRManager';
+import { useToast } from '@/hooks/use-toast';
 
 interface QRCodeWizardProps {
   open: boolean;
@@ -36,6 +37,7 @@ const presetLocations = [
 ];
 
 export const QRCodeWizard = ({ open, onOpenChange, onSave, defaultServices = [] }: QRCodeWizardProps) => {
+  const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [scope, setScope] = useState<'Room' | 'Location'>('Room');
   const [assignedTo, setAssignedTo] = useState('');
@@ -70,25 +72,63 @@ export const QRCodeWizard = ({ open, onOpenChange, onSave, defaultServices = [] 
   };
 
   const handleSave = () => {
-    if (scope === 'Room' && roomRange.from && roomRange.to) {
-      // Generate multiple room QR codes
-      const fromNum = parseInt(roomRange.from);
-      const toNum = parseInt(roomRange.to);
-      
-      for (let i = fromNum; i <= toNum; i++) {
-        const roomNumber = i.toString().padStart(3, '0');
+    if (scope === 'Room') {
+      // Validate room number is provided
+      if (!assignedTo.trim() && !(roomRange.from && roomRange.to)) {
+        toast({
+          title: "Room Number Required",
+          description: "Please enter a room number or range.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (roomRange.from && roomRange.to) {
+        // Generate multiple room QR codes
+        const fromNum = parseInt(roomRange.from);
+        const toNum = parseInt(roomRange.to);
+        
+        if (fromNum > toNum || fromNum < 1 || toNum < 1) {
+          toast({
+            title: "Invalid Room Range",
+            description: "Please enter a valid room number range.",
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        for (let i = fromNum; i <= toNum; i++) {
+          const roomNumber = i.toString().padStart(3, '0');
+          onSave({
+            scope: 'Room',
+            assignedTo: `Room ${roomNumber}`,
+            servicesEnabled: services,
+            status: 'Active'
+          });
+        }
+      } else {
+        // Single room
         onSave({
           scope: 'Room',
-          assignedTo: `Room ${roomNumber}`,
+          assignedTo: assignedTo.trim(),
           servicesEnabled: services,
           status: 'Active'
         });
       }
     } else {
-      // Generate single QR code
+      // Location QR code - validate location name
+      if (!assignedTo.trim()) {
+        toast({
+          title: "Location Name Required",
+          description: "Please enter a valid location name.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       onSave({
-        scope,
-        assignedTo,
+        scope: 'Location',
+        assignedTo: assignedTo.trim(),
         servicesEnabled: services,
         status: 'Active'
       });

@@ -315,11 +315,6 @@ export const PrintableQRCode = ({
               <p className="text-sm">
                 Access hotel services instantly
               </p>
-              {qrUrl && (
-                <p className="text-xs text-gray-500 break-words">
-                  {qrUrl}
-                </p>
-              )}
               <p className="text-xs font-mono text-gray-400">
                 ID: {qrId}
               </p>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Coffee, Plus, Minus, Check, Clock, MessageCircle } from 'lucide-react';
+import { Coffee, Plus, Minus, Check, Clock, MessageCircle, Crown, Sparkles, ChefHat } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -33,47 +33,55 @@ export default function RoomServiceMenu({ qrToken, sessionToken }: RoomServiceMe
   const [orderId, setOrderId] = useState<string | null>(null);
   const [showChat, setShowChat] = useState(false);
 
-  // Sample menu items
+  // Luxury menu items
   const menuItems: MenuItem[] = [
     {
       id: '1',
-      name: 'Continental Breakfast',
-      description: 'Toast, eggs, bacon, coffee, juice',
-      price: 2500,
+      name: 'Royal Continental Breakfast',
+      description: 'Premium toast, organic eggs, artisan bacon, fresh coffee, natural juice',
+      price: 3500,
       category: 'Breakfast',
       available: true
     },
     {
       id: '2',
-      name: 'Jollof Rice with Chicken',
-      description: 'Traditional Nigerian jollof rice with grilled chicken',
-      price: 3500,
+      name: 'Signature Jollof Rice with Grilled Chicken',
+      description: 'Traditional Nigerian jollof rice with premium grilled chicken breast',
+      price: 4500,
       category: 'Main Course',
       available: true
     },
     {
       id: '3',
-      name: 'Club Sandwich',
-      description: 'Triple-layer sandwich with fries',
-      price: 2800,
+      name: 'Gourmet Club Sandwich',
+      description: 'Triple-layer artisan sandwich with truffle fries and garden salad',
+      price: 3800,
       category: 'Light Meals',
       available: true
     },
     {
       id: '4',
       name: 'Fresh Orange Juice',
-      description: 'Freshly squeezed orange juice',
-      price: 800,
+      description: 'Freshly squeezed premium orange juice',
+      price: 1200,
       category: 'Beverages',
       available: true
     },
     {
       id: '5',
-      name: 'Chocolate Cake',
-      description: 'Rich chocolate cake slice',
-      price: 1500,
+      name: 'Luxury Chocolate Cake',
+      description: 'Rich Belgian chocolate cake with gold leaf garnish',
+      price: 2500,
       category: 'Desserts',
       available: false
+    },
+    {
+      id: '6',
+      name: 'Premium Wine Selection',
+      description: 'Curated selection of fine wines',
+      price: 8500,
+      category: 'Beverages',
+      available: true
     }
   ];
 
@@ -145,7 +153,7 @@ export default function RoomServiceMenu({ qrToken, sessionToken }: RoomServiceMe
 
       if (response.ok) {
         const result = await response.json();
-        setOrderId(result.order_id);
+        setOrderId(result.request_id);
         setSubmitted(true);
         setShowChat(true);
       } else {
@@ -161,27 +169,37 @@ export default function RoomServiceMenu({ qrToken, sessionToken }: RoomServiceMe
 
   if (submitted) {
     return (
-      <div className="space-y-4">
-        <Card>
-          <CardContent className="p-6 text-center">
-            <Check className="h-12 w-12 text-green-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Order Placed Successfully!</h3>
-            <p className="text-muted-foreground mb-4">
-              Your room service order has been sent to our kitchen. 
-              Estimated delivery time: 30-45 minutes.
+      <div className="space-y-6 animate-fade-in">
+        <Card className="shadow-2xl border-amber-200/50 bg-white/90 backdrop-blur-sm">
+          <CardContent className="p-12 text-center">
+            <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg animate-scale-in">
+              <Check className="h-10 w-10 text-white" />
+            </div>
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <Crown className="h-6 w-6 text-amber-600" />
+              <h3 className="text-2xl font-serif text-amber-900">Order Placed Successfully!</h3>
+              <Crown className="h-6 w-6 text-amber-600" />
+            </div>
+            <p className="text-amber-700/80 mb-6 text-lg leading-relaxed">
+              Your gourmet order has been sent to our executive chef. 
+              Estimated preparation and delivery: 30-45 minutes.
             </p>
-            <div className="text-sm text-muted-foreground mb-4">
-              Total: ₦{getTotalPrice().toLocaleString()}
+            <div className="bg-gradient-to-r from-amber-50 to-amber-100 rounded-xl p-6 border border-amber-200/50 mb-6">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <ChefHat className="h-5 w-5 text-amber-600" />
+                <p className="text-amber-900 font-serif text-lg">Order Total</p>
+              </div>
+              <p className="text-2xl font-bold text-amber-900">₦{getTotalPrice().toLocaleString()}</p>
+              <p className="text-amber-700/70 text-sm mt-1">Payment will be added to your room folio</p>
             </div>
             
             {!showChat && orderId && (
               <Button 
                 onClick={() => setShowChat(true)}
-                variant="outline"
-                className="mt-2"
+                className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-medium px-8 py-3 rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
               >
-                <MessageCircle className="h-4 w-4 mr-2" />
-                Chat with Kitchen
+                <MessageCircle className="h-5 w-5 mr-2" />
+                Chat with Kitchen Staff
               </Button>
             )}
           </CardContent>
@@ -201,57 +219,86 @@ export default function RoomServiceMenu({ qrToken, sessionToken }: RoomServiceMe
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6 animate-fade-in">
       {/* Menu Categories */}
       {categories.map(category => {
         const categoryItems = menuItems.filter(item => item.category === category);
         if (categoryItems.length === 0) return null;
 
         return (
-          <Card key={category}>
-            <CardHeader>
-              <CardTitle className="text-lg">{category}</CardTitle>
+          <Card key={category} className="shadow-2xl border-amber-200/50 bg-white/90 backdrop-blur-sm">
+            <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-100 border-b border-amber-200/50">
+              <CardTitle className="flex items-center gap-3 text-amber-900">
+                <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center shadow-lg">
+                  <ChefHat className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-serif">{category}</h3>
+                  <p className="text-sm text-amber-700/70 font-normal">Premium culinary selections</p>
+                </div>
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="p-8 space-y-4">
               {categoryItems.map(item => {
                 const cartItem = cart.find(cartItem => cartItem.id === item.id);
                 const quantity = cartItem?.quantity || 0;
 
                 return (
-                  <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-medium">{item.name}</h4>
-                        {!item.available && (
-                          <Badge variant="destructive" className="text-xs">
-                            Unavailable
-                          </Badge>
-                        )}
+                  <div 
+                    key={item.id} 
+                    className={`group p-4 rounded-xl border-2 transition-all duration-300 ${
+                      quantity > 0
+                        ? 'border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100 shadow-md'
+                        : 'border-amber-200/50 hover:border-amber-300 hover:bg-amber-50/50 hover:shadow-lg'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h4 className="text-lg font-serif text-amber-900 group-hover:text-amber-800 transition-colors duration-300">
+                            {item.name}
+                          </h4>
+                          {!item.available && (
+                            <Badge variant="secondary" className="bg-red-100 text-red-800 border-red-200">
+                              Temporarily Unavailable
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-amber-700/70 mb-3 leading-relaxed">{item.description}</p>
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-amber-600" />
+                          <p className="text-lg font-bold text-amber-900">₦{item.price.toLocaleString()}</p>
+                        </div>
                       </div>
-                      <p className="text-sm text-muted-foreground">{item.description}</p>
-                      <p className="text-sm font-medium">₦{item.price.toLocaleString()}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {quantity > 0 && (
+                      <div className="flex items-center gap-3 ml-4">
+                        {quantity > 0 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeFromCart(item.id)}
+                            className="border-amber-300 text-amber-700 hover:bg-amber-100 rounded-full w-10 h-10 p-0 shadow-md hover:shadow-lg transition-all duration-300"
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {quantity > 0 && (
+                          <div className="w-12 h-10 bg-gradient-to-br from-amber-100 to-amber-200 rounded-full flex items-center justify-center shadow-md">
+                            <span className="font-bold text-amber-900">{quantity}</span>
+                          </div>
+                        )}
                         <Button
-                          variant="outline"
                           size="sm"
-                          onClick={() => removeFromCart(item.id)}
+                          onClick={() => addToCart(item)}
+                          disabled={!item.available}
+                          className={`rounded-full w-10 h-10 p-0 shadow-md hover:shadow-lg transition-all duration-300 hover:scale-110 ${
+                            item.available
+                              ? 'bg-gradient-to-br from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white'
+                              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          }`}
                         >
-                          <Minus className="h-4 w-4" />
+                          <Plus className="h-4 w-4" />
                         </Button>
-                      )}
-                      {quantity > 0 && (
-                        <span className="w-8 text-center font-medium">{quantity}</span>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => addToCart(item)}
-                        disabled={!item.available}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -263,59 +310,89 @@ export default function RoomServiceMenu({ qrToken, sessionToken }: RoomServiceMe
 
       {/* Cart Summary */}
       {cart.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Coffee className="h-5 w-5" />
-              Your Order
+        <Card className="shadow-2xl border-amber-200/50 bg-gradient-to-br from-amber-800 to-amber-900 text-white">
+          <CardHeader className="border-b border-amber-700/30">
+            <CardTitle className="flex items-center gap-3 text-white">
+              <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                <Coffee className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-xl font-serif">Your Gourmet Order</h3>
+                <p className="text-amber-100/80 text-sm font-normal">{cart.length} item{cart.length !== 1 ? 's' : ''} selected</p>
+              </div>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
+          <CardContent className="p-8 space-y-6">
+            <div className="space-y-3">
               {cart.map(item => (
-                <div key={item.id} className="flex justify-between items-center">
-                  <span>{item.name} x{item.quantity}</span>
-                  <span>₦{(item.price * item.quantity).toLocaleString()}</span>
+                <div key={item.id} className="flex justify-between items-center p-3 bg-white/5 rounded-lg backdrop-blur-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center text-xs font-bold">
+                      {item.quantity}
+                    </div>
+                    <span className="font-medium">{item.name}</span>
+                  </div>
+                  <span className="font-bold">₦{(item.price * item.quantity).toLocaleString()}</span>
                 </div>
               ))}
             </div>
-            <div className="border-t pt-2">
-              <div className="flex justify-between items-center font-medium">
-                <span>Total</span>
-                <span>₦{getTotalPrice().toLocaleString()}</span>
+            
+            <div className="border-t border-amber-700/30 pt-4">
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-2">
+                  <Crown className="h-5 w-5 text-amber-200" />
+                  <span className="text-xl font-serif">Total</span>
+                </div>
+                <span className="text-2xl font-bold">₦{getTotalPrice().toLocaleString()}</span>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Special Instructions (Optional)</label>
+            {/* Special Instructions */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-amber-200" />
+                <label className="text-amber-100 font-medium">Special Instructions</label>
+              </div>
               <Textarea
-                placeholder="Any special requests or dietary requirements..."
+                placeholder="Dietary preferences, cooking instructions, or special requests..."
                 value={specialInstructions}
                 onChange={(e) => setSpecialInstructions(e.target.value)}
                 rows={3}
+                className="bg-white/10 border-amber-600/30 text-white placeholder:text-amber-100/50 focus:border-amber-400 focus:ring-amber-400/20 backdrop-blur-sm"
               />
             </div>
 
-            <Alert>
-              <Clock className="h-4 w-4" />
-              <AlertDescription>
-                Estimated delivery time: 30-45 minutes. Payment will be added to your room bill.
+            <Alert className="border-amber-600/30 bg-white/5 backdrop-blur-sm">
+              <Clock className="h-4 w-4 text-amber-200" />
+              <AlertDescription className="text-amber-100">
+                <div className="flex items-center gap-2 mb-1">
+                  <ChefHat className="h-4 w-4" />
+                  <span className="font-medium">Executive Chef Service</span>
+                </div>
+                Estimated preparation: 30-45 minutes. All charges will be added to your room folio for convenient checkout.
               </AlertDescription>
             </Alert>
+
+            <Button 
+              onClick={submitOrder}
+              disabled={submitting}
+              className="w-full bg-white/10 hover:bg-white/20 text-white border-amber-600/30 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 rounded-full py-4 text-lg font-medium"
+            >
+              {submitting ? (
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  Placing Your Order...
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <Crown className="h-5 w-5" />
+                  Place Gourmet Order - ₦{getTotalPrice().toLocaleString()}
+                  <Crown className="h-5 w-5" />
+                </div>
+              )}
+            </Button>
           </CardContent>
         </Card>
-      )}
-
-      {/* Order Button */}
-      {cart.length > 0 && (
-        <Button 
-          onClick={submitOrder}
-          disabled={submitting}
-          className="w-full"
-          size="lg"
-        >
-          {submitting ? 'Placing Order...' : `Place Order - ₦${getTotalPrice().toLocaleString()}`}
-        </Button>
       )}
     </div>
   );

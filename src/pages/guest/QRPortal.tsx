@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Wifi, Coffee, Home, Wrench, MessageCircle, Star, Phone, Clock, User, ArrowLeft } from 'lucide-react';
+import { Wifi, Coffee, Home, Wrench, MessageCircle, Star, Phone, Clock, User, ArrowLeft, Crown, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -29,13 +28,23 @@ interface QRCodeInfo {
 }
 
 const serviceIcons = {
-  'Wi-Fi': <Wifi className="h-5 w-5" />,
-  'Room Service': <Coffee className="h-5 w-5" />,
-  'Housekeeping': <Home className="h-5 w-5" />,
-  'Maintenance': <Wrench className="h-5 w-5" />,
-  'Digital Menu': <Coffee className="h-5 w-5" />,
-  'Events & Packages': <Star className="h-5 w-5" />,
-  'Feedback': <MessageCircle className="h-5 w-5" />
+  'Wi-Fi': <Wifi className="h-6 w-6" />,
+  'Room Service': <Coffee className="h-6 w-6" />,
+  'Housekeeping': <Home className="h-6 w-6" />,
+  'Maintenance': <Wrench className="h-6 w-6" />,
+  'Digital Menu': <Coffee className="h-6 w-6" />,
+  'Events & Packages': <Star className="h-6 w-6" />,
+  'Feedback': <MessageCircle className="h-6 w-6" />
+};
+
+const serviceDescriptions = {
+  'Wi-Fi': 'Network credentials & support',
+  'Room Service': 'Order food & beverages',
+  'Housekeeping': 'Cleaning & amenities',
+  'Maintenance': 'Report issues',
+  'Digital Menu': 'Browse & order from menu',
+  'Events & Packages': 'Explore special offers',
+  'Feedback': 'Share your experience'
 };
 
 export default function QRPortal() {
@@ -44,7 +53,7 @@ export default function QRPortal() {
   const [sessionToken, setSessionToken] = useState<string>('');
   const [currentService, setCurrentService] = useState<string | null>(null);
 
-  // Get QR info - graceful handling, no harsh errors
+  // Get QR info - graceful handling
   const { data: qrInfo, isLoading } = useQuery({
     queryKey: ['qr-portal', qrToken],
     queryFn: async () => {
@@ -67,7 +76,7 @@ export default function QRPortal() {
           .maybeSingle();
 
         if (error || !qrData) {
-          return null; // Graceful fallback instead of throwing
+          return null;
         }
 
         // Get tenant info separately
@@ -77,7 +86,7 @@ export default function QRPortal() {
           .eq('tenant_id', qrData.tenant_id)
           .maybeSingle();
 
-        // Generate simple session token for tracking (no expiry)
+        // Generate session token
         const token = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         setSessionToken(token);
 
@@ -93,22 +102,12 @@ export default function QRPortal() {
         } as QRCodeInfo;
       } catch (error) {
         console.log('QR lookup error:', error);
-        return null; // Graceful fallback
+        return null;
       }
     },
     enabled: !!qrToken,
     retry: false
   });
-
-  // Log access for analytics (optional, lightweight)
-  if (qrInfo && sessionToken) {
-    // Simple analytics without blocking the UI
-    console.log('QR Portal accessed:', {
-      hotel: qrInfo.hotel_name,
-      location: qrInfo.room_number || qrInfo.label,
-      services: qrInfo.services.length
-    });
-  }
 
   const selectService = (service: string) => {
     setCurrentService(service);
@@ -122,37 +121,46 @@ export default function QRPortal() {
     window.location.href = 'tel:+2347065937769';
   };
 
-  // Show loading only briefly
+  // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6 text-center">
-            <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
-              <span className="text-2xl">🏨</span>
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-amber-100 to-amber-200 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-2xl border-amber-200/50 bg-white/90 backdrop-blur-sm">
+          <CardContent className="p-8 text-center">
+            <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center shadow-lg">
+              <Crown className="h-10 w-10 text-white animate-pulse" />
             </div>
-            <p className="text-muted-foreground">Loading hotel services...</p>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Sparkles className="h-5 w-5 text-amber-600 animate-pulse" />
+              <h3 className="text-lg font-serif text-amber-900">Loading Services</h3>
+              <Sparkles className="h-5 w-5 text-amber-600 animate-pulse" />
+            </div>
+            <p className="text-amber-700/70">Preparing your luxury experience...</p>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  // Graceful fallback for invalid QR codes
+  // Invalid QR code
   if (!qrInfo) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6 text-center">
-            <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
-              <span className="text-2xl">🏨</span>
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-amber-100 to-amber-200 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-2xl border-amber-200/50 bg-white/90 backdrop-blur-sm">
+          <CardContent className="p-8 text-center">
+            <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center shadow-lg">
+              <Crown className="h-10 w-10 text-white" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">QR Code Not Recognized</h3>
-            <p className="text-muted-foreground mb-4">
-              This QR code is not recognized by our system. Please contact the front desk for assistance.
+            <h3 className="text-xl font-serif text-amber-900 mb-4">QR Code Expired</h3>
+            <p className="text-amber-700/70 mb-6">
+              This QR code is no longer valid. Please contact the front desk for a new code or assistance.
             </p>
-            <Button onClick={() => window.history.back()} variant="outline">
-              Back to Home
+            <Button 
+              onClick={callFrontDesk}
+              className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-medium px-8 py-3 rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+            >
+              <Phone className="h-4 w-4 mr-2" />
+              Call Front Desk
             </Button>
           </CardContent>
         </Card>
@@ -160,33 +168,38 @@ export default function QRPortal() {
     );
   }
 
-  // Render service-specific component
+  // Service-specific view
   if (currentService && qrInfo) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-        {/* Header */}
-        <div className="bg-white shadow-sm border-b">
-          <div className="max-w-2xl mx-auto px-4 py-4">
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-amber-100 to-amber-200">
+        {/* Elegant Header */}
+        <div className="bg-gradient-to-r from-amber-900 via-amber-800 to-amber-900 shadow-xl border-b border-amber-700/30">
+          <div className="max-w-2xl mx-auto px-6 py-6">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={goBack}>
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Back
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={goBack}
+                className="text-amber-100 hover:text-white hover:bg-amber-800/50 rounded-full p-2 transition-all duration-300"
+              >
+                <ArrowLeft className="h-5 w-5" />
               </Button>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center overflow-hidden">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm border border-amber-600/30 shadow-lg">
                   {qrInfo.hotel_logo ? (
                     <img 
                       src={qrInfo.hotel_logo} 
                       alt="Hotel Logo" 
-                      className="w-full h-full object-contain"
+                      className="w-full h-full object-contain rounded-full"
                     />
                   ) : (
-                    <span className="text-lg">🏨</span>
+                    <Crown className="h-6 w-6 text-amber-200" />
                   )}
                 </div>
                 <div>
-                  <h1 className="text-lg font-semibold">{qrInfo.hotel_name}</h1>
-                  <p className="text-sm text-muted-foreground">
+                  <h1 className="text-xl font-serif text-white mb-1">{qrInfo.hotel_name}</h1>
+                  <p className="text-amber-200/80 text-sm flex items-center gap-2">
+                    <Home className="h-4 w-4" />
                     {qrInfo.room_number ? `Room ${qrInfo.room_number}` : qrInfo.label}
                   </p>
                 </div>
@@ -196,7 +209,7 @@ export default function QRPortal() {
         </div>
 
         {/* Service Content */}
-        <div className="max-w-2xl mx-auto p-4">
+        <div className="max-w-2xl mx-auto p-6">
           {currentService === 'Wi-Fi' && (
             <WiFiService qrToken={qrInfo.qr_token} sessionToken={sessionToken} hotelName={qrInfo.hotel_name} />
           )}
@@ -210,15 +223,21 @@ export default function QRPortal() {
             <RoomServiceMenu qrToken={qrInfo.qr_token} sessionToken={sessionToken} />
           )}
           {currentService === 'Events & Packages' && (
-            <Card>
-              <CardContent className="p-6 text-center">
-                <Star className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Events & Packages</h3>
-                <p className="text-muted-foreground mb-4">
-                  Discover our special offers and event packages.
+            <Card className="shadow-xl border-amber-200/50 bg-white/90 backdrop-blur-sm">
+              <CardContent className="p-8 text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                  <Star className="h-8 w-8 text-white" />
+                </div>
+                <h3 className="text-2xl font-serif text-amber-900 mb-4">Events & Packages</h3>
+                <p className="text-amber-700/70 mb-6 text-lg">
+                  Discover our exclusive offers and event packages tailored for you.
                 </p>
-                <Button onClick={() => selectService('Front Desk')}>
-                  Contact Front Desk for Details
+                <Button 
+                  onClick={() => selectService('Front Desk')}
+                  className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-medium px-8 py-3 rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                >
+                  <Phone className="h-4 w-4 mr-2" />
+                  Contact Concierge
                 </Button>
               </CardContent>
             </Card>
@@ -235,131 +254,148 @@ export default function QRPortal() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-2xl mx-auto px-4 py-6">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-amber-100 to-amber-200">
+      {/* Luxury Header */}
+      <div className="bg-gradient-to-r from-amber-900 via-amber-800 to-amber-900 shadow-2xl">
+        <div className="max-w-2xl mx-auto px-6 py-12">
           <div className="text-center">
-            <div className="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center overflow-hidden">
+            <div className="w-24 h-24 mx-auto mb-6 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm border-2 border-amber-600/30 shadow-2xl">
               {qrInfo.hotel_logo ? (
                 <img 
                   src={qrInfo.hotel_logo} 
                   alt="Hotel Logo" 
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-contain rounded-full"
                 />
               ) : (
-                <span className="text-2xl">🏨</span>
+                <Crown className="h-12 w-12 text-amber-200" />
               )}
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-1">
+            <h1 className="text-4xl font-serif text-white mb-3 tracking-wide">
               {qrInfo.hotel_name}
             </h1>
-            <div className="flex items-center justify-center gap-2 text-muted-foreground">
+            <div className="flex items-center justify-center gap-3 text-amber-200/90 mb-2">
+              <Sparkles className="h-5 w-5" />
               {qrInfo.room_number ? (
                 <>
-                  <Home className="h-4 w-4" />
-                  <span>Room {qrInfo.room_number}</span>
+                  <Home className="h-5 w-5" />
+                  <span className="text-lg font-medium">Room {qrInfo.room_number}</span>
                 </>
               ) : (
                 <>
-                  <User className="h-4 w-4" />
-                  <span>{qrInfo.label || 'Location'}</span>
+                  <User className="h-5 w-5" />
+                  <span className="text-lg font-medium">{qrInfo.label || 'Welcome'}</span>
                 </>
               )}
+              <Sparkles className="h-5 w-5" />
             </div>
+            <p className="text-amber-100/80 text-lg font-light">
+              Luxury Guest Services
+            </p>
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="max-w-2xl mx-auto p-4 space-y-6">
-        {/* Welcome Message */}
-        <Card>
-          <CardContent className="p-6 text-center">
-            <h2 className="text-xl font-semibold mb-2">Welcome!</h2>
-            <p className="text-muted-foreground">
-              Select a service below to get started. Our staff will respond to your request promptly.
+      <div className="max-w-2xl mx-auto p-6 space-y-8">
+        {/* Welcome Card */}
+        <Card className="shadow-2xl border-amber-200/50 bg-white/90 backdrop-blur-sm">
+          <CardContent className="p-8 text-center">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <Crown className="h-6 w-6 text-amber-600" />
+              <h2 className="text-2xl font-serif text-amber-900">Welcome</h2>
+              <Crown className="h-6 w-6 text-amber-600" />
+            </div>
+            <p className="text-amber-700/70 text-lg leading-relaxed">
+              Experience our exclusive guest services designed for your comfort and convenience. 
+              Our dedicated staff is ready to assist you.
             </p>
           </CardContent>
         </Card>
 
-        {/* Available Services */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Star className="h-5 w-5" />
-              Available Services
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {qrInfo.services.length === 0 ? (
-              <Alert>
-                <AlertDescription>
+        {/* Service Grid */}
+        <div className="space-y-4">
+          <div className="text-center mb-6">
+            <h3 className="text-2xl font-serif text-amber-900 mb-2">Guest Services</h3>
+            <div className="w-24 h-1 bg-gradient-to-r from-amber-400 to-amber-600 mx-auto rounded-full"></div>
+          </div>
+          
+          {qrInfo.services.length === 0 ? (
+            <Card className="shadow-xl border-amber-200/50 bg-white/90 backdrop-blur-sm">
+              <CardContent className="p-8 text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-amber-400/20 to-amber-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Star className="h-8 w-8 text-amber-600/50" />
+                </div>
+                <p className="text-amber-700/70 text-lg">
                   No services are currently available for this location.
-                </AlertDescription>
-              </Alert>
-            ) : (
-              qrInfo.services.map((service) => (
-                <Button
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {qrInfo.services.map((service) => (
+                <Card
                   key={service}
-                  variant="outline"
-                  className="w-full justify-start h-auto p-4"
+                  className="group cursor-pointer shadow-lg hover:shadow-2xl border-amber-200/50 bg-white/90 backdrop-blur-sm transition-all duration-300 hover:scale-102 hover:bg-white/95"
                   onClick={() => selectService(service)}
                 >
-                  <div className="flex items-center gap-3 w-full">
-                    <div className="flex-shrink-0">
-                      {serviceIcons[service as keyof typeof serviceIcons] || <Star className="h-5 w-5" />}
-                    </div>
-                    <div className="text-left flex-1">
-                      <div className="font-medium">{service}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {service === 'Wi-Fi' && 'Get network credentials and support'}
-                        {service === 'Room Service' && 'Order food and beverages'}
-                        {service === 'Housekeeping' && 'Request cleaning and amenities'}
-                        {service === 'Maintenance' && 'Report issues or request repairs'}
-                        {service === 'Digital Menu' && 'View restaurant menu and order'}
-                        {service === 'Events & Packages' && 'Explore hotel packages and events'}
-                        {service === 'Feedback' && 'Share your experience with us'}
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 bg-gradient-to-br from-amber-400/20 to-amber-600/20 rounded-xl flex items-center justify-center group-hover:from-amber-400/30 group-hover:to-amber-600/30 transition-all duration-300 group-hover:scale-110">
+                        <div className="text-amber-700 group-hover:text-amber-800 transition-colors duration-300">
+                          {serviceIcons[service as keyof typeof serviceIcons] || <Star className="h-6 w-6" />}
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-xl font-serif text-amber-900 group-hover:text-amber-800 transition-colors duration-300 mb-1">
+                          {service}
+                        </h4>
+                        <p className="text-amber-700/70 group-hover:text-amber-700/90 transition-colors duration-300">
+                          {serviceDescriptions[service as keyof typeof serviceDescriptions]}
+                        </p>
+                      </div>
+                      <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
+                        <ArrowLeft className="h-4 w-4 text-white transform rotate-180" />
                       </div>
                     </div>
-                    <div className="flex-shrink-0">
-                      <Badge variant="secondary" className="text-xs">
-                        Available
-                      </Badge>
-                    </div>
-                  </div>
-                </Button>
-              ))
-            )}
-          </CardContent>
-        </Card>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
 
-        {/* Front Desk Contact */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                <Phone className="h-5 w-5 text-red-600" />
+        {/* Direct Contact */}
+        <Card className="shadow-xl border-amber-200/50 bg-gradient-to-br from-amber-800 to-amber-900 text-white">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm border border-amber-600/30">
+                <Phone className="h-6 w-6 text-amber-200" />
               </div>
               <div className="flex-1">
-                <h3 className="font-medium">Need immediate assistance?</h3>
-                <p className="text-sm text-muted-foreground">Call the front desk directly</p>
+                <h4 className="text-lg font-serif mb-1">Need Immediate Assistance?</h4>
+                <p className="text-amber-100/80">Connect directly with our front desk</p>
               </div>
-              <Button size="sm" variant="outline" onClick={callFrontDesk}>
-                <Phone className="h-4 w-4 mr-1" />
-                Call
+              <Button 
+                onClick={callFrontDesk}
+                variant="secondary"
+                className="bg-white/10 hover:bg-white/20 text-white border-amber-600/30 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 rounded-full px-6"
+              >
+                <Phone className="h-4 w-4 mr-2" />
+                Call Now
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Footer Info */}
-        <div className="text-center text-sm text-muted-foreground space-y-2">
-          <div className="flex items-center justify-center gap-2">
+        {/* Footer */}
+        <div className="text-center py-6 space-y-3">
+          <div className="flex items-center justify-center gap-2 text-amber-700/60">
             <Clock className="h-4 w-4" />
-            <span>Available 24/7</span>
+            <span className="text-sm font-medium">Available 24/7</span>
           </div>
-          <p>Powered by {qrInfo.hotel_name} Guest Services</p>
+          <p className="text-sm text-amber-600/50 font-light">
+            Powered by {qrInfo.hotel_name} Guest Services
+          </p>
         </div>
       </div>
     </div>

@@ -228,11 +228,13 @@ serve(async (req) => {
       }
     }
 
-    // If auth user exists but no public user record, clean up auth user
+    // Clean up orphaned auth users that don't have public user records
     if (existingAuthUser && (!existingUsers || existingUsers.length === 0)) {
       console.log('Cleaning up orphaned auth user for email:', email);
       try {
         await supabaseAdmin.auth.admin.deleteUser(existingAuthUser.id, false);
+        existingAuthUser = null; // Reset so we create a fresh user
+        console.log('Successfully cleaned up orphaned auth user');
       } catch (error) {
         console.warn('Failed to clean up orphaned auth user:', error);
       }
@@ -241,6 +243,7 @@ serve(async (req) => {
     // Handle existing auth user
     let finalAuthUser;
     let authUserId;
+    let createdNewAuthUser = false;
     
     if (existingAuthUser) {
       // Use existing auth user
@@ -273,6 +276,7 @@ serve(async (req) => {
       }
     } else {
       // Create new auth user
+      createdNewAuthUser = true;
       const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email,
         password: tempPassword,
@@ -379,8 +383,8 @@ serve(async (req) => {
     if (profileError) {
       console.error('Error with user profile:', profileError);
       
-      // Only rollback if we created a new auth user (not if we updated existing one)
-      if (!existingAuthUser) {
+      // Always rollback if we created a new auth user (prevent orphaned auth users)
+      if (createdNewAuthUser) {
         try {
           await supabaseAdmin.auth.admin.deleteUser(authUserId);
           console.log('Successfully rolled back auth user creation');

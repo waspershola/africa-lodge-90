@@ -19,6 +19,7 @@ import {
   Printer
 } from "lucide-react";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useBilling } from "@/hooks/useBilling";
 
 interface PendingPayment {
   id: string;
@@ -133,10 +134,47 @@ export const BillingOverviewFD = () => {
   const [activeTab, setActiveTab] = useState("pending");
   const [searchTerm, setSearchTerm] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("all");
-  const [pendingPayments] = useState<PendingPayment[]>(mockPendingPayments);
-  const [completedPayments] = useState<CompletedPayment[]>(mockCompletedPayments);
-  const [dailySummary] = useState<DailySummary>(mockDailySummary);
+  const { billingStats, folioBalances, payments, loading } = useBilling();
   const { formatPrice } = useCurrency();
+
+  // Convert folio balances to pending payments format
+  const pendingPayments: PendingPayment[] = folioBalances
+    .filter(f => f.balance > 0)
+    .map(f => ({
+      id: f.folio_id,
+      guestName: f.guest_name,
+      room: f.room_number,
+      amount: f.balance,
+      type: 'room-charge' as const,
+      dueDate: new Date(),
+      overdue: f.status === 'overdue',
+      folioId: f.folio_number
+    }));
+
+  // Convert payments to completed format
+  const completedPayments: CompletedPayment[] = payments.map(p => ({
+    id: p.id,
+    guestName: (p as any).folios?.reservations?.guest_name || 'Unknown Guest',
+    room: (p as any).folios?.reservations?.rooms?.room_number || 'N/A',
+    amount: p.amount,
+    method: p.payment_method,
+    processedAt: new Date(p.created_at),
+    processedBy: p.processed_by || 'System',
+    transactionRef: p.reference
+  }));
+
+  // Calculate daily summary from real data
+  const dailySummary: DailySummary = {
+    date: new Date().toISOString().split('T')[0],
+    totalCollected: billingStats?.todaysCashflow 
+      ? Object.values(billingStats.todaysCashflow).reduce((sum, amount) => sum + amount, 0)
+      : 0,
+    totalPending: folioBalances.reduce((sum, f) => sum + f.balance, 0),
+    paymentMethods: billingStats?.todaysCashflow || {},
+    transactionCount: payments.filter(p => 
+      new Date(p.created_at).toDateString() === new Date().toDateString()
+    ).length
+  };
 
   const getPaymentTypeColor = (type: PendingPayment['type']) => {
     switch (type) {
@@ -169,12 +207,12 @@ export const BillingOverviewFD = () => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
-              <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-green-600" />
+              <div className="h-10 w-10 bg-success/10 rounded-lg flex items-center justify-center">
+                <DollarSign className="h-5 w-5 text-success" />
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold text-green-600">
-                  {formatPrice(dailySummary.totalCollected)}
+                <div className="text-2xl font-bold text-success">
+                  {loading ? '...' : formatPrice(dailySummary.totalCollected)}
                 </div>
                 <div className="text-sm text-muted-foreground">Collected Today</div>
               </div>
@@ -185,12 +223,12 @@ export const BillingOverviewFD = () => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
-              <div className="h-10 w-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <Clock className="h-5 w-5 text-yellow-600" />
+              <div className="h-10 w-10 bg-warning/10 rounded-lg flex items-center justify-center">
+                <Clock className="h-5 w-5 text-warning" />
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold text-yellow-600">
-                  {formatPrice(dailySummary.totalPending)}
+                <div className="text-2xl font-bold text-warning">
+                  {loading ? '...' : formatPrice(dailySummary.totalPending)}
                 </div>
                 <div className="text-sm text-muted-foreground">Pending</div>
               </div>

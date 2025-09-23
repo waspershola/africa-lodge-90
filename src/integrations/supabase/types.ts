@@ -1901,6 +1901,16 @@ export type Database = {
         Args: { tenant_uuid: string }
         Returns: boolean
       }
+      check_room_availability: {
+        Args: {
+          p_check_in_date: string
+          p_check_out_date: string
+          p_exclude_reservation_id?: string
+          p_room_id: string
+          p_tenant_id: string
+        }
+        Returns: boolean
+      }
       create_default_tenant_roles: {
         Args: { tenant_uuid: string }
         Returns: undefined
@@ -1945,6 +1955,21 @@ export type Database = {
       fn_revpar: {
         Args: { end_date?: string; start_date?: string; tenant_uuid: string }
         Returns: number
+      }
+      get_available_rooms: {
+        Args: {
+          p_check_in_date: string
+          p_check_out_date: string
+          p_room_type_id?: string
+          p_tenant_id: string
+        }
+        Returns: {
+          base_rate: number
+          max_occupancy: number
+          room_id: string
+          room_number: string
+          room_type_name: string
+        }[]
       }
       get_user_id: {
         Args: Record<PropertyKey, never>

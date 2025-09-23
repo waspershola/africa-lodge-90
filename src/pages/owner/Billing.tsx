@@ -24,24 +24,12 @@ import BillsManagement from '@/components/owner/billing/BillsManagement';
 import PaymentsOverview from '@/components/owner/billing/PaymentsOverview';
 import InvoicesManager from '@/components/owner/billing/InvoicesManager';
 import OutstandingBalances from '@/components/owner/billing/OutstandingBalances';
+import { useBilling } from '@/hooks/useBilling';
 
 export default function BillingPage() {
   const [activeTab, setActiveTab] = useState('bills');
 
-  // Mock billing overview data
-  const billingStats = {
-    totalRevenue: 12500000, // Today's revenue
-    pendingPayments: 3200000, // Pending payments
-    totalInvoices: 156, // Total invoices this month
-    outstandingBalance: 850000, // Outstanding balance
-    todaysCashflow: {
-      cash: 2800000,
-      card: 4200000,
-      transfer: 3500000,
-      pos: 1200000,
-      wallet: 800000
-    }
-  };
+  const { billingStats, loading } = useBilling();
 
   return (
     <div className="space-y-6">
@@ -76,7 +64,7 @@ export default function BillingPage() {
                 <DollarSign className="h-6 w-6 text-success" />
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold">₦{(billingStats.totalRevenue / 1000000).toFixed(1)}M</div>
+                <div className="text-2xl font-bold">₦{loading ? '...' : ((billingStats?.totalRevenue || 0) / 1000000).toFixed(1)}M</div>
                 <div className="text-sm text-muted-foreground">Today's Revenue</div>
               </div>
             </div>
@@ -96,7 +84,7 @@ export default function BillingPage() {
                 <AlertCircle className="h-6 w-6 text-warning-foreground" />
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold">₦{(billingStats.pendingPayments / 1000000).toFixed(1)}M</div>
+                <div className="text-2xl font-bold">{loading ? '...' : billingStats?.pendingPayments || 0}</div>
                 <div className="text-sm text-muted-foreground">Pending Payments</div>
               </div>
             </div>
@@ -115,7 +103,7 @@ export default function BillingPage() {
                 <FileText className="h-6 w-6 text-primary" />
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold">{billingStats.totalInvoices}</div>
+                <div className="text-2xl font-bold">{loading ? '...' : billingStats?.totalInvoices || 0}</div>
                 <div className="text-sm text-muted-foreground">Total Invoices</div>
               </div>
             </div>
@@ -134,7 +122,7 @@ export default function BillingPage() {
                 <Receipt className="h-6 w-6 text-danger" />
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold">₦{(billingStats.outstandingBalance / 1000).toFixed(0)}K</div>
+                <div className="text-2xl font-bold">₦{loading ? '...' : ((billingStats?.outstandingBalance || 0) / 1000).toFixed(0)}K</div>
                 <div className="text-sm text-muted-foreground">Outstanding</div>
               </div>
             </div>
@@ -157,20 +145,33 @@ export default function BillingPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-5 gap-4">
-            {Object.entries(billingStats.todaysCashflow).map(([method, amount]) => (
-              <div key={method} className="text-center">
-                <div className="text-lg font-bold">₦{(amount / 1000).toFixed(0)}K</div>
-                <div className="text-sm text-muted-foreground capitalize">{method}</div>
-                <div className="h-2 bg-muted rounded mt-2">
-                  <div 
-                    className="h-full bg-gradient-primary rounded"
-                    style={{ 
-                      width: `${(amount / Math.max(...Object.values(billingStats.todaysCashflow))) * 100}%`
-                    }}
-                  />
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="text-center animate-pulse">
+                  <div className="h-6 bg-muted rounded w-full mb-2"></div>
+                  <div className="h-4 bg-muted rounded w-3/4 mx-auto"></div>
                 </div>
+              ))
+            ) : billingStats?.todaysCashflow && Object.keys(billingStats.todaysCashflow).length > 0 ? (
+              Object.entries(billingStats.todaysCashflow).map(([method, amount]) => (
+                <div key={method} className="text-center">
+                  <div className="text-lg font-bold">₦{(amount / 1000).toFixed(0)}K</div>
+                  <div className="text-sm text-muted-foreground capitalize">{method}</div>
+                  <div className="h-2 bg-muted rounded mt-2">
+                    <div 
+                      className="h-full bg-gradient-primary rounded"
+                      style={{ 
+                        width: `${(amount / Math.max(...Object.values(billingStats.todaysCashflow))) * 100}%`
+                      }}
+                    />
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-5 text-center text-muted-foreground py-4">
+                No payment data for today
               </div>
-            ))}
+            )}
           </div>
         </CardContent>
       </Card>

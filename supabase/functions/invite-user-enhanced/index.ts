@@ -350,7 +350,7 @@ serve(async (req) => {
         force_reset: true,
         temp_expires: tempExpires.toISOString(),
         is_active: true,
-        invited_by: tenant_id || null,
+        invited_by: null, // Set to null to avoid foreign key constraint issues
         invitation_status: 'pending',
         
         // Additional profile fields

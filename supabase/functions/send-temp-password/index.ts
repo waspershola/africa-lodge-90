@@ -52,7 +52,9 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Only send to verified domain owner in Resend test mode
+    // Only send to verified domain owner in Resend test mode - REMOVED FOR PRODUCTION
+    // This restriction should be removed when deploying to production with a verified domain
+    /*
     if (recipientEmail !== 'engsholawasiu@gmail.com') {
       console.log(`Skipping email to ${recipientEmail} - only verified domain owner (engsholawasiu@gmail.com) can receive emails in Resend test mode`);
       return new Response(JSON.stringify({ 
@@ -64,6 +66,7 @@ const handler = async (req: Request): Promise<Response> => {
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
+    */
 
     console.log(`Sending temporary password email to ${recipientEmail} for ${hotel_name}`);
 

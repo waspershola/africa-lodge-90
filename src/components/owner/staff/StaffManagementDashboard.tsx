@@ -26,7 +26,9 @@ import {
   XCircle,
   Clock,
   AlertCircle,
-  User
+  User,
+  Download,
+  FileSpreadsheet
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useUsers } from '@/hooks/useUsers';
@@ -37,6 +39,9 @@ import { StaffProfileDrawer } from './StaffProfileDrawer';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { StaffInvitationStatusBadge } from './StaffInvitationStatusBadge';
+import { StaffExportDialog } from './StaffExportDialog';
+import { SalaryManagementTab } from './SalaryManagementTab';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface StaffMember {
   id: string;
@@ -92,6 +97,7 @@ export function StaffManagementDashboard() {
   const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [staffMembersDisplay, setStaffMembersDisplay] = useState<StaffMember[]>([]);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
   // Transform Supabase users to display format
   useEffect(() => {
@@ -185,13 +191,23 @@ export function StaffManagementDashboard() {
           </p>
         </div>
         
-        <Button 
-          onClick={() => setInviteDialogOpen(true)}
-          className="bg-gradient-primary"
-        >
-          <UserPlus className="h-4 w-4 mr-2" />
-          Invite Staff
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            onClick={() => setExportDialogOpen(true)}
+            disabled={staffMembersDisplay.length === 0}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export Staff
+          </Button>
+          <Button 
+            onClick={() => setInviteDialogOpen(true)}
+            className="bg-gradient-primary"
+          >
+            <UserPlus className="h-4 w-4 mr-2" />
+            Invite Staff
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -236,44 +252,53 @@ export function StaffManagementDashboard() {
         </Card>
       </div>
 
-      {/* Search */}
-      <div className="flex items-center space-x-2">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search staff members..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8"
-          />
-        </div>
-      </div>
+      {/* Tabs */}
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="overview">Staff Overview</TabsTrigger>
+          <TabsTrigger value="salary">Salary Management</TabsTrigger>
+          <TabsTrigger value="performance">Performance</TabsTrigger>
+        </TabsList>
 
-      {/* Staff List */}
-      <div className="space-y-4">
-        {usersLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <TabsContent value="overview" className="space-y-4">
+          {/* Search */}
+          <div className="flex items-center space-x-2">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search staff members..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8"
+              />
+            </div>
           </div>
-        ) : filteredStaff.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-8">
-              <Users className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No staff members found</h3>
-              <p className="text-muted-foreground text-center mb-4">
-                {staffMembersDisplay.length === 0 
-                  ? "Start building your team by inviting your first staff member"
-                  : "No staff members match your search criteria"
-                }
-              </p>
-              <Button onClick={() => setInviteDialogOpen(true)} className="bg-gradient-primary">
-                <UserPlus className="h-4 w-4 mr-2" />
-                Invite Staff Member
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          filteredStaff.map((staff) => {
+
+          {/* Staff List */}
+          <div className="space-y-4">
+            {usersLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : filteredStaff.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-8">
+                  <Users className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No staff members found</h3>
+                  <p className="text-muted-foreground text-center mb-4">
+                    {staffMembersDisplay.length === 0 
+                      ? "Start building your team by inviting your first staff member"
+                      : "No staff members match your search criteria"
+                    }
+                  </p>
+                  <Button onClick={() => setInviteDialogOpen(true)} className="bg-gradient-primary">
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Invite Staff Member
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredStaff.map((staff) => {
             const roleInfo = getRoleInfo(staff.role);
             const pendingReset = isPendingReset(staff);
             const expiredReset = isExpiredReset(staff);
@@ -379,9 +404,29 @@ export function StaffManagementDashboard() {
                 </CardContent>
               </Card>
             );
-          })
-        )}
-      </div>
+              })
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="salary">
+          <SalaryManagementTab />
+        </TabsContent>
+
+        <TabsContent value="performance">
+          <Card>
+            <CardContent className="p-6">
+              <div className="text-center py-8">
+                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Performance Tracking</h3>
+                <p className="text-muted-foreground">
+                  Staff performance metrics and evaluation tools coming soon
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Dialogs */}
       <EnhancedStaffInvitationDialog
@@ -406,6 +451,12 @@ export function StaffManagementDashboard() {
         open={profileDrawerOpen}
         onOpenChange={setProfileDrawerOpen}
         staff={selectedStaff}
+      />
+
+      <StaffExportDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        staffData={staffMembersDisplay}
       />
     </div>
   );

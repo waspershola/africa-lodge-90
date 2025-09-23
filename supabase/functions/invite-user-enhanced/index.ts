@@ -111,7 +111,7 @@ serve(async (req) => {
     }
 
     // Validate role
-    const validRoles = ['SUPER_ADMIN', 'OWNER', 'MANAGER', 'FRONT_DESK', 'HOUSEKEEPING', 'MAINTENANCE', 'POS', 'ACCOUNTANT'];
+    const validRoles = ['SUPER_ADMIN', 'PLATFORM_ADMIN', 'SUPPORT_STAFF', 'SALES', 'OWNER', 'MANAGER', 'FRONT_DESK', 'HOUSEKEEPING', 'MAINTENANCE', 'ACCOUNTING', 'POS', 'STAFF', 'HOTEL_OWNER', 'HOTEL_MANAGER', 'EVENT_MANAGER', 'MARKETING', 'SECURITY', 'IT_ADMIN', 'POS_STAFF'];
     if (!validRoles.includes(role)) {
       return new Response(JSON.stringify({ 
         success: false,

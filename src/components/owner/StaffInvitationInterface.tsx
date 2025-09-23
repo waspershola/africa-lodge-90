@@ -74,7 +74,7 @@ const staffRoles = [
   { id: 'HOUSEKEEPING', label: 'Housekeeping', description: 'Room cleaning, maintenance' },
   { id: 'MAINTENANCE', label: 'Maintenance', description: 'Technical repairs, upkeep' },
   { id: 'POS', label: 'Restaurant/Bar', description: 'Food & beverage operations' },
-  { id: 'ACCOUNTANT', label: 'Accountant', description: 'Billing, payments, financial reports' }
+  { id: 'ACCOUNTING', label: 'Accountant', description: 'Billing, payments, financial reports' }
 ];
 
 const departments = [

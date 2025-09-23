@@ -70,7 +70,7 @@ const roleLabels: Record<string, string> = {
   'HOUSEKEEPING': 'Housekeeping',
   'MAINTENANCE': 'Maintenance',
   'POS': 'Restaurant/Bar',
-  'ACCOUNTANT': 'Accountant',
+  'ACCOUNTING': 'Accountant',
 };
 
 export function StaffProfileDrawer({ open, onOpenChange, staff }: StaffProfileDrawerProps) {

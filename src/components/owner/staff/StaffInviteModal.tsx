@@ -42,7 +42,7 @@ export default function StaffInviteModal({ open, onOpenChange }: StaffInviteModa
     { id: 'housekeeping', name: 'Housekeeping Staff', permissions: ['rooms', 'maintenance'] },
     { id: 'manager', name: 'Shift Manager', permissions: ['staff', 'reports', 'reservations', 'rooms'] },
     { id: 'supervisor', name: 'Supervisor', permissions: ['staff', 'reports', 'reservations', 'rooms', 'billing'] },
-    { id: 'accountant', name: 'Accountant', permissions: ['billing', 'reports', 'payments'] }
+    { id: 'accounting', name: 'Accountant', permissions: ['billing', 'reports', 'payments'] }
   ];
 
   const departments = [

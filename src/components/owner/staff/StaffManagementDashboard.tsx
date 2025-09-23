@@ -88,7 +88,7 @@ const staffRoles = [
   { id: 'HOUSEKEEPING', label: 'Housekeeping', color: 'bg-green-500/10 text-green-600 border-green-500/20' },
   { id: 'MAINTENANCE', label: 'Maintenance', color: 'bg-orange-500/10 text-orange-600 border-orange-500/20' },
   { id: 'POS', label: 'Restaurant/Bar', color: 'bg-purple-500/10 text-purple-600 border-purple-500/20' },
-  { id: 'ACCOUNTANT', label: 'Accountant', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' }
+  { id: 'ACCOUNTING', label: 'Accountant', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' }
 ];
 
 export function StaffManagementDashboard() {

@@ -130,7 +130,7 @@ const staffRoles = [
     permissions: ['Order Management', 'Menu Control', 'Payment Processing', 'Kitchen Display']
   },
   { 
-    id: 'ACCOUNTANT', 
+    id: 'ACCOUNTING', 
     label: 'Accountant', 
     description: 'Financial management, billing, reports',
     permissions: ['Financial Reports', 'Billing Management', 'Payment Tracking', 'Audit Logs']
@@ -274,7 +274,8 @@ export function EnhancedStaffInvitationDialog({
           );
         }
         
-        onSuccess?.();
+        // Don't call onSuccess immediately to prevent page reload
+        // onSuccess will be called when user closes the success dialog
       } else {
         // Show specific error messages based on error type
         let errorMessage = result.error || 'Failed to send invitation';
@@ -325,6 +326,11 @@ export function EnhancedStaffInvitationDialog({
   };
 
   const handleClose = () => {
+    // Call onSuccess if we had a successful invitation to refresh the staff list
+    if (inviteResult?.success) {
+      onSuccess?.();
+    }
+    
     setCurrentStep('form');
     setInviteForm({
       email: '',

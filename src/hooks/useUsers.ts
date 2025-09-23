@@ -7,7 +7,7 @@ export interface User {
   id: string;
   tenant_id?: string;
   email: string;
-  role: 'SUPER_ADMIN' | 'OWNER' | 'MANAGER' | 'STAFF' | 'FRONT_DESK' | 'HOUSEKEEPING' | 'MAINTENANCE' | 'POS' | 'ACCOUNTANT';
+  role: 'SUPER_ADMIN' | 'OWNER' | 'MANAGER' | 'STAFF' | 'FRONT_DESK' | 'HOUSEKEEPING' | 'MAINTENANCE' | 'POS' | 'ACCOUNTING';
   name?: string;
   phone?: string;
   department?: string;
@@ -337,11 +337,11 @@ export function useUsers() {
 
       if (updateError) throw updateError;
 
-      // Then delete from auth system
-      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+      // Then delete from auth system using service role
+      const { error: authError } = await supabase.auth.admin.deleteUser(userId, false);
       if (authError) {
-        console.warn('Could not delete auth user:', authError.message);
-        // Continue anyway - user is deactivated
+        console.error('Failed to delete auth user:', authError.message);
+        throw new Error(`Failed to remove user from authentication system: ${authError.message}`);
       }
 
       // Create audit log

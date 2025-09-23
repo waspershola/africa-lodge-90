@@ -40,7 +40,7 @@ export function StaffBulkImportDialog({ open, onOpenChange, onSuccess }: StaffBu
   const { inviteUser } = useStaffInvites();
 
   const requiredFields = ['name', 'email', 'role'];
-  const validRoles = ['OWNER', 'MANAGER', 'FRONT_DESK', 'HOUSEKEEPING', 'MAINTENANCE', 'POS', 'ACCOUNTANT'];
+  const validRoles = ['OWNER', 'MANAGER', 'FRONT_DESK', 'HOUSEKEEPING', 'MAINTENANCE', 'POS', 'ACCOUNTING'];
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];

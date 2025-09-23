@@ -28,7 +28,8 @@ import {
   AlertCircle,
   User,
   Download,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Upload
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useUsers } from '@/hooks/useUsers';
@@ -40,6 +41,8 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { StaffInvitationStatusBadge } from './StaffInvitationStatusBadge';
 import { StaffExportDialog } from './StaffExportDialog';
+import { StaffTemplateDialog } from './StaffTemplateDialog';
+import { StaffBulkImportDialog } from './StaffBulkImportDialog';
 import { SalaryManagementTab } from './SalaryManagementTab';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -98,6 +101,8 @@ export function StaffManagementDashboard() {
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [staffMembersDisplay, setStaffMembersDisplay] = useState<StaffMember[]>([]);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [bulkImportDialogOpen, setBulkImportDialogOpen] = useState(false);
 
   // Transform Supabase users to display format
   useEffect(() => {
@@ -192,6 +197,20 @@ export function StaffManagementDashboard() {
         </div>
         
         <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            onClick={() => setTemplateDialogOpen(true)}
+          >
+            <FileSpreadsheet className="h-4 w-4 mr-2" />
+            Download Template
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={() => setBulkImportDialogOpen(true)}
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Bulk Import
+          </Button>
           <Button 
             variant="outline"
             onClick={() => setExportDialogOpen(true)}
@@ -432,6 +451,26 @@ export function StaffManagementDashboard() {
       <EnhancedStaffInvitationDialog
         open={inviteDialogOpen}
         onOpenChange={setInviteDialogOpen}
+        onSuccess={() => {
+          // Force refresh by reloading the component
+          window.location.reload();
+        }}
+      />
+
+      <StaffExportDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        staffData={staffMembersDisplay}
+      />
+
+      <StaffTemplateDialog
+        open={templateDialogOpen}
+        onOpenChange={setTemplateDialogOpen}
+      />
+
+      <StaffBulkImportDialog
+        open={bulkImportDialogOpen}
+        onOpenChange={setBulkImportDialogOpen}
         onSuccess={() => {
           // Force refresh by reloading the component
           window.location.reload();

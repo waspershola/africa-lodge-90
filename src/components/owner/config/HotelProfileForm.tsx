@@ -15,33 +15,35 @@ import {
   Star,
   Users
 } from "lucide-react";
+import { useTenantInfo } from "@/hooks/useTenantInfo";
 
 interface HotelProfileFormProps {
   onDataChange: () => void;
 }
 
 const HotelProfileForm = ({ onDataChange }: HotelProfileFormProps) => {
+  const { data: tenantInfo } = useTenantInfo();
   const [profileData, setProfileData] = useState({
     // Basic Information
-    hotelName: "Lagos Grand Hotel",
-    description: "A luxury hotel in the heart of Lagos with world-class amenities and service.",
+    hotelName: "",
+    description: "A luxury hotel with world-class amenities and service.",
     category: "5-star",
     establishedYear: "2018",
     
     // Contact Information
-    address: "123 Victoria Island, Lagos, Nigeria",
-    city: "Lagos",
-    state: "Lagos State", 
+    address: "",
+    city: "",
+    state: "", 
     country: "Nigeria",
-    postalCode: "100001",
-    phone: "+234 1 234 5678",
-    email: "info@lagosgrandhotel.com",
-    website: "www.lagosgrandhotel.com",
+    postalCode: "",
+    phone: "",
+    email: "",
+    website: "",
     
     // Business Registration
-    businessRegNumber: "RC-1234567",
-    tinNumber: "12345678-0001",
-    vatNumber: "VAT-12345678",
+    businessRegNumber: "",
+    tinNumber: "",
+    vatNumber: "",
     
     // Operational Details
     totalRooms: "120",
@@ -50,6 +52,23 @@ const HotelProfileForm = ({ onDataChange }: HotelProfileFormProps) => {
     currency: "NGN",
     timezone: "Africa/Lagos"
   });
+
+  // Load tenant data when available
+  useEffect(() => {
+    if (tenantInfo) {
+      setProfileData(prev => ({
+        ...prev,
+        hotelName: tenantInfo.hotel_name,
+        address: tenantInfo.address || "",
+        city: tenantInfo.city || "",
+        country: tenantInfo.country || "Nigeria",
+        phone: tenantInfo.phone || "",
+        email: tenantInfo.email || "",
+        currency: tenantInfo.currency || "NGN",
+        timezone: tenantInfo.timezone || "Africa/Lagos"
+      }));
+    }
+  }, [tenantInfo]);
 
   const handleInputChange = (field: string, value: string) => {
     setProfileData(prev => ({

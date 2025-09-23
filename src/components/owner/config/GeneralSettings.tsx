@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { HotelConfiguration } from '@/types/configuration';
 import { Building, MapPin, Phone, Mail, Globe, Clock } from 'lucide-react';
+import { useTenantInfo } from '@/hooks/useTenantInfo';
 
 interface GeneralSettingsProps {
   config: HotelConfiguration['general'];
@@ -24,8 +25,31 @@ const TIMEZONES = [
 
 export const GeneralSettings = ({ config, onUpdate, loading }: GeneralSettingsProps) => {
   const { toast } = useToast();
+  const { data: tenantInfo } = useTenantInfo();
   const [formData, setFormData] = useState(config);
   const [saving, setSaving] = useState(false);
+
+  // Load tenant data when available
+  useEffect(() => {
+    if (tenantInfo && config) {
+      setFormData(prev => ({
+        ...prev,
+        hotel_name: tenantInfo.hotel_name,
+        address: {
+          ...prev.address,
+          street: tenantInfo.address || prev.address.street,
+          city: tenantInfo.city || prev.address.city,
+          country: tenantInfo.country || prev.address.country
+        },
+        contact: {
+          ...prev.contact,
+          phone: tenantInfo.phone || prev.contact.phone,
+          email: tenantInfo.email || prev.contact.email
+        },
+        timezone: tenantInfo.timezone || prev.timezone
+      }));
+    }
+  }, [tenantInfo, config]);
 
   const handleSave = async () => {
     setSaving(true);

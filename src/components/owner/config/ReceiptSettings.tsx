@@ -21,6 +21,7 @@ import {
   Copy,
   Upload
 } from "lucide-react";
+import { useTenantInfo } from "@/hooks/useTenantInfo";
 
 interface ReceiptTemplate {
   id: string;
@@ -174,6 +175,7 @@ const defaultTemplate: ReceiptTemplate = {
 };
 
 export default function ReceiptSettings({ onDataChange }: ReceiptSettingsProps) {
+  const { data: tenantInfo } = useTenantInfo();
   const [templates, setTemplates] = useState<ReceiptTemplate[]>([defaultTemplate]);
   const [selectedTemplate, setSelectedTemplate] = useState<ReceiptTemplate>(defaultTemplate);
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -1113,13 +1115,13 @@ export default function ReceiptSettings({ onDataChange }: ReceiptSettingsProps) 
                     <div className="w-16 h-16 bg-gray-200 rounded mx-auto mb-4" />
                   )}
                   {selectedTemplate.branding.showHotelName && (
-                    <h1 className="text-2xl font-bold">Lagos Grand Hotel</h1>
+                    <h1 className="text-2xl font-bold">{tenantInfo?.hotel_name || "Your Hotel Name"}</h1>
                   )}
                   {selectedTemplate.branding.showAddress && (
-                    <p className="text-sm">123 Victoria Island, Lagos, Nigeria</p>
+                    <p className="text-sm">{tenantInfo?.address || "Hotel Address"}</p>
                   )}
                   {selectedTemplate.branding.showContact && (
-                    <p className="text-sm">Tel: +234 123 456 7890 | Email: info@lagoshotel.com</p>
+                    <p className="text-sm">Tel: {tenantInfo?.phone || "+234 XXX XXX XXXX"} | Email: {tenantInfo?.email || "info@hotel.com"}</p>
                   )}
                   {selectedTemplate.branding.headerText && (
                     <p className="text-sm mt-2 italic">{selectedTemplate.branding.headerText}</p>

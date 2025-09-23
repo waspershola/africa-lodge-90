@@ -75,6 +75,8 @@ const mockAlerts = [
 ];
 
 const FrontDeskDashboard = () => {
+  const { data: tenantInfo } = useTenantInfo();
+  
   const [isOffline, setIsOffline] = useState(false);
   const [offlineTimeRemaining, setOfflineTimeRemaining] = useState(22); // hours
   const [searchQuery, setSearchQuery] = useState("");

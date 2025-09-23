@@ -58,7 +58,7 @@ export default function QRManagerPage() {
       return (data || []).map(qr => ({
         id: qr.qr_token,
         scope: 'Room' as const,
-        assignedTo: qr.rooms?.room_number || (qr.room_id ? `Room ${qr.room_id}` : 'Location'),
+        assignedTo: qr.rooms?.room_number ? `Room ${qr.rooms.room_number}` : (qr.label || 'Location'),
         servicesEnabled: qr.services || [],
         status: (qr.is_active ? 'Active' : 'Inactive') as 'Active' | 'Inactive',
         pendingRequests: qr.qr_orders?.filter(order => order.status === 'pending').length || 0,
@@ -175,7 +175,7 @@ export default function QRManagerPage() {
       }
 
       // Generate QR code URL - make it accessible from any device
-      const qrCodeUrl = `${window.location.origin}/qr/${qrToken}`;
+      const qrCodeUrl = `https://840fa7b9-2d18-47bf-92d3-88ddf6cd5934.lovableproject.com/qr/${qrToken}`;
       
       const { error } = await supabase
         .from('qr_codes')

@@ -7,9 +7,13 @@ interface QRCodePreviewProps {
   assignedTo: string;
   size?: number;
   branding?: BrandingSettings;
+  hotelName?: string;
+  roomNumber?: string;
+  services?: string[];
+  qrUrl?: string;
 }
 
-export const QRCodePreview = ({ qrId, assignedTo, size = 200, branding }: QRCodePreviewProps) => {
+export const QRCodePreview = ({ qrId, assignedTo, size = 200, branding, hotelName, roomNumber, services, qrUrl }: QRCodePreviewProps) => {
   // Generate a visual representation of QR code (placeholder)
   const generateQRPattern = (id: string) => {
     const patterns = [];
@@ -44,9 +48,16 @@ export const QRCodePreview = ({ qrId, assignedTo, size = 200, branding }: QRCode
               </div>
             )}
             <h3 className="font-semibold text-lg" style={{ color: branding?.primaryColor || '#000' }}>
-              {branding?.hotelName || 'Grand Hotel'}
+              {hotelName || branding?.hotelName || 'Grand Hotel'}
             </h3>
-            <p className="text-sm text-muted-foreground">{assignedTo}</p>
+            <p className="text-sm text-muted-foreground">
+              {roomNumber ? `Room ${roomNumber}` : assignedTo}
+            </p>
+            {services && services.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Services: {services.slice(0, 3).join(', ')}{services.length > 3 ? '...' : ''}
+              </p>
+            )}
           </div>
           
           {/* QR Code Pattern */}
@@ -91,6 +102,11 @@ export const QRCodePreview = ({ qrId, assignedTo, size = 200, branding }: QRCode
             <p className="text-xs text-muted-foreground">
               Scan to access hotel services
             </p>
+            {qrUrl && (
+              <p className="text-xs text-muted-foreground mt-1 break-all">
+                URL: {qrUrl}
+              </p>
+            )}
             <p className="text-xs font-mono text-muted-foreground mt-1">
               ID: {qrId}
             </p>

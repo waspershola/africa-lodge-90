@@ -97,7 +97,15 @@ export const QRCodeDrawer = ({ open, onOpenChange, qrCode, onUpdate, branding }:
               <CardTitle className="text-lg">QR Code Preview</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <QRCodePreview qrId={qrCode.id} assignedTo={qrCode.assignedTo} branding={branding} />
+              <QRCodePreview 
+                qrId={qrCode.id} 
+                assignedTo={qrCode.assignedTo} 
+                branding={branding}
+                hotelName={branding?.hotelName}
+                roomNumber={qrCode.assignedTo?.includes('Room') ? qrCode.assignedTo.replace('Room ', '') : undefined}
+                services={qrCode.servicesEnabled}
+                qrUrl={`https://840fa7b9-2d18-47bf-92d3-88ddf6cd5934.lovableproject.com/qr/${qrCode.id}`}
+              />
               
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1">
@@ -112,12 +120,16 @@ export const QRCodeDrawer = ({ open, onOpenChange, qrCode, onUpdate, branding }:
 
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-muted-foreground">QR ID:</span>
-                  <div className="font-medium">{qrCode.id}</div>
+                  <span className="text-muted-foreground">Hotel:</span>
+                  <div className="font-medium">{branding?.hotelName || 'Hotel'}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Scope:</span>
-                  <Badge variant="outline" className="ml-2">{qrCode.scope}</Badge>
+                  <span className="text-muted-foreground">{qrCode.scope}:</span>
+                  <div className="font-medium">{qrCode.assignedTo}</div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Services:</span>
+                  <div className="font-medium">{qrCode.servicesEnabled.length} enabled</div>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Status:</span>
@@ -131,6 +143,10 @@ export const QRCodeDrawer = ({ open, onOpenChange, qrCode, onUpdate, branding }:
                 <div>
                   <span className="text-muted-foreground">Pending Requests:</span>
                   <div className="font-medium">{qrCode.pendingRequests}</div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">QR ID:</span>
+                  <div className="font-medium font-mono text-xs">{qrCode.id}</div>
                 </div>
               </div>
             </CardContent>

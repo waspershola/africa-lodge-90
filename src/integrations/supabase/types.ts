@@ -2173,6 +2173,32 @@ export type Database = {
           room_type_name: string
         }[]
       }
+      get_guest_stats: {
+        Args: { p_months_back?: number; p_tenant_id: string }
+        Returns: {
+          avg_reservation_value: number
+          avg_stay_length: number
+          month_year: string
+          repeat_guests: number
+          retention_rate: number
+          total_reservations: number
+          total_revenue: number
+          unique_guests: number
+        }[]
+      }
+      get_occupancy_stats: {
+        Args: {
+          p_end_date?: string
+          p_start_date?: string
+          p_tenant_id: string
+        }
+        Returns: {
+          occupancy_rate: number
+          occupied_rooms: number
+          stat_date: string
+          total_rooms: number
+        }[]
+      }
       get_user_id: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -2198,6 +2224,10 @@ export type Database = {
       is_super_admin_direct: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      refresh_reporting_views: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       refresh_revenue_views: {
         Args: Record<PropertyKey, never>

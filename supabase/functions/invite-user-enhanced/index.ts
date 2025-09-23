@@ -117,7 +117,13 @@ serve(async (req) => {
       });
     }
 
-    // Check if user already exists
+    // Generate temporary password first
+    const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
+    const tempExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    console.log('Generated temporary password for user');
+
+    // Check if user already exists in auth or users table
     const { data: existingAuthUsers } = await supabaseAdmin.auth.admin.listUsers();
     const authUserExists = existingAuthUsers.users?.find(u => u.email === email);
     
@@ -125,7 +131,7 @@ serve(async (req) => {
       .from('users')
       .select('id, email, is_active')
       .eq('email', email)
-      .maybeSingle(); // Use maybeSingle to avoid errors if not found
+      .maybeSingle();
 
     console.log('Existing check results:', { 
       authUserExists: !!authUserExists, 
@@ -145,161 +151,28 @@ serve(async (req) => {
       });
     }
 
-    // Handle reactivation case - user exists but needs to be reactivated
-    if (existingUser || authUserExists) {
-      console.log('Reactivating existing user');
-      const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
-      const tempExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
-      
-      let userId = existingUser?.id || authUserExists?.id;
-
-      // Clean up inconsistent states
-      if (existingUser && !authUserExists) {
-        console.log('Cleaning up orphaned profile record');
-        const { error: deleteError } = await supabaseAdmin.from('users').delete().eq('email', email);
-        if (deleteError) {
-          console.error('Failed to clean up orphaned profile:', deleteError);
-        }
-      } else if (!existingUser && authUserExists) {
-        console.log('Cleaning up orphaned auth user');
-        const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(authUserExists.id);
-        if (deleteAuthError) {
-          console.error('Failed to clean up orphaned auth user:', deleteAuthError);
-        }
-      } else if (existingUser && authUserExists) {
-        // Both exist, update them
-        userId = authUserExists.id;
-        
-        // Update auth user
-        const { error: authUpdateError } = await supabaseAdmin.auth.admin.updateUserById(
-          userId,
-          {
-            password: tempPassword,
-            email_confirm: true,
-            user_metadata: {
-              role,
-              tenant_id,
-              name,
-              invited: true
-            }
-          }
-        );
-
-        if (authUpdateError) {
-          console.error('Error updating auth user:', authUpdateError);
-          return new Response(JSON.stringify({ 
-            success: false,
-            error: 'Failed to update existing user',
-            details: authUpdateError.message 
-          }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-
-        // Update user profile
-        const { error: profileError } = await supabaseAdmin
-          .from('users')
-          .update({
-            email,
-            name,
-            role,
-            tenant_id: tenant_id || null,
-            department,
-            force_reset: true,
-            temp_expires: tempExpires.toISOString(),
-            is_active: true,
-            invited_by: tenant_id || null,
-            invitation_status: 'pending',
-            phone: phone || null,
-            address: address || null,
-            nin: nin || null,
-            date_of_birth: date_of_birth || null,
-            nationality: nationality || null,
-            employee_id: employee_id || null,
-            hire_date: hire_date || null,
-            employment_type: employment_type || 'full-time',
-            emergency_contact_name: emergency_contact_name || null,
-            emergency_contact_phone: emergency_contact_phone || null,
-            emergency_contact_relationship: emergency_contact_relationship || null,
-            next_of_kin_name: next_of_kin_name || null,
-            next_of_kin_phone: next_of_kin_phone || null,
-            next_of_kin_relationship: next_of_kin_relationship || null,
-            bank_name: bank_name || null,
-            account_number: account_number || null,
-            passport_number: passport_number || null,
-            drivers_license: drivers_license || null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', userId);
-
-        if (profileError) {
-          console.error('Error updating user profile:', profileError);
-          return new Response(JSON.stringify({ 
-            success: false,
-            error: 'Failed to update user profile',
-            details: profileError.message 
-          }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-
-        // Try to send email
-        let emailSent = false;
-        let emailError = null;
-
-        if (send_email) {
-          try {
-            const emailResponse = await supabaseAdmin.functions.invoke('send-temp-password', {
-              body: {
-                email,
-                name,
-                tempPassword,
-                role,
-                hotel_name: tenant_id ? 'Your Hotel' : 'Platform'
-              }
-            });
-
-            if (emailResponse.error) {
-              console.error('Email sending failed:', emailResponse.error);
-              emailError = emailResponse.error.message;
-            } else {
-              emailSent = true;
-              console.log('Email sent successfully');
-            }
-          } catch (error) {
-            console.error('Email service error:', error);
-            emailError = 'Email service unavailable';
-          }
-        }
-
-        return new Response(JSON.stringify({
-          success: true,
-          user_id: userId,
-          email,
-          role,
-          tenant_id,
-          force_reset: true,
-          temp_expires: tempExpires.toISOString(),
-          email_sent: emailSent,
-          message: 'User reactivated successfully',
-          ...((!send_email || !emailSent) && { temp_password: tempPassword }),
-          ...(emailError && { email_error: emailError })
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+    // Clean up any existing records before creating new ones
+    if (authUserExists) {
+      console.log('Deleting existing auth user');
+      const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(authUserExists.id);
+      if (deleteAuthError) {
+        console.error('Failed to delete existing auth user:', deleteAuthError);
       }
+    }
 
-      // Fall through to create new user after cleanup
+    if (existingUser) {
+      console.log('Deleting existing user profile');
+      const { error: deleteUserError } = await supabaseAdmin
+        .from('users')
+        .delete()
+        .eq('email', email);
+      if (deleteUserError) {
+        console.error('Failed to delete existing user profile:', deleteUserError);
+      }
     }
 
 
-    // Generate temporary password
-    const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
-    const tempExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-    console.log('Generated temporary password for user');
+    // Password already generated above
 
     // Create auth user with metadata
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({

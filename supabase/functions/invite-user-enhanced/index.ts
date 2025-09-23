@@ -7,9 +7,19 @@ const corsHeaders = {
 };
 
 // Initialize Supabase with service role key for admin operations
+const supabaseUrl = Deno.env.get('SUPABASE_URL');
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('Missing required environment variables:', {
+    hasUrl: !!supabaseUrl,
+    hasServiceKey: !!supabaseServiceKey
+  });
+}
+
 const supabaseAdmin = createClient(
-  Deno.env.get('SUPABASE_URL') ?? '',
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  supabaseUrl ?? '',
+  supabaseServiceKey ?? ''
 );
 
 interface InviteUserRequest {
@@ -42,8 +52,11 @@ interface InviteUserRequest {
 }
 
 serve(async (req) => {
+  console.log('Edge function called with method:', req.method);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('Handling CORS preflight');
     return new Response(null, { headers: corsHeaders });
   }
 
@@ -87,6 +100,7 @@ serve(async (req) => {
 
     // Validate required fields
     if (!email || !name || !role) {
+      console.error('Missing required fields:', { email: !!email, name: !!name, role: !!role });
       return new Response(JSON.stringify({ 
         success: false,
         error: 'Missing required fields: email, name, role' 
@@ -145,16 +159,22 @@ serve(async (req) => {
       });
     }
 
-    // Also check auth.users for existing auth accounts
+    // Check auth.users for existing auth accounts using listUsers
     let existingAuthUser = null;
     try {
-      const { data: authUser, error: authGetError } = await supabaseAdmin.auth.admin.getUserByEmail(email);
-      if (!authGetError && authUser?.user) {
-        existingAuthUser = authUser.user;
-        console.log('Found existing auth user:', existingAuthUser.id);
+      const { data: authUsers, error: authListError } = await supabaseAdmin.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000 // Should be enough to find the user
+      });
+      
+      if (!authListError && authUsers?.users) {
+        existingAuthUser = authUsers.users.find(user => user.email === email);
+        if (existingAuthUser) {
+          console.log('Found existing auth user:', existingAuthUser.id);
+        }
       }
     } catch (error) {
-      console.warn('Could not check auth user by email:', error);
+      console.warn('Could not check auth users:', error);
     }
 
     // Check if email exists in ANY tenant (global uniqueness)

@@ -69,12 +69,22 @@ export const useStaffInvites = () => {
 
       if (error) {
         console.error('Supabase function invoke error:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        
+        // Check if it's a network/connection error
+        if (error.message?.includes('fetch') || error.message?.includes('network') || error.message?.includes('connection')) {
+          return { 
+            success: false, 
+            error: 'Network Connection Failed',
+            details: 'Unable to reach the invitation service. Please check your internet connection and try again.'
+          };
+        }
         
         // Return a structured error response with better messaging
         return { 
           success: false, 
-          error: 'Connection Failed',
-          details: `Unable to connect to the invitation service. Please check your internet connection and try again.` 
+          error: 'Service Error',
+          details: `Invitation service error: ${error.message || 'Unknown error occurred'}`
         };
       }
 

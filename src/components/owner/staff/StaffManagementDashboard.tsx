@@ -398,7 +398,7 @@ export function StaffManagementDashboard() {
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
                             onClick={() => {
                               setSelectedStaff(staff);
@@ -408,29 +408,34 @@ export function StaffManagementDashboard() {
                             <User className="h-4 w-4 mr-2" />
                             View Profile
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setSelectedStaff(staff);
-                              setResetPasswordOpen(true);
-                            }}
-                          >
-                            <RotateCcw className="h-4 w-4 mr-2" />
-                            Reset Password
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleResendInvite(staff.id, staff.email, staff.name)}
-                          >
-                            <RotateCcw className="h-4 w-4 mr-2" />
-                            Regenerate Access
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => handleRemoveStaff(staff.id, staff.name)}
-                            className="text-danger focus:text-danger"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Remove Staff
-                          </DropdownMenuItem>
+                          {/* Hide management options for owner account */}
+                          {staff.id !== user?.id && (
+                            <>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedStaff(staff);
+                                  setResetPasswordOpen(true);
+                                }}
+                              >
+                                <RotateCcw className="h-4 w-4 mr-2" />
+                                Reset Password
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleResendInvite(staff.id, staff.email, staff.name)}
+                              >
+                                <RotateCcw className="h-4 w-4 mr-2" />
+                                Regenerate Access
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleRemoveStaff(staff.id, staff.name)}
+                                className="text-danger focus:text-danger"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Remove Staff
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>

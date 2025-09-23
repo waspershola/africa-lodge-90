@@ -123,6 +123,8 @@ export const useStaffInvites = () => {
     setIsLoading(true);
     
     try {
+      console.log('Calling reset-user-password function for user:', userId);
+      
       const response = await supabase.functions.invoke('reset-user-password', {
         body: { 
           user_id: userId,
@@ -130,18 +132,27 @@ export const useStaffInvites = () => {
         }
       });
 
+      console.log('Reset password response:', response);
+
       if (response.error) {
-        throw response.error;
+        console.error('Supabase function error:', response.error);
+        throw new Error(response.error.message || 'Function call failed');
       }
 
       const result = response.data;
       
+      if (!result) {
+        throw new Error('No response data received');
+      }
+      
       if (result.success) {
+        console.log('Password reset successful, temp_password provided:', !!result.temp_password);
         return {
           success: true,
           temp_password: result.temp_password
         };
       } else {
+        console.error('Password reset failed:', result.error);
         return {
           success: false,
           error: result.error || 'Failed to reset password'
@@ -149,6 +160,7 @@ export const useStaffInvites = () => {
       }
       
     } catch (error: any) {
+      console.error('Reset password error:', error);
       return {
         success: false,
         error: error.message || 'Failed to reset password'

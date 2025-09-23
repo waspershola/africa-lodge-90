@@ -9,6 +9,7 @@ import ReportsInterface from '@/components/ReportsInterface';
 import { StaffManagementDashboard } from '@/components/owner/staff/StaffManagementDashboard';
 import { EnhancedBillingInterface } from '@/components/owner/EnhancedBillingInterface';
 import UtilityCostTracking from '@/components/owner/utilities/UtilityCostTracking';
+import { OwnerProfileSettings } from '@/components/owner/profile/OwnerProfileSettings';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 
 export function OwnerDashboardRouter() {
@@ -38,6 +39,7 @@ export function OwnerDashboardRouter() {
         <Route path="/staff" element={<StaffManagementDashboard />} />
         <Route path="/billing" element={<EnhancedBillingInterface />} />
         <Route path="/utilities" element={<UtilityCostTracking />} />
+        <Route path="/profile" element={<OwnerProfileSettings />} />
       </Routes>
     </div>
   );

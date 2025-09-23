@@ -10,7 +10,8 @@ import {
   Settings,
   DollarSign,
   CreditCard,
-  Sparkles
+  Sparkles,
+  User
 } from 'lucide-react';
 import UnifiedDashboardLayout from './UnifiedDashboardLayout';
 import { TrialBanner } from '@/components/trial/TrialBanner';
@@ -29,6 +30,7 @@ const navigation = [
   { name: 'Staff & Roles', href: '/owner-dashboard/staff', icon: UserCircle },
   { name: 'Financials', href: '/owner-dashboard/financials', icon: DollarSign },
   { name: 'Power & Fuel', href: '/owner-dashboard/utilities', icon: Battery },
+  { name: 'Profile Settings', href: '/owner-dashboard/profile', icon: User },
 ];
 
 export default function OwnerLayout() {

@@ -54,6 +54,7 @@
     "framer-motion": "^12.23.12",
     "input-otp": "^1.4.2",
     "jsdom": "^27.0.0",
+    "jspdf": "^3.0.3",
     "k6": "^0.0.0",
     "lucide-react": "^0.462.0",
     "newman": "^6.2.1",

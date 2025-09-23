@@ -3,10 +3,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Download, FileSpreadsheet, FileText, Info } from 'lucide-react';
+import { Download, FileText, Info, Printer } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
+import jsPDF from 'jspdf';
 
 interface StaffTemplateDialogProps {
   open: boolean;
@@ -14,7 +14,6 @@ interface StaffTemplateDialogProps {
 }
 
 export function StaffTemplateDialog({ open, onOpenChange }: StaffTemplateDialogProps) {
-  const [exportFormat, setExportFormat] = useState<'csv' | 'excel'>('csv');
   const [selectedFields, setSelectedFields] = useState<string[]>([
     'name', 'email', 'role', 'department', 'phone', 'hire_date', 'employee_id'
   ]);
@@ -69,70 +68,121 @@ export function StaffTemplateDialog({ open, onOpenChange }: StaffTemplateDialogP
     );
   };
 
-  const generateTemplate = () => {
-    const headers = selectedFields.map(field => {
-      const fieldInfo = availableFields.find(f => f.id === field);
-      return fieldInfo?.label || field;
+  const generatePDFForm = () => {
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    doc.text('STAFF INFORMATION FORM', 105, 20, { align: 'center' });
+    
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text('Please fill out this form clearly in block letters', 105, 30, { align: 'center' });
+    
+    let yPosition = 50;
+    const leftMargin = 20;
+    const rightMargin = 190;
+    const lineHeight = 15;
+    const fieldHeight = 8;
+    
+    fieldCategories.forEach((category, categoryIndex) => {
+      const categoryFields = availableFields.filter(field => 
+        field.category === category && selectedFields.includes(field.id)
+      );
+      
+      if (categoryFields.length === 0) return;
+      
+      // Category header
+      if (categoryIndex > 0) yPosition += 10; // Extra space between categories
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text(`${category.toUpperCase()} INFORMATION`, leftMargin, yPosition);
+      yPosition += lineHeight;
+      
+      // Underline
+      doc.line(leftMargin, yPosition - 10, rightMargin, yPosition - 10);
+      yPosition += 5;
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      
+      categoryFields.forEach(field => {
+        // Check if we need a new page
+        if (yPosition > 270) {
+          doc.addPage();
+          yPosition = 20;
+        }
+        
+        // Field label
+        const label = field.label + (field.required ? ' *' : '');
+        doc.text(label, leftMargin, yPosition);
+        
+        // Underlined space for writing
+        const labelWidth = doc.getTextWidth(label);
+        const lineStart = leftMargin + labelWidth + 5;
+        const lineEnd = rightMargin - 10;
+        
+        // Draw line for writing
+        doc.line(lineStart, yPosition + 2, lineEnd, yPosition + 2);
+        
+        yPosition += lineHeight;
+        
+        // For long fields like address, add multiple lines
+        if (field.id === 'address') {
+          doc.line(leftMargin + 20, yPosition + 2, lineEnd, yPosition + 2);
+          yPosition += lineHeight;
+        }
+      });
+      
+      yPosition += 10; // Space after category
     });
     
-    // Create sample row with instructions
-    const sampleRow = selectedFields.map(field => {
-      switch (field) {
-        case 'name': return 'John Doe';
-        case 'email': return 'john.doe@example.com';
-        case 'role': return 'FRONT_DESK (or MANAGER, HOUSEKEEPING, etc.)';
-        case 'department': return 'Front Office';
-        case 'phone': return '+234 123 456 7890';
-        case 'hire_date': return '2024-01-15';
-        case 'date_of_birth': return '1990-05-20';
-        case 'employment_type': return 'full_time';
-        case 'salary_amount': return '150000';
-        case 'hourly_rate': return '2500';
-        case 'payment_method': return 'bank_transfer';
-        case 'nin': return '12345678901';
-        case 'nationality': return 'Nigerian';
-        case 'address': return '123 Main Street, Lagos';
-        case 'emergency_contact_name': return 'Jane Doe';
-        case 'emergency_contact_phone': return '+234 987 654 3210';
-        case 'emergency_contact_relationship': return 'Sister';
-        case 'bank_name': return 'Access Bank';
-        case 'account_number': return '1234567890';
-        case 'account_name': return 'John Doe';
-        default: return `Enter ${field}`;
-      }
+    // Footer with instructions
+    if (yPosition > 250) {
+      doc.addPage();
+      yPosition = 20;
+    }
+    
+    yPosition += 20;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text('INSTRUCTIONS:', leftMargin, yPosition);
+    yPosition += 15;
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    const instructions = [
+      '• Please write clearly in BLOCK LETTERS',
+      '• Fill all required fields marked with (*)',
+      '• Provide accurate contact information',
+      '• Attach copies of relevant documents (ID, certificates, etc.)',
+      '• Sign and date the form before submission'
+    ];
+    
+    instructions.forEach(instruction => {
+      doc.text(instruction, leftMargin, yPosition);
+      yPosition += 12;
     });
-
-    const csvContent = [
-      headers.join(','),
-      sampleRow.join(','),
-      // Add empty rows for filling
-      ...Array(5).fill(selectedFields.map(() => '').join(','))
-    ].join('\n');
-
-    return csvContent;
+    
+    yPosition += 20;
+    doc.text('Signature: ________________________    Date: _______________', leftMargin, yPosition);
+    yPosition += 15;
+    doc.text('For Office Use Only: ________________________', leftMargin, yPosition);
+    
+    return doc;
   };
 
   const handleDownloadTemplate = () => {
     try {
-      const templateContent = generateTemplate();
-      const blob = new Blob([templateContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
+      const pdf = generatePDFForm();
+      pdf.save(`staff-information-form-${new Date().toISOString().split('T')[0]}.pdf`);
       
-      if (link.download !== undefined) {
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', `staff-import-template-${new Date().toISOString().split('T')[0]}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-
-      toast.success('Staff template downloaded successfully');
+      toast.success('Staff information form downloaded successfully');
       onOpenChange(false);
     } catch (error) {
-      console.error('Template download error:', error);
-      toast.error('Failed to download template');
+      console.error('PDF generation error:', error);
+      toast.error('Failed to generate PDF form');
     }
   };
 
@@ -141,11 +191,11 @@ export function StaffTemplateDialog({ open, onOpenChange }: StaffTemplateDialogP
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5" />
-            Download Staff Info Template
+            <Printer className="h-5 w-5" />
+            Download Staff Information Form
           </DialogTitle>
           <DialogDescription>
-            Download a template for collecting staff information. Fill it out and use bulk import to add multiple staff members.
+            Download a printable PDF form for collecting staff information. Staff can fill it out by hand and submit for data entry.
           </DialogDescription>
         </DialogHeader>
 
@@ -153,33 +203,9 @@ export function StaffTemplateDialog({ open, onOpenChange }: StaffTemplateDialogP
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
-              This template includes sample data in the first row as a guide. Remove or replace the sample data with actual staff information before importing.
+              This generates a printable PDF form with blank fields for staff to fill out by hand. Perfect for collecting staff information during recruitment or onboarding.
             </AlertDescription>
           </Alert>
-
-          {/* Export Format */}
-          <div className="space-y-2">
-            <Label>Template Format</Label>
-            <Select value={exportFormat} onValueChange={(value: 'csv' | 'excel') => setExportFormat(value)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="csv">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    CSV Template (.csv)
-                  </div>
-                </SelectItem>
-                <SelectItem value="excel" disabled>
-                  <div className="flex items-center gap-2">
-                    <FileSpreadsheet className="h-4 w-4" />
-                    Excel Template (.xlsx) - Coming Soon
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
 
           {/* Field Selection by Category */}
           <div className="space-y-4">
@@ -212,13 +238,14 @@ export function StaffTemplateDialog({ open, onOpenChange }: StaffTemplateDialogP
             ))}
           </div>
 
-          {/* Template Summary */}
+          {/* Form Summary */}
           <div className="bg-muted/30 p-4 rounded-lg">
-            <h4 className="font-medium mb-2">Template Summary</h4>
+            <h4 className="font-medium mb-2">Form Summary</h4>
             <div className="space-y-1 text-sm text-muted-foreground">
-              <p><strong>{selectedFields.length}</strong> fields will be included in the template</p>
-              <p>Template includes 1 sample row + 5 blank rows for data entry</p>
-              <p>After filling, use the "Bulk Import" feature to add staff members</p>
+              <p><strong>{selectedFields.length}</strong> fields will be included in the PDF form</p>
+              <p>Organized by categories with clear sections and writing lines</p>
+              <p>Includes instructions, signature area, and office use section</p>
+              <p>Ready to print and distribute to new staff members</p>
             </div>
           </div>
         </div>
@@ -233,7 +260,7 @@ export function StaffTemplateDialog({ open, onOpenChange }: StaffTemplateDialogP
             className="bg-gradient-primary"
           >
             <Download className="h-4 w-4 mr-2" />
-            Download Template ({exportFormat.toUpperCase()})
+            Download PDF Form
           </Button>
         </DialogFooter>
       </DialogContent>

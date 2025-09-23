@@ -1475,7 +1475,7 @@ export type Database = {
           label: string | null
           qr_code_url: string | null
           qr_token: string
-          room_id: string
+          room_id: string | null
           scan_type: string | null
           services: string[]
           slug: string | null
@@ -1491,7 +1491,7 @@ export type Database = {
           label?: string | null
           qr_code_url?: string | null
           qr_token: string
-          room_id: string
+          room_id?: string | null
           scan_type?: string | null
           services: string[]
           slug?: string | null
@@ -1507,7 +1507,7 @@ export type Database = {
           label?: string | null
           qr_code_url?: string | null
           qr_token?: string
-          room_id?: string
+          room_id?: string | null
           scan_type?: string | null
           services?: string[]
           slug?: string | null

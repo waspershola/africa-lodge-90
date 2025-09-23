@@ -297,16 +297,84 @@ export const useTenants = () => useQuery({ queryKey: ['tenants'], queryFn: () =>
 export const useTenant = () => useQuery({ queryKey: ['tenant'], queryFn: () => Promise.resolve({}) });
 export const useUpdateTenant = () => useMutation({ mutationFn: ({ id, updates }: any) => Promise.resolve({ id, updates }) });
 
-export const useOwnerOverview = () => useQuery({ 
-  queryKey: ['owner', 'overview'], 
-  queryFn: () => Promise.resolve({
-    totalRooms: 0,
-    occupiedRooms: 0,
-    availableRooms: 0,
-    revenue: 0,
-    reservations: 0
-  })
-});
+export const useOwnerOverview = () => {
+  return useQuery({
+    queryKey: ['owner', 'overview'],
+    queryFn: async () => {
+      // Get current user's tenant from auth context
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        throw new Error('Not authenticated');
+      }
+
+      // Extract tenant_id from JWT claims
+      const claims = JSON.parse(atob(session.access_token.split('.')[1]));
+      const tenantId = claims.user_metadata?.tenant_id;
+      
+      if (!tenantId) {
+        throw new Error('No tenant associated with user');
+      }
+
+      // Fetch rooms data
+      const { data: rooms, error: roomsError } = await supabase
+        .from('rooms')
+        .select('id, status')
+        .eq('tenant_id', tenantId);
+
+      if (roomsError) throw roomsError;
+
+      // Fetch reservations data for current month
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+      
+      const endOfMonth = new Date(startOfMonth);
+      endOfMonth.setMonth(endOfMonth.getMonth() + 1);
+      endOfMonth.setDate(0);
+      endOfMonth.setHours(23, 59, 59, 999);
+
+      const { data: reservations, error: reservationsError } = await supabase
+        .from('reservations')
+        .select('id, status, total_amount, created_at, check_in_date, check_out_date')
+        .eq('tenant_id', tenantId)
+        .gte('created_at', startOfMonth.toISOString())
+        .lte('created_at', endOfMonth.toISOString());
+
+      if (reservationsError) throw reservationsError;
+
+      // Calculate metrics
+      const totalRooms = rooms?.length || 0;
+      const occupiedRooms = rooms?.filter(room => room.status === 'occupied').length || 0;
+      const availableRooms = rooms?.filter(room => room.status === 'available').length || 0;
+      const totalRevenue = reservations?.reduce((sum, res) => sum + (res.total_amount || 0), 0) || 0;
+      const totalReservations = reservations?.length || 0;
+
+      // Calculate occupancy rate
+      const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
+
+      // Get current active reservations (checked in)
+      const { data: activeReservations, error: activeError } = await supabase
+        .from('reservations')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('status', 'checked_in');
+
+      if (activeError) throw activeError;
+
+      return {
+        totalRooms,
+        occupiedRooms,
+        availableRooms,
+        revenue: totalRevenue,
+        reservations: totalReservations,
+        occupancyRate,
+        activeGuests: activeReservations?.length || 0
+      };
+    },
+    refetchInterval: 30000, // Refresh every 30 seconds
+    staleTime: 10000 // Consider data stale after 10 seconds
+  });
+};
 
 // Super Admin specific hooks
 export const useToggleEmergencyMode = () => useMutation({ mutationFn: (enabled: boolean) => Promise.resolve({ enabled }) });

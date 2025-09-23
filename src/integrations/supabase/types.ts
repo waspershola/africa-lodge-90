@@ -83,6 +83,75 @@ export type Database = {
           },
         ]
       }
+      corporate_accounts: {
+        Row: {
+          address: string | null
+          billing_address: string | null
+          city: string | null
+          company_name: string
+          contact_person: string | null
+          country: string | null
+          created_at: string | null
+          credit_limit: number | null
+          current_balance: number | null
+          discount_rate: number | null
+          email: string | null
+          id: string
+          notes: string | null
+          payment_terms: number | null
+          phone: string | null
+          postal_code: string | null
+          status: string | null
+          tax_id: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          billing_address?: string | null
+          city?: string | null
+          company_name: string
+          contact_person?: string | null
+          country?: string | null
+          created_at?: string | null
+          credit_limit?: number | null
+          current_balance?: number | null
+          discount_rate?: number | null
+          email?: string | null
+          id?: string
+          notes?: string | null
+          payment_terms?: number | null
+          phone?: string | null
+          postal_code?: string | null
+          status?: string | null
+          tax_id?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          billing_address?: string | null
+          city?: string | null
+          company_name?: string
+          contact_person?: string | null
+          country?: string | null
+          created_at?: string | null
+          credit_limit?: number | null
+          current_balance?: number | null
+          discount_rate?: number | null
+          email?: string | null
+          id?: string
+          notes?: string | null
+          payment_terms?: number | null
+          phone?: string | null
+          postal_code?: string | null
+          status?: string | null
+          tax_id?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       feature_flags: {
         Row: {
           config: Json | null
@@ -246,6 +315,84 @@ export type Database = {
             referencedColumns: ["tenant_id"]
           },
         ]
+      }
+      guests: {
+        Row: {
+          address: string | null
+          city: string | null
+          country: string | null
+          created_at: string | null
+          date_of_birth: string | null
+          email: string | null
+          first_name: string
+          guest_id_number: string | null
+          id: string
+          id_number: string | null
+          id_type: string | null
+          last_name: string
+          last_stay_date: string | null
+          nationality: string | null
+          notes: string | null
+          phone: string | null
+          postal_code: string | null
+          preferences: Json | null
+          tenant_id: string
+          total_spent: number | null
+          total_stays: number | null
+          updated_at: string | null
+          vip_status: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          email?: string | null
+          first_name: string
+          guest_id_number?: string | null
+          id?: string
+          id_number?: string | null
+          id_type?: string | null
+          last_name: string
+          last_stay_date?: string | null
+          nationality?: string | null
+          notes?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          preferences?: Json | null
+          tenant_id: string
+          total_spent?: number | null
+          total_stays?: number | null
+          updated_at?: string | null
+          vip_status?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          email?: string | null
+          first_name?: string
+          guest_id_number?: string | null
+          id?: string
+          id_number?: string | null
+          id_type?: string | null
+          last_name?: string
+          last_stay_date?: string | null
+          nationality?: string | null
+          notes?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          preferences?: Json | null
+          tenant_id?: string
+          total_spent?: number | null
+          total_stays?: number | null
+          updated_at?: string | null
+          vip_status?: string | null
+        }
+        Relationships: []
       }
       housekeeping_tasks: {
         Row: {
@@ -1031,6 +1178,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           guest_email: string | null
+          guest_id: string | null
           guest_id_number: string | null
           guest_name: string
           guest_phone: string | null
@@ -1055,6 +1203,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           guest_email?: string | null
+          guest_id?: string | null
           guest_id_number?: string | null
           guest_name: string
           guest_phone?: string | null
@@ -1079,6 +1228,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           guest_email?: string | null
+          guest_id?: string | null
           guest_id_number?: string | null
           guest_name?: string
           guest_phone?: string | null
@@ -1111,6 +1261,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
             referencedColumns: ["id"]
           },
           {

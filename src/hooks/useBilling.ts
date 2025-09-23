@@ -59,10 +59,11 @@ export function useBilling() {
 
       // Get payment method breakdown
       const { data: paymentMethods, error: pmError } = await supabase
-        .from('revenue_by_payment_method')
-        .select('*')
-        .eq('tenant_id', tenant.tenant_id)
-        .eq('payment_date', today);
+        .rpc('get_revenue_by_payment_method', {
+          p_tenant_id: tenant.tenant_id,
+          p_start_date: today,
+          p_end_date: today
+        });
 
       if (pmError) throw pmError;
 

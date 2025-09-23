@@ -2071,32 +2071,6 @@ export type Database = {
         }
         Relationships: []
       }
-      revenue_by_payment_method: {
-        Row: {
-          avg_transaction_amount: number | null
-          payment_date: string | null
-          payment_method: string | null
-          tenant_id: string | null
-          total_amount: number | null
-          transaction_count: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payments_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "payments_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["tenant_id"]
-          },
-        ]
-      }
     }
     Functions: {
       can_access_tenant: {
@@ -2226,6 +2200,20 @@ export type Database = {
           occupied_rooms: number
           stat_date: string
           total_rooms: number
+        }[]
+      }
+      get_revenue_by_payment_method: {
+        Args: {
+          p_end_date?: string
+          p_start_date?: string
+          p_tenant_id: string
+        }
+        Returns: {
+          avg_transaction_amount: number
+          payment_date: string
+          payment_method: string
+          total_amount: number
+          transaction_count: number
         }[]
       }
       get_user_id: {

@@ -2035,12 +2035,12 @@ export type Database = {
       }
       mv_daily_revenue_by_tenant: {
         Row: {
-          avg_room_rate: number | null
-          completed_revenue: number | null
-          reservations_count: number | null
+          avg_revenue_per_reservation: number | null
+          reservation_count: number | null
           revenue_date: string | null
-          room_revenue: number | null
           tenant_id: string | null
+          total_revenue: number | null
+          unique_guests: number | null
         }
         Relationships: [
           {
@@ -2171,6 +2171,20 @@ export type Database = {
           room_id: string
           room_number: string
           room_type_name: string
+        }[]
+      }
+      get_daily_revenue: {
+        Args: {
+          p_end_date?: string
+          p_start_date?: string
+          p_tenant_id: string
+        }
+        Returns: {
+          avg_revenue_per_reservation: number
+          reservation_count: number
+          revenue_date: string
+          total_revenue: number
+          unique_guests: number
         }[]
       }
       get_folio_balances: {

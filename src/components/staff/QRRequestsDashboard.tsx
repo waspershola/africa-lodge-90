@@ -410,7 +410,7 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
                     </div>
                     <Button 
                       onClick={handleSendResponse}
-                      disabled={!responseMessage.trim() || sendMessageMutation.isPending}
+                      disabled={!responseMessage.trim() || isLoading}
                     >
                       <Send className="h-4 w-4 mr-1" />
                       Send Message

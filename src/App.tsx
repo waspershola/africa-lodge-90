@@ -28,6 +28,7 @@ import Rooms from "./pages/owner/Rooms";
 import Utilities from "./pages/owner/Utilities";
 import Housekeeping from "./pages/owner/Housekeeping";
 import { OwnerProfileSettings } from "./components/owner/profile/OwnerProfileSettings";
+import QRAnalytics from "./pages/owner/QRAnalytics";
 import QRExportPage from "./components/QRExportPage";
 import ReportsInterface from "./components/ReportsInterface";
 import ManagerLayout from "./components/layout/ManagerLayout";
@@ -124,6 +125,7 @@ const App = () => (
             <Route path="financials" element={<Financials />} />
             <Route path="billing" element={<EnhancedBilling />} />
             <Route path="qr-manager" element={<QRManager />} />
+            <Route path="qr-analytics" element={<QRAnalytics />} />
             <Route path="reports" element={<Reports />} />
             <Route path="reservations" element={<Reservations />} />
             <Route path="guests" element={<Guests />} />

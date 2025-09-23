@@ -516,9 +516,24 @@ export const useGuests = () => {
   return useQuery({
     queryKey: ['guests'],
     queryFn: async () => {
+      // Get current user's tenant from auth context
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        throw new Error('Not authenticated');
+      }
+
+      // Extract tenant_id from JWT claims
+      const claims = JSON.parse(atob(session.access_token.split('.')[1]));
+      const tenantId = claims.user_metadata?.tenant_id;
+      
+      if (!tenantId) {
+        throw new Error('No tenant associated with user');
+      }
+
       const { data, error } = await supabase
         .from('guests')
         .select('*')
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
       if (error) throw new Error(error.message);

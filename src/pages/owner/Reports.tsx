@@ -14,6 +14,8 @@ import OccupancyReports from '@/components/owner/reports/OccupancyReports';
 import RevenueReports from '@/components/owner/reports/RevenueReports';
 import StaffPerformanceReports from '@/components/owner/reports/StaffPerformanceReports';
 import GuestDemographics from '@/components/owner/reports/GuestDemographics';
+import { useReporting } from '@/hooks/useReporting';
+import { useOwnerOverview } from '@/hooks/useApi';
 
 export default function ReportsPage() {
   const [selectedReport, setSelectedReport] = useState('occupancy');
@@ -22,6 +24,22 @@ export default function ReportsPage() {
     to: new Date()
   });
   const [reportPeriod, setReportPeriod] = useState('monthly');
+
+  // Load real data from APIs
+  const { data: overviewData } = useOwnerOverview();
+  const { occupancyStats, guestStats, revenueByMethod, loading } = useReporting();
+
+  // Calculate real metrics from API data
+  const currentMetrics = {
+    occupancyRate: overviewData?.occupancyRate || 0,
+    avgDailyRate: overviewData?.revenue && overviewData?.occupiedRooms 
+      ? overviewData.revenue / overviewData.occupiedRooms 
+      : 0,
+    totalRevenue: overviewData?.revenue || 0,
+    totalBookings: overviewData?.reservations || 0,
+    avgStayDuration: 2.3, // TODO: Calculate from reservation data
+    guestSatisfaction: 4.6 // TODO: Calculate from guest feedback data
+  };
 
   const reportTypes = [
     {
@@ -53,16 +71,6 @@ export default function ReportsPage() {
       color: 'text-orange-600'
     }
   ];
-
-  // Mock KPI data
-  const currentMetrics = {
-    occupancyRate: 78.5,
-    avgDailyRate: 2450,
-    totalRevenue: 1247500,
-    totalBookings: 342,
-    avgStayDuration: 2.3,
-    guestSatisfaction: 4.6
-  };
 
   const handleExportReport = (format: 'pdf' | 'excel') => {
     // Mock export functionality
@@ -100,7 +108,7 @@ export default function ReportsPage() {
             <Bed className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{currentMetrics.occupancyRate}%</div>
+            <div className="text-2xl font-bold">{loading ? '...' : currentMetrics.occupancyRate}%</div>
             <p className="text-xs text-muted-foreground">
               +2.1% from last month
             </p>
@@ -113,7 +121,9 @@ export default function ReportsPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₦{currentMetrics.avgDailyRate.toLocaleString()}</div>
+            <div className="text-2xl font-bold">
+              {loading ? '...' : `₦${Math.round(currentMetrics.avgDailyRate).toLocaleString()}`}
+            </div>
             <p className="text-xs text-muted-foreground">
               +5.2% from last month
             </p>
@@ -126,7 +136,9 @@ export default function ReportsPage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₦{(currentMetrics.totalRevenue / 1000000).toFixed(1)}M</div>
+            <div className="text-2xl font-bold">
+              {loading ? '...' : `₦${(currentMetrics.totalRevenue / 1000000).toFixed(1)}M`}
+            </div>
             <p className="text-xs text-muted-foreground">
               +12.5% from last month
             </p>
@@ -139,7 +151,7 @@ export default function ReportsPage() {
             <CalendarIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{currentMetrics.totalBookings}</div>
+            <div className="text-2xl font-bold">{loading ? '...' : currentMetrics.totalBookings}</div>
             <p className="text-xs text-muted-foreground">
               +8.1% from last month
             </p>

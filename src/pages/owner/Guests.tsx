@@ -26,12 +26,15 @@ export default function GuestsPage() {
   const [showNewGuestDialog, setShowNewGuestDialog] = useState(false);
   const [showGuestProfile, setShowGuestProfile] = useState(false);
 
-  // Mock guest stats since useGuestStats is not available
+  // Load guest data from API
+  const { data: guestsData = [] } = useGuests();
+  
+  // Calculate real guest stats from API data
   const guestStats = {
-    totalGuests: 247,
-    vipGuests: 43,
-    corporateAccounts: 12,
-    totalRevenue: 45600000
+    totalGuests: guestsData.length,
+    vipGuests: guestsData.filter(guest => guest.vip_status === 'gold' || guest.vip_status === 'silver').length,
+    corporateAccounts: 0, // Will be calculated from corporate accounts table later
+    totalRevenue: guestsData.reduce((total, guest) => total + (guest.total_spent || 0), 0)
   };
 
   const handleGuestSelect = (guest: any) => {

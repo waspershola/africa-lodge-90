@@ -7,6 +7,10 @@ import { QRCodeWizard } from '@/components/owner/qr/QRCodeWizard';
 import { GlobalSettingsDialog, type BrandingSettings } from '@/components/owner/qr/GlobalSettingsDialog';
 import { BulkExportDialog } from '@/components/owner/qr/BulkExportDialog';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
+import { useQuery } from '@tanstack/react-query';
+import { useTenantInfo } from '@/hooks/useTenantInfo';
 
 export interface QRCodeData {
   id: string;
@@ -26,57 +30,49 @@ export default function QRManagerPage() {
   const [showGlobalSettings, setShowGlobalSettings] = useState(false);
   const [showBulkExport, setShowBulkExport] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { data: tenantInfo } = useTenantInfo();
 
+  // Load QR codes from database
+  const { data: qrCodes = [], isLoading, refetch } = useQuery({
+    queryKey: ['qr-codes', user?.tenant_id],
+    queryFn: async () => {
+      if (!user?.tenant_id) return [];
+      
+      const { data, error } = await supabase
+        .from('qr_codes')
+        .select(`
+          *,
+          rooms:room_id (room_number),
+          qr_orders:qr_orders (id, status, service_type)
+        `)
+        .eq('tenant_id', user.tenant_id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return (data || []).map(qr => ({
+        id: qr.qr_token,
+        scope: 'Room' as const,
+        assignedTo: qr.rooms?.room_number || `Room ${qr.room_id}`,
+        servicesEnabled: qr.services || [],
+        status: (qr.is_active ? 'Active' : 'Inactive') as 'Active' | 'Inactive',
+        pendingRequests: qr.qr_orders?.filter(order => order.status === 'pending').length || 0,
+        createdAt: qr.created_at || '',
+        createdBy: 'System'
+      }));
+    },
+    enabled: !!user?.tenant_id
+  });
+
+  // Get branding settings from tenant info
   const [brandingSettings, setBrandingSettings] = useState<BrandingSettings>({
-    hotelName: 'Grand Hotel',
-    showLogo: true,
+    hotelName: tenantInfo?.hotel_name || 'Hotel',
+    showLogo: !!tenantInfo?.logo_url,
     primaryColor: '#2563eb',
     secondaryColor: '#64748b',
     defaultServices: ['Wi-Fi', 'Room Service', 'Housekeeping']
   });
-
-  const [qrCodes, setQRCodes] = useState<QRCodeData[]>([
-    {
-      id: 'QR_101',
-      scope: 'Room',
-      assignedTo: 'Room 101',
-      servicesEnabled: ['Wi-Fi', 'Room Service', 'Housekeeping', 'Maintenance', 'Menu'],
-      status: 'Active',
-      pendingRequests: 3,
-      createdAt: '2025-09-18T22:39:00Z',
-      createdBy: 'John Manager'
-    },
-    {
-      id: 'QR_102',
-      scope: 'Room',
-      assignedTo: 'Room 102',
-      servicesEnabled: ['Wi-Fi', 'Room Service', 'Housekeeping'],
-      status: 'Active',
-      pendingRequests: 0,
-      createdAt: '2025-09-18T22:40:00Z',
-      createdBy: 'John Manager'
-    },
-    {
-      id: 'QR_POOL',
-      scope: 'Location',
-      assignedTo: 'Poolside Bar',
-      servicesEnabled: ['Menu', 'Events'],
-      status: 'Active',
-      pendingRequests: 6,
-      createdAt: '2025-09-18T22:41:00Z',
-      createdBy: 'Sarah Admin'
-    },
-    {
-      id: 'QR_LOBBY',
-      scope: 'Location',
-      assignedTo: 'Lobby',
-      servicesEnabled: ['Wi-Fi', 'Feedback'],
-      status: 'Active',
-      pendingRequests: 0,
-      createdAt: '2025-09-18T22:42:00Z',
-      createdBy: 'John Manager'
-    }
-  ]);
 
   const handleViewQR = (qr: QRCodeData) => {
     setSelectedQR(qr);
@@ -124,29 +120,64 @@ export default function QRManagerPage() {
     });
   };
 
-  const handleUpdateQR = (updatedQR: QRCodeData) => {
-    setQRCodes(prev => prev.map(qr => 
-      qr.id === updatedQR.id ? updatedQR : qr
-    ));
-    toast({
-      title: "QR Code Updated",
-      description: `${updatedQR.assignedTo} QR code has been updated successfully`
-    });
+  const handleUpdateQR = async (updatedQR: QRCodeData) => {
+    if (!user?.tenant_id) return;
+    
+    try {
+      const { error } = await supabase
+        .from('qr_codes')
+        .update({ 
+          services: updatedQR.servicesEnabled,
+          is_active: updatedQR.status === 'Active'
+        })
+        .eq('qr_token', updatedQR.id);
+
+      if (error) throw error;
+      
+      await refetch();
+      toast({
+        title: "QR Code Updated",
+        description: `${updatedQR.assignedTo} QR code has been updated successfully`
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to update QR code",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleCreateQR = (newQRData: Omit<QRCodeData, 'id' | 'createdAt' | 'createdBy' | 'pendingRequests'>) => {
-    const newQR: QRCodeData = {
-      ...newQRData,
-      id: `QR_${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      createdBy: 'Current User',
-      pendingRequests: 0
-    };
-    setQRCodes(prev => [...prev, newQR]);
-    toast({
-      title: "QR Code Created",
-      description: `QR code for ${newQR.assignedTo} has been generated successfully`
-    });
+  const handleCreateQR = async (newQRData: Omit<QRCodeData, 'id' | 'createdAt' | 'createdBy' | 'pendingRequests'>) => {
+    if (!user?.tenant_id) return;
+    
+    try {
+      const qrToken = `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      const { error } = await supabase
+        .from('qr_codes')
+        .insert([{
+          tenant_id: user.tenant_id,
+          qr_token: qrToken,
+          room_id: null, // Will need to be set based on assignment
+          services: newQRData.servicesEnabled,
+          is_active: newQRData.status === 'Active'
+        }]);
+
+      if (error) throw error;
+      
+      await refetch();
+      toast({
+        title: "QR Code Created",
+        description: `QR code for ${newQRData.assignedTo} has been generated successfully`
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error", 
+        description: err.message || "Failed to create QR code",
+        variant: "destructive"
+      });
+    }
   };
 
   return (

@@ -356,8 +356,9 @@ export const useConfiguration = () => {
 
     try {
       // Upload file to Supabase Storage (using hotel-logos bucket)
+      // Use folder structure: tenant_id/filename for RLS policies
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.tenant_id}-logo-${Date.now()}.${fileExt}`;
+      const fileName = `${user.tenant_id}/logo-${Date.now()}.${fileExt}`;
       
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('hotel-logos')

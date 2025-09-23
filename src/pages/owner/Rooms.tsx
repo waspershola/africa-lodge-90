@@ -10,19 +10,21 @@ import DynamicPricingControls from "@/components/owner/rooms/DynamicPricingContr
 import RoomInventoryGrid from "@/components/owner/rooms/RoomInventoryGrid";
 import CurrencyTaxSettings from "@/components/owner/financials/CurrencyTaxSettings";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useRooms } from "@/hooks/useRooms";
 
 export default function Rooms() {
   const [activeTab, setActiveTab] = useState("rooms");
   const { formatPrice, updateSettings } = useCurrency();
+  const { rooms = [], roomTypes = [] } = useRooms();
 
-  // Mock data for overview cards
+  // Calculate real room stats from API data
   const roomStats = {
-    totalRooms: 150,
-    availableRooms: 120,
-    occupiedRooms: 25,
-    maintenanceRooms: 5,
-    averageRate: 185,
-    revenueToday: 4625,
+    totalRooms: rooms.length,
+    availableRooms: rooms.filter(room => room.status === 'available').length,
+    occupiedRooms: rooms.filter(room => room.status === 'occupied').length,
+    maintenanceRooms: rooms.filter(room => room.status === 'maintenance' || room.status === 'out_of_order').length,
+    averageRate: roomTypes.length > 0 ? roomTypes.reduce((sum, type) => sum + type.base_rate, 0) / roomTypes.length : 0,
+    revenueToday: 0, // Will be calculated from today's reservations
   };
 
   return (

@@ -25,7 +25,7 @@ export const QRCodePreviewDialog = ({
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
 
-  const qrUrl = `https://hotel.app/qr/${room}`;
+  const qrUrl = `${window.location.origin}/guest/qr/${room}`;
 
   const handleDownload = () => {
     toast({

@@ -7,7 +7,7 @@ export interface User {
   id: string;
   tenant_id?: string;
   email: string;
-  role: 'SUPER_ADMIN' | 'OWNER' | 'MANAGER' | 'STAFF' | 'FRONT_DESK' | 'HOUSEKEEPING' | 'MAINTENANCE' | 'POS';
+  role: 'SUPER_ADMIN' | 'OWNER' | 'MANAGER' | 'STAFF' | 'FRONT_DESK' | 'HOUSEKEEPING' | 'MAINTENANCE' | 'POS' | 'ACCOUNTANT';
   name?: string;
   phone?: string;
   department?: string;
@@ -20,6 +20,25 @@ export interface User {
   temp_expires?: string;
   created_at?: string;
   updated_at?: string;
+  
+  // Extended profile fields
+  address?: string;
+  nin?: string;
+  date_of_birth?: string;
+  nationality?: string;
+  employee_id?: string;
+  hire_date?: string;
+  employment_type?: string;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  emergency_contact_relationship?: string;
+  next_of_kin_name?: string;
+  next_of_kin_phone?: string;
+  next_of_kin_relationship?: string;
+  bank_name?: string;
+  account_number?: string;
+  passport_number?: string;
+  drivers_license?: string;
 }
 
 export interface CreateUserData {
@@ -52,7 +71,26 @@ export function useUsers() {
     try {
       let query = supabase
         .from('users')
-        .select('*')
+        .select(`
+          *,
+          address,
+          nin,
+          date_of_birth,
+          nationality,
+          employee_id,
+          hire_date,
+          employment_type,
+          emergency_contact_name,
+          emergency_contact_phone,
+          emergency_contact_relationship,
+          next_of_kin_name,
+          next_of_kin_phone,
+          next_of_kin_relationship,
+          bank_name,
+          account_number,
+          passport_number,
+          drivers_license
+        `)
         .order('created_at', { ascending: false });
 
       // Super admins can see all users, others only see users in their tenant
@@ -80,7 +118,25 @@ export function useUsers() {
         temp_password_hash: user.temp_password_hash,
         temp_expires: user.temp_expires,
         created_at: user.created_at,
-        updated_at: user.updated_at
+        updated_at: user.updated_at,
+        // Extended profile fields
+        address: user.address,
+        nin: user.nin,
+        date_of_birth: user.date_of_birth,
+        nationality: user.nationality,
+        employee_id: user.employee_id,
+        hire_date: user.hire_date,
+        employment_type: user.employment_type,
+        emergency_contact_name: user.emergency_contact_name,
+        emergency_contact_phone: user.emergency_contact_phone,
+        emergency_contact_relationship: user.emergency_contact_relationship,
+        next_of_kin_name: user.next_of_kin_name,
+        next_of_kin_phone: user.next_of_kin_phone,
+        next_of_kin_relationship: user.next_of_kin_relationship,
+        bank_name: user.bank_name,
+        account_number: user.account_number,
+        passport_number: user.passport_number,
+        drivers_license: user.drivers_license
       }));
 
       setUsers(processedUsers);
@@ -273,39 +329,48 @@ export function useUsers() {
     if (!currentUser) return;
 
     try {
-      const { error } = await supabase
+      // First deactivate the user
+      const { error: updateError } = await supabase
         .from('users')
         .update({ is_active: false })
         .eq('id', userId);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      // Then delete from auth system
+      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+      if (authError) {
+        console.warn('Could not delete auth user:', authError.message);
+        // Continue anyway - user is deactivated
+      }
 
       // Create audit log
       await supabase
         .from('audit_log')
         .insert([{
-          action: 'user_deactivated',
+          action: 'user_deleted',
           resource_type: 'user',
           resource_id: userId,
           actor_id: currentUser.id,
           actor_email: currentUser.email,
           actor_role: currentUser.role,
           tenant_id: currentUser.tenant_id,
-          description: `User deactivated`
+          description: `User removed from system`
         }]);
 
       await loadUsers();
       
       toast({
-        title: "User Deactivated",
-        description: "User has been deactivated successfully.",
+        title: "User Removed",
+        description: "User has been removed successfully.",
       });
     } catch (err: any) {
       toast({
         title: "Error",
-        description: err.message || "Failed to deactivate user",
+        description: err.message || "Failed to remove user",
         variant: "destructive"
       });
+      throw err;
     }
   };
 

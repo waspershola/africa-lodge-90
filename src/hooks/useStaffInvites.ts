@@ -123,41 +123,35 @@ export const useStaffInvites = () => {
     setIsLoading(true);
     
     try {
-      // Generate new temporary password
-      const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
-      const tempExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      const response = await supabase.functions.invoke('send-temp-password', {
+        body: { 
+          user_id: userId,
+          send_email: true // Always try to send email
+        }
+      });
 
-      // Update user's password and force reset
-      const { data: user, error: updateError } = await supabase
-        .from('users')
-        .update({
-          force_reset: true,
-          temp_expires: tempExpires.toISOString(),
-        })
-        .eq('id', userId)
-        .select('email, name')
-        .single();
-
-      if (updateError) {
-        console.error('Error updating user:', updateError);
-        toast.error('Failed to reset password');
-        return { success: false, error: updateError.message };
+      if (response.error) {
+        throw response.error;
       }
 
-      // Reset password via admin API (would need service role key)
-      // For now, return temp password for manual sharing
-      toast.success('Password reset initiated. Share the new temporary password.');
+      const result = response.data;
       
-      return { 
-        success: true, 
-        temp_password: tempPassword 
-      };
-    } catch (error) {
-      console.error('Error resetting password:', error);
-      toast.error('Failed to reset password');
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error'
+      if (result.success) {
+        return {
+          success: true,
+          temp_password: result.temp_password
+        };
+      } else {
+        return {
+          success: false,
+          error: result.error || 'Failed to reset password'
+        };
+      }
+      
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Failed to reset password'
       };
     } finally {
       setIsLoading(false);

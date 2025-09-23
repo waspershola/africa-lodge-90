@@ -42,6 +42,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { StaffInvitationStatusBadge } from './StaffInvitationStatusBadge';
 import { StaffExportDialog } from './StaffExportDialog';
 import { StaffTemplateDialog } from './StaffTemplateDialog';
+import { RegeneratePasswordDialog } from './RegeneratePasswordDialog';
 import { StaffBulkImportDialog } from './StaffBulkImportDialog';
 import { SalaryManagementTab } from './SalaryManagementTab';
 import { SalaryApprovalWorkflow } from './SalaryApprovalWorkflow';
@@ -104,6 +105,7 @@ export function StaffManagementDashboard() {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [bulkImportDialogOpen, setBulkImportDialogOpen] = useState(false);
+  const [regeneratePasswordOpen, setRegeneratePasswordOpen] = useState(false);
 
   // Transform Supabase users to display format
   useEffect(() => {
@@ -117,7 +119,26 @@ export function StaffManagementDashboard() {
       invitedAt: user.created_at?.split('T')[0] || '',
       lastLogin: user.last_login?.split('T')[0],
       force_reset: user.force_reset,
-      temp_expires: user.temp_expires
+      temp_expires: user.temp_expires,
+      // Extended profile fields
+      phone: user.phone,
+      address: user.address,
+      nin: user.nin,
+      date_of_birth: user.date_of_birth,
+      nationality: user.nationality,
+      employee_id: user.employee_id,
+      hire_date: user.hire_date,
+      employment_type: user.employment_type,
+      emergency_contact_name: user.emergency_contact_name,
+      emergency_contact_phone: user.emergency_contact_phone,
+      emergency_contact_relationship: user.emergency_contact_relationship,
+      next_of_kin_name: user.next_of_kin_name,
+      next_of_kin_phone: user.next_of_kin_phone,
+      next_of_kin_relationship: user.next_of_kin_relationship,
+      bank_name: user.bank_name,
+      account_number: user.account_number,
+      passport_number: user.passport_number,
+      drivers_license: user.drivers_license
     }));
     setStaffMembersDisplay(transformedStaff);
   }, [staffMembers]);
@@ -149,31 +170,23 @@ export function StaffManagementDashboard() {
   };
 
   const handleRemoveStaff = async (staffId: string, staffName: string) => {
-    if (!confirm(`Are you sure you want to remove ${staffName} from your team?`)) {
+    if (!confirm(`Are you sure you want to remove ${staffName} from your team? This action cannot be undone.`)) {
       return;
     }
 
     try {
       await deactivateUser(staffId);
       toast.success(`${staffName} has been removed from your team`);
-      // Force re-render by reloading users
-      window.location.reload();
+      // No need to reload - the hook will update the list
     } catch (error: any) {
       toast.error(error.message || 'Failed to remove staff member');
     }
   };
 
-  const handleResendInvite = async (staffId: string, staffEmail: string) => {
-    try {
-      const result = await resetUserPassword(staffId);
-      if (result.success) {
-        toast.success(`New temporary password generated for ${staffEmail}`);
-      } else {
-        toast.error(result.error || 'Failed to reset password');
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to resend invitation');
-    }
+  const handleResendInvite = async (staffId: string, staffEmail: string, staffName: string) => {
+    // Use the proper regenerate password dialog
+    setSelectedStaff(staffMembersDisplay.find(s => s.id === staffId) || null);
+    setRegeneratePasswordOpen(true);
   };
 
   const isPendingReset = (staff: StaffMember) => {
@@ -405,7 +418,7 @@ export function StaffManagementDashboard() {
                             Reset Password
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => handleResendInvite(staff.id, staff.email)}
+                            onClick={() => handleResendInvite(staff.id, staff.email, staff.name)}
                           >
                             <RotateCcw className="h-4 w-4 mr-2" />
                             Regenerate Access

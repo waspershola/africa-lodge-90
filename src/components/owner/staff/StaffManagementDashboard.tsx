@@ -34,6 +34,7 @@ import { EnhancedStaffInvitationDialog } from './EnhancedStaffInvitationDialog';
 import { TemporaryPasswordResetDialog } from '@/components/auth/TemporaryPasswordResetDialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { StaffInvitationStatusBadge } from './StaffInvitationStatusBadge';
 
 interface StaffMember {
   id: string;
@@ -282,27 +283,22 @@ export function StaffManagementDashboard() {
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground">{staff.email}</p>
-                        <div className="flex items-center gap-2">
-                          <Badge className={roleInfo.color}>
-                            <Shield className="h-3 w-3 mr-1" />
-                            {roleInfo.label}
-                          </Badge>
-                          {staff.department && (
-                            <Badge variant="outline">
-                              {staff.department}
+                          <div className="flex items-center gap-2">
+                            <Badge className={roleInfo.color}>
+                              <Shield className="h-3 w-3 mr-1" />
+                              {roleInfo.label}
                             </Badge>
-                          )}
-                          <Badge className={getStatusColor(staff.status)}>
-                            {staff.status === 'active' ? (
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                            ) : staff.status === 'suspended' ? (
-                              <XCircle className="h-3 w-3 mr-1" />
-                            ) : (
-                              <Clock className="h-3 w-3 mr-1" />
+                            {staff.department && (
+                              <Badge variant="outline">
+                                {staff.department}
+                              </Badge>
                             )}
-                            {staff.status}
-                          </Badge>
-                        </div>
+                            <StaffInvitationStatusBadge 
+                              status={staff.status}
+                              forceReset={staff.force_reset}
+                              tempExpires={staff.temp_expires}
+                            />
+                          </div>
                       </div>
                     </div>
 

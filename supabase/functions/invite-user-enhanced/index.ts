@@ -117,6 +117,156 @@ serve(async (req) => {
       });
     }
 
+    // Check if user already exists in our users table
+    const { data: existingUser } = await supabaseAdmin
+      .from('users')
+      .select('id, email, is_active')
+      .eq('email', email)
+      .single();
+
+    if (existingUser) {
+      console.log('User already exists:', existingUser.id);
+      
+      if (existingUser.is_active) {
+        return new Response(JSON.stringify({ 
+          error: 'User already exists and is active',
+          details: `A user with email ${email} already exists in the system.` 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } else {
+        // User exists but is inactive - reactivate them
+        console.log('Reactivating existing inactive user');
+        
+        const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
+        const tempExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+        // Update existing user profile
+        const { error: updateError } = await supabaseAdmin
+          .from('users')
+          .update({
+            name,
+            role,
+            tenant_id: tenant_id || null,
+            department,
+            force_reset: true,
+            temp_expires: tempExpires.toISOString(),
+            is_active: true,
+            invitation_status: 'pending',
+            phone: phone || null,
+            address: address || null,
+            nin: nin || null,
+            date_of_birth: date_of_birth || null,
+            nationality: nationality || null,
+            employee_id: employee_id || null,
+            hire_date: hire_date || null,
+            employment_type: employment_type || 'full-time',
+            emergency_contact_name: emergency_contact_name || null,
+            emergency_contact_phone: emergency_contact_phone || null,
+            emergency_contact_relationship: emergency_contact_relationship || null,
+            next_of_kin_name: next_of_kin_name || null,
+            next_of_kin_phone: next_of_kin_phone || null,
+            next_of_kin_relationship: next_of_kin_relationship || null,
+            bank_name: bank_name || null,
+            account_number: account_number || null,
+            passport_number: passport_number || null,
+            drivers_license: drivers_license || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingUser.id);
+
+        if (updateError) {
+          console.error('Error updating existing user:', updateError);
+          return new Response(JSON.stringify({ 
+            error: 'Failed to reactivate user',
+            details: updateError.message 
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Update auth user password
+        const { error: authUpdateError } = await supabaseAdmin.auth.admin.updateUserById(
+          existingUser.id,
+          {
+            password: tempPassword,
+            user_metadata: {
+              role,
+              tenant_id,
+              name,
+              invited: true
+            }
+          }
+        );
+
+        if (authUpdateError) {
+          console.error('Error updating auth user:', authUpdateError);
+          // Continue anyway as profile was updated successfully
+        }
+
+        // Log the reactivation
+        await supabaseAdmin
+          .from('audit_log')
+          .insert({
+            actor_id: existingUser.id,
+            actor_email: email,
+            tenant_id: tenant_id || null,
+            action: 'user_reactivated',
+            resource_type: 'user',
+            resource_id: existingUser.id,
+            description: `User ${email} reactivated with role ${role}${department ? ` in department ${department}` : ''}`,
+            metadata: { role, tenant_id, department, employee_id }
+          });
+
+        // Try to send email if requested
+        let emailSent = false;
+        let emailError = null;
+
+        if (send_email) {
+          try {
+            const emailResponse = await supabaseAdmin.functions.invoke('send-temp-password', {
+              body: {
+                email,
+                name,
+                tempPassword,
+                role,
+                hotel_name: tenant_id ? 'Your Hotel' : 'Platform'
+              }
+            });
+
+            if (emailResponse.error) {
+              console.error('Email sending failed:', emailResponse.error);
+              emailError = emailResponse.error.message;
+            } else {
+              emailSent = true;
+              console.log('Reactivation email sent successfully');
+            }
+          } catch (error) {
+            console.error('Email service error:', error);
+            emailError = 'Email service unavailable';
+          }
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          user_id: existingUser.id,
+          email,
+          role,
+          tenant_id,
+          force_reset: true,
+          temp_expires: tempExpires.toISOString(),
+          email_sent: emailSent,
+          message: 'User reactivated successfully',
+          ...((!send_email || !emailSent) && { temp_password: tempPassword }),
+          ...(emailError && { email_error: emailError })
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // Generate temporary password
     const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
     const tempExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours

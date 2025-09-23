@@ -105,7 +105,7 @@ serve(async (req) => {
         success: false,
         error: 'Missing required fields: email, name, role' 
       }), {
-        status: 400,
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -118,7 +118,7 @@ serve(async (req) => {
         error: 'Invalid role',
         availableRoles: validRoles
       }), {
-        status: 400,
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -129,7 +129,7 @@ serve(async (req) => {
         success: false,
         error: 'tenant_id is required for non-super-admin roles' 
       }), {
-        status: 400,
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -154,7 +154,7 @@ serve(async (req) => {
         details: checkError.message,
         temp_password: !send_email ? tempPassword : undefined
       }), {
-        status: 500,
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -190,7 +190,7 @@ serve(async (req) => {
             details: `This email is already registered under another tenant. Please remove the user from their current tenant before reassigning, or use a different email address.`,
             temp_password: !send_email ? tempPassword : undefined
           }), {
-            status: 409, // Conflict status code
+            status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         } else {
@@ -201,7 +201,7 @@ serve(async (req) => {
             details: `A user with email ${email} already exists in your tenant and is active.`,
             temp_password: !send_email ? tempPassword : undefined
           }), {
-            status: 409,
+            status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
@@ -270,7 +270,7 @@ serve(async (req) => {
           details: updateError.message,
           temp_password: !send_email ? tempPassword : undefined
         }), {
-          status: 422,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
@@ -300,7 +300,7 @@ serve(async (req) => {
             details: 'This email address is already registered in the authentication system. Please use a different email or contact support.',
             temp_password: !send_email ? tempPassword : undefined
           }), {
-            status: 409, // Conflict status code
+            status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         } else if (authError.message?.includes('invalid_email')) {
@@ -310,7 +310,7 @@ serve(async (req) => {
             details: 'Please provide a valid email address.',
             temp_password: !send_email ? tempPassword : undefined
           }), {
-            status: 400, // Bad request
+            status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         } else {
@@ -320,7 +320,7 @@ serve(async (req) => {
             details: authError.message || 'Unknown authentication error occurred.',
             temp_password: !send_email ? tempPassword : undefined
           }), {
-            status: 422, // Unprocessable entity
+            status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
@@ -399,7 +399,7 @@ serve(async (req) => {
         details: profileError.message,
         temp_password: !send_email ? tempPassword : undefined
       }), {
-        status: 500,
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -479,6 +479,7 @@ serve(async (req) => {
     });
 
     return new Response(JSON.stringify(response), {
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
@@ -493,9 +494,9 @@ serve(async (req) => {
       error: 'Internal server error',
       details: error.message,
       // Only provide temp password if email is not being sent
-      temp_password: !send_email ? emergencyTempPassword : undefined
+      temp_password: emergencyTempPassword
     }), {
-      status: 500,
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

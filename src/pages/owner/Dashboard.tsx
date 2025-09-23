@@ -127,26 +127,10 @@ export default function OwnerDashboardPage() {
     }
   ];
 
-  // Use real alerts and tasks data with fallback
-  // Note: alerts and pendingTasks are now fetched from the hooks above
-
-  // Bookings pipeline data
-  const bookingsPipeline = overview.bookingsPipeline || [
-    { stage: "Inquiries", count: 45, color: "#3B82F6" },
-    { stage: "Quotes Sent", count: 28, color: "#F59E0B" },
-    { stage: "Confirmed", count: 18, color: "#10B981" },
-    { stage: "Checked In", count: 15, color: "#8B5CF6" }
-  ];
-
-  // Revenue trend data
-  const revenueTrend = overview.revenueTrend || [
-    { month: 'Jan', revenue: 8500000, bookings: 145 },
-    { month: 'Feb', revenue: 9200000, bookings: 162 },
-    { month: 'Mar', revenue: 10800000, bookings: 189 },
-    { month: 'Apr', revenue: 11500000, bookings: 198 },
-    { month: 'May', revenue: 12200000, bookings: 205 },
-    { month: 'Jun', revenue: 13100000, bookings: 223 }
-  ];
+  // Use real tenant-scoped data from useOwnerOverview hook
+  // All data is now pulled from the tenant's actual reservations and rooms
+  const bookingsPipeline = overview.bookingsPipeline || [];
+  const revenueTrend = overview.revenueTrend || [];
 
   const getAlertIcon = (level: string) => {
     switch (level) {

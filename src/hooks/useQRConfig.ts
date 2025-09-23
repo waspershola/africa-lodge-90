@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface QRConfig {
   id: string;
@@ -30,39 +31,66 @@ export const useQRConfig = (sessionToken?: string) => {
       }
 
       try {
-        // In production, this would validate the JWT token and fetch from Supabase
-        // For now, using mock data but with production-ready structure
+        // Extract tenant and room info from QR token
+        const tokenData = JSON.parse(atob(sessionToken));
+        const { tenant_id, room_id } = tokenData;
         
-        // Simulate token validation
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Mock config - in production this comes from database
-        const mockConfig: QRConfig = {
-          id: 'qr-config-123',
-          hotel_id: 'hotel-1',
-          location_id: '205',
+        if (!tenant_id || !room_id) {
+          throw new Error('Invalid QR token structure');
+        }
+
+        // Fetch tenant configuration from Supabase
+        const { data: tenant, error: tenantError } = await supabase
+          .from('tenants')
+          .select('hotel_name, logo_url, brand_colors, settings')
+          .eq('tenant_id', tenant_id)
+          .single();
+
+        if (tenantError) throw tenantError;
+
+        // Fetch QR code configuration for this room
+        const { data: qrCode, error: qrError } = await supabase
+          .from('qr_codes')
+          .select('services, template_id')
+          .eq('tenant_id', tenant_id)
+          .eq('room_id', room_id)
+          .single();
+
+        if (qrError) throw qrError;
+
+        // Build tenant-specific QR config
+        const brandColors = (tenant.brand_colors as any) || {};
+        const tenantConfig: QRConfig = {
+          id: `qr-${tenant_id}-${room_id}`,
+          hotel_id: tenant_id,
+          location_id: room_id,
           location_type: 'room',
-          enabled_services: [
-            'room-service',
-            'housekeeping', 
-            'maintenance',
-            'wifi',
-            'feedback',
-            'bill-preview'
-          ],
+          enabled_services: qrCode.services || ['room-service', 'housekeeping', 'maintenance', 'wifi'],
           branding: {
-            primary_color: '#C9A96E',
-            logo_url: '/logo.png',
-            welcome_message: 'Welcome to Lagos Grand Hotel'
+            primary_color: brandColors.primary || '#2563eb',
+            logo_url: tenant.logo_url || undefined,
+            welcome_message: `Welcome to ${tenant.hotel_name}`
           },
           expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
           max_concurrent_requests: 5
         };
 
-        setConfig(mockConfig);
+        setConfig(tenantConfig);
       } catch (err) {
         setError('Failed to load QR configuration');
         console.error('QR config error:', err);
+        // Set a basic fallback config to prevent total failure
+        setConfig({
+          id: 'fallback',
+          hotel_id: 'unknown',
+          location_id: 'unknown',
+          location_type: 'room',
+          enabled_services: ['wifi'],
+          branding: {
+            primary_color: '#2563eb',
+            welcome_message: 'Welcome!'
+          }
+        });
       } finally {
         setIsLoading(false);
       }
@@ -76,7 +104,7 @@ export const useQRConfig = (sessionToken?: string) => {
   };
 
   const getServiceConfig = (serviceId: string) => {
-    // In production, this would return service-specific configuration
+    // Service-specific configuration
     const serviceConfigs = {
       'room-service': {
         menu_available: true,

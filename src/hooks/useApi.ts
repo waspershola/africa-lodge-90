@@ -649,6 +649,73 @@ export const useOwnerOverview = () => {
 
       if (activeError) throw activeError;
 
+      // Calculate bookings pipeline from reservation statuses
+      const allReservations = reservations || [];
+      const inquiries = allReservations.filter(r => r.status === 'inquiry').length;
+      const quotes = allReservations.filter(r => r.status === 'quoted').length;
+      const confirmed = allReservations.filter(r => r.status === 'confirmed').length;
+      const checkedIn = allReservations.filter(r => r.status === 'checked_in').length;
+
+      const bookingsPipeline = [
+        { stage: "Inquiries", count: inquiries, color: "#3B82F6" },
+        { stage: "Quotes Sent", count: quotes, color: "#F59E0B" },
+        { stage: "Confirmed", count: confirmed, color: "#10B981" },
+        { stage: "Checked In", count: checkedIn, color: "#8B5CF6" }
+      ];
+
+      // Fetch last 6 months revenue trend data
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      sixMonthsAgo.setDate(1);
+
+      const { data: revenueData, error: revenueError } = await supabase
+        .from('reservations')
+        .select('total_amount, created_at, check_in_date')
+        .eq('tenant_id', tenantId)
+        .gte('check_in_date', sixMonthsAgo.toISOString())
+        .in('status', ['confirmed', 'checked_in', 'checked_out']);
+
+      if (revenueError) throw revenueError;
+
+      // Group revenue by month
+      const monthlyRevenue = new Map();
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      
+      (revenueData || []).forEach(reservation => {
+        const date = new Date(reservation.check_in_date);
+        const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+        const monthName = monthNames[date.getMonth()];
+        
+        if (!monthlyRevenue.has(monthKey)) {
+          monthlyRevenue.set(monthKey, {
+            month: monthName,
+            revenue: 0,
+            bookings: 0
+          });
+        }
+        
+        const monthData = monthlyRevenue.get(monthKey);
+        monthData.revenue += reservation.total_amount || 0;
+        monthData.bookings += 1;
+      });
+
+      // Convert to array and ensure we have last 6 months
+      const revenueTrend = [];
+      for (let i = 5; i >= 0; i--) {
+        const date = new Date();
+        date.setMonth(date.getMonth() - i);
+        const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+        const monthName = monthNames[date.getMonth()];
+        
+        const monthData = monthlyRevenue.get(monthKey) || {
+          month: monthName,
+          revenue: 0,
+          bookings: 0
+        };
+        
+        revenueTrend.push(monthData);
+      }
+
       return {
         totalRooms,
         occupiedRooms,
@@ -656,7 +723,9 @@ export const useOwnerOverview = () => {
         revenue: totalRevenue,
         reservations: totalReservations,
         occupancyRate,
-        activeGuests: activeReservations?.length || 0
+        activeGuests: activeReservations?.length || 0,
+        bookingsPipeline,
+        revenueTrend
       };
     },
     refetchInterval: 30000, // Refresh every 30 seconds

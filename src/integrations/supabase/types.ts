@@ -1425,39 +1425,92 @@ export type Database = {
         }
         Relationships: []
       }
-      qr_codes: {
+      qr_analytics: {
         Row: {
           created_at: string | null
           id: string
+          last_scanned_at: string | null
+          meta: Json | null
+          period: string
+          qr_code_id: string | null
+          request_count: number | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          last_scanned_at?: string | null
+          meta?: Json | null
+          period: string
+          qr_code_id?: string | null
+          request_count?: number | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_scanned_at?: string | null
+          meta?: Json | null
+          period?: string
+          qr_code_id?: string | null
+          request_count?: number | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qr_analytics_qr_code_id_fkey"
+            columns: ["qr_code_id"]
+            isOneToOne: false
+            referencedRelation: "qr_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qr_codes: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
           is_active: boolean | null
+          label: string | null
           qr_code_url: string | null
           qr_token: string
           room_id: string
+          scan_type: string | null
           services: string[]
+          slug: string | null
           template_id: string | null
           tenant_id: string
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
           id?: string
           is_active?: boolean | null
+          label?: string | null
           qr_code_url?: string | null
           qr_token: string
           room_id: string
+          scan_type?: string | null
           services: string[]
+          slug?: string | null
           template_id?: string | null
           tenant_id: string
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
           id?: string
           is_active?: boolean | null
+          label?: string | null
           qr_code_url?: string | null
           qr_token?: string
           room_id?: string
+          scan_type?: string | null
           services?: string[]
+          slug?: string | null
           template_id?: string | null
           tenant_id?: string
           updated_at?: string | null
@@ -1496,15 +1549,19 @@ export type Database = {
       qr_orders: {
         Row: {
           assigned_at: string | null
+          assigned_team: string | null
           assigned_to: string | null
           completed_at: string | null
           completed_by: string | null
           created_at: string | null
+          created_by_guest: boolean | null
           guest_session_id: string | null
           id: string
           notes: string | null
+          priority: number | null
           qr_code_id: string
           request_details: Json | null
+          room_id: string | null
           service_type: string
           status: string
           tenant_id: string
@@ -1512,15 +1569,19 @@ export type Database = {
         }
         Insert: {
           assigned_at?: string | null
+          assigned_team?: string | null
           assigned_to?: string | null
           completed_at?: string | null
           completed_by?: string | null
           created_at?: string | null
+          created_by_guest?: boolean | null
           guest_session_id?: string | null
           id?: string
           notes?: string | null
+          priority?: number | null
           qr_code_id: string
           request_details?: Json | null
+          room_id?: string | null
           service_type: string
           status?: string
           tenant_id: string
@@ -1528,15 +1589,19 @@ export type Database = {
         }
         Update: {
           assigned_at?: string | null
+          assigned_team?: string | null
           assigned_to?: string | null
           completed_at?: string | null
           completed_by?: string | null
           created_at?: string | null
+          created_by_guest?: boolean | null
           guest_session_id?: string | null
           id?: string
           notes?: string | null
+          priority?: number | null
           qr_code_id?: string
           request_details?: Json | null
+          room_id?: string | null
           service_type?: string
           status?: string
           tenant_id?: string
@@ -1579,6 +1644,89 @@ export type Database = {
             referencedColumns: ["tenant_id"]
           },
         ]
+      }
+      qr_request_messages: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          message: string
+          message_payload: Json | null
+          request_id: string
+          sender_id: string | null
+          sender_role: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message: string
+          message_payload?: Json | null
+          request_id: string
+          sender_id?: string | null
+          sender_role: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          message_payload?: Json | null
+          request_id?: string
+          sender_id?: string | null
+          sender_role?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qr_request_messages_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "qr_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qr_services: {
+        Row: {
+          config: Json | null
+          created_at: string | null
+          default_route: string | null
+          display_name: string
+          id: string
+          is_global: boolean | null
+          name: string
+          requires_payment: boolean | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string | null
+          default_route?: string | null
+          display_name: string
+          id?: string
+          is_global?: boolean | null
+          name: string
+          requires_payment?: boolean | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string | null
+          default_route?: string | null
+          display_name?: string
+          id?: string
+          is_global?: boolean | null
+          name?: string
+          requires_payment?: boolean | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       qr_templates: {
         Row: {

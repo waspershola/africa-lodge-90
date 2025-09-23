@@ -80,11 +80,14 @@ export default function QRPortal() {
         }
 
         // Get tenant info separately
-        const { data: tenantData } = await supabase
+        const { data: tenantData, error: tenantError } = await supabase
           .from('tenants')
           .select('hotel_name, logo_url')
           .eq('tenant_id', qrData.tenant_id)
           .maybeSingle();
+
+        console.log('Tenant data fetched:', tenantData);
+        console.log('Tenant error:', tenantError);
 
         // Generate session token
         const token = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -93,7 +96,7 @@ export default function QRPortal() {
         return {
           qr_token: qrData.qr_token,
           room_number: qrData.rooms?.room_number,
-          hotel_name: tenantData?.hotel_name || 'Hotel',
+          hotel_name: tenantData?.hotel_name || 'Default Hotel',
           services: qrData.services || [],
           is_active: qrData.is_active,
           label: qrData.label,
@@ -101,7 +104,8 @@ export default function QRPortal() {
           hotel_logo: tenantData?.logo_url
         } as QRCodeInfo;
       } catch (error) {
-        console.log('QR lookup error:', error);
+        console.error('QR lookup error:', error);
+        console.error('Failed to fetch QR data or tenant info');
         return null;
       }
     },

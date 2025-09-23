@@ -79,15 +79,15 @@ export default function QRPortal() {
           return null;
         }
 
-        // Get tenant info separately
-        const { data: tenantData, error: tenantError } = await supabase
-          .from('tenants')
-          .select('hotel_name, logo_url')
+        // Get QR settings for hotel branding
+        const { data: qrSettings, error: settingsError } = await supabase
+          .from('qr_settings')
+          .select('hotel_name, hotel_logo_url, primary_color, show_logo_on_qr')
           .eq('tenant_id', qrData.tenant_id)
           .maybeSingle();
 
-        console.log('Tenant data fetched:', tenantData);
-        console.log('Tenant error:', tenantError);
+        console.log('QR settings fetched:', qrSettings);
+        console.log('Settings error:', settingsError);
 
         // Generate session token
         const token = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -96,12 +96,12 @@ export default function QRPortal() {
         return {
           qr_token: qrData.qr_token,
           room_number: qrData.rooms?.room_number,
-          hotel_name: tenantData?.hotel_name || 'Default Hotel',
+          hotel_name: qrSettings?.hotel_name || 'Hotel',
           services: qrData.services || [],
           is_active: qrData.is_active,
           label: qrData.label,
           tenant_id: qrData.tenant_id,
-          hotel_logo: tenantData?.logo_url
+          hotel_logo: qrSettings?.show_logo_on_qr ? qrSettings?.hotel_logo_url : undefined
         } as QRCodeInfo;
       } catch (error) {
         console.error('QR lookup error:', error);

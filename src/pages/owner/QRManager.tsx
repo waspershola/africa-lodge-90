@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { QrCode, Plus, Download, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { QRCodeTable } from '@/components/owner/qr/QRCodeTable';
@@ -27,6 +28,7 @@ export interface QRCodeData {
 }
 
 export default function QRManagerPage() {
+  const navigate = useNavigate();
   const [selectedQR, setSelectedQR] = useState<QRCodeData | null>(null);
   const [showWizard, setShowWizard] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
@@ -256,7 +258,7 @@ export default function QRManagerPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleGlobalSettings}>
+          <Button variant="outline" onClick={() => navigate('/owner-dashboard/qr-settings')}>
             <Settings className="h-4 w-4 mr-2" />
             Global Settings
           </Button>

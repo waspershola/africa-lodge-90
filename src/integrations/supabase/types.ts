@@ -1778,6 +1778,42 @@ export type Database = {
         }
         Relationships: []
       }
+      qr_settings: {
+        Row: {
+          created_at: string | null
+          default_services: string[] | null
+          hotel_logo_url: string | null
+          hotel_name: string
+          id: string
+          primary_color: string | null
+          show_logo_on_qr: boolean | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          default_services?: string[] | null
+          hotel_logo_url?: string | null
+          hotel_name: string
+          id?: string
+          primary_color?: string | null
+          show_logo_on_qr?: boolean | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          default_services?: string[] | null
+          hotel_logo_url?: string | null
+          hotel_name?: string
+          id?: string
+          primary_color?: string | null
+          show_logo_on_qr?: boolean | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       qr_templates: {
         Row: {
           created_at: string | null

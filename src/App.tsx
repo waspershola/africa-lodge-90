@@ -43,6 +43,7 @@ import ManagerDepartmentFinance from "./pages/manager/DepartmentFinance";
 import ManagerReceiptControl from "./pages/manager/ReceiptControl";
 import ManagerEventsPackages from "./pages/manager/EventsPackages";
 import ManagerCompliance from "./pages/manager/Compliance";
+import QRSettings from "./pages/owner/QRSettings";
 import HousekeepingLayout from "./components/layout/HousekeepingLayout";
 import HousekeepingDashboard from "./pages/housekeeping/Dashboard";
 import HousekeepingTasks from "./pages/housekeeping/Tasks";
@@ -125,6 +126,7 @@ const App = () => (
             <Route path="financials" element={<Financials />} />
             <Route path="billing" element={<EnhancedBilling />} />
             <Route path="qr-manager" element={<QRManager />} />
+            <Route path="qr-settings" element={<QRSettings />} />
             <Route path="qr-analytics" element={<QRAnalytics />} />
             <Route path="reports" element={<Reports />} />
             <Route path="reservations" element={<Reservations />} />

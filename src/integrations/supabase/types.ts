@@ -2173,6 +2173,21 @@ export type Database = {
           room_type_name: string
         }[]
       }
+      get_folio_balances: {
+        Args: { p_status?: string; p_tenant_id: string }
+        Returns: {
+          balance: number
+          created_at: string
+          folio_id: string
+          folio_number: string
+          guest_name: string
+          reservation_id: string
+          room_number: string
+          status: string
+          total_charges: number
+          total_payments: number
+        }[]
+      }
       get_guest_stats: {
         Args: { p_months_back?: number; p_tenant_id: string }
         Returns: {

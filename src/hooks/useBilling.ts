@@ -143,54 +143,26 @@ export function useBilling() {
     if (!tenant?.tenant_id) return;
 
     try {
-      const { data: folios, error } = await supabase
-        .from('folios')
-        .select(`
-          *,
-          reservations!inner(
-            guest_name,
-            rooms!inner(room_number)
-          )
-        `)
-        .eq('tenant_id', tenant.tenant_id)
-        .eq('status', 'open')
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase
+        .rpc('get_folio_balances', {
+          p_tenant_id: tenant.tenant_id,
+          p_status: 'all'
+        });
 
       if (error) throw error;
 
-      // Calculate balances for each folio
-      const balances: FolioBalance[] = [];
-      
-      for (const folio of folios || []) {
-        // Get charges for this folio
-        const { data: charges } = await supabase
-          .from('folio_charges')
-          .select('amount')
-          .eq('folio_id', folio.id);
-          
-        // Get payments for this folio  
-        const { data: payments } = await supabase
-          .from('payments')
-          .select('amount')
-          .eq('folio_id', folio.id)
-          .eq('status', 'completed');
-          
-        const totalCharges = charges?.reduce((sum, c) => sum + c.amount, 0) || 0;
-        const totalPayments = payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
-        const balance = totalCharges - totalPayments;
-        
-        balances.push({
-          folio_id: folio.id,
-          folio_number: folio.folio_number,
-          reservation_id: folio.reservation_id,
-          guest_name: (folio as any).reservations?.guest_name || 'Unknown',
-          room_number: (folio as any).reservations?.rooms?.room_number || 'N/A',
-          total_charges: totalCharges,
-          total_payments: totalPayments,
-          balance: balance,
-          status: balance > 0 ? 'outstanding' : 'paid'
-        });
-      }
+      // Map the response to FolioBalance format
+      const balances: FolioBalance[] = (data || []).map(item => ({
+        folio_id: item.folio_id,
+        folio_number: item.folio_number,
+        reservation_id: item.reservation_id,
+        guest_name: item.guest_name,
+        room_number: item.room_number,
+        total_charges: item.total_charges,
+        total_payments: item.total_payments,
+        balance: item.balance,
+        status: item.balance > 0 ? 'outstanding' : 'paid'
+      }));
       
       setFolioBalances(balances);
     } catch (err) {

@@ -14,88 +14,32 @@ import {
   Download
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useBilling } from '@/hooks/useBilling';
+import { LoadingState } from '@/components/ui/loading-state';
+import { ErrorState } from '@/components/ui/error-state';
 
 export default function PaymentsOverview() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMethod, setFilterMethod] = useState('all');
   const [filterPeriod, setFilterPeriod] = useState('today');
+  
+  const { billingStats, payments, loading, error } = useBilling();
 
-  // Mock payments data
-  const mockPayments = [
-    {
-      id: 'PAY-001',
-      billId: 'BILL-001',
-      guestName: 'John Smith',
-      room: '205',
-      amount: 200000,
-      method: 'card',
-      reference: 'TXN123456',
-      date: new Date(2024, 7, 22, 14, 30),
-      status: 'completed'
-    },
-    {
-      id: 'PAY-002',
-      billId: 'BILL-002',
-      guestName: 'Sarah Wilson',
-      room: '312',
-      amount: 285000,
-      method: 'transfer',
-      reference: 'BANK789',
-      date: new Date(2024, 7, 22, 16, 45),
-      status: 'completed'
-    },
-    {
-      id: 'PAY-003',
-      billId: 'BILL-003',
-      guestName: 'Michael Chen',
-      room: '108',
-      amount: 100000,
-      method: 'cash',
-      reference: 'CASH001',
-      date: new Date(2024, 7, 22, 10, 15),
-      status: 'completed'
-    },
-    {
-      id: 'PAY-004',
-      billId: 'BILL-004',
-      guestName: 'Emily Davis',
-      room: '420',
-      amount: 180000,
-      method: 'pos',
-      reference: 'POS456789',
-      date: new Date(2024, 7, 22, 18, 20),
-      status: 'completed'
-    },
-    {
-      id: 'PAY-005',
-      billId: 'BILL-005',
-      guestName: 'Robert Johnson',
-      room: '115',
-      amount: 95000,
-      method: 'wallet',
-      reference: 'WALLET987',
-      date: new Date(2024, 7, 22, 12, 10),
-      status: 'pending'
-    }
-  ];
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message={error} />;
 
-  // Summary data
+  // Calculate payment summary from real data
   const paymentSummary = {
-    totalToday: mockPayments.reduce((sum, payment) => sum + payment.amount, 0),
-    totalCount: mockPayments.length,
-    byMethod: mockPayments.reduce((acc, payment) => {
-      acc[payment.method] = (acc[payment.method] || 0) + payment.amount;
-      return acc;
-    }, {} as Record<string, number>)
+    totalToday: billingStats?.totalRevenue || 0,
+    totalCount: payments.length,
+    byMethod: billingStats?.todaysCashflow || {}
   };
 
-  const filteredPayments = mockPayments.filter(payment => {
+  const filteredPayments = payments.filter(payment => {
     const matchesSearch = searchTerm === '' || 
-      payment.guestName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.room.includes(searchTerm) ||
-      payment.reference.toLowerCase().includes(searchTerm.toLowerCase());
+      (searchTerm.toLowerCase());
     
-    const matchesMethod = filterMethod === 'all' || payment.method === filterMethod;
+    const matchesMethod = filterMethod === 'all' || payment.payment_method === filterMethod;
     
     return matchesSearch && matchesMethod;
   });
@@ -128,10 +72,10 @@ export default function PaymentsOverview() {
           <Card key={method} className="luxury-card">
             <CardContent className="p-4">
               <div className="text-center">
-                <div className="text-lg font-bold">₦{(amount / 1000).toFixed(0)}K</div>
+                <div className="text-lg font-bold">₦{(Number(amount) / 1000).toFixed(0)}K</div>
                 <div className="text-sm text-muted-foreground capitalize">{method}</div>
                 <Badge className={`mt-2 ${getMethodColor(method)}`}>
-                  {mockPayments.filter(p => p.method === method).length} payments
+                  {payments.filter(p => p.payment_method === method).length} payments
                 </Badge>
               </div>
             </CardContent>
@@ -205,7 +149,7 @@ export default function PaymentsOverview() {
               <div className="text-sm text-muted-foreground">Total Transactions</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold">₦{Math.round(paymentSummary.totalToday / paymentSummary.totalCount / 1000)}K</div>
+              <div className="text-3xl font-bold">₦{paymentSummary.totalCount > 0 ? Math.round(paymentSummary.totalToday / paymentSummary.totalCount / 1000) : 0}K</div>
               <div className="text-sm text-muted-foreground">Average Transaction</div>
             </div>
           </div>
@@ -229,9 +173,9 @@ export default function PaymentsOverview() {
                     <DollarSign className="h-6 w-6 text-success" />
                   </div>
                   <div>
-                    <div className="font-semibold">{payment.guestName}</div>
+                    <div className="font-semibold">Payment #{payment.id.slice(-8)}</div>
                     <div className="text-sm text-muted-foreground">
-                      Room {payment.room} • {payment.reference}
+                      {payment.reference || 'No reference'} • {payment.folio_id.slice(-8)}
                     </div>
                   </div>
                 </div>
@@ -240,13 +184,13 @@ export default function PaymentsOverview() {
                   <div className="text-right">
                     <div className="font-bold text-lg">₦{payment.amount.toLocaleString()}</div>
                     <div className="text-sm text-muted-foreground">
-                      {format(payment.date, 'MMM d, HH:mm')}
+                      {format(new Date(payment.created_at), 'MMM d, HH:mm')}
                     </div>
                   </div>
 
                   <div className="flex flex-col items-center gap-2">
-                    <Badge className={getMethodColor(payment.method)}>
-                      {payment.method.toUpperCase()}
+                    <Badge className={getMethodColor(payment.payment_method)}>
+                      {payment.payment_method.toUpperCase()}
                     </Badge>
                     <Badge className={getStatusColor(payment.status)}>
                       {payment.status}

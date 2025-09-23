@@ -11,6 +11,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { UserX, Clock, CreditCard, AlertTriangle, Phone, Mail, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useDebtTracking } from "@/hooks/useDebtTracking";
+import { LoadingState } from "@/components/ui/loading-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 
 interface GuestDebt {
   id: string;
@@ -36,69 +40,41 @@ interface GuestDebt {
   notes?: string;
 }
 
-const mockGuestDebts: GuestDebt[] = [
-  {
-    id: '1',
-    guestName: 'John Doe',
-    room: '305',
-    phone: '+234 803 123 4567',
-    email: 'john.doe@email.com',
-    totalDebt: 45000,
-    outstandingAmount: 25000,
-    paymentMode: 'Pay Later',
-    checkInDate: '2024-01-15',
-    checkOutDate: '2024-01-18',
-    daysOverdue: 5,
-    status: 'overdue',
-    transactions: [
-      { id: '1', date: '2024-01-15', type: 'charge', amount: 45000, description: 'Room charges (3 nights)' },
-      { id: '2', date: '2024-01-18', type: 'payment', amount: 20000, description: 'Partial payment', paymentMethod: 'Cash' }
-    ],
-    notes: 'Guest promised to pay remaining balance by end of week'
-  },
-  {
-    id: '2',
-    guestName: 'Sarah Wilson',
-    room: '201',
-    phone: '+234 805 987 6543',
-    email: 'sarah.w@email.com',
-    totalDebt: 75000,
-    outstandingAmount: 75000,
-    paymentMode: 'Debtor Account',
-    checkInDate: '2024-01-10',
-    checkOutDate: '2024-01-14',
-    daysOverdue: 12,
-    status: 'critical',
-    transactions: [
-      { id: '3', date: '2024-01-10', type: 'charge', amount: 60000, description: 'Room charges (4 nights)' },
-      { id: '4', date: '2024-01-12', type: 'charge', amount: 15000, description: 'Extra services' }
-    ],
-    notes: 'Corporate account - pending company approval'
-  }
-];
-
 export default function GuestDebtTracker() {
-  const [debts, setDebts] = useState<GuestDebt[]>(mockGuestDebts);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedDebt, setSelectedDebt] = useState<GuestDebt | null>(null);
+  const [selectedDebt, setSelectedDebt] = useState<any>(null);
   const [isAddingPayment, setIsAddingPayment] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
+  
   const { toast } = useToast();
   const { formatPrice } = useCurrency();
+  const { enabledMethods } = usePaymentMethods();
+  const { 
+    debts, 
+    loading, 
+    error, 
+    recordPayment, 
+    totalOutstanding, 
+    overdueCases, 
+    activeCases, 
+    avgDaysOverdue 
+  } = useDebtTracking();
+
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message={error} />;
 
   const filteredDebts = debts.filter(debt => {
-    const matchesSearch = debt.guestName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         debt.room.includes(searchTerm) ||
+    const matchesSearch = debt.guest_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         debt.room_number.includes(searchTerm) ||
                          debt.phone.includes(searchTerm);
     const matchesStatus = statusFilter === 'all' || debt.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const totalOutstanding = debts.reduce((sum, debt) => sum + debt.outstandingAmount, 0);
-  const overdueCases = debts.filter(debt => debt.status === 'overdue' || debt.status === 'critical').length;
+  // Calculated values are now provided by the hook
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -115,44 +91,30 @@ export default function GuestDebtTracker() {
     }
   };
 
-  const recordPayment = () => {
+  const handleRecordPayment = async () => {
     if (!selectedDebt || !paymentAmount || !paymentMethod) return;
 
-    const amount = parseFloat(paymentAmount);
-    const newTransaction = {
-      id: `payment-${Date.now()}`,
-      date: new Date().toISOString().split('T')[0],
-      type: 'payment' as const,
-      amount,
-      description: paymentNotes || 'Payment received',
-      paymentMethod
-    };
+    try {
+      const amount = parseFloat(paymentAmount);
+      await recordPayment(selectedDebt.id, amount, paymentMethod, paymentNotes);
 
-    setDebts(prevDebts =>
-      prevDebts.map(debt => {
-        if (debt.id === selectedDebt.id) {
-          const newOutstanding = Math.max(0, debt.outstandingAmount - amount);
-          return {
-            ...debt,
-            outstandingAmount: newOutstanding,
-            status: newOutstanding === 0 ? 'resolved' as const : debt.status,
-            transactions: [...debt.transactions, newTransaction]
-          };
-        }
-        return debt;
-      })
-    );
+      setIsAddingPayment(false);
+      setPaymentAmount('');
+      setPaymentMethod('');
+      setPaymentNotes('');
+      setSelectedDebt(null);
 
-    setIsAddingPayment(false);
-    setPaymentAmount('');
-    setPaymentMethod('');
-    setPaymentNotes('');
-    setSelectedDebt(null);
-
-    toast({
-      title: "Payment recorded",
-      description: `${formatPrice(amount)} payment has been recorded for ${selectedDebt.guestName}.`
-    });
+      toast({
+        title: "Payment recorded",
+        description: `${formatPrice(amount)} payment has been recorded for ${selectedDebt.guest_name}.`
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to record payment. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -190,7 +152,7 @@ export default function GuestDebtTracker() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {debts.filter(d => d.status !== 'resolved').length}
+              {activeCases}
             </div>
             <p className="text-xs text-muted-foreground">Current cases</p>
           </CardContent>
@@ -203,7 +165,7 @@ export default function GuestDebtTracker() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              {Math.round(debts.reduce((sum, debt) => sum + debt.daysOverdue, 0) / debts.length) || 0}
+              {avgDaysOverdue}
             </div>
             <p className="text-xs text-muted-foreground">Days average</p>
           </CardContent>
@@ -257,24 +219,24 @@ export default function GuestDebtTracker() {
                   <TableRow key={debt.id}>
                     <TableCell>
                       <div>
-                        <div className="font-medium">{debt.guestName}</div>
+                        <div className="font-medium">{debt.guest_name}</div>
                         <div className="text-sm text-muted-foreground flex items-center gap-2">
                           <Phone className="h-3 w-3" />
                           {debt.phone}
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="font-medium">{debt.room}</TableCell>
-                    <TableCell>{formatPrice(debt.totalDebt)}</TableCell>
+                    <TableCell className="font-medium">{debt.room_number}</TableCell>
+                    <TableCell>{formatPrice(debt.total_debt)}</TableCell>
                     <TableCell className="font-bold text-red-600">
-                      {formatPrice(debt.outstandingAmount)}
+                      {formatPrice(debt.outstanding_amount)}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{debt.paymentMode}</Badge>
+                      <Badge variant="outline">{debt.payment_mode}</Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={debt.daysOverdue > 7 ? "destructive" : "secondary"}>
-                        {debt.daysOverdue} days
+                      <Badge variant={debt.days_overdue > 7 ? "destructive" : "secondary"}>
+                        {debt.days_overdue} days
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -319,10 +281,10 @@ export default function GuestDebtTracker() {
             <div className="space-y-4 py-4">
               <Card>
                 <CardContent className="p-4">
-                  <div className="text-sm font-medium">Guest: {selectedDebt.guestName}</div>
-                  <div className="text-sm text-muted-foreground">Room: {selectedDebt.room}</div>
+                  <div className="text-sm font-medium">Guest: {selectedDebt.guest_name}</div>
+                  <div className="text-sm text-muted-foreground">Room: {selectedDebt.room_number}</div>
                   <div className="text-lg font-bold text-red-600">
-                    Outstanding: {formatPrice(selectedDebt.outstandingAmount)}
+                    Outstanding: {formatPrice(selectedDebt.outstanding_amount)}
                   </div>
                 </CardContent>
               </Card>
@@ -345,11 +307,11 @@ export default function GuestDebtTracker() {
                     <SelectValue placeholder="Select payment method" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cash">Cash</SelectItem>
-                    <SelectItem value="moniepoint-pos">Moniepoint POS</SelectItem>
-                    <SelectItem value="opay-pos">Opay POS</SelectItem>
-                    <SelectItem value="bank-transfer">Bank Transfer</SelectItem>
-                    <SelectItem value="paystack">Paystack Online</SelectItem>
+                    {enabledMethods.map((method) => (
+                      <SelectItem key={method.id} value={method.id}>
+                        {method.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -369,7 +331,7 @@ export default function GuestDebtTracker() {
             <Button variant="outline" onClick={() => setIsAddingPayment(false)}>
               Cancel
             </Button>
-            <Button onClick={recordPayment} disabled={!paymentAmount || !paymentMethod}>
+            <Button onClick={handleRecordPayment} disabled={!paymentAmount || !paymentMethod}>
               Record Payment
             </Button>
           </div>

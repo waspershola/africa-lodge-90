@@ -12,6 +12,8 @@ import {
   Mail, 
   FileText 
 } from 'lucide-react';
+import { useConfiguration } from '@/hooks/useConfiguration';
+import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 
 interface EnhancedReceiptGeneratorProps {
   open: boolean;
@@ -21,6 +23,8 @@ interface EnhancedReceiptGeneratorProps {
 
 export const EnhancedReceiptGenerator = ({ open, onOpenChange, guestBill }: EnhancedReceiptGeneratorProps) => {
   const { toast } = useToast();
+  const { configuration } = useConfiguration();
+  const { tenant } = useAuth();
   const [template, setTemplate] = useState('A4');
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -139,10 +143,22 @@ export const EnhancedReceiptGenerator = ({ open, onOpenChange, guestBill }: Enha
                 <div className="border rounded-lg p-6 bg-white text-black space-y-4">
                   {/* Hotel Header */}
                   <div className="text-center border-b pb-4">
-                    <div className="w-16 h-16 bg-gray-200 rounded mx-auto mb-2" />
-                    <h2 className="text-xl font-bold">Lagos Grand Hotel</h2>
-                    <p className="text-sm text-gray-600">123 Victoria Island, Lagos</p>
-                    <p className="text-sm text-gray-600">Tel: +234 123 456 7890</p>
+                    {configuration?.branding?.logo_url ? (
+                      <img 
+                        src={configuration.branding.logo_url} 
+                        alt="Hotel Logo" 
+                        className="w-16 h-16 object-contain mx-auto mb-2" 
+                      />
+                    ) : (
+                      <div className="w-16 h-16 bg-gray-200 rounded mx-auto mb-2" />
+                    )}
+                    <h2 className="text-xl font-bold">{tenant?.hotel_name || configuration?.general?.hotel_name || 'Hotel Name'}</h2>
+                    <p className="text-sm text-gray-600">
+                      {configuration?.general?.address?.street && configuration?.general?.address?.city 
+                        ? `${configuration.general.address.street}, ${configuration.general.address.city}` 
+                        : 'Hotel Address'}
+                    </p>
+                    <p className="text-sm text-gray-600">Tel: {configuration?.general?.contact?.phone || '+234 XXX XXX XXXX'}</p>
                   </div>
 
                   {/* Guest Info */}

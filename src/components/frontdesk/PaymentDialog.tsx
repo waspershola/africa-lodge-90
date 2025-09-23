@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CreditCard, Banknote, Building, Smartphone, Clock, UserX } from "lucide-react";
+import { usePaymentMethods } from "@/hooks/usePaymentMethods";
+import { useBilling } from "@/hooks/useBilling";
 
 interface PaymentDialogProps {
   open: boolean;
@@ -15,41 +17,19 @@ interface PaymentDialogProps {
   onPaymentSuccess?: (amount: number, method: string) => void;
 }
 
-const mockPendingPayments = [
-  {
-    id: 1,
-    room: "305",
-    guest: "Jane Smith",
-    amount: 15000,
-    type: "Room Charge",
-    dueDate: "2024-08-22"
-  },
-  {
-    id: 2,
-    room: "201", 
-    guest: "John Doe",
-    amount: 25000,
-    type: "Deposit",
-    dueDate: "2024-08-22"
-  },
-  {
-    id: 3,
-    room: "407",
-    guest: "Sarah Wilson", 
-    amount: 8500,
-    type: "Service Charge",
-    dueDate: "2024-08-21"
-  }
-];
-
 export const PaymentDialog = ({ open, onOpenChange, pendingAmount, onPaymentSuccess }: PaymentDialogProps) => {
+  const { folioBalances } = useBilling();
+  const { enabledMethods } = usePaymentMethods();
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [paymentMethod, setPaymentMethod] = useState("");
   const [amount, setAmount] = useState("");
 
+  // Filter folios with outstanding balances as pending payments
+  const pendingPayments = folioBalances.filter(folio => folio.balance > 0);
+
   const handleSelectPayment = (payment: any) => {
     setSelectedPayment(payment);
-    setAmount(payment.amount.toString());
+    setAmount(payment.balance.toString());
   };
 
   const handleProcessPayment = () => {
@@ -86,27 +66,27 @@ export const PaymentDialog = ({ open, onOpenChange, pendingAmount, onPaymentSucc
           <div className="space-y-4">
             <h3 className="font-medium">Pending Payments</h3>
             <div className="space-y-2 max-h-80 overflow-y-auto">
-              {mockPendingPayments.map((payment) => (
+              {pendingPayments.map((payment) => (
                 <Card 
-                  key={payment.id}
+                  key={payment.folio_id}
                   className={`cursor-pointer transition-colors ${
-                    selectedPayment?.id === payment.id ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'
+                    selectedPayment?.folio_id === payment.folio_id ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'
                   }`}
                   onClick={() => handleSelectPayment(payment)}
                 >
                   <CardContent className="p-3">
                     <div className="flex justify-between items-start">
                       <div>
-                        <div className="font-medium">Room {payment.room}</div>
-                        <div className="text-sm text-muted-foreground">{payment.guest}</div>
+                        <div className="font-medium">Room {payment.room_number}</div>
+                        <div className="text-sm text-muted-foreground">{payment.guest_name}</div>
                         <Badge variant="outline" className="mt-1 text-xs">
-                          {payment.type}
+                          {payment.folio_number}
                         </Badge>
                       </div>
                       <div className="text-right">
-                        <div className="font-bold">₦{payment.amount.toLocaleString()}</div>
+                        <div className="font-bold">₦{payment.balance.toLocaleString()}</div>
                         <div className="text-xs text-muted-foreground">
-                          Due: {payment.dueDate}
+                          Outstanding
                         </div>
                       </div>
                     </div>
@@ -126,9 +106,9 @@ export const PaymentDialog = ({ open, onOpenChange, pendingAmount, onPaymentSucc
                   <CardContent className="p-4">
                     <div className="text-sm font-medium">Selected Payment</div>
                     <div className="mt-2">
-                      <div>Room {selectedPayment.room} • {selectedPayment.guest}</div>
+                      <div>Room {selectedPayment.room_number} • {selectedPayment.guest_name}</div>
                       <div className="text-lg font-bold text-primary">
-                        ₦{selectedPayment.amount.toLocaleString()}
+                        ₦{selectedPayment.balance.toLocaleString()}
                       </div>
                     </div>
                   </CardContent>
@@ -153,48 +133,19 @@ export const PaymentDialog = ({ open, onOpenChange, pendingAmount, onPaymentSucc
                         <SelectValue placeholder="Select payment method" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="cash">
-                          <div className="flex items-center gap-2">
-                            <Banknote className="h-4 w-4" />
-                            Cash
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="moniepoint-pos">
-                          <div className="flex items-center gap-2">
-                            <CreditCard className="h-4 w-4" />
-                            Moniepoint POS
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="opay-pos">
-                          <div className="flex items-center gap-2">
-                            <CreditCard className="h-4 w-4" />
-                            Opay POS
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="transfer">
-                          <div className="flex items-center gap-2">
-                            <Building className="h-4 w-4" />
-                            Bank Transfer
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="paystack">
-                          <div className="flex items-center gap-2">
-                            <Smartphone className="h-4 w-4" />
-                            Paystack Online
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="pay-later">
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4" />
-                            Pay Later
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="debtor">
-                          <div className="flex items-center gap-2">
-                            <UserX className="h-4 w-4" />
-                            Debtor Account
-                          </div>
-                        </SelectItem>
+                        {enabledMethods.map((method) => (
+                          <SelectItem key={method.id} value={method.id}>
+                            <div className="flex items-center gap-2">
+                              {method.icon === 'Banknote' && <Banknote className="h-4 w-4" />}
+                              {method.icon === 'CreditCard' && <CreditCard className="h-4 w-4" />}
+                              {method.icon === 'Bank' && <Building className="h-4 w-4" />}
+                              {method.icon === 'Smartphone' && <Smartphone className="h-4 w-4" />}
+                              {method.icon === 'Clock' && <Clock className="h-4 w-4" />}
+                              {method.icon === 'UserX' && <UserX className="h-4 w-4" />}
+                              {method.name}
+                            </div>
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>

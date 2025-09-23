@@ -73,8 +73,8 @@ export const useStaffInvites = () => {
         // Return a structured error response with better messaging
         return { 
           success: false, 
-          error: 'Network connection failed',
-          details: `Unable to reach the invitation service: ${error.message}` 
+          error: 'Connection Failed',
+          details: `Unable to connect to the invitation service. Please check your internet connection and try again.` 
         };
       }
 
@@ -82,8 +82,8 @@ export const useStaffInvites = () => {
       if (!response) {
         return {
           success: false,
-          error: 'No response from server',
-          details: 'The server did not return a response'
+          error: 'No Response',
+          details: 'The server did not return a response. Please try again.'
         };
       }
 

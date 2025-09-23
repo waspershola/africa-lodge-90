@@ -148,12 +148,13 @@ serve(async (req) => {
     // Also check auth.users for existing auth accounts
     let existingAuthUser = null;
     try {
-      const { data: authUsers, error: authListError } = await supabaseAdmin.auth.admin.listUsers();
-      if (!authListError && authUsers?.users) {
-        existingAuthUser = authUsers.users.find(u => u.email === email);
+      const { data: authUser, error: authGetError } = await supabaseAdmin.auth.admin.getUserByEmail(email);
+      if (!authGetError && authUser?.user) {
+        existingAuthUser = authUser.user;
+        console.log('Found existing auth user:', existingAuthUser.id);
       }
     } catch (error) {
-      console.warn('Could not check auth users:', error);
+      console.warn('Could not check auth user by email:', error);
     }
 
     // Check if email exists in ANY tenant (global uniqueness)
@@ -217,76 +218,149 @@ serve(async (req) => {
       }
     }
 
-    // If we still have an existing auth user after cleanup, return error
-    if (existingAuthUser && existingUsers && existingUsers.length > 0) {
-      return new Response(JSON.stringify({ 
-        success: false,
-        error: 'User account already exists',
-        details: `A user account with email ${email} already exists in the system.`,
-        temp_password: !send_email ? tempPassword : undefined
-      }), {
-        status: 409,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Create auth user with metadata
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password: tempPassword,
-      email_confirm: true, // Skip email confirmation for invited users
-      user_metadata: {
-        role,
-        tenant_id,
-        name,
-        invited: true
-      }
-    });
-
-    if (authError) {
-      console.error('Error creating auth user:', authError);
+    // Handle existing auth user
+    let finalAuthUser;
+    let authUserId;
+    
+    if (existingAuthUser) {
+      // Use existing auth user
+      finalAuthUser = existingAuthUser;
+      authUserId = existingAuthUser.id;
+      console.log('Using existing auth user:', authUserId);
       
-      // Handle specific auth errors with proper status codes
-      if (authError.code === 'email_exists' || authError.message?.includes('already been registered')) {
+      // Update password for existing auth user
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(authUserId, {
+        password: tempPassword,
+        user_metadata: {
+          role,
+          tenant_id,
+          name,
+          invited: true
+        }
+      });
+      
+      if (updateError) {
+        console.error('Error updating existing auth user:', updateError);
         return new Response(JSON.stringify({ 
           success: false,
-          error: 'Email already registered',
-          details: 'This email address is already registered in the authentication system. Please use a different email or contact support.',
+          error: 'Failed to update existing user account',
+          details: updateError.message,
           temp_password: !send_email ? tempPassword : undefined
         }), {
-          status: 409, // Conflict status code
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      } else if (authError.message?.includes('invalid_email')) {
-        return new Response(JSON.stringify({ 
-          success: false,
-          error: 'Invalid email address',
-          details: 'Please provide a valid email address.',
-          temp_password: !send_email ? tempPassword : undefined
-        }), {
-          status: 400, // Bad request
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      } else {
-        return new Response(JSON.stringify({ 
-          success: false,
-          error: 'Failed to create user account',
-          details: authError.message || 'Unknown authentication error occurred.',
-          temp_password: !send_email ? tempPassword : undefined
-        }), {
-          status: 422, // Unprocessable entity
+          status: 422,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
+    } else {
+      // Create new auth user
+      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password: tempPassword,
+        email_confirm: true, // Skip email confirmation for invited users
+        user_metadata: {
+          role,
+          tenant_id,
+          name,
+          invited: true
+        }
+      });
+
+      if (authError) {
+        console.error('Error creating auth user:', authError);
+        
+        // Handle specific auth errors with proper status codes
+        if (authError.code === 'email_exists' || authError.message?.includes('already been registered')) {
+          return new Response(JSON.stringify({ 
+            success: false,
+            error: 'Email already registered',
+            details: 'This email address is already registered in the authentication system. Please use a different email or contact support.',
+            temp_password: !send_email ? tempPassword : undefined
+          }), {
+            status: 409, // Conflict status code
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        } else if (authError.message?.includes('invalid_email')) {
+          return new Response(JSON.stringify({ 
+            success: false,
+            error: 'Invalid email address',
+            details: 'Please provide a valid email address.',
+            temp_password: !send_email ? tempPassword : undefined
+          }), {
+            status: 400, // Bad request
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        } else {
+          return new Response(JSON.stringify({ 
+            success: false,
+            error: 'Failed to create user account',
+            details: authError.message || 'Unknown authentication error occurred.',
+            temp_password: !send_email ? tempPassword : undefined
+          }), {
+            status: 422, // Unprocessable entity
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+      
+      finalAuthUser = authUser.user;
+      authUserId = authUser.user!.id;
     }
 
-    console.log('Auth user created successfully:', authUser.user?.id);
+    console.log('Auth user ready:', authUserId);
 
-    // Create user profile in public.users table with all additional fields
-    const { error: profileError } = await supabaseAdmin
-      .from('users')
-      .insert({
-        id: authUser.user!.id,
+    // Handle user profile in public.users table
+    let profileError = null;
+    
+    // Check if public user already exists
+    const existingPublicUser = existingUsers?.find(u => u.id === authUserId);
+    
+    if (existingPublicUser) {
+      // Update existing public user
+      const { error: updateError } = await supabaseAdmin
+        .from('users')
+        .update({
+          email,
+          name,
+          role,
+          tenant_id: tenant_id || null,
+          department,
+          force_reset: true,
+          temp_expires: tempExpires.toISOString(),
+          is_active: true,
+          invited_by: tenant_id || null,
+          invitation_status: 'pending',
+          
+          // Additional profile fields
+          phone: phone || null,
+          address: address || null,
+          nin: nin || null,
+          date_of_birth: date_of_birth || null,
+          nationality: nationality || null,
+          employee_id: employee_id || null,
+          hire_date: hire_date || null,
+          employment_type: employment_type || 'full-time',
+          emergency_contact_name: emergency_contact_name || null,
+          emergency_contact_phone: emergency_contact_phone || null,
+          emergency_contact_relationship: emergency_contact_relationship || null,
+          next_of_kin_name: next_of_kin_name || null,
+          next_of_kin_phone: next_of_kin_phone || null,
+          next_of_kin_relationship: next_of_kin_relationship || null,
+          bank_name: bank_name || null,
+          account_number: account_number || null,
+          passport_number: passport_number || null,
+          drivers_license: drivers_license || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', authUserId);
+      
+      profileError = updateError;
+      console.log('Updated existing public user profile');
+    } else {
+      // Create new user profile in public.users table
+      const { error: insertError } = await supabaseAdmin
+        .from('users')
+        .insert({
+          id: authUserId,
         email,
         name,
         role,
@@ -315,24 +389,30 @@ serve(async (req) => {
         next_of_kin_relationship: next_of_kin_relationship || null,
         bank_name: bank_name || null,
         account_number: account_number || null,
-        passport_number: passport_number || null,
-        drivers_license: drivers_license || null
-      });
+          passport_number: passport_number || null,
+          drivers_license: drivers_license || null
+        });
+      
+      profileError = insertError;
+      console.log('Created new public user profile');
+    }
 
     if (profileError) {
-      console.error('Error creating user profile:', profileError);
+      console.error('Error with user profile:', profileError);
       
-      // Rollback: Delete the auth user we just created
-      try {
-        await supabaseAdmin.auth.admin.deleteUser(authUser.user!.id);
-        console.log('Successfully rolled back auth user creation');
-      } catch (rollbackError) {
-        console.error('Failed to rollback auth user:', rollbackError);
+      // Only rollback if we created a new auth user (not if we updated existing one)
+      if (!existingAuthUser) {
+        try {
+          await supabaseAdmin.auth.admin.deleteUser(authUserId);
+          console.log('Successfully rolled back auth user creation');
+        } catch (rollbackError) {
+          console.error('Failed to rollback auth user:', rollbackError);
+        }
       }
       
       return new Response(JSON.stringify({ 
         success: false,
-        error: 'Failed to create user profile',
+        error: 'Failed to handle user profile',
         details: profileError.message,
         temp_password: !send_email ? tempPassword : undefined
       }), {
@@ -347,12 +427,12 @@ serve(async (req) => {
     await supabaseAdmin
       .from('audit_log')
       .insert({
-        actor_id: authUser.user!.id,
+        actor_id: authUserId,
         actor_email: email,
         tenant_id: tenant_id || null,
         action: 'user_invited',
         resource_type: 'user',
-        resource_id: authUser.user!.id,
+        resource_id: authUserId,
         description: `User ${email} invited with role ${role}${department ? ` in department ${department}` : ''}${employee_id ? ` (Employee ID: ${employee_id})` : ''}`,
         metadata: {
           role,
@@ -397,7 +477,7 @@ serve(async (req) => {
     // Return success response - ALWAYS include temp_password if email wasn't sent
     const response = {
       success: true,
-      user_id: authUser.user!.id,
+      user_id: authUserId,
       email,
       role,
       tenant_id,
@@ -410,7 +490,7 @@ serve(async (req) => {
     };
 
     console.log('Invite process completed successfully:', { 
-      user_id: authUser.user!.id, 
+      user_id: authUserId, 
       email_sent: emailSent,
       temp_password_provided: !!response.temp_password
     });

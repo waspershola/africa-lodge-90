@@ -11,6 +11,8 @@ interface DeleteUserRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
+  console.log('DELETE-USER Function v2.0 - Starting execution:', new Date().toISOString());
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -47,6 +49,17 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Get request body first
+    const { user_id }: DeleteUserRequest = await req.json();
+
+    if (!user_id) {
+      console.error('Missing user_id in request');
+      return new Response(
+        JSON.stringify({ success: false, error: 'User ID is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Check if the user is authorized (super admin or owner/manager in same tenant)
     const { data: userData, error: userError } = await supabaseClient
       .from('users')
@@ -62,28 +75,33 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    console.log('Current user role:', userData.role, 'Tenant:', userData.tenant_id);
+
     const isSuperAdmin = userData?.role === 'SUPER_ADMIN';
     const isOwnerOrManager = userData?.role === 'OWNER' || userData?.role === 'MANAGER';
 
     if (!isSuperAdmin && !isOwnerOrManager) {
-      console.error('Authorization error: insufficient permissions');
+      console.error('Authorization error: insufficient permissions', { 
+        role: userData.role, 
+        isSuperAdmin,
+        isOwnerOrManager,
+        timestamp: new Date().toISOString()
+      });
       return new Response(
-        JSON.stringify({ success: false, error: 'Only owners, managers, or super admins can delete users' }),
+        JSON.stringify({ 
+          success: false, 
+          error: 'Access denied: Only owners, managers, or super admins can delete users',
+          debug: { 
+            userRole: userData.role, 
+            required: ['SUPER_ADMIN', 'OWNER', 'MANAGER'],
+            timestamp: new Date().toISOString()
+          }
+        }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const { user_id }: DeleteUserRequest = await req.json();
-
-    if (!user_id) {
-      console.error('Missing user_id in request');
-      return new Response(
-        JSON.stringify({ success: false, error: 'User ID is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`Attempting to delete user: ${user_id}`);
+    console.log(`Attempting to delete user: ${user_id} by user: ${userData.role}`);
 
     // Check if target user is platform owner or in same tenant
     const { data: targetUser, error: targetUserError } = await supabaseClient
@@ -236,9 +254,13 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
   } catch (error: any) {
-    console.error('Error in delete-user function:', error);
+    console.error('Error in delete-user function:', error, 'timestamp:', new Date().toISOString());
     return new Response(
-      JSON.stringify({ success: false, error: error.message || 'Internal server error' }),
+      JSON.stringify({ 
+        success: false, 
+        error: error.message || 'Internal server error',
+        timestamp: new Date().toISOString()
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

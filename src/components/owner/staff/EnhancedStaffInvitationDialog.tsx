@@ -218,6 +218,8 @@ export function EnhancedStaffInvitationDialog({
     }
 
     try {
+      console.log('Submitting invitation for:', inviteForm.email);
+      
       const result = await inviteUser({
         email: inviteForm.email,
         name: inviteForm.name,
@@ -247,6 +249,8 @@ export function EnhancedStaffInvitationDialog({
         drivers_license: inviteForm.drivers_license
       });
 
+      console.log('Invitation result:', result);
+      
       setInviteResult(result);
       setCurrentStep('result');
       
@@ -254,7 +258,14 @@ export function EnhancedStaffInvitationDialog({
         onSuccess?.();
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to send invitation');
+      console.error('Invitation error:', error);
+      
+      // Set error result for display
+      setInviteResult({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to send invitation'
+      });
+      setCurrentStep('result');
     }
   };
 

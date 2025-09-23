@@ -54,54 +54,79 @@ export const useStaffInvites = () => {
     setIsLoading(true);
     
     try {
-      console.log('Sending invite request:', data);
+      console.log('Sending invite request to edge function:', {
+        email: data.email,
+        role: data.role,
+        tenant_id: data.tenant_id,
+        send_email: data.send_email
+      });
       
       const { data: response, error } = await supabase.functions.invoke('invite-user-enhanced', {
         body: data
       });
 
+      console.log('Edge function response:', { response, error });
+
       if (error) {
-        console.error('Invite function error:', error);
-        toast.error('Failed to send invitation');
+        console.error('Supabase function invoke error:', error);
+        
+        // Return a structured error response
         return { 
           success: false, 
-          error: 'Failed to send invitation',
+          error: 'Network error occurred while sending invitation',
           details: error.message 
         };
       }
 
-      console.log('Invite response:', response);
+      // Handle both success and error responses from the edge function
+      if (!response) {
+        return {
+          success: false,
+          error: 'No response from server',
+          details: 'The server did not return a response'
+        };
+      }
 
-      if (response.success) {
-        // Show success message
-        if (response.email_sent) {
-          toast.success(
-            `Invitation sent to ${response.email}! They will receive login instructions via email.`
-          );
-        } else {
-          toast.success(
-            `User created successfully! Share the temporary password with ${response.email}.`
-          );
-        }
+      // If the response indicates failure, return it as-is
+      if (!response.success) {
+        console.error('Edge function returned error:', response.error);
+        return response;
+      }
 
-        // Show additional warnings if email failed
-        if (response.email_error) {
-          toast.warning(
-            `Note: Email delivery failed (${response.email_error}). Please share the temporary password manually.`
-          );
-        }
+      // Success case
+      console.log('Invitation sent successfully:', response);
+      
+      // Show success message based on email status
+      if (response.email_sent) {
+        toast.success(
+          `✅ Invitation sent to ${response.email}! They will receive login instructions via email.`
+        );
       } else {
-        toast.error(response.error || 'Failed to create user invitation');
+        toast.success(
+          `✅ User created successfully! ${response.temp_password ? 'Share the temporary password with them.' : ''}`
+        );
+      }
+
+      // Show warning if email failed
+      if (response.email_error) {
+        toast.warning(
+          `⚠️ Email delivery failed: ${response.email_error}. Please share the temporary password manually.`
+        );
       }
 
       return response;
+      
     } catch (error) {
-      console.error('Error sending invitation:', error);
-      toast.error('Network error occurred while sending invitation');
+      console.error('Unexpected error during invitation:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      
+      toast.error(`❌ Failed to send invitation: ${errorMessage}`);
+      
       return { 
         success: false, 
-        error: 'Network error occurred',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        error: 'Unexpected error occurred',
+        details: errorMessage
       };
     } finally {
       setIsLoading(false);

@@ -117,44 +117,57 @@ serve(async (req) => {
       });
     }
 
-    // Check if user already exists in both auth and users table
+    // Check if user already exists
+    const { data: existingAuthUsers } = await supabaseAdmin.auth.admin.listUsers();
+    const authUserExists = existingAuthUsers.users?.find(u => u.email === email);
+    
     const { data: existingUser } = await supabaseAdmin
       .from('users')
       .select('id, email, is_active')
       .eq('email', email)
-      .single();
+      .maybeSingle(); // Use maybeSingle to avoid errors if not found
 
-    // Also check if auth user exists
-    const { data: existingAuthUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const authUserExists = existingAuthUsers.users?.find(u => u.email === email);
+    console.log('Existing check results:', { 
+      authUserExists: !!authUserExists, 
+      existingUser: !!existingUser,
+      userActive: existingUser?.is_active 
+    });
 
+    // If both exist and user is active, return error
+    if (existingUser && existingUser.is_active && authUserExists) {
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'User already exists and is active',
+        details: `A user with email ${email} already exists in the system.` 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Handle reactivation case - user exists but needs to be reactivated
     if (existingUser || authUserExists) {
-      console.log('User or auth record already exists');
-      
-      // If both exist and user is active, return error
-      if (existingUser && existingUser.is_active && authUserExists) {
-        return new Response(JSON.stringify({ 
-          error: 'User already exists and is active',
-          details: `A user with email ${email} already exists in the system.` 
-        }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      // Handle inconsistent state or reactivation
-      let userId = existingUser?.id || authUserExists?.id;
+      console.log('Reactivating existing user');
       const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
       const tempExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      
+      let userId = existingUser?.id || authUserExists?.id;
 
-      // If auth user doesn't exist but profile does, clean up profile first
+      // Clean up inconsistent states
       if (existingUser && !authUserExists) {
         console.log('Cleaning up orphaned profile record');
-        await supabaseAdmin.from('users').delete().eq('id', existingUser.id);
-      }
-
-      // If auth user exists but profile doesn't, or if reactivating
-      if (authUserExists) {
+        const { error: deleteError } = await supabaseAdmin.from('users').delete().eq('email', email);
+        if (deleteError) {
+          console.error('Failed to clean up orphaned profile:', deleteError);
+        }
+      } else if (!existingUser && authUserExists) {
+        console.log('Cleaning up orphaned auth user');
+        const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(authUserExists.id);
+        if (deleteAuthError) {
+          console.error('Failed to clean up orphaned auth user:', deleteAuthError);
+        }
+      } else if (existingUser && authUserExists) {
+        // Both exist, update them
         userId = authUserExists.id;
         
         // Update auth user
@@ -175,7 +188,8 @@ serve(async (req) => {
         if (authUpdateError) {
           console.error('Error updating auth user:', authUpdateError);
           return new Response(JSON.stringify({ 
-            error: 'Failed to update auth user',
+            success: false,
+            error: 'Failed to update existing user',
             details: authUpdateError.message 
           }), {
             status: 500,
@@ -183,11 +197,10 @@ serve(async (req) => {
           });
         }
 
-        // Create or update user profile
+        // Update user profile
         const { error: profileError } = await supabaseAdmin
           .from('users')
-          .upsert({
-            id: userId,
+          .update({
             email,
             name,
             role,
@@ -217,13 +230,13 @@ serve(async (req) => {
             passport_number: passport_number || null,
             drivers_license: drivers_license || null,
             updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'id'
-          });
+          })
+          .eq('id', userId);
 
         if (profileError) {
-          console.error('Error upserting user profile:', profileError);
+          console.error('Error updating user profile:', profileError);
           return new Response(JSON.stringify({ 
+            success: false,
             error: 'Failed to update user profile',
             details: profileError.message 
           }), {
@@ -231,20 +244,6 @@ serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
-
-        // Log the action
-        await supabaseAdmin
-          .from('audit_log')
-          .insert({
-            actor_id: userId,
-            actor_email: email,
-            tenant_id: tenant_id || null,
-            action: existingUser ? 'user_reactivated' : 'user_profile_created',
-            resource_type: 'user',
-            resource_id: userId,
-            description: `User ${email} ${existingUser ? 'reactivated' : 'profile created'} with role ${role}${department ? ` in department ${department}` : ''}`,
-            metadata: { role, tenant_id, department, employee_id }
-          });
 
         // Try to send email
         let emailSent = false;
@@ -284,14 +283,17 @@ serve(async (req) => {
           force_reset: true,
           temp_expires: tempExpires.toISOString(),
           email_sent: emailSent,
-          message: existingUser ? 'User reactivated successfully' : 'User updated successfully',
+          message: 'User reactivated successfully',
           ...((!send_email || !emailSent) && { temp_password: tempPassword }),
           ...(emailError && { email_error: emailError })
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
+
+      // Fall through to create new user after cleanup
     }
+
 
     // Generate temporary password
     const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);

@@ -192,6 +192,7 @@ export function EnhancedStaffInvitationDialog({
     user_id?: string;
     error?: string;
     email_error?: string;
+    show_temp_password?: boolean;
   } | null>(null);
   
   const [showPassword, setShowPassword] = useState(false);
@@ -255,6 +256,15 @@ export function EnhancedStaffInvitationDialog({
       setCurrentStep('result');
       
       if (result.success) {
+        // Show temporary password if email wasn't sent and password is provided
+        if (result.temp_password && !result.email_sent) {
+          // Add the temporary password to the result for display in the UI
+          setInviteResult({
+            ...result,
+            show_temp_password: true
+          });
+        }
+        
         onSuccess?.();
       }
     } catch (error) {

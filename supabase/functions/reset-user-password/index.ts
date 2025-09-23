@@ -12,8 +12,6 @@ interface ResetPasswordRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  console.log('RESET-USER-PASSWORD Function v2.0 - Starting execution:', new Date().toISOString());
-  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });

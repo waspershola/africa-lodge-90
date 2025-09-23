@@ -25,13 +25,15 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  AlertCircle
+  AlertCircle,
+  User
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useUsers } from '@/hooks/useUsers';
 import { useStaffInvites } from '@/hooks/useStaffInvites';
 import { EnhancedStaffInvitationDialog } from './EnhancedStaffInvitationDialog';
 import { TemporaryPasswordResetDialog } from '@/components/auth/TemporaryPasswordResetDialog';
+import { StaffProfileDrawer } from './StaffProfileDrawer';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { StaffInvitationStatusBadge } from './StaffInvitationStatusBadge';
@@ -47,6 +49,26 @@ interface StaffMember {
   lastLogin?: string;
   force_reset?: boolean;
   temp_expires?: string;
+  
+  // Additional profile fields
+  phone?: string;
+  address?: string;
+  nin?: string;
+  date_of_birth?: string;
+  nationality?: string;
+  employee_id?: string;
+  hire_date?: string;
+  employment_type?: string;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  emergency_contact_relationship?: string;
+  next_of_kin_name?: string;
+  next_of_kin_phone?: string;
+  next_of_kin_relationship?: string;
+  bank_name?: string;
+  account_number?: string;
+  passport_number?: string;
+  drivers_license?: string;
 }
 
 const staffRoles = [
@@ -67,6 +89,7 @@ export function StaffManagementDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
+  const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [staffMembersDisplay, setStaffMembersDisplay] = useState<StaffMember[]>([]);
 
@@ -320,6 +343,15 @@ export function StaffManagementDashboard() {
                           <DropdownMenuItem
                             onClick={() => {
                               setSelectedStaff(staff);
+                              setProfileDrawerOpen(true);
+                            }}
+                          >
+                            <User className="h-4 w-4 mr-2" />
+                            View Profile
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedStaff(staff);
                               setResetPasswordOpen(true);
                             }}
                           >
@@ -370,6 +402,11 @@ export function StaffManagementDashboard() {
           userRole={selectedStaff.role}
         />
       )}
+      <StaffProfileDrawer
+        open={profileDrawerOpen}
+        onOpenChange={setProfileDrawerOpen}
+        staff={selectedStaff}
+      />
     </div>
   );
 }

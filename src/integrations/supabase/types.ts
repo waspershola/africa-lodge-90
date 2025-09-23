@@ -2173,11 +2173,22 @@ export type Database = {
       }
       users: {
         Row: {
+          account_number: string | null
           address: string | null
+          bank_name: string | null
+          certifications: Json | null
           created_at: string | null
+          date_of_birth: string | null
           department: string | null
+          drivers_license: string | null
           email: string
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          emergency_contact_relationship: string | null
+          employee_id: string | null
+          employment_type: string | null
           force_reset: boolean | null
+          hire_date: string | null
           id: string
           invitation_status: string | null
           invited_at: string | null
@@ -2185,23 +2196,44 @@ export type Database = {
           is_active: boolean | null
           is_platform_owner: boolean | null
           last_login: string | null
+          medical_conditions: string | null
           name: string | null
+          nationality: string | null
+          next_of_kin_name: string | null
+          next_of_kin_phone: string | null
+          next_of_kin_relationship: string | null
+          nin: string | null
+          passport_number: string | null
           phone: string | null
+          profile_picture_url: string | null
           role: string
           role_id: string | null
+          salary_range: string | null
           shift_end: string | null
           shift_start: string | null
+          skills: Json | null
           temp_expires: string | null
           temp_password_hash: string | null
           tenant_id: string | null
           updated_at: string | null
         }
         Insert: {
+          account_number?: string | null
           address?: string | null
+          bank_name?: string | null
+          certifications?: Json | null
           created_at?: string | null
+          date_of_birth?: string | null
           department?: string | null
+          drivers_license?: string | null
           email: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relationship?: string | null
+          employee_id?: string | null
+          employment_type?: string | null
           force_reset?: boolean | null
+          hire_date?: string | null
           id?: string
           invitation_status?: string | null
           invited_at?: string | null
@@ -2209,23 +2241,44 @@ export type Database = {
           is_active?: boolean | null
           is_platform_owner?: boolean | null
           last_login?: string | null
+          medical_conditions?: string | null
           name?: string | null
+          nationality?: string | null
+          next_of_kin_name?: string | null
+          next_of_kin_phone?: string | null
+          next_of_kin_relationship?: string | null
+          nin?: string | null
+          passport_number?: string | null
           phone?: string | null
+          profile_picture_url?: string | null
           role: string
           role_id?: string | null
+          salary_range?: string | null
           shift_end?: string | null
           shift_start?: string | null
+          skills?: Json | null
           temp_expires?: string | null
           temp_password_hash?: string | null
           tenant_id?: string | null
           updated_at?: string | null
         }
         Update: {
+          account_number?: string | null
           address?: string | null
+          bank_name?: string | null
+          certifications?: Json | null
           created_at?: string | null
+          date_of_birth?: string | null
           department?: string | null
+          drivers_license?: string | null
           email?: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relationship?: string | null
+          employee_id?: string | null
+          employment_type?: string | null
           force_reset?: boolean | null
+          hire_date?: string | null
           id?: string
           invitation_status?: string | null
           invited_at?: string | null
@@ -2233,12 +2286,22 @@ export type Database = {
           is_active?: boolean | null
           is_platform_owner?: boolean | null
           last_login?: string | null
+          medical_conditions?: string | null
           name?: string | null
+          nationality?: string | null
+          next_of_kin_name?: string | null
+          next_of_kin_phone?: string | null
+          next_of_kin_relationship?: string | null
+          nin?: string | null
+          passport_number?: string | null
           phone?: string | null
+          profile_picture_url?: string | null
           role?: string
           role_id?: string | null
+          salary_range?: string | null
           shift_end?: string | null
           shift_start?: string | null
+          skills?: Json | null
           temp_expires?: string | null
           temp_password_hash?: string | null
           tenant_id?: string | null

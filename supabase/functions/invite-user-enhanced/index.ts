@@ -19,6 +19,26 @@ interface InviteUserRequest {
   tenant_id?: string;
   department?: string;
   send_email?: boolean;
+  
+  // Additional profile fields
+  phone?: string;
+  address?: string;
+  nin?: string;
+  date_of_birth?: string;
+  nationality?: string;
+  employee_id?: string;
+  hire_date?: string;
+  employment_type?: string;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  emergency_contact_relationship?: string;
+  next_of_kin_name?: string;
+  next_of_kin_phone?: string;
+  next_of_kin_relationship?: string;
+  bank_name?: string;
+  account_number?: string;
+  passport_number?: string;
+  drivers_license?: string;
 }
 
 serve(async (req) => {
@@ -34,10 +54,36 @@ serve(async (req) => {
       role, 
       tenant_id, 
       department,
-      send_email = true 
+      send_email = true,
+      
+      // Additional profile fields
+      phone,
+      address,
+      nin,
+      date_of_birth,
+      nationality,
+      employee_id,
+      hire_date,
+      employment_type,
+      emergency_contact_name,
+      emergency_contact_phone,
+      emergency_contact_relationship,
+      next_of_kin_name,
+      next_of_kin_phone,
+      next_of_kin_relationship,
+      bank_name,
+      account_number,
+      passport_number,
+      drivers_license
     }: InviteUserRequest = await req.json();
 
-    console.log('Processing invite request:', { email, role, tenant_id, send_email });
+    console.log('Processing invite request:', { 
+      email, 
+      role, 
+      tenant_id, 
+      send_email,
+      has_additional_fields: !!(phone || address || nin || employee_id)
+    });
 
     // Validate required fields
     if (!email || !name || !role) {
@@ -103,7 +149,7 @@ serve(async (req) => {
 
     console.log('Auth user created successfully:', authUser.user?.id);
 
-    // Create user profile in public.users table
+    // Create user profile in public.users table with all additional fields
     const { error: profileError } = await supabaseAdmin
       .from('users')
       .insert({
@@ -117,7 +163,27 @@ serve(async (req) => {
         temp_expires: tempExpires.toISOString(),
         is_active: true,
         invited_by: tenant_id || null,
-        invitation_status: 'pending'
+        invitation_status: 'pending',
+        
+        // Additional profile fields
+        phone: phone || null,
+        address: address || null,
+        nin: nin || null,
+        date_of_birth: date_of_birth || null,
+        nationality: nationality || null,
+        employee_id: employee_id || null,
+        hire_date: hire_date || null,
+        employment_type: employment_type || 'full-time',
+        emergency_contact_name: emergency_contact_name || null,
+        emergency_contact_phone: emergency_contact_phone || null,
+        emergency_contact_relationship: emergency_contact_relationship || null,
+        next_of_kin_name: next_of_kin_name || null,
+        next_of_kin_phone: next_of_kin_phone || null,
+        next_of_kin_relationship: next_of_kin_relationship || null,
+        bank_name: bank_name || null,
+        account_number: account_number || null,
+        passport_number: passport_number || null,
+        drivers_license: drivers_license || null
       });
 
     if (profileError) {
@@ -147,11 +213,14 @@ serve(async (req) => {
         action: 'user_invited',
         resource_type: 'user',
         resource_id: authUser.user!.id,
-        description: `User ${email} invited with role ${role}`,
+        description: `User ${email} invited with role ${role}${department ? ` in department ${department}` : ''}${employee_id ? ` (Employee ID: ${employee_id})` : ''}`,
         metadata: {
           role,
           tenant_id,
           department,
+          employee_id,
+          phone,
+          employment_type,
           invited_by: 'system' // Could be enhanced to track actual inviter
         }
       });

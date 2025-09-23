@@ -153,6 +153,32 @@ export default function QRManagerPage() {
     }
   };
 
+  const handleDeleteQR = async (qrCode: QRCodeData) => {
+    if (!user?.tenant_id) return;
+    
+    try {
+      const { error } = await supabase
+        .from('qr_codes')
+        .delete()
+        .eq('qr_token', qrCode.id)
+        .eq('tenant_id', user.tenant_id);
+
+      if (error) throw error;
+      
+      await refetch();
+      toast({
+        title: "QR Code Deleted",
+        description: `QR code for ${qrCode.assignedTo} has been deleted successfully`
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to delete QR code",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleCreateQR = async (newQRData: Omit<QRCodeData, 'id' | 'createdAt' | 'createdBy' | 'pendingRequests'>) => {
     if (!user?.tenant_id) return;
     
@@ -255,6 +281,7 @@ export default function QRManagerPage() {
         onOpenChange={setShowDrawer}
         qrCode={selectedQR}
         onUpdate={handleUpdateQR}
+        onDelete={handleDeleteQR}
         branding={brandingSettings}
       />
 

@@ -1,20 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Printer, Activity } from 'lucide-react';
+import { Download, Printer, Activity, Trash2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { QRCodePreview } from '@/components/owner/qr/QRCodePreview';
 import type { QRCodeData } from '@/pages/owner/QRManager';
 import type { BrandingSettings } from './GlobalSettingsDialog';
+import { useToast } from '@/hooks/use-toast';
+import html2canvas from 'html2canvas';
 
 interface QRCodeDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   qrCode: QRCodeData | null;
   onUpdate: (qrCode: QRCodeData) => void;
+  onDelete?: (qrCode: QRCodeData) => void;
   branding?: BrandingSettings;
 }
 
@@ -55,8 +59,10 @@ const mockAuditLogs = [
   }
 ];
 
-export const QRCodeDrawer = ({ open, onOpenChange, qrCode, onUpdate, branding }: QRCodeDrawerProps) => {
+export const QRCodeDrawer = ({ open, onOpenChange, qrCode, onUpdate, onDelete, branding }: QRCodeDrawerProps) => {
   const [services, setServices] = useState<string[]>([]);
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
+  const { toast } = useToast();
 
   useEffect(() => {
     if (qrCode) {
@@ -75,6 +81,138 @@ export const QRCodeDrawer = ({ open, onOpenChange, qrCode, onUpdate, branding }:
       const updatedQR = { ...qrCode, servicesEnabled: updatedServices };
       onUpdate(updatedQR);
     }
+  };
+
+  const handleDownloadPNG = async () => {
+    if (!qrDataUrl) {
+      toast({
+        title: "Error",
+        description: "QR code not ready for download",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Create download link
+      const link = document.createElement('a');
+      link.download = `${qrCode?.id || 'qr-code'}-${qrCode?.assignedTo?.replace(/\s+/g, '_') || 'code'}.png`;
+      link.href = qrDataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: "Success",
+        description: "QR code downloaded successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error", 
+        description: "Failed to download QR code",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handlePrint = () => {
+    if (!qrDataUrl) {
+      toast({
+        title: "Error",
+        description: "QR code not ready for printing",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        throw new Error('Pop-up blocked');
+      }
+
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>QR Code - ${qrCode?.assignedTo || 'Unknown'}</title>
+            <style>
+              body { 
+                font-family: Arial, sans-serif; 
+                text-align: center; 
+                padding: 20px; 
+                margin: 0;
+              }
+              .qr-container {
+                max-width: 400px;
+                margin: 0 auto;
+                border: 1px solid #ddd;
+                padding: 20px;
+                border-radius: 8px;
+              }
+              .hotel-info { margin-bottom: 20px; }
+              .qr-code { margin: 20px 0; }
+              .instructions { 
+                font-size: 12px; 
+                color: #666; 
+                margin-top: 20px; 
+              }
+              @media print {
+                body { padding: 0; }
+                .qr-container { border: none; }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="qr-container">
+              <div class="hotel-info">
+                <h2>${branding?.hotelName || 'Hotel'}</h2>
+                <p>${qrCode?.assignedTo || 'Location'}</p>
+                <p>Services: ${qrCode?.servicesEnabled?.join(', ') || 'None'}</p>
+              </div>
+              <div class="qr-code">
+                <img src="${qrDataUrl}" alt="QR Code" style="max-width: 300px;" />
+              </div>
+              <div class="instructions">
+                <p>Scan with your phone camera to access hotel services</p>
+                <p>QR ID: ${qrCode?.id || 'Unknown'}</p>
+              </div>
+            </div>
+            <script>
+              window.onload = function() {
+                window.print();
+                window.onafterprint = function() {
+                  window.close();
+                };
+              };
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+
+      toast({
+        title: "Success",
+        description: "Print dialog opened",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to open print dialog",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDelete = () => {
+    if (qrCode && onDelete) {
+      onDelete(qrCode);
+      onOpenChange(false);
+    }
+  };
+
+  const handleQRGenerated = (dataUrl: string) => {
+    setQrDataUrl(dataUrl);
   };
 
   const formatTimestamp = (timestamp: string) => {
@@ -105,18 +243,45 @@ export const QRCodeDrawer = ({ open, onOpenChange, qrCode, onUpdate, branding }:
                 roomNumber={qrCode.assignedTo?.includes('Room') ? qrCode.assignedTo.replace('Room ', '') : undefined}
                 services={qrCode.servicesEnabled}
                 qrUrl={`https://840fa7b9-2d18-47bf-92d3-88ddf6cd5934.lovableproject.com/qr/${qrCode.id}`}
+                onQRGenerated={handleQRGenerated}
               />
               
               <div className="flex gap-2">
-                <Button variant="outline" className="flex-1">
+                <Button variant="outline" className="flex-1" onClick={handleDownloadPNG}>
                   <Download className="h-4 w-4 mr-2" />
                   Download PNG
                 </Button>
-                <Button variant="outline" className="flex-1">
+                <Button variant="outline" className="flex-1" onClick={handlePrint}>
                   <Printer className="h-4 w-4 mr-2" />
                   Print
                 </Button>
               </div>
+
+              {onDelete && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" className="w-full">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete QR Code
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete QR Code</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete the QR code for {qrCode.assignedTo}? 
+                        This action cannot be undone and guests will no longer be able to access services through this QR code.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
 
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>

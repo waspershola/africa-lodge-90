@@ -102,7 +102,8 @@ export function SalaryApprovalWorkflow() {
         new_salary: audit.new_salary,
         change_reason: `${action === 'approve' ? 'Approved' : 'Rejected'} by ${user?.role}: ${actionComments}`,
         approval_stage: nextStage,
-        approved_by: user?.id
+        approved_by: user?.id,
+        effective_date: new Date().toISOString().split('T')[0]
       });
 
       const actionText = action === 'approve' ? 'approved' : 'rejected';

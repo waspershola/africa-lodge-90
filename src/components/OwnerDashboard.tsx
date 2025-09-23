@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { 
   Sidebar,
   SidebarContent,
@@ -36,40 +37,6 @@ import {
   QrCode
 } from "lucide-react";
 
-// Dashboard Stats Hook
-const useDashboardStats = (tenantId: string) => {
-  const [stats, setStats] = useState({
-    totalRevenue: 0,
-    occupancyRate: 0,
-    totalBookings: 0,
-    avgDailyRate: 0,
-    powerCost: 0,
-    fuelSavings: 0,
-    roomServiceOrders: 0,
-    staffCount: 0
-  });
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // TODO: Implement real data fetching from Supabase
-    // For now, using mock data but with tenant-specific logic
-    setTimeout(() => {
-      setStats({
-        totalRevenue: 4250000,
-        occupancyRate: 78,
-        totalBookings: 156,
-        avgDailyRate: 25000,
-        powerCost: 320000,
-        fuelSavings: 180000,
-        roomServiceOrders: 234,
-        staffCount: 28
-      });
-      setLoading(false);
-    }, 500);
-  }, [tenantId]);
-
-  return { stats, loading };
-};
 
 const mockRevenueData = [
   { month: 'Jan', amount: 3200000 },
@@ -187,7 +154,7 @@ const AppSidebar = () => {
 export const OwnerDashboard = () => {
   const [selectedPeriod, setSelectedPeriod] = useState("This Month");
   const { user, tenant } = useAuth();
-  const { stats, loading } = useDashboardStats(tenant?.tenant_id || '');
+  const { stats, loading } = useDashboardStats();
   const navigate = useNavigate();
 
   const kpiCards = [

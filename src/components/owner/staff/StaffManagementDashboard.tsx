@@ -184,9 +184,13 @@ export function StaffManagementDashboard() {
   };
 
   const handleResendInvite = async (staffId: string, staffEmail: string, staffName: string) => {
+    console.log('handleResendInvite called:', { staffId, staffEmail, staffName });
     // Use the proper regenerate password dialog
-    setSelectedStaff(staffMembersDisplay.find(s => s.id === staffId) || null);
+    const staff = staffMembersDisplay.find(s => s.id === staffId);
+    console.log('Found staff:', staff);
+    setSelectedStaff(staff || null);
     setRegeneratePasswordOpen(true);
+    console.log('Dialog should be open now, regeneratePasswordOpen:', true);
   };
 
   const isPendingReset = (staff: StaffMember) => {
@@ -510,6 +514,17 @@ export function StaffManagementDashboard() {
           userRole={selectedStaff.role}
         />
       )}
+
+      {selectedStaff && (
+        <RegeneratePasswordDialog
+          open={regeneratePasswordOpen}
+          onOpenChange={setRegeneratePasswordOpen}
+          userId={selectedStaff.id}
+          userEmail={selectedStaff.email}
+          userName={selectedStaff.name}
+        />
+      )}
+
       <StaffProfileDrawer
         open={profileDrawerOpen}
         onOpenChange={setProfileDrawerOpen}

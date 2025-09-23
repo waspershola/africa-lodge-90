@@ -38,6 +38,7 @@ export function RegeneratePasswordDialog({
   userEmail,
   userName
 }: RegeneratePasswordDialogProps) {
+  console.log('RegeneratePasswordDialog props:', { open, userId, userEmail, userName });
   const { resetUserPassword, isLoading } = useStaffInvites();
   const [result, setResult] = useState<{
     success: boolean;
@@ -47,8 +48,11 @@ export function RegeneratePasswordDialog({
   const [showPassword, setShowPassword] = useState(false);
 
   const handleRegenerate = async () => {
+    console.log('handleRegenerate called for user:', userId, userName);
     try {
+      console.log('About to call resetUserPassword...');
       const response = await resetUserPassword(userId);
+      console.log('resetUserPassword response:', response);
       setResult(response);
       
       if (response.success) {
@@ -57,10 +61,12 @@ export function RegeneratePasswordDialog({
         toast.error(response.error || 'Failed to regenerate password');
       }
     } catch (error: any) {
+      console.error('Error in handleRegenerate:', error);
       setResult({
         success: false,
         error: error.message || 'Failed to regenerate password'
       });
+      toast.error(error.message || 'Failed to regenerate password');
     }
   };
 

@@ -12,6 +12,9 @@ verify_jwt = false
 [functions.delete-user]
 verify_jwt = true
 
+[functions.invite-user-enhanced]
+verify_jwt = true
+
 [functions.paystack-webhook]
 verify_jwt = false
 

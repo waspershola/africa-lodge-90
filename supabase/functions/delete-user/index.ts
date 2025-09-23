@@ -142,7 +142,19 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     try {
-      // First, try to delete from users table (this cleans up our records)
+      // First, nullify audit log references to prevent foreign key constraint violations
+      console.log('Nullifying audit log references...');
+      const { error: auditUpdateError } = await supabaseClient
+        .from('audit_log')
+        .update({ actor_id: null })
+        .eq('actor_id', user_id);
+
+      if (auditUpdateError) {
+        console.warn('Failed to update audit log references:', auditUpdateError);
+        // Continue anyway - this is not critical
+      }
+
+      // Then, try to delete from users table (this cleans up our records)
       console.log('Deleting user record from database...');
       const { error: deleteUserError } = await supabaseClient
         .from('users')

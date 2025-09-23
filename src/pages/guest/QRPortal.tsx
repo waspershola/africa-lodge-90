@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Wifi, Coffee, Home, Wrench, MessageCircle, Star, Phone, Clock, User } from 'lucide-react';
+import { Wifi, Coffee, Home, Wrench, MessageCircle, Star, Phone, Clock, User, ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,14 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+
+// Service Components
+import WiFiService from '@/components/guest/services/WiFiService';
+import HousekeepingService from '@/components/guest/services/HousekeepingService';
+import MaintenanceService from '@/components/guest/services/MaintenanceService';
+import FrontDeskService from '@/components/guest/services/FrontDeskService';
+import FeedbackService from '@/components/guest/services/FeedbackService';
+import RoomServiceMenu from '@/components/guest/services/RoomServiceMenu';
 
 interface QRCodeInfo {
   qr_token: string;
@@ -34,7 +42,7 @@ export default function QRPortal() {
   const { qrToken } = useParams<{ qrToken: string }>();
   const navigate = useNavigate();
   const [sessionToken, setSessionToken] = useState<string>('');
-  const [submittingService, setSubmittingService] = useState<string | null>(null);
+  const [currentService, setCurrentService] = useState<string | null>(null);
 
   // Get QR info - graceful handling, no harsh errors
   const { data: qrInfo, isLoading } = useQuery({
@@ -102,51 +110,16 @@ export default function QRPortal() {
     });
   }
 
-  const handleServiceRequest = async (service: string) => {
-    if (!qrInfo || submittingService) return;
+  const selectService = (service: string) => {
+    setCurrentService(service);
+  };
 
-    // Simple rate limiting check (optional)
-    const lastRequest = localStorage.getItem('last_service_request');
-    const now = Date.now();
-    if (lastRequest && (now - parseInt(lastRequest)) < 1000) {
-      return; // Prevent spam clicking
-    }
-    localStorage.setItem('last_service_request', now.toString());
+  const goBack = () => {
+    setCurrentService(null);
+  };
 
-    try {
-      setSubmittingService(service);
-      
-      // Create a service request directly via API
-      const response = await fetch(`https://dxisnnjsbuuiunjmzzqj.supabase.co/functions/v1/qr-guest-portal/guest/qr/${qrInfo.qr_token}/requests`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          service_type: service.toLowerCase().replace(/[\s-]/g, '_'),
-          request_details: {
-            service_name: service,
-            requested_at: new Date().toISOString(),
-            guest_session_id: sessionToken
-          },
-          priority: 1,
-          notes: `${service} request from guest`
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        // Show success message or update UI
-        alert(`Your ${service} request has been submitted successfully! Request ID: ${result.request_id || 'N/A'}`);
-      } else {
-        throw new Error('Failed to submit request');
-      }
-    } catch (error) {
-      console.error('Error submitting service request:', error);
-      alert('Failed to submit your request. Please try again or contact the front desk.');
-    } finally {
-      setSubmittingService(null);
-    }
+  const callFrontDesk = () => {
+    window.location.href = 'tel:+2347065937769';
   };
 
   // Show loading only briefly
@@ -183,6 +156,80 @@ export default function QRPortal() {
             </Button>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  // Render service-specific component
+  if (currentService && qrInfo) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        {/* Header */}
+        <div className="bg-white shadow-sm border-b">
+          <div className="max-w-2xl mx-auto px-4 py-4">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="sm" onClick={goBack}>
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                Back
+              </Button>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center overflow-hidden">
+                  {qrInfo.hotel_logo ? (
+                    <img 
+                      src={qrInfo.hotel_logo} 
+                      alt="Hotel Logo" 
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-lg">🏨</span>
+                  )}
+                </div>
+                <div>
+                  <h1 className="text-lg font-semibold">{qrInfo.hotel_name}</h1>
+                  <p className="text-sm text-muted-foreground">
+                    {qrInfo.room_number ? `Room ${qrInfo.room_number}` : qrInfo.label}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Service Content */}
+        <div className="max-w-2xl mx-auto p-4">
+          {currentService === 'Wi-Fi' && (
+            <WiFiService qrToken={qrInfo.qr_token} sessionToken={sessionToken} hotelName={qrInfo.hotel_name} />
+          )}
+          {currentService === 'Housekeeping' && (
+            <HousekeepingService qrToken={qrInfo.qr_token} sessionToken={sessionToken} />
+          )}
+          {currentService === 'Maintenance' && (
+            <MaintenanceService qrToken={qrInfo.qr_token} sessionToken={sessionToken} />
+          )}
+          {(currentService === 'Room Service' || currentService === 'Digital Menu') && (
+            <RoomServiceMenu qrToken={qrInfo.qr_token} sessionToken={sessionToken} />
+          )}
+          {currentService === 'Events & Packages' && (
+            <Card>
+              <CardContent className="p-6 text-center">
+                <Star className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Events & Packages</h3>
+                <p className="text-muted-foreground mb-4">
+                  Discover our special offers and event packages.
+                </p>
+                <Button onClick={() => selectService('Front Desk')}>
+                  Contact Front Desk for Details
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+          {currentService === 'Feedback' && (
+            <FeedbackService qrToken={qrInfo.qr_token} sessionToken={sessionToken} />
+          )}
+          {currentService === 'Front Desk' && (
+            <FrontDeskService qrToken={qrInfo.qr_token} sessionToken={sessionToken} />
+          )}
+        </div>
       </div>
     );
   }
@@ -257,21 +304,14 @@ export default function QRPortal() {
                   key={service}
                   variant="outline"
                   className="w-full justify-start h-auto p-4"
-                  onClick={() => handleServiceRequest(service)}
-                  disabled={submittingService !== null}
+                  onClick={() => selectService(service)}
                 >
                   <div className="flex items-center gap-3 w-full">
                     <div className="flex-shrink-0">
-                      {submittingService === service ? (
-                        <span className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></span>
-                      ) : (
-                        serviceIcons[service as keyof typeof serviceIcons] || <Star className="h-5 w-5" />
-                      )}
+                      {serviceIcons[service as keyof typeof serviceIcons] || <Star className="h-5 w-5" />}
                     </div>
                     <div className="text-left flex-1">
-                      <div className="font-medium">
-                        {submittingService === service ? 'Submitting...' : service}
-                      </div>
+                      <div className="font-medium">{service}</div>
                       <div className="text-xs text-muted-foreground">
                         {service === 'Wi-Fi' && 'Get network credentials and support'}
                         {service === 'Room Service' && 'Order food and beverages'}
@@ -294,7 +334,7 @@ export default function QRPortal() {
           </CardContent>
         </Card>
 
-        {/* Emergency Contact */}
+        {/* Front Desk Contact */}
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -305,7 +345,7 @@ export default function QRPortal() {
                 <h3 className="font-medium">Need immediate assistance?</h3>
                 <p className="text-sm text-muted-foreground">Call the front desk directly</p>
               </div>
-              <Button size="sm" variant="outline">
+              <Button size="sm" variant="outline" onClick={callFrontDesk}>
                 <Phone className="h-4 w-4 mr-1" />
                 Call
               </Button>

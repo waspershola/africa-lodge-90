@@ -82,12 +82,15 @@ serve(async (req) => {
       );
     }
 
-    // POST /guest/qr/:slug/requests - Create new request
-    if (method === 'POST' && path[1] === 'guest' && path[2] === 'qr' && path[3] && path[4] === 'requests') {
+    // Service-specific endpoints
+    const serviceEndpoints = ['wifi-request', 'room-service', 'housekeeping', 'maintenance', 'digital-menu', 'events', 'feedback', 'front-desk-call'];
+    
+    if (method === 'POST' && path[1] === 'guest' && path[2] === 'qr' && path[3] && serviceEndpoints.includes(path[4])) {
       const slug = path[3];
+      const serviceType = path[4];
       const body = await req.json();
       
-      console.log('Creating request for slug:', slug, 'Body:', body);
+      console.log('Creating service request:', { slug, serviceType, body });
 
       // Validate QR code exists and is active
       const { data: qrCode, error: qrError } = await supabase
@@ -98,21 +101,38 @@ serve(async (req) => {
         .single();
 
       if (qrError || !qrCode) {
+        console.error('QR code validation error:', qrError);
         return new Response(
           JSON.stringify({ error: 'Invalid QR code' }), 
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      // Get service info to determine assigned team
-      const { data: serviceInfo } = await supabase
-        .from('qr_services')
-        .select('default_route, requires_payment')
-        .eq('tenant_id', qrCode.tenant_id)
-        .eq('name', body.request_type)
-        .single();
+      // Map service endpoints to internal service types
+      const serviceTypeMap = {
+        'wifi-request': 'wifi_support',
+        'room-service': 'room_service', 
+        'housekeeping': 'housekeeping',
+        'maintenance': 'maintenance',
+        'digital-menu': 'room_service',
+        'events': 'concierge',
+        'feedback': 'feedback',
+        'front-desk-call': 'concierge'
+      };
 
+      const internalServiceType = serviceTypeMap[serviceType] || 'general';
       const guestSessionId = body.guest_session_id || `guest-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      // Determine assigned team based on service type
+      const teamMap = {
+        'wifi_support': 'IT',
+        'room_service': 'Kitchen',
+        'housekeeping': 'Housekeeping',
+        'maintenance': 'Maintenance',
+        'concierge': 'Front Desk',
+        'feedback': 'Management',
+        'general': 'Front Desk'
+      };
 
       // Create the request
       const { data: newRequest, error: createError } = await supabase
@@ -122,12 +142,12 @@ serve(async (req) => {
           qr_code_id: qrCode.id,
           room_id: qrCode.room_id,
           guest_session_id: guestSessionId,
-          service_type: body.request_type,
-          request_details: body.payload || {},
+          service_type: internalServiceType,
+          request_details: body,
           status: 'pending',
-          assigned_team: serviceInfo?.default_route || 'general',
-          priority: body.priority || 0,
-          notes: body.payload?.notes || body.payload?.special_instructions,
+          assigned_team: teamMap[internalServiceType],
+          priority: body.priority || 1,
+          notes: body.notes || body.message || `${serviceType} request from guest`,
           created_by_guest: true
         }])
         .select()
@@ -136,10 +156,64 @@ serve(async (req) => {
       if (createError) {
         console.error('Request creation error:', createError);
         return new Response(
-          JSON.stringify({ error: 'Failed to create request' }), 
+          JSON.stringify({ error: 'Failed to create request', details: createError.message }), 
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      // If payment is required for room service, create folio charge
+      if ((serviceType === 'room-service' || serviceType === 'digital-menu') && body.total_amount) {
+        const { data: reservation } = await supabase
+          .from('reservations')
+          .select('id')
+          .eq('room_id', qrCode.room_id)
+          .eq('tenant_id', qrCode.tenant_id)
+          .in('status', ['confirmed', 'checked_in'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (reservation) {
+          const { data: folio } = await supabase
+            .from('folios')
+            .select('id')
+            .eq('reservation_id', reservation.id)
+            .eq('status', 'open')
+            .single();
+
+          if (folio) {
+            await supabase
+              .from('folio_charges')
+              .insert([{
+                tenant_id: qrCode.tenant_id,
+                folio_id: folio.id,
+                charge_type: internalServiceType,
+                description: `QR ${serviceType.replace('-', ' ')} order`,
+                amount: body.total_amount,
+                reference_id: newRequest.id,
+                reference_type: 'qr_order'
+              }]);
+          }
+        }
+      }
+
+      const response = {
+        request_id: newRequest.id,
+        status: newRequest.status,
+        assigned_team: newRequest.assigned_team,
+        guest_session_id: guestSessionId,
+        created_at: newRequest.created_at,
+        service_type: serviceType
+      };
+
+      return new Response(
+        JSON.stringify(response),
+        { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Legacy endpoint - keep for backwards compatibility
+    if (method === 'POST' && path[1] === 'guest' && path[2] === 'qr' && path[3] && path[4] === 'requests') {
 
       // If payment is required, create folio charge
       if (serviceInfo?.requires_payment && body.payload?.total_amount) {

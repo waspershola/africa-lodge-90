@@ -1949,6 +1949,239 @@ export type Database = {
           },
         ]
       }
+      salary_payments: {
+        Row: {
+          approved_by: string | null
+          created_at: string | null
+          deductions: number | null
+          gross_amount: number
+          id: string
+          net_amount: number
+          notes: string | null
+          paid_by: string | null
+          payment_date: string | null
+          payment_method: string | null
+          payment_period_end: string
+          payment_period_start: string
+          payment_reference: string | null
+          receipt_url: string | null
+          status: string | null
+          tenant_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          approved_by?: string | null
+          created_at?: string | null
+          deductions?: number | null
+          gross_amount: number
+          id?: string
+          net_amount: number
+          notes?: string | null
+          paid_by?: string | null
+          payment_date?: string | null
+          payment_method?: string | null
+          payment_period_end: string
+          payment_period_start: string
+          payment_reference?: string | null
+          receipt_url?: string | null
+          status?: string | null
+          tenant_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          approved_by?: string | null
+          created_at?: string | null
+          deductions?: number | null
+          gross_amount?: number
+          id?: string
+          net_amount?: number
+          notes?: string | null
+          paid_by?: string | null
+          payment_date?: string | null
+          payment_method?: string | null
+          payment_period_end?: string
+          payment_period_start?: string
+          payment_reference?: string | null
+          receipt_url?: string | null
+          status?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_payments_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_payments_paid_by_fkey"
+            columns: ["paid_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_payments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_financials: {
+        Row: {
+          account_name: string | null
+          account_number: string | null
+          annual_salary: number | null
+          bank_name: string | null
+          created_at: string | null
+          created_by: string | null
+          effective_date: string | null
+          employment_type: string | null
+          hourly_rate: number | null
+          id: string
+          monthly_salary: number | null
+          payment_method: string | null
+          salary_amount: number | null
+          salary_currency: string | null
+          salary_grade: string | null
+          status: string | null
+          tenant_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          account_name?: string | null
+          account_number?: string | null
+          annual_salary?: number | null
+          bank_name?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          effective_date?: string | null
+          employment_type?: string | null
+          hourly_rate?: number | null
+          id?: string
+          monthly_salary?: number | null
+          payment_method?: string | null
+          salary_amount?: number | null
+          salary_currency?: string | null
+          salary_grade?: string | null
+          status?: string | null
+          tenant_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          account_name?: string | null
+          account_number?: string | null
+          annual_salary?: number | null
+          bank_name?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          effective_date?: string | null
+          employment_type?: string | null
+          hourly_rate?: number | null
+          id?: string
+          monthly_salary?: number | null
+          payment_method?: string | null
+          salary_amount?: number | null
+          salary_currency?: string | null
+          salary_grade?: string | null
+          status?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_financials_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_financials_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_salary_audit: {
+        Row: {
+          approval_stage: string | null
+          approved_at: string | null
+          approved_by: string | null
+          change_reason: string | null
+          created_at: string | null
+          created_by: string | null
+          effective_date: string | null
+          id: string
+          new_salary: number | null
+          old_salary: number | null
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          approval_stage?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          change_reason?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          effective_date?: string | null
+          id?: string
+          new_salary?: number | null
+          old_salary?: number | null
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          approval_stage?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          change_reason?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          effective_date?: string | null
+          id?: string
+          new_salary?: number | null
+          old_salary?: number | null
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_salary_audit_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_salary_audit_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_salary_audit_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supplies: {
         Row: {
           category: string

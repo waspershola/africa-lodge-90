@@ -44,6 +44,7 @@ import { StaffExportDialog } from './StaffExportDialog';
 import { StaffTemplateDialog } from './StaffTemplateDialog';
 import { StaffBulkImportDialog } from './StaffBulkImportDialog';
 import { SalaryManagementTab } from './SalaryManagementTab';
+import { SalaryApprovalWorkflow } from './SalaryApprovalWorkflow';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface StaffMember {
@@ -273,9 +274,10 @@ export function StaffManagementDashboard() {
 
       {/* Tabs */}
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Staff Overview</TabsTrigger>
           <TabsTrigger value="salary">Salary Management</TabsTrigger>
+          <TabsTrigger value="approvals">Approvals</TabsTrigger>
           <TabsTrigger value="performance">Performance</TabsTrigger>
         </TabsList>
 
@@ -430,6 +432,10 @@ export function StaffManagementDashboard() {
 
         <TabsContent value="salary">
           <SalaryManagementTab />
+        </TabsContent>
+
+        <TabsContent value="approvals">
+          <SalaryApprovalWorkflow />
         </TabsContent>
 
         <TabsContent value="performance">

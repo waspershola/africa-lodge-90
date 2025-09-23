@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
 import { 
   Sidebar,
   SidebarContent,
@@ -34,16 +36,39 @@ import {
   QrCode
 } from "lucide-react";
 
-// Mock data
-const mockStats = {
-  totalRevenue: 4250000,
-  occupancyRate: 78,
-  totalBookings: 156,
-  avgDailyRate: 25000,
-  powerCost: 320000,
-  fuelSavings: 180000,
-  roomServiceOrders: 234,
-  staffCount: 28
+// Dashboard Stats Hook
+const useDashboardStats = (tenantId: string) => {
+  const [stats, setStats] = useState({
+    totalRevenue: 0,
+    occupancyRate: 0,
+    totalBookings: 0,
+    avgDailyRate: 0,
+    powerCost: 0,
+    fuelSavings: 0,
+    roomServiceOrders: 0,
+    staffCount: 0
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // TODO: Implement real data fetching from Supabase
+    // For now, using mock data but with tenant-specific logic
+    setTimeout(() => {
+      setStats({
+        totalRevenue: 4250000,
+        occupancyRate: 78,
+        totalBookings: 156,
+        avgDailyRate: 25000,
+        powerCost: 320000,
+        fuelSavings: 180000,
+        roomServiceOrders: 234,
+        staffCount: 28
+      });
+      setLoading(false);
+    }, 500);
+  }, [tenantId]);
+
+  return { stats, loading };
 };
 
 const mockRevenueData = [
@@ -61,7 +86,7 @@ const sidebarItems = [
     active: true
   },
   {
-    title: "Hotel Configuration",
+    title: "Hotel Configuration", 
     icon: Settings,
     href: "/owner-dashboard/configuration"
   },
@@ -81,9 +106,14 @@ const sidebarItems = [
     href: "/owner-dashboard/guests"
   },
   {
-    title: "Room Service QR",
+    title: "QR Manager",
     icon: QrCode,
-    href: "/owner-dashboard/qr-codes"
+    href: "/owner-dashboard/qr-manager"
+  },
+  {
+    title: "Billing & Payments",
+    icon: CreditCard,
+    href: "/owner-dashboard/billing"
   },
   {
     title: "Reports",
@@ -104,6 +134,8 @@ const sidebarItems = [
 
 const AppSidebar = () => {
   const { open } = useSidebar();
+  const navigate = useNavigate();
+  const { tenant } = useAuth();
 
   return (
     <Sidebar className={!open ? "w-16" : "w-64"}>
@@ -115,8 +147,10 @@ const AppSidebar = () => {
             </div>
             {open && (
               <div>
-                <div className="font-playfair font-bold text-sidebar-primary">Lagos Grand</div>
-                <div className="text-sm text-sidebar-foreground/70">Hotel Owner</div>
+                <div className="font-playfair font-bold text-sidebar-primary">
+                  {tenant?.hotel_name || 'Hotel'}
+                </div>
+                <div className="text-sm text-sidebar-foreground/70">Owner Dashboard</div>
               </div>
             )}
           </div>
@@ -132,7 +166,10 @@ const AppSidebar = () => {
                     asChild
                     className={`${item.active ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'hover:bg-sidebar-accent/50'}`}
                   >
-                    <button className="flex items-center gap-3 w-full p-3">
+                    <button 
+                      className="flex items-center gap-3 w-full p-3"
+                      onClick={() => navigate(item.href)}
+                    >
                       <item.icon className="h-5 w-5" />
                       {open && <span>{item.title}</span>}
                     </button>
@@ -147,21 +184,24 @@ const AppSidebar = () => {
   );
 };
 
-const OwnerDashboard = () => {
+export const OwnerDashboard = () => {
   const [selectedPeriod, setSelectedPeriod] = useState("This Month");
+  const { user, tenant } = useAuth();
+  const { stats, loading } = useDashboardStats(tenant?.tenant_id || '');
+  const navigate = useNavigate();
 
   const kpiCards = [
     {
       title: "Total Revenue",
-      value: `₦${(mockStats.totalRevenue / 1000000).toFixed(1)}M`,
+      value: loading ? "Loading..." : `₦${(stats.totalRevenue / 1000000).toFixed(1)}M`,
       change: "+12.5%",
       trend: "up",
       icon: <DollarSign className="h-6 w-6" />,
       color: "success"
     },
     {
-      title: "Occupancy Rate",
-      value: `${mockStats.occupancyRate}%`,
+      title: "Occupancy Rate", 
+      value: loading ? "Loading..." : `${stats.occupancyRate}%`,
       change: "+5.2%", 
       trend: "up",
       icon: <BedDouble className="h-6 w-6" />,
@@ -169,7 +209,7 @@ const OwnerDashboard = () => {
     },
     {
       title: "Average Daily Rate",
-      value: `₦${(mockStats.avgDailyRate / 1000).toFixed(0)}k`,
+      value: loading ? "Loading..." : `₦${(stats.avgDailyRate / 1000).toFixed(0)}k`,
       change: "+8.1%",
       trend: "up", 
       icon: <TrendingUp className="h-6 w-6" />,
@@ -177,7 +217,7 @@ const OwnerDashboard = () => {
     },
     {
       title: "Total Bookings",
-      value: mockStats.totalBookings,
+      value: loading ? "Loading..." : stats.totalBookings,
       change: "-2.3%",
       trend: "down",
       icon: <Calendar className="h-6 w-6" />,
@@ -188,31 +228,35 @@ const OwnerDashboard = () => {
   const operationalCards = [
     {
       title: "Power Costs",
-      value: `₦${(mockStats.powerCost / 1000).toFixed(0)}k`,
+      value: loading ? "Loading..." : `₦${(stats.powerCost / 1000).toFixed(0)}k`,
       subtitle: "NEPA vs Gen tracking",
       icon: <Battery className="h-6 w-6" />,
-      color: "warning"
+      color: "warning",
+      onClick: () => navigate('/owner-dashboard/utilities')
     },
     {
-      title: "Fuel Savings",
-      value: `₦${(mockStats.fuelSavings / 1000).toFixed(0)}k`,
+      title: "Fuel Savings", 
+      value: loading ? "Loading..." : `₦${(stats.fuelSavings / 1000).toFixed(0)}k`,
       subtitle: "Efficiency improvements",
       icon: <TrendingUp className="h-6 w-6" />,
-      color: "success"
+      color: "success",
+      onClick: () => navigate('/owner-dashboard/utilities')
     },
     {
-      title: "Room Service Orders",
-      value: mockStats.roomServiceOrders,
-      subtitle: "QR-based orders",
+      title: "QR Service Orders",
+      value: loading ? "Loading..." : stats.roomServiceOrders,
+      subtitle: "QR-based requests",
       icon: <Smartphone className="h-6 w-6" />,
-      color: "primary"
+      color: "primary",
+      onClick: () => navigate('/owner-dashboard/qr-manager')
     },
     {
       title: "Active Staff",
-      value: mockStats.staffCount,
-      subtitle: "All departments",
+      value: loading ? "Loading..." : stats.staffCount,
+      subtitle: "All departments", 
       icon: <Users className="h-6 w-6" />,
-      color: "muted"
+      color: "muted",
+      onClick: () => navigate('/owner-dashboard/staff')
     }
   ];
 
@@ -338,7 +382,11 @@ const OwnerDashboard = () => {
               {/* Operational Metrics */}
               <div className="space-y-4">
                 {operationalCards.map((card, index) => (
-                  <Card key={index} className="luxury-card">
+                  <Card 
+                    key={index} 
+                    className="luxury-card cursor-pointer hover:shadow-lg transition-shadow"
+                    onClick={card.onClick}
+                  >
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
@@ -369,19 +417,35 @@ const OwnerDashboard = () => {
                   <CardTitle>Quick Actions</CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-2 gap-4">
-                  <Button variant="outline" className="h-20 flex flex-col gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="h-20 flex flex-col gap-2"
+                    onClick={() => navigate('/owner-dashboard/qr-manager')}
+                  >
                     <QrCode className="h-6 w-6" />
-                    <span className="text-sm">Generate QR Codes</span>
+                    <span className="text-sm">QR Manager</span>
                   </Button>
-                  <Button variant="outline" className="h-20 flex flex-col gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="h-20 flex flex-col gap-2"
+                    onClick={() => navigate('/owner-dashboard/reports')}
+                  >
                     <FileText className="h-6 w-6" />
                     <span className="text-sm">View Reports</span>
                   </Button>
-                  <Button variant="outline" className="h-20 flex flex-col gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="h-20 flex flex-col gap-2"
+                    onClick={() => navigate('/owner-dashboard/staff')}
+                  >
                     <Users className="h-6 w-6" />
                     <span className="text-sm">Manage Staff</span>
                   </Button>
-                  <Button variant="outline" className="h-20 flex flex-col gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="h-20 flex flex-col gap-2"
+                    onClick={() => navigate('/owner-dashboard/configuration')}
+                  >
                     <Settings className="h-6 w-6" />
                     <span className="text-sm">Hotel Settings</span>
                   </Button>

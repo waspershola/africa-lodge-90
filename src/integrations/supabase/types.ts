@@ -1782,6 +1782,7 @@ export type Database = {
         Row: {
           created_at: string | null
           default_services: string[] | null
+          front_desk_phone: string | null
           hotel_logo_url: string | null
           hotel_name: string
           id: string
@@ -1793,6 +1794,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           default_services?: string[] | null
+          front_desk_phone?: string | null
           hotel_logo_url?: string | null
           hotel_name: string
           id?: string
@@ -1804,6 +1806,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           default_services?: string[] | null
+          front_desk_phone?: string | null
           hotel_logo_url?: string | null
           hotel_name?: string
           id?: string

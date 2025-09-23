@@ -8,10 +8,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 interface FrontDeskServiceProps {
   qrToken: string;
   sessionToken: string;
-  hotelPhone?: string;
+  hotelPhone: string;
 }
 
-export default function FrontDeskService({ qrToken, sessionToken, hotelPhone = '+2347065937769' }: FrontDeskServiceProps) {
+export default function FrontDeskService({ qrToken, sessionToken, hotelPhone }: FrontDeskServiceProps) {
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);

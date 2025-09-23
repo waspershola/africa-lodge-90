@@ -21,6 +21,7 @@ interface QRSettings {
   primary_color: string;
   show_logo_on_qr: boolean;
   default_services: string[];
+  front_desk_phone: string;
 }
 
 const AVAILABLE_SERVICES = [
@@ -45,7 +46,8 @@ export default function QRSettings() {
     hotel_logo_url: '',
     primary_color: '#D4AF37',
     show_logo_on_qr: true,
-    default_services: ['Wi-Fi', 'Room Service', 'Housekeeping']
+    default_services: ['Wi-Fi', 'Room Service', 'Housekeeping'],
+    front_desk_phone: '+2347065937769'
   });
   
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -82,7 +84,8 @@ export default function QRSettings() {
         hotel_logo_url: qrSettings?.hotel_logo_url || tenantInfo.logo_url || '',
         primary_color: qrSettings?.primary_color || '#D4AF37',
         show_logo_on_qr: qrSettings?.show_logo_on_qr ?? true,
-        default_services: qrSettings?.default_services || ['Wi-Fi', 'Room Service', 'Housekeeping']
+        default_services: qrSettings?.default_services || ['Wi-Fi', 'Room Service', 'Housekeeping'],
+        front_desk_phone: qrSettings?.front_desk_phone || '+2347065937769'
       }));
     }
   }, [tenantInfo, qrSettings]);
@@ -289,6 +292,21 @@ export default function QRSettings() {
                   placeholder="#D4AF37"
                 />
               </div>
+            </div>
+
+            {/* Front Desk Phone */}
+            <div className="space-y-2">
+              <Label htmlFor="front-desk-phone" className="text-amber-900 font-medium">Front Desk Phone Number</Label>
+              <Input
+                id="front-desk-phone"
+                value={formData.front_desk_phone}
+                onChange={(e) => setFormData(prev => ({ ...prev, front_desk_phone: e.target.value }))}
+                className="border-amber-200 focus:border-amber-400 focus:ring-amber-400/20"
+                placeholder="+1234567890"
+              />
+              <p className="text-xs text-amber-700/70">
+                This number will be used for the "Need Immediate Assistance" call button
+              </p>
             </div>
 
             {/* Show Logo Toggle */}

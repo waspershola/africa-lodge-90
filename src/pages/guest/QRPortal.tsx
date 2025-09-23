@@ -25,6 +25,7 @@ interface QRCodeInfo {
   label?: string;
   tenant_id: string;
   hotel_logo?: string;
+  front_desk_phone?: string;
 }
 
 const serviceIcons = {
@@ -82,7 +83,7 @@ export default function QRPortal() {
         // Get QR settings for hotel branding
         const { data: qrSettings, error: settingsError } = await supabase
           .from('qr_settings')
-          .select('hotel_name, hotel_logo_url, primary_color, show_logo_on_qr')
+          .select('hotel_name, hotel_logo_url, primary_color, show_logo_on_qr, front_desk_phone')
           .eq('tenant_id', qrData.tenant_id)
           .maybeSingle();
 
@@ -101,7 +102,8 @@ export default function QRPortal() {
           is_active: qrData.is_active,
           label: qrData.label,
           tenant_id: qrData.tenant_id,
-          hotel_logo: qrSettings?.show_logo_on_qr ? qrSettings?.hotel_logo_url : undefined
+          hotel_logo: qrSettings?.show_logo_on_qr ? qrSettings?.hotel_logo_url : undefined,
+          front_desk_phone: qrSettings?.front_desk_phone || '+2347065937769'
         } as QRCodeInfo;
       } catch (error) {
         console.error('QR lookup error:', error);
@@ -122,7 +124,8 @@ export default function QRPortal() {
   };
 
   const callFrontDesk = () => {
-    window.location.href = 'tel:+2347065937769';
+    const phoneNumber = qrInfo?.front_desk_phone || '+2347065937769';
+    window.location.href = `tel:${phoneNumber}`;
   };
 
   // Loading state
@@ -250,7 +253,11 @@ export default function QRPortal() {
             <FeedbackService qrToken={qrInfo.qr_token} sessionToken={sessionToken} />
           )}
           {currentService === 'Front Desk' && (
-            <FrontDeskService qrToken={qrInfo.qr_token} sessionToken={sessionToken} />
+            <FrontDeskService 
+              qrToken={qrInfo.qr_token} 
+              sessionToken={sessionToken}
+              hotelPhone={qrInfo.front_desk_phone || '+2347065937769'}
+            />
           )}
         </div>
       </div>
@@ -400,7 +407,7 @@ export default function QRPortal() {
             <span className="text-sm font-medium">Available 24/7</span>
           </div>
           <p className="text-sm text-amber-600/50 font-light">
-            Powered by {qrInfo.hotel_name} Guest Services
+            Powered by luxuryhotelpro.com
           </p>
         </div>
       </div>

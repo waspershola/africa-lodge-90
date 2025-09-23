@@ -84,9 +84,9 @@ export default function ChatInterface({ qrOrderId, qrToken, sessionToken, orderS
         </CardTitle>
       </CardHeader>
       
-      <CardContent className="flex flex-col p-0" style={{ height: '400px' }}>
-        <div className="flex-1 px-6 overflow-y-auto" ref={scrollRef}>
-          <div className="space-y-4 py-6">
+      <CardContent className="flex flex-col p-0 h-[70vh] sm:h-[500px] max-h-[600px]">
+        <div className="flex-1 px-4 sm:px-6 overflow-y-auto overscroll-contain" ref={scrollRef}>
+          <div className="space-y-4 py-4 sm:py-6">
             {loading && messages.length === 0 && (
               <div className="text-center text-amber-700/70 py-8">
                 <div className="w-12 h-12 bg-gradient-to-br from-amber-400/20 to-amber-600/20 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -166,16 +166,16 @@ export default function ChatInterface({ qrOrderId, qrToken, sessionToken, orderS
           </div>
         </div>
 
-        {/* Message Input */}
-        <div className="border-t border-amber-200/50 bg-gradient-to-r from-amber-50 to-amber-100 p-6">
-          <form onSubmit={handleSendMessage} className="flex gap-3">
+        {/* Message Input - Fixed at bottom */}
+        <div className="border-t border-amber-200/50 bg-gradient-to-r from-amber-50 to-amber-100 p-4 sm:p-6 flex-shrink-0">
+          <form onSubmit={handleSendMessage} className="flex gap-2 sm:gap-3">
             <div className="flex-1 relative">
               <Input
                 value={messageInput}
                 onChange={(e) => setMessageInput(e.target.value)}
                 placeholder="Type your message to the kitchen..."
                 disabled={sending}
-                className="border-amber-200 focus:border-amber-400 focus:ring-amber-400/20 bg-white/70 backdrop-blur-sm pr-12 py-3 text-amber-900 placeholder:text-amber-600/50 rounded-full"
+                className="border-amber-200 focus:border-amber-400 focus:ring-amber-400/20 bg-white/70 backdrop-blur-sm pr-12 py-3 sm:py-4 text-amber-900 placeholder:text-amber-600/50 rounded-full text-sm sm:text-base min-h-[48px]"
               />
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                 <Sparkles className="h-4 w-4 text-amber-500" />
@@ -184,7 +184,7 @@ export default function ChatInterface({ qrOrderId, qrToken, sessionToken, orderS
             <Button 
               type="submit" 
               disabled={!messageInput.trim() || sending}
-              className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 rounded-full px-6"
+              className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 active:scale-95 rounded-full px-4 sm:px-6 min-w-[48px] min-h-[48px] flex-shrink-0"
             >
               {sending ? (
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>

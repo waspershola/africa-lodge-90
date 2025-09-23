@@ -333,32 +333,34 @@ export default function QRPortal() {
           ) : (
             <div className="grid gap-4">
               {qrInfo.services.map((service) => (
-                <Card
+                <button
                   key={service}
-                  className="group cursor-pointer shadow-lg hover:shadow-2xl border-amber-200/50 bg-white/90 backdrop-blur-sm transition-all duration-300 hover:scale-102 hover:bg-white/95"
                   onClick={() => selectService(service)}
+                  className="w-full text-left focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 rounded-xl"
                 >
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 bg-gradient-to-br from-amber-400/20 to-amber-600/20 rounded-xl flex items-center justify-center group-hover:from-amber-400/30 group-hover:to-amber-600/30 transition-all duration-300 group-hover:scale-110">
-                        <div className="text-amber-700 group-hover:text-amber-800 transition-colors duration-300">
-                          {serviceIcons[service as keyof typeof serviceIcons] || <Star className="h-6 w-6" />}
+                  <Card className="group cursor-pointer shadow-lg hover:shadow-2xl border-amber-200/50 bg-white/90 backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] hover:bg-white/95 active:scale-[0.98]">
+                    <CardContent className="p-6 sm:p-8 min-h-[120px] flex items-center">
+                      <div className="flex items-center gap-4 w-full">
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-amber-400/20 to-amber-600/20 rounded-xl flex items-center justify-center group-hover:from-amber-400/30 group-hover:to-amber-600/30 transition-all duration-300 group-hover:scale-110 flex-shrink-0">
+                          <div className="text-amber-700 group-hover:text-amber-800 transition-colors duration-300">
+                            {serviceIcons[service as keyof typeof serviceIcons] || <Star className="h-6 w-6 sm:h-8 sm:w-8" />}
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-xl sm:text-2xl font-serif text-amber-900 group-hover:text-amber-800 transition-colors duration-300 mb-2 leading-tight">
+                            {service}
+                          </h4>
+                          <p className="text-amber-700/70 group-hover:text-amber-700/90 transition-colors duration-300 text-sm sm:text-base leading-relaxed">
+                            {serviceDescriptions[service as keyof typeof serviceDescriptions]}
+                          </p>
+                        </div>
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110 flex-shrink-0">
+                          <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5 text-white transform rotate-180" />
                         </div>
                       </div>
-                      <div className="flex-1">
-                        <h4 className="text-xl font-serif text-amber-900 group-hover:text-amber-800 transition-colors duration-300 mb-1">
-                          {service}
-                        </h4>
-                        <p className="text-amber-700/70 group-hover:text-amber-700/90 transition-colors duration-300">
-                          {serviceDescriptions[service as keyof typeof serviceDescriptions]}
-                        </p>
-                      </div>
-                      <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
-                        <ArrowLeft className="h-4 w-4 text-white transform rotate-180" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </button>
               ))}
             </div>
           )}

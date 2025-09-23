@@ -246,57 +246,57 @@ export default function RoomServiceMenu({ qrToken, sessionToken }: RoomServiceMe
                 return (
                   <div 
                     key={item.id} 
-                    className={`group p-4 rounded-xl border-2 transition-all duration-300 ${
+                    className={`group p-4 sm:p-6 rounded-xl border-2 transition-all duration-300 ${
                       quantity > 0
                         ? 'border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100 shadow-md'
                         : 'border-amber-200/50 hover:border-amber-300 hover:bg-amber-50/50 hover:shadow-lg'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h4 className="text-lg font-serif text-amber-900 group-hover:text-amber-800 transition-colors duration-300">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-3 mb-2">
+                          <h4 className="text-lg sm:text-xl font-serif text-amber-900 group-hover:text-amber-800 transition-colors duration-300">
                             {item.name}
                           </h4>
                           {!item.available && (
-                            <Badge variant="secondary" className="bg-red-100 text-red-800 border-red-200">
+                            <Badge variant="secondary" className="bg-red-100 text-red-800 border-red-200 text-xs">
                               Temporarily Unavailable
                             </Badge>
                           )}
                         </div>
-                        <p className="text-amber-700/70 mb-3 leading-relaxed">{item.description}</p>
+                        <p className="text-amber-700/70 mb-3 leading-relaxed text-sm sm:text-base">{item.description}</p>
                         <div className="flex items-center gap-2">
                           <Sparkles className="h-4 w-4 text-amber-600" />
-                          <p className="text-lg font-bold text-amber-900">₦{item.price.toLocaleString()}</p>
+                          <p className="text-lg sm:text-xl font-bold text-amber-900">₦{item.price.toLocaleString()}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 ml-4">
+                      <div className="flex items-center gap-3 flex-shrink-0 justify-end sm:justify-start">
                         {quantity > 0 && (
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => removeFromCart(item.id)}
-                            className="border-amber-300 text-amber-700 hover:bg-amber-100 rounded-full w-10 h-10 p-0 shadow-md hover:shadow-lg transition-all duration-300"
+                            className="border-amber-300 text-amber-700 hover:bg-amber-100 rounded-full w-12 h-12 sm:w-14 sm:h-14 p-0 shadow-md hover:shadow-lg transition-all duration-300 active:scale-95 focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 flex-shrink-0"
                           >
-                            <Minus className="h-4 w-4" />
+                            <Minus className="h-5 w-5 sm:h-6 sm:w-6" />
                           </Button>
                         )}
                         {quantity > 0 && (
-                          <div className="w-12 h-10 bg-gradient-to-br from-amber-100 to-amber-200 rounded-full flex items-center justify-center shadow-md">
-                            <span className="font-bold text-amber-900">{quantity}</span>
+                          <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-amber-100 to-amber-200 rounded-full flex items-center justify-center shadow-md flex-shrink-0">
+                            <span className="font-bold text-amber-900 text-lg sm:text-xl">{quantity}</span>
                           </div>
                         )}
                         <Button
                           size="sm"
                           onClick={() => addToCart(item)}
                           disabled={!item.available}
-                          className={`rounded-full w-10 h-10 p-0 shadow-md hover:shadow-lg transition-all duration-300 hover:scale-110 ${
+                          className={`rounded-full w-12 h-12 sm:w-14 sm:h-14 p-0 shadow-md hover:shadow-lg transition-all duration-300 hover:scale-110 active:scale-95 flex-shrink-0 ${
                             item.available
-                              ? 'bg-gradient-to-br from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white'
+                              ? 'bg-gradient-to-br from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white focus:ring-2 focus:ring-amber-400 focus:ring-offset-2'
                               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                           }`}
                         >
-                          <Plus className="h-4 w-4" />
+                          <Plus className="h-5 w-5 sm:h-6 sm:w-6" />
                         </Button>
                       </div>
                     </div>
@@ -376,17 +376,17 @@ export default function RoomServiceMenu({ qrToken, sessionToken }: RoomServiceMe
             <Button 
               onClick={submitOrder}
               disabled={submitting}
-              className="w-full bg-white/10 hover:bg-white/20 text-white border-amber-600/30 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 rounded-full py-4 text-lg font-medium"
+              className="w-full bg-white/10 hover:bg-white/20 text-white border-amber-600/30 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 active:scale-95 rounded-full py-4 sm:py-6 text-base sm:text-lg font-medium min-h-[56px] sm:min-h-[64px] focus:ring-2 focus:ring-white/40 focus:ring-offset-2 focus:ring-offset-amber-800"
             >
               {submitting ? (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center gap-3">
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  Placing Your Order...
+                  <span>Placing Your Order...</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center gap-3">
                   <Crown className="h-5 w-5" />
-                  Place Gourmet Order - ₦{getTotalPrice().toLocaleString()}
+                  <span>Place Gourmet Order - ₦{getTotalPrice().toLocaleString()}</span>
                   <Crown className="h-5 w-5" />
                 </div>
               )}

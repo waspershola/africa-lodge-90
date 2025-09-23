@@ -123,10 +123,10 @@ export const useStaffInvites = () => {
     setIsLoading(true);
     
     try {
-      const response = await supabase.functions.invoke('send-temp-password', {
+      const response = await supabase.functions.invoke('reset-user-password', {
         body: { 
           user_id: userId,
-          send_email: true // Always try to send email
+          send_email: true
         }
       });
 

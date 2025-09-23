@@ -6,8 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface DeleteUserRequest {
+interface ResetPasswordRequest {
   user_id: string;
+  send_email?: boolean;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -34,10 +35,9 @@ const handler = async (req: Request): Promise<Response> => {
     // Extract the JWT token and verify with service role key
     const token = authHeader.replace('Bearer ', '');
     
-    // Use service role key to verify the token and get user  
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
     
-    console.log('Delete user auth check:', { hasUser: !!user, error: authError?.message });
+    console.log('Reset password auth check:', { hasUser: !!user, error: authError?.message });
     
     if (authError || !user) {
       console.error('Authentication error:', authError);
@@ -47,7 +47,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Check if the user is authorized (super admin or owner/manager in same tenant)
+    // Check if the user is authorized
     const { data: userData, error: userError } = await supabaseClient
       .from('users')
       .select('role, tenant_id, is_platform_owner')
@@ -68,12 +68,12 @@ const handler = async (req: Request): Promise<Response> => {
     if (!isSuperAdmin && !isOwnerOrManager) {
       console.error('Authorization error: insufficient permissions');
       return new Response(
-        JSON.stringify({ success: false, error: 'Only owners, managers, or super admins can delete users' }),
+        JSON.stringify({ success: false, error: 'Only owners, managers, or super admins can reset passwords' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const { user_id }: DeleteUserRequest = await req.json();
+    const { user_id, send_email = true }: ResetPasswordRequest = await req.json();
 
     if (!user_id) {
       console.error('Missing user_id in request');
@@ -83,12 +83,12 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log(`Attempting to delete user: ${user_id}`);
+    console.log(`Attempting to reset password for user: ${user_id}`);
 
-    // Check if target user is platform owner or in same tenant
+    // Get target user details for authorization check
     const { data: targetUser, error: targetUserError } = await supabaseClient
       .from('users')
-      .select('is_platform_owner, email, role, tenant_id')
+      .select('email, role, tenant_id, name')
       .eq('id', user_id)
       .single();
 
@@ -102,129 +102,123 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Target user found: ${targetUser.email} (role: ${targetUser.role})`);
 
-    // Super admins can delete anyone except platform owners
-    // Owners/Managers can only delete users in their tenant
+    // Check tenant authorization for non-super admins
     if (!isSuperAdmin) {
       if (!targetUser.tenant_id || targetUser.tenant_id !== userData.tenant_id) {
-        console.error('Authorization error: cannot delete user from different tenant');
+        console.error('Authorization error: cannot reset password for user from different tenant');
         return new Response(
-          JSON.stringify({ success: false, error: 'Cannot delete user from different tenant' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      // Owners can delete anyone in their tenant except other owners
-      // Managers can only delete staff (not owners or other managers)
-      if (userData.role === 'MANAGER' && (targetUser.role === 'OWNER' || targetUser.role === 'MANAGER')) {
-        console.error('Authorization error: managers cannot delete owners or other managers');
-        return new Response(
-          JSON.stringify({ success: false, error: 'Managers cannot delete owners or other managers' }),
+          JSON.stringify({ success: false, error: 'Cannot reset password for user from different tenant' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
     }
 
-    if (targetUser.is_platform_owner) {
-      console.error('Attempted to delete platform owner');
-      return new Response(
-        JSON.stringify({ success: false, error: 'Cannot delete platform owner' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Prevent self-deletion
-    if (user_id === user.id) {
-      console.error('User attempted to delete themselves');
-      return new Response(
-        JSON.stringify({ success: false, error: 'Cannot delete your own account' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Generate temporary password
+    const tempPassword = Math.random().toString(36).slice(-12);
 
     try {
-      // First, try to delete from users table (this cleans up our records)
-      console.log('Deleting user record from database...');
-      const { error: deleteUserError } = await supabaseClient
-        .from('users')
-        .delete()
-        .eq('id', user_id);
+      // Reset password in Supabase Auth
+      console.log('Resetting password in Supabase Auth...');
+      const { error: resetError } = await supabaseClient.auth.admin.updateUserById(user_id, {
+        password: tempPassword
+      });
 
-      if (deleteUserError) {
-        console.error('Failed to delete user record:', deleteUserError);
+      if (resetError) {
+        console.error('Failed to reset password:', resetError);
         return new Response(
           JSON.stringify({ 
             success: false, 
-            error: 'Failed to delete user record from database', 
-            details: deleteUserError.message 
+            error: 'Failed to reset password in authentication system', 
+            details: resetError.message 
           }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      console.log('User record deleted successfully');
+      console.log('Password reset successfully');
 
-      // Then try to delete from Supabase Auth (this might fail if user already deleted)
-      console.log('Deleting user from Supabase Auth...');
-      const { error: deleteAuthError } = await supabaseClient.auth.admin.deleteUser(user_id);
+      // Update user record to mark password reset required
+      const { error: updateError } = await supabaseClient
+        .from('users')
+        .update({
+          force_reset: true,
+          temp_password_hash: tempPassword, // In production, this should be hashed
+          temp_expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+        })
+        .eq('id', user_id);
 
-      if (deleteAuthError) {
-        // This is OK if user was already deleted from auth
-        if (deleteAuthError.message?.includes('User not found')) {
-          console.log('User was already deleted from auth (this is OK)');
-        } else {
-          console.error('Failed to delete auth user:', deleteAuthError);
-          return new Response(
-            JSON.stringify({ 
-              success: false, 
-              error: 'Failed to delete user from authentication system', 
-              details: deleteAuthError.message 
-            }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-      } else {
-        console.log('Auth user deleted successfully');
+      if (updateError) {
+        console.warn('Failed to update user record:', updateError);
       }
+
     } catch (error) {
-      console.error('Unexpected error during user deletion:', error);
+      console.error('Unexpected error during password reset:', error);
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Unexpected error during deletion',
+          error: 'Unexpected error during password reset',
           details: error instanceof Error ? error.message : 'Unknown error'
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-      // Log audit event
+    // Send email if requested
+    let emailSent = false;
+    if (send_email) {
+      try {
+        const emailResponse = await supabaseClient.functions.invoke('send-temp-password', {
+          body: {
+            email: targetUser.email,
+            name: targetUser.name || 'User',
+            tempPassword: tempPassword,
+            role: targetUser.role,
+            hotel_name: 'Your Hotel'
+          }
+        });
+
+        if (!emailResponse.error) {
+          emailSent = true;
+          console.log('Email sent successfully');
+        } else {
+          console.warn('Failed to send email:', emailResponse.error);
+        }
+      } catch (emailError) {
+        console.warn('Failed to send email:', emailError);
+      }
+    }
+
+    // Log audit event
     try {
       await supabaseClient
         .from('audit_log')
         .insert({
           actor_id: user.id,
-          action: 'user_deleted',
+          action: 'password_reset',
           resource_type: 'user',
           resource_id: user_id,
           tenant_id: targetUser.tenant_id || userData.tenant_id,
-          description: `User ${targetUser.email} deleted by ${userData.role.toLowerCase()} ${user.email}`,
+          description: `Password reset for user ${targetUser.email} by ${userData.role.toLowerCase()} ${user.email}`,
           metadata: {
             target_email: targetUser.email,
             target_role: targetUser.role,
-            deleted_by: user.email
+            reset_by: user.email,
+            email_sent: emailSent
           }
         });
     } catch (auditError) {
       console.warn('Failed to log audit event:', auditError);
     }
 
-    console.log(`User ${targetUser.email} deleted successfully by ${userData.role.toLowerCase()} ${user.email}`);
+    console.log(`Password reset successfully for ${targetUser.email} by ${userData.role.toLowerCase()} ${user.email}`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'User deleted successfully',
-        deleted_user: {
+        message: 'Password reset successfully',
+        temp_password: tempPassword,
+        email_sent: emailSent,
+        user: {
           email: targetUser.email,
           role: targetUser.role
         }
@@ -236,7 +230,7 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
   } catch (error: any) {
-    console.error('Error in delete-user function:', error);
+    console.error('Error in reset-user-password function:', error);
     return new Response(
       JSON.stringify({ success: false, error: error.message || 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

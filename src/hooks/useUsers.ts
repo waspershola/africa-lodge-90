@@ -272,49 +272,28 @@ export function useUsers() {
     if (!currentUser) return;
 
     try {
-      const tempPassword = Math.random().toString(36).slice(-12);
-      
-      // Reset password via admin API
-      const { error: authError } = await supabase.auth.admin.updateUserById(userId, {
-        password: tempPassword
+      // Use reset-user-password edge function
+      const { data, error } = await supabase.functions.invoke('reset-user-password', {
+        body: { 
+          user_id: userId,
+          send_email: true
+        }
       });
 
-      if (authError) throw authError;
+      if (error) throw error;
 
-      if (temporary) {
-        // Mark user for forced password reset
-        await supabase
-          .from('users')
-          .update({
-            force_reset: true,
-            temp_password_hash: tempPassword, // In production, this should be hashed
-            temp_expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
-          })
-          .eq('id', userId);
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to reset password');
       }
-
-      // Create audit log
-      await supabase
-        .from('audit_log')
-        .insert([{
-          action: 'password_reset',
-          resource_type: 'user',
-          resource_id: userId,
-          actor_id: currentUser.id,
-          actor_email: currentUser.email,
-          actor_role: currentUser.role,
-          tenant_id: currentUser.tenant_id,
-          description: `Password reset for user`
-        }]);
 
       await loadUsers();
       
       toast({
         title: "Password Reset",
-        description: `Password reset successfully. New password: ${tempPassword}`,
+        description: `Password reset successfully. Temporary password: ${data.temp_password}`,
       });
 
-      return tempPassword;
+      return data.temp_password;
     } catch (err: any) {
       toast({
         title: "Error",
@@ -329,34 +308,18 @@ export function useUsers() {
     if (!currentUser) return;
 
     try {
-      // First deactivate the user
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ is_active: false })
-        .eq('id', userId);
+      // Use delete-user edge function
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { 
+          user_id: userId
+        }
+      });
 
-      if (updateError) throw updateError;
+      if (error) throw error;
 
-      // Then delete from auth system using service role
-      const { error: authError } = await supabase.auth.admin.deleteUser(userId, false);
-      if (authError) {
-        console.error('Failed to delete auth user:', authError.message);
-        throw new Error(`Failed to remove user from authentication system: ${authError.message}`);
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to delete user');
       }
-
-      // Create audit log
-      await supabase
-        .from('audit_log')
-        .insert([{
-          action: 'user_deleted',
-          resource_type: 'user',
-          resource_id: userId,
-          actor_id: currentUser.id,
-          actor_email: currentUser.email,
-          actor_role: currentUser.role,
-          tenant_id: currentUser.tenant_id,
-          description: `User removed from system`
-        }]);
 
       await loadUsers();
       

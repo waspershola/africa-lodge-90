@@ -104,6 +104,7 @@ const App = () => (
             </TenantAwareLayout>
           } />
           <Route path="/guest/qr/:qrToken" element={<QRPortal />} />
+          <Route path="/guest/test" element={<div style={{padding: '20px', textAlign: 'center'}}><h1>Guest Route Test - Working!</h1><p>Path: {window.location.pathname}</p></div>} />
           
           <Route path="/front-desk" element={
             <TenantAwareLayout requiredRole="FRONT_DESK">

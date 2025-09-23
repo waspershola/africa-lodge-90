@@ -87,33 +87,8 @@ export const useStaffInvites = () => {
         };
       }
 
-      // If the response indicates failure, return it as-is
-      if (!response.success) {
-        console.error('Edge function returned error:', response.error);
-        return response;
-      }
-
-      // Success case
-      console.log('Invitation sent successfully:', response);
-      
-      // Show success message based on email status
-      if (response.email_sent) {
-        toast.success(
-          `✅ Invitation sent to ${response.email}! They will receive login instructions via email.`
-        );
-      } else {
-        toast.success(
-          `✅ User created successfully! ${response.temp_password ? 'Share the temporary password with them.' : ''}`
-        );
-      }
-
-      // Show warning if email failed
-      if (response.email_error) {
-        toast.warning(
-          `⚠️ Email delivery failed: ${response.email_error}. Please share the temporary password manually.`
-        );
-      }
-
+      // Return the response as-is, whether success or error
+      // The edge function now always includes temp_password when needed
       return response;
       
     } catch (error) {

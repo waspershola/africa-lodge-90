@@ -88,6 +88,7 @@ serve(async (req) => {
     // Validate required fields
     if (!email || !name || !role) {
       return new Response(JSON.stringify({ 
+        success: false,
         error: 'Missing required fields: email, name, role' 
       }), {
         status: 400,
@@ -99,6 +100,7 @@ serve(async (req) => {
     const validRoles = ['SUPER_ADMIN', 'OWNER', 'MANAGER', 'FRONT_DESK', 'HOUSEKEEPING', 'MAINTENANCE', 'POS', 'ACCOUNTANT'];
     if (!validRoles.includes(role)) {
       return new Response(JSON.stringify({ 
+        success: false,
         error: 'Invalid role',
         availableRoles: validRoles
       }), {
@@ -110,6 +112,7 @@ serve(async (req) => {
     // For tenant roles, tenant_id is required
     if (role !== 'SUPER_ADMIN' && !tenant_id) {
       return new Response(JSON.stringify({ 
+        success: false,
         error: 'tenant_id is required for non-super-admin roles' 
       }), {
         status: 400,
@@ -117,30 +120,21 @@ serve(async (req) => {
       });
     }
 
-    // Generate temporary password first
+    // Generate temporary password
     const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
     const tempExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     console.log('Generated temporary password for user');
 
-    // Check if user already exists in auth or users table
-    const { data: existingAuthUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const authUserExists = existingAuthUsers.users?.find(u => u.email === email);
-    
+    // Check if user already exists (simple check)
     const { data: existingUser } = await supabaseAdmin
       .from('users')
       .select('id, email, is_active')
       .eq('email', email)
       .maybeSingle();
 
-    console.log('Existing check results:', { 
-      authUserExists: !!authUserExists, 
-      existingUser: !!existingUser,
-      userActive: existingUser?.is_active 
-    });
-
-    // If both exist and user is active, return error
-    if (existingUser && existingUser.is_active && authUserExists) {
+    // If active user exists, return error
+    if (existingUser && existingUser.is_active) {
       return new Response(JSON.stringify({ 
         success: false,
         error: 'User already exists and is active',
@@ -151,28 +145,18 @@ serve(async (req) => {
       });
     }
 
-    // Clean up any existing records before creating new ones
-    if (authUserExists) {
-      console.log('Deleting existing auth user');
-      const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(authUserExists.id);
-      if (deleteAuthError) {
-        console.error('Failed to delete existing auth user:', deleteAuthError);
-      }
-    }
-
-    if (existingUser) {
-      console.log('Deleting existing user profile');
-      const { error: deleteUserError } = await supabaseAdmin
+    // Clean up existing inactive user if exists
+    if (existingUser && !existingUser.is_active) {
+      console.log('Cleaning up existing inactive user');
+      const { error: deleteError } = await supabaseAdmin
         .from('users')
         .delete()
         .eq('email', email);
-      if (deleteUserError) {
-        console.error('Failed to delete existing user profile:', deleteUserError);
+      
+      if (deleteError) {
+        console.error('Failed to clean up inactive user:', deleteError);
       }
     }
-
-
-    // Password already generated above
 
     // Create auth user with metadata
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -190,8 +174,11 @@ serve(async (req) => {
     if (authError) {
       console.error('Error creating auth user:', authError);
       return new Response(JSON.stringify({ 
+        success: false,
         error: 'Failed to create user account',
-        details: authError.message 
+        details: authError.message,
+        // Still return temp password for manual sharing
+        temp_password: tempPassword 
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -249,9 +236,11 @@ serve(async (req) => {
       }
       
       return new Response(JSON.stringify({ 
+        success: false,
         error: 'Failed to create user profile',
         details: profileError.message,
-        suggestion: 'Please try again or contact support if the issue persists'
+        // Still return temp password for manual sharing
+        temp_password: tempPassword
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -278,7 +267,7 @@ serve(async (req) => {
           employee_id,
           phone,
           employment_type,
-          invited_by: 'system' // Could be enhanced to track actual inviter
+          invited_by: 'system'
         }
       });
 
@@ -294,7 +283,7 @@ serve(async (req) => {
             name,
             tempPassword,
             role,
-            hotel_name: tenant_id ? 'Your Hotel' : 'Platform' // Could be enhanced with actual hotel name
+            hotel_name: tenant_id ? 'Your Hotel' : 'Platform'
           }
         });
 
@@ -311,7 +300,7 @@ serve(async (req) => {
       }
     }
 
-    // Return success response
+    // Return success response - ALWAYS include temp_password if email wasn't sent
     const response = {
       success: true,
       user_id: authUser.user!.id,
@@ -321,14 +310,15 @@ serve(async (req) => {
       force_reset: true,
       temp_expires: tempExpires.toISOString(),
       email_sent: emailSent,
-      // Return temp password only if email sending failed or was not requested
-      ...((!send_email || !emailSent) && { temp_password: tempPassword }),
+      // Always return temp password if email not sent or failed
+      temp_password: (!send_email || !emailSent) ? tempPassword : undefined,
       ...(emailError && { email_error: emailError })
     };
 
-    console.log('Invite process completed:', { 
+    console.log('Invite process completed successfully:', { 
       user_id: authUser.user!.id, 
-      email_sent: emailSent 
+      email_sent: emailSent,
+      temp_password_provided: !!response.temp_password
     });
 
     return new Response(JSON.stringify(response), {
@@ -337,9 +327,16 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in invite-user-enhanced function:', error);
+    
+    // Generate a temp password even for errors
+    const emergencyTempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
+    
     return new Response(JSON.stringify({ 
+      success: false,
       error: 'Internal server error',
-      details: error.message 
+      details: error.message,
+      // Provide emergency temp password for manual user creation
+      temp_password: emergencyTempPassword
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

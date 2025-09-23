@@ -256,16 +256,32 @@ export function EnhancedStaffInvitationDialog({
       setCurrentStep('result');
       
       if (result.success) {
-        // Show temporary password if email wasn't sent and password is provided
-        if (result.temp_password && !result.email_sent) {
-          // Add the temporary password to the result for display in the UI
-          setInviteResult({
-            ...result,
-            show_temp_password: true
-          });
+        // Show success toast
+        if (result.email_sent) {
+          toast.success(
+            `✅ Invitation sent to ${result.email}! They will receive login instructions via email.`
+          );
+        } else {
+          toast.success(
+            `✅ User created successfully! ${result.temp_password ? 'Temporary password generated.' : ''}`
+          );
+        }
+        
+        // Show warning if email failed
+        if (result.email_error) {
+          toast.warning(
+            `⚠️ Email delivery failed: ${result.email_error}. Please share the temporary password manually.`
+          );
         }
         
         onSuccess?.();
+      } else {
+        // Show error toast but still allow temp password display
+        toast.error(`❌ ${result.error || 'Failed to send invitation'}`);
+        
+        if (result.temp_password) {
+          toast.info('💡 Temporary password generated for manual sharing.');
+        }
       }
     } catch (error) {
       console.error('Invitation error:', error);
@@ -904,12 +920,53 @@ export function EnhancedStaffInvitationDialog({
                 </div>
               </>
             ) : (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  {inviteResult?.error || 'Failed to send invitation. Please try again.'}
-                </AlertDescription>
-              </Alert>
+              <>
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    {inviteResult?.error || 'Failed to send invitation. Please try again.'}
+                  </AlertDescription>
+                </Alert>
+
+                {/* Show temp password even if invitation failed */}
+                {inviteResult?.temp_password && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Temporary Password (Manual Setup Required)
+                      </CardTitle>
+                      <CardDescription>
+                        The invitation failed, but you can manually set up the user with this temporary password.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                        <code className="flex-1 font-mono text-sm">
+                          {showPassword ? inviteResult.temp_password : '••••••••••••••••'}
+                        </code>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(inviteResult.temp_password!, 'Temporary password')}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Password expires in 24 hours
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
             )}
 
             <div className="flex justify-end gap-3">

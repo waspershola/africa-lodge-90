@@ -2179,6 +2179,9 @@ export type Database = {
           email: string
           force_reset: boolean | null
           id: string
+          invitation_status: string | null
+          invited_at: string | null
+          invited_by: string | null
           is_active: boolean | null
           is_platform_owner: boolean | null
           last_login: string | null
@@ -2200,6 +2203,9 @@ export type Database = {
           email: string
           force_reset?: boolean | null
           id?: string
+          invitation_status?: string | null
+          invited_at?: string | null
+          invited_by?: string | null
           is_active?: boolean | null
           is_platform_owner?: boolean | null
           last_login?: string | null
@@ -2221,6 +2227,9 @@ export type Database = {
           email?: string
           force_reset?: boolean | null
           id?: string
+          invitation_status?: string | null
+          invited_at?: string | null
+          invited_by?: string | null
           is_active?: boolean | null
           is_platform_owner?: boolean | null
           last_login?: string | null
@@ -2236,6 +2245,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_users_invited_by"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "users_role_id_fkey"
             columns: ["role_id"]

@@ -115,7 +115,9 @@ serve(async (req) => {
         department,
         force_reset: true,
         temp_expires: tempExpires.toISOString(),
-        is_active: true
+        is_active: true,
+        invited_by: tenant_id || null,
+        invitation_status: 'pending'
       });
 
     if (profileError) {

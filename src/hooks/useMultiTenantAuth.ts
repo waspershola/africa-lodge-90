@@ -360,43 +360,58 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
   // Reset password function
   const resetPassword = async (newPassword: string) => {
     try {
-      if (!user) throw new Error('No user found');
+      console.log('Attempting to reset password for user:', user?.email);
       
-      console.log('Resetting password for user:', user.id);
-      
-      // Update password in Supabase Auth
-      const { error } = await supabase.auth.updateUser({
+      if (!user) {
+        throw new Error('No authenticated user found');
+      }
+
+      // Update password using Supabase Auth
+      const { error: passwordError } = await supabase.auth.updateUser({
         password: newPassword
       });
-      
-      if (error) throw error;
-      
-      // Clear force_reset flag and temp password in database
+
+      if (passwordError) {
+        console.error('Password update failed:', passwordError);
+        throw passwordError;
+      }
+
+      console.log('Password updated successfully, clearing reset flags');
+
+      // Clear force_reset and temp password fields in users table
       const { error: updateError } = await supabase
         .from('users')
         .update({
           force_reset: false,
           temp_password_hash: null,
-          temp_expires: null
+          temp_expires: null,
+          invitation_status: 'active',
+          last_login: new Date().toISOString()
         })
         .eq('id', user.id);
-      
+
       if (updateError) {
-        console.warn('Failed to clear temp password flags:', updateError);
+        console.error('Error clearing reset flags:', updateError);
+        // Don't throw here as password was successfully updated
       }
+
+      // Update local user state
+      setUser(prev => prev ? {
+        ...prev,
+        force_reset: false,
+        temp_password_hash: null,
+        temp_expires: null
+      } : null);
       
-      // Update local state
       setNeedsPasswordReset(false);
-      setUser(prev => prev ? { ...prev, force_reset: false } : null);
       
       console.log('Password reset completed successfully');
       
-      // Reload auth state to continue with normal flow
-      await loadAuthState();
-      
-    } catch (err) {
-      console.error('Password reset failed:', err);
-      setError(err instanceof Error ? err.message : 'Password reset failed');
+      // Refresh the session to ensure everything is in sync
+      await refreshAuth();
+    } catch (err: any) {
+      console.error('Password reset error:', err);
+      setError(err.message || 'Failed to reset password');
       throw err;
     }
   };

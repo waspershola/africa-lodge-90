@@ -14,6 +14,7 @@ import { useTenantInfo } from '@/hooks/useTenantInfo';
 
 export interface QRCodeData {
   id: string;
+  qr_token?: string;
   scope: 'Room' | 'Location';
   assignedTo: string;
   servicesEnabled: string[];
@@ -21,6 +22,7 @@ export interface QRCodeData {
   pendingRequests: number;
   createdAt: string;
   createdBy: string;
+  qr_code_url?: string;
 }
 
 export default function QRManagerPage() {

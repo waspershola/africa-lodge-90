@@ -18,6 +18,7 @@ interface QRCodeInfo {
   is_active: boolean;
   label?: string;
   tenant_id: string;
+  hotel_logo?: string;
 }
 
 const serviceIcons = {
@@ -56,8 +57,7 @@ export default function QRPortal() {
           is_active,
           label,
           tenant_id,
-          rooms:room_id (room_number),
-          tenants:tenant_id (hotel_name)
+          rooms:room_id (room_number)
         `)
         .eq('qr_token', qrToken)
         .eq('is_active', true)
@@ -66,6 +66,14 @@ export default function QRPortal() {
       if (error || !qrData) {
         throw new Error('QR code not found or inactive');
       }
+
+      // Get tenant info separately
+      const { data: tenantData } = await supabase
+        .from('tenants')
+        .select('hotel_name, logo_url')
+        .eq('tenant_id', qrData.tenant_id)
+        .single();
+
 
       // Generate session token for secure access
       const token = QRSecurity.generateSessionToken({
@@ -80,11 +88,12 @@ export default function QRPortal() {
       return {
         qr_token: qrData.qr_token,
         room_number: qrData.rooms?.room_number,
-        hotel_name: qrData.tenants?.hotel_name || 'Hotel',
+        hotel_name: tenantData?.hotel_name || 'Hotel',
         services: qrData.services || [],
         is_active: qrData.is_active,
         label: qrData.label,
-        tenant_id: qrData.tenant_id
+        tenant_id: qrData.tenant_id,
+        hotel_logo: tenantData?.logo_url
       } as QRCodeInfo;
     },
     enabled: !!qrToken,
@@ -155,8 +164,16 @@ export default function QRPortal() {
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-2xl mx-auto px-4 py-6">
           <div className="text-center">
-            <div className="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
-              <span className="text-2xl">🏨</span>
+            <div className="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center overflow-hidden">
+              {qrInfo.hotel_logo ? (
+                <img 
+                  src={qrInfo.hotel_logo} 
+                  alt="Hotel Logo" 
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <span className="text-2xl">🏨</span>
+              )}
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-1">
               {qrInfo.hotel_name}

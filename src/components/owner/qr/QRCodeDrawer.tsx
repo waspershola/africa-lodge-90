@@ -242,8 +242,9 @@ export const QRCodeDrawer = ({ open, onOpenChange, qrCode, onUpdate, onDelete, b
                 hotelName={branding?.hotelName}
                 roomNumber={qrCode.assignedTo?.includes('Room') ? qrCode.assignedTo.replace('Room ', '') : undefined}
                 services={qrCode.servicesEnabled}
-                qrUrl={`https://840fa7b9-2d18-47bf-92d3-88ddf6cd5934.lovableproject.com/qr/${qrCode.id}`}
-                onQRGenerated={handleQRGenerated}
+                qrUrl={qrCode.qr_code_url || `${window.location.origin}/qr/${qrCode.qr_token || qrCode.id}`}
+                isActive={qrCode.status === 'Active'}
+                onDelete={() => onDelete?.(qrCode)}
               />
               
               <div className="flex gap-2">

@@ -26,66 +26,7 @@ export default function NotificationCenter() {
   const { user, tenant } = useMultiTenantAuth();
 
   // Real-time notification updates
-  useRealtimeUpdates([
-    {
-      table: 'qr_orders',
-      event: 'INSERT',
-      onUpdate: (payload) => {
-        addNotification({
-          title: 'New QR Service Request',
-          message: `Guest requested ${payload.new.service_type}`,
-          type: 'qr_request',
-          priority: 'medium',
-          metadata: { order_id: payload.new.id, service_type: payload.new.service_type }
-        });
-      }
-    },
-    {
-      table: 'work_orders',
-      event: 'INSERT',
-      onUpdate: (payload) => {
-        if (payload.new.priority === 'critical') {
-          addNotification({
-            title: 'Urgent Maintenance Required',
-            message: `${payload.new.title} - ${payload.new.description}`,
-            type: 'maintenance_urgent',
-            priority: 'urgent',
-            metadata: { work_order_id: payload.new.id }
-          });
-        }
-      }
-    },
-    {
-      table: 'reservations',
-      event: 'UPDATE',
-      onUpdate: (payload) => {
-        if (payload.new.status === 'checked_out' && payload.old?.status !== 'checked_out') {
-          addNotification({
-            title: 'Guest Checked Out',
-            message: `${payload.new.guest_name} checked out of Room ${payload.new.room_number}`,
-            type: 'checkout_ready',
-            priority: 'medium',
-            metadata: { reservation_id: payload.new.id, room_number: payload.new.room_number }
-          });
-        }
-      }
-    },
-    {
-      table: 'audit_log',
-      event: 'INSERT',
-      onUpdate: (payload) => {
-        if (['PAYMENT_FAILED', 'UNAUTHORIZED_ACCESS', 'SECURITY_VIOLATION'].includes(payload.new.action)) {
-          addNotification({
-            title: 'Security Alert',
-            message: payload.new.description,
-            type: 'audit_alert',
-            priority: 'high',
-            metadata: { audit_id: payload.new.id, action: payload.new.action }
-          });
-        }
-      }
-    }
-  ]);
+  useRealtimeUpdates();
 
   const addNotification = (notificationData: Omit<Notification, 'id' | 'read' | 'created_at'>) => {
     const notification: Notification = {

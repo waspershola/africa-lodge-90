@@ -77,6 +77,11 @@ export default function OwnerDashboardPage() {
     revenueTrend: []
   };
 
+  // Calculate ADR (Average Daily Rate) from overview data
+  const adr = overview.revenue && overview.occupiedRooms 
+    ? overview.revenue / overview.occupiedRooms 
+    : 0;
+
   // Calculate RevPAR (Revenue Per Available Room) after variables are defined
   const revpar = overview.occupancyRate && adr 
     ? (overview.occupancyRate / 100) * adr 

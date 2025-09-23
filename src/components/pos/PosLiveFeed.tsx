@@ -37,27 +37,7 @@ export default function PosLiveFeed() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   // Enable real-time updates for POS orders
-  useRealtimeUpdates([
-    {
-      table: 'pos_orders',
-      event: '*',
-      onUpdate: (payload) => {
-        if (payload.eventType === 'INSERT') {
-          toast({
-            title: "New Order",
-            description: `Order ${payload.new.order_number} received`,
-          });
-        } else if (payload.eventType === 'UPDATE') {
-          toast({
-            title: "Order Updated",
-            description: `Order ${payload.new.order_number} status: ${payload.new.status}`,
-          });
-        }
-        refresh();
-      },
-      enabled: true
-    }
-  ]);
+  useRealtimeUpdates();
 
   const getFilteredOrders = (status: string) => {
     let filtered = orders;

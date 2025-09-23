@@ -65,9 +65,12 @@ export default function RealtimeAuditStream() {
       {
         id: Date.now().toString(),
         action: 'USER_LOGIN',
+        resource_type: 'auth',
+        resource_id: 'user-123',
         actor_email: 'demo@hotel.com',
         tenant_id: 'demo-tenant',
-        details: { ip_address: '192.168.1.1' },
+        description: 'User logged in successfully',
+        metadata: { ip_address: '192.168.1.1' },
         created_at: new Date().toISOString()
       }
     ];

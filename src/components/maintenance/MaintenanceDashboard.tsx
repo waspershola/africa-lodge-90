@@ -31,28 +31,7 @@ export default function MaintenanceDashboard() {
   const [activeShift, setActiveShift] = useState(false);
 
   // Enable real-time updates for maintenance
-  useRealtimeUpdates([
-    {
-      table: 'work_orders',
-      event: '*',
-      onUpdate: (payload) => {
-        if (payload.eventType === 'INSERT') {
-          toast({
-            title: "New Work Order",
-            description: `${payload.new.title} - ${payload.new.priority} priority`,
-            variant: payload.new.priority === 'critical' ? 'destructive' : 'default'
-          });
-        } else if (payload.eventType === 'UPDATE') {
-          toast({
-            title: "Work Order Updated",
-            description: `${payload.new.title} - ${payload.new.status}`,
-          });
-        }
-        refreshWorkOrders();
-      },
-      enabled: true
-    }
-  ]);
+  useRealtimeUpdates();
 
   // Get critical alerts
   const criticalWorkOrders = workOrders.filter(wo => wo.priority === 'critical' && wo.status !== 'completed');

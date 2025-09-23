@@ -35,40 +35,7 @@ export default function ProductionDashboard() {
   const [refreshing, setRefreshing] = useState(false);
 
   // Enable real-time updates for housekeeping
-  useRealtimeUpdates([
-    {
-      table: 'housekeeping_tasks',
-      event: '*',
-      onUpdate: (payload) => {
-        if (payload.eventType === 'INSERT') {
-          toast({
-            title: "New Task Assigned",
-            description: `Task: ${payload.new.title}`,
-          });
-        } else if (payload.eventType === 'UPDATE') {
-          toast({
-            title: "Task Updated",
-            description: `${payload.new.title} - ${payload.new.status}`,
-          });
-        }
-        refreshTasks();
-      },
-      enabled: true
-    },
-    {
-      table: 'rooms',
-      event: 'UPDATE',
-      onUpdate: (payload) => {
-        if (payload.old.status !== payload.new.status) {
-          toast({
-            title: "Room Status Changed",
-            description: `Room ${payload.new.room_number}: ${payload.new.status}`,
-          });
-        }
-      },
-      enabled: true
-    }
-  ]);
+  useRealtimeUpdates();
 
   // Mock current staff member (replace with auth context)
   const currentStaff = {

@@ -1,8 +1,8 @@
-// Phase 4: Staff Dashboard for Managing QR Requests
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
+import { useQRRealtime } from '@/hooks/useQRRealtime';
+import { useFolioIntegration } from '@/hooks/useFolioIntegration';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { 
   Clock, 
   CheckCircle, 
@@ -55,198 +56,30 @@ interface QRRequestsDashboardProps {
 }
 
 export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRole }) => {
-  const { user, session } = useAuth();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [selectedRequest, setSelectedRequest] = useState<QRRequest | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [responseMessage, setResponseMessage] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('pending');
+  
+  // Use real-time hook and folio integration
+  const { orders: requests, loading: isLoading, updateOrderStatus, assignOrder } = useQRRealtime();
+  const { processServiceCompletion } = useFolioIntegration();
 
-  // Real-time subscription for updates
-  useEffect(() => {
-    if (!user?.tenant_id) return;
-
-    const channel = supabase
-      .channel(`qr_requests_${user.tenant_id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'qr_orders',
-          filter: `tenant_id=eq.${user.tenant_id}`
-        },
-        (payload) => {
-          console.log('QR Request update:', payload);
-          queryClient.invalidateQueries({ queryKey: ['qr-requests'] });
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'qr_request_messages',
-          filter: `tenant_id=eq.${user.tenant_id}`
-        },
-        (payload) => {
-          console.log('QR Message update:', payload);
-          queryClient.invalidateQueries({ queryKey: ['qr-requests'] });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user?.tenant_id, queryClient]);
-
-  // Fetch requests
-  const { data: requests = [], isLoading } = useQuery({
-    queryKey: ['qr-requests', statusFilter, userRole],
-    queryFn: async () => {
-      if (!user?.tenant_id) return [];
-
-      let query = supabase
-        .from('qr_orders')
-        .select(`
-          *,
-          qr_code:qr_codes(
-            qr_token,
-            room_id,
-            rooms(room_number)
-          ),
-          messages:qr_request_messages(
-            id, sender_role, message, created_at, is_read
-          ),
-          assigned_user:assigned_to(name, email)
-        `)
-        .eq('tenant_id', user.tenant_id)
-        .order('created_at', { ascending: false });
-
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
-      }
-
-      // Role-based filtering
-      if (userRole === 'HOUSEKEEPING') {
-        query = query.eq('assigned_team', 'housekeeping');
-      } else if (userRole === 'MAINTENANCE') {
-        query = query.eq('assigned_team', 'maintenance');
-      } else if (userRole === 'POS') {
-        query = query.eq('assigned_team', 'kitchen');
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user?.tenant_id
-  });
-
-  // Assign request mutation
-  const assignRequestMutation = useMutation({
-    mutationFn: async ({ requestId, userId }: { requestId: string; userId?: string }) => {
-      const { error } = await supabase
-        .from('qr_orders')
-        .update({
-          assigned_to: userId || user?.id,
-          assigned_at: new Date().toISOString(),
-          status: 'assigned'
-        })
-        .eq('id', requestId);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['qr-requests'] });
-      toast({ title: 'Request assigned successfully' });
-    },
-    onError: (error: any) => {
-      toast({ 
-        title: 'Error assigning request', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+  // Filter requests based on status and role
+  const filteredRequests = requests.filter(request => {
+    const statusMatch = statusFilter === 'all' || request.status === statusFilter;
+    
+    // Role-based filtering
+    if (userRole === 'HOUSEKEEPING') {
+      return statusMatch && request.service_type === 'housekeeping';
+    } else if (userRole === 'MAINTENANCE') {
+      return statusMatch && request.service_type === 'maintenance';
+    } else if (userRole === 'POS') {
+      return statusMatch && request.service_type === 'room_service';
     }
-  });
-
-  // Update status mutation
-  const updateStatusMutation = useMutation({
-    mutationFn: async ({ requestId, status, note }: { requestId: string; status: string; note?: string }) => {
-      const updateData: any = {
-        status,
-        updated_at: new Date().toISOString()
-      };
-
-      if (status === 'completed') {
-        updateData.completed_at = new Date().toISOString();
-        updateData.completed_by = user?.id;
-      }
-
-      const { error } = await supabase
-        .from('qr_orders')
-        .update(updateData)
-        .eq('id', requestId);
-
-      if (error) throw error;
-
-      // Add message if note provided
-      if (note) {
-        await supabase
-          .from('qr_request_messages')
-          .insert([{
-            request_id: requestId,
-            tenant_id: user?.tenant_id,
-            sender_id: user?.id,
-            sender_role: 'staff',
-            message: note,
-            message_payload: { status_change: status }
-          }]);
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['qr-requests'] });
-      toast({ title: 'Status updated successfully' });
-    },
-    onError: (error: any) => {
-      toast({ 
-        title: 'Error updating status', 
-        description: error.message,
-        variant: 'destructive' 
-      });
-    }
-  });
-
-  // Send message mutation
-  const sendMessageMutation = useMutation({
-    mutationFn: async ({ requestId, message }: { requestId: string; message: string }) => {
-      const { error } = await supabase
-        .from('qr_request_messages')
-        .insert([{
-          request_id: requestId,
-          tenant_id: user?.tenant_id,
-          sender_id: user?.id,
-          sender_role: 'staff',
-          message,
-          message_payload: {}
-        }]);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['qr-requests'] });
-      setResponseMessage('');
-      toast({ title: 'Message sent successfully' });
-    },
-    onError: (error: any) => {
-      toast({ 
-        title: 'Error sending message', 
-        description: error.message,
-        variant: 'destructive' 
-      });
-    }
+    
+    return statusMatch;
   });
 
   const getStatusColor = (status: string) => {
@@ -271,22 +104,52 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
   };
 
   const handleAssignToMe = (requestId: string) => {
-    assignRequestMutation.mutate({ requestId });
+    assignOrder(requestId, user?.id);
   };
 
-  const handleStatusUpdate = (requestId: string, status: string, note?: string) => {
-    updateStatusMutation.mutate({ requestId, status, note });
+  const handleStatusUpdate = async (requestId: string, status: string, note?: string) => {
+    const success = await updateOrderStatus(requestId, status, note);
+    
+    if (success && status === 'completed') {
+      // Find the request to get service details
+      const request = filteredRequests.find(r => r.id === requestId);
+      if (request) {
+        // Process folio integration for chargeable services
+        await processServiceCompletion(
+          requestId,
+          request.service_type,
+          request.room_id
+        );
+      }
+    }
   };
 
-  const handleSendResponse = () => {
+  const handleSendResponse = async () => {
     if (!selectedRequest || !responseMessage.trim()) return;
-    sendMessageMutation.mutate({ 
-      requestId: selectedRequest.id, 
-      message: responseMessage 
-    });
+    
+    try {
+      const { error } = await supabase
+        .from('qr_request_messages')
+        .insert([{
+          request_id: selectedRequest.id,
+          tenant_id: user?.tenant_id,
+          sender_id: user?.id,
+          sender_role: 'staff',
+          message: responseMessage,
+          message_payload: {}
+        }]);
+
+      if (error) throw error;
+      
+      setResponseMessage('');
+      toast.success('Message sent successfully');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error('Failed to send message');
+    }
   };
 
-  const handleViewDetails = (request: QRRequest) => {
+  const handleViewDetails = (request: any) => {
     setSelectedRequest(request);
     setShowDetails(true);
   };
@@ -317,10 +180,10 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="bg-blue-50">
-            {requests.filter(r => r.status === 'pending').length} Pending
+            {filteredRequests.filter(r => r.status === 'pending').length} Pending
           </Badge>
           <Badge variant="outline" className="bg-green-50">
-            {requests.filter(r => r.status === 'assigned').length} Assigned
+            {filteredRequests.filter(r => r.status === 'assigned').length} Assigned
           </Badge>
         </div>
       </div>
@@ -336,14 +199,14 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
 
         <TabsContent value={statusFilter} className="mt-6">
           <div className="grid gap-4">
-            {requests.length === 0 ? (
+            {filteredRequests.length === 0 ? (
               <Card>
                 <CardContent className="p-8 text-center">
                   <p className="text-muted-foreground">No requests found</p>
                 </CardContent>
               </Card>
             ) : (
-              requests.map((request) => (
+              filteredRequests.map((request) => (
                 <Card key={request.id} className="cursor-pointer hover:shadow-md transition-shadow">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
@@ -361,7 +224,7 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
                           <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                             <span className="flex items-center gap-1">
                               <MapPin className="h-3 w-3" />
-                              Room {request.qr_code?.rooms?.room_number || 'Unknown'}
+                              Room {request.room_id || 'Unknown'}
                             </span>
                             <span className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />
@@ -392,7 +255,7 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
                               e.stopPropagation();
                               handleAssignToMe(request.id);
                             }}
-                            disabled={assignRequestMutation.isPending}
+                            disabled={isLoading}
                           >
                             <User className="h-4 w-4 mr-1" />
                             Assign to Me
@@ -405,7 +268,7 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
                               e.stopPropagation();
                               handleStatusUpdate(request.id, 'accepted');
                             }}
-                            disabled={updateStatusMutation.isPending}
+                            disabled={isLoading}
                           >
                             <CheckCircle className="h-4 w-4 mr-1" />
                             Accept
@@ -419,7 +282,7 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
                               e.stopPropagation();
                               handleStatusUpdate(request.id, 'completed');
                             }}
-                            disabled={updateStatusMutation.isPending}
+                            disabled={isLoading}
                           >
                             Complete
                           </Button>
@@ -467,7 +330,7 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
                 </div>
                 <div>
                   <label className="text-sm font-medium">Room</label>
-                  <p>Room {selectedRequest.qr_code?.rooms?.room_number || 'Unknown'}</p>
+                  <p>Room {selectedRequest.room_id || 'Unknown'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium">Created</label>
@@ -532,7 +395,7 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
                         size="sm" 
                         variant="outline"
                         onClick={() => handleStatusUpdate(selectedRequest.id, 'preparing', responseMessage)}
-                        disabled={updateStatusMutation.isPending}
+                            disabled={isLoading}
                       >
                         Mark as Preparing
                       </Button>
@@ -540,7 +403,7 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
                         size="sm" 
                         variant="outline"
                         onClick={() => handleStatusUpdate(selectedRequest.id, 'completed', responseMessage)}
-                        disabled={updateStatusMutation.isPending}
+                        disabled={isLoading}
                       >
                         Complete Request
                       </Button>

@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useQuery } from '@tanstack/react-query';
 import { useTenantInfo } from '@/hooks/useTenantInfo';
+import { QRSecurity } from '@/lib/qr-security';
 
 export interface QRCodeData {
   id: string;
@@ -202,8 +203,8 @@ export default function QRManagerPage() {
         roomId = room?.id || null;
       }
 
-      // Generate QR code URL - make it accessible from any device
-      const qrCodeUrl = `https://840fa7b9-2d18-47bf-92d3-88ddf6cd5934.lovableproject.com/qr/${qrToken}`;
+      // Generate QR code URL - permanent, no expiry
+      const qrCodeUrl = QRSecurity.generateQRUrl(qrToken);
       
       const { error } = await supabase
         .from('qr_codes')

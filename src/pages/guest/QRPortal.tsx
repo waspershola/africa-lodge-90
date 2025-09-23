@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Shield, Wifi, Coffee, Home, Wrench, MessageCircle, Star, Phone, Clock, User } from 'lucide-react';
+import { Wifi, Coffee, Home, Wrench, MessageCircle, Star, Phone, Clock, User } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +8,6 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { QRSecurity } from '@/lib/qr-security';
 
 interface QRCodeInfo {
   qr_token: string;
@@ -36,100 +35,96 @@ export default function QRPortal() {
   const navigate = useNavigate();
   const [sessionToken, setSessionToken] = useState<string>('');
 
-  // Validate QR token and get info
-  const { data: qrInfo, isLoading, error } = useQuery({
+  // Get QR info - graceful handling, no harsh errors
+  const { data: qrInfo, isLoading } = useQuery({
     queryKey: ['qr-portal', qrToken],
     queryFn: async () => {
-      if (!qrToken) throw new Error('Invalid QR code');
+      if (!qrToken) return null;
 
-      // Validate rate limiting
-      const sessionId = `guest_${Date.now()}`;
-      if (!QRSecurity.checkRateLimit(sessionId, 'qr_access')) {
-        throw new Error('Too many requests. Please wait before trying again.');
+      try {
+        // Get QR code info from database
+        const { data: qrData, error } = await supabase
+          .from('qr_codes')
+          .select(`
+            qr_token,
+            services,
+            is_active,
+            label,
+            tenant_id,
+            rooms:room_id (room_number)
+          `)
+          .eq('qr_token', qrToken)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (error || !qrData) {
+          return null; // Graceful fallback instead of throwing
+        }
+
+        // Get tenant info separately
+        const { data: tenantData } = await supabase
+          .from('tenants')
+          .select('hotel_name, logo_url')
+          .eq('tenant_id', qrData.tenant_id)
+          .maybeSingle();
+
+        // Generate simple session token for tracking (no expiry)
+        const token = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        setSessionToken(token);
+
+        return {
+          qr_token: qrData.qr_token,
+          room_number: qrData.rooms?.room_number,
+          hotel_name: tenantData?.hotel_name || 'Hotel',
+          services: qrData.services || [],
+          is_active: qrData.is_active,
+          label: qrData.label,
+          tenant_id: qrData.tenant_id,
+          hotel_logo: tenantData?.logo_url
+        } as QRCodeInfo;
+      } catch (error) {
+        console.log('QR lookup error:', error);
+        return null; // Graceful fallback
       }
-
-      // Get QR code info from database
-      const { data: qrData, error } = await supabase
-        .from('qr_codes')
-        .select(`
-          qr_token,
-          services,
-          is_active,
-          label,
-          tenant_id,
-          rooms:room_id (room_number)
-        `)
-        .eq('qr_token', qrToken)
-        .eq('is_active', true)
-        .single();
-
-      if (error || !qrData) {
-        throw new Error('QR code not found or inactive');
-      }
-
-      // Get tenant info separately
-      const { data: tenantData } = await supabase
-        .from('tenants')
-        .select('hotel_name, logo_url')
-        .eq('tenant_id', qrData.tenant_id)
-        .single();
-
-
-      // Generate session token for secure access
-      const token = QRSecurity.generateSessionToken({
-        hotel_id: qrData.tenant_id,
-        location_id: qrData.rooms?.room_number || qrData.label || 'unknown',
-        location_type: qrData.rooms?.room_number ? 'room' : 'lobby',
-        permissions: qrData.services
-      });
-
-      setSessionToken(token);
-
-      return {
-        qr_token: qrData.qr_token,
-        room_number: qrData.rooms?.room_number,
-        hotel_name: tenantData?.hotel_name || 'Hotel',
-        services: qrData.services || [],
-        is_active: qrData.is_active,
-        label: qrData.label,
-        tenant_id: qrData.tenant_id,
-        hotel_logo: tenantData?.logo_url
-      } as QRCodeInfo;
     },
     enabled: !!qrToken,
     retry: false
   });
 
-  useEffect(() => {
-    if (qrInfo) {
-      // Log access for analytics
-      QRSecurity.logAction(sessionToken, 'qr_scanned', {
-        qr_token: qrInfo.qr_token,
-        location: qrInfo.room_number || qrInfo.label,
-        services_available: qrInfo.services.length
-      });
-    }
-  }, [qrInfo, sessionToken]);
+  // Log access for analytics (optional, lightweight)
+  if (qrInfo && sessionToken) {
+    // Simple analytics without blocking the UI
+    console.log('QR Portal accessed:', {
+      hotel: qrInfo.hotel_name,
+      location: qrInfo.room_number || qrInfo.label,
+      services: qrInfo.services.length
+    });
+  }
 
   const handleServiceRequest = (service: string) => {
     if (!qrInfo) return;
 
-    // Check rate limiting for service requests
-    if (!QRSecurity.checkRateLimit(sessionToken, 'service_request')) {
-      alert('Please wait before making another request.');
-      return;
+    // Simple rate limiting check (optional)
+    const lastRequest = localStorage.getItem('last_service_request');
+    const now = Date.now();
+    if (lastRequest && (now - parseInt(lastRequest)) < 1000) {
+      return; // Prevent spam clicking
     }
+    localStorage.setItem('last_service_request', now.toString());
 
     // Navigate to service request page with session token
     navigate(`/guest/service/${service.toLowerCase().replace(/\s+/g, '-')}?token=${sessionToken}&qr=${qrInfo.qr_token}`);
   };
 
+  // Show loading only briefly
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardContent className="p-6 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
+              <span className="text-2xl">🏨</span>
+            </div>
             <p className="text-muted-foreground">Loading hotel services...</p>
           </CardContent>
         </Card>
@@ -137,20 +132,21 @@ export default function QRPortal() {
     );
   }
 
-  if (error || !qrInfo) {
+  // Graceful fallback for invalid QR codes
+  if (!qrInfo) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardContent className="p-6 text-center">
-            <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-              <Shield className="h-8 w-8 text-red-600" />
+            <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
+              <span className="text-2xl">🏨</span>
             </div>
-            <h3 className="text-lg font-semibold mb-2">Invalid QR Code</h3>
+            <h3 className="text-lg font-semibold mb-2">QR Code Not Recognized</h3>
             <p className="text-muted-foreground mb-4">
-              {error?.message || 'This QR code is not valid or has expired.'}
+              This QR code is not recognized by our system. Please contact the front desk for assistance.
             </p>
             <Button onClick={() => window.history.back()} variant="outline">
-              Go Back
+              Back to Home
             </Button>
           </CardContent>
         </Card>

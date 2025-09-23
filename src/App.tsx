@@ -103,8 +103,8 @@ const App = () => (
               <OnboardingWizard />
             </TenantAwareLayout>
           } />
-          <Route path="/qr/:slug" element={<QRPortal />} />
-          <Route path="/qr-portal/:slug" element={<QRPortal />} />
+          <Route path="/guest/qr/:qrToken" element={<QRPortal />} />
+          
           <Route path="/front-desk" element={
             <TenantAwareLayout requiredRole="FRONT_DESK">
               <FrontDeskDashboard />

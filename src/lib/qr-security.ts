@@ -42,22 +42,15 @@ export class QRSecurity {
     }
   }
 
-  static generateQRUrl(hotelId: string, locationId: string, locationType: string): string {
-    const token = this.generateSessionToken({
-      hotel_id: hotelId,
-      location_id: locationId,
-      location_type: locationType as any,
-      permissions: ['room-service', 'housekeeping', 'maintenance', 'wifi', 'feedback']
-    });
-
-    // In production, this would be your domain
+  // Generate permanent QR URL using the QR token (no expiry)
+  static generateQRUrl(qrToken: string): string {
     const baseUrl = window.location.origin;
-    return `${baseUrl}/qr/${encodeURIComponent(token)}`;
+    return `${baseUrl}/guest/qr/${qrToken}`;
   }
 
   static extractTokenFromUrl(): string | null {
     const path = window.location.pathname;
-    const match = path.match(/^\/qr\/(.+)$/);
+    const match = path.match(/^\/guest\/qr\/(.+)$/);
     return match ? decodeURIComponent(match[1]) : null;
   }
 

@@ -29,12 +29,12 @@ export const GeneralSettings = ({ config, onUpdate, loading }: GeneralSettingsPr
   const [formData, setFormData] = useState(config);
   const [saving, setSaving] = useState(false);
 
-  // Load tenant data when available
+  // Load tenant data when available and avoid overriding with defaults
   useEffect(() => {
     if (tenantInfo && config) {
       setFormData(prev => ({
         ...prev,
-        hotel_name: tenantInfo.hotel_name,
+        hotel_name: tenantInfo.hotel_name || prev.hotel_name,
         address: {
           ...prev.address,
           street: tenantInfo.address || prev.address.street,

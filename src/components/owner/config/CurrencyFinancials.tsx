@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useTenantInfo } from '@/hooks/useTenantInfo';
 import { HotelConfiguration, AVAILABLE_CURRENCIES } from '@/types/configuration';
 import { DollarSign, Percent, AlertTriangle } from 'lucide-react';
 
@@ -26,9 +27,24 @@ export const CurrencyFinancials = ({
   loading 
 }: CurrencyFinancialsProps) => {
   const { toast } = useToast();
+  const { data: tenantInfo } = useTenantInfo();
   const [currencyData, setCurrencyData] = useState(currencyConfig);
   const [taxData, setTaxData] = useState(taxConfig);
   const [saving, setSaving] = useState(false);
+
+  // Load tenant currency when available
+  useEffect(() => {
+    if (tenantInfo?.currency && currencyConfig) {
+      const currency = AVAILABLE_CURRENCIES.find(c => c.code === tenantInfo.currency);
+      if (currency) {
+        setCurrencyData(prev => ({
+          ...prev,
+          default_currency: currency.code,
+          currency_symbol: currency.symbol
+        }));
+      }
+    }
+  }, [tenantInfo, currencyConfig]);
 
   const handleSaveCurrency = async () => {
     setSaving(true);

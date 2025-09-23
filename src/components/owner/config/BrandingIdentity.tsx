@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useConfiguration } from '@/hooks/useConfiguration';
+import { useTenantInfo } from '@/hooks/useTenantInfo';
 import { HotelConfiguration } from '@/types/configuration';
 import { Palette, Upload, Image, Type } from 'lucide-react';
 
@@ -18,9 +19,22 @@ interface BrandingIdentityProps {
 export const BrandingIdentity = ({ config, onUpdate, loading }: BrandingIdentityProps) => {
   const { toast } = useToast();
   const { uploadLogo } = useConfiguration();
+  const { data: tenantInfo } = useTenantInfo();
   const [formData, setFormData] = useState(config);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  // Load tenant logo when tenant info is available
+  useEffect(() => {
+    if (tenantInfo?.logo_url && config) {
+      setFormData(prev => ({
+        ...prev,
+        logo_url: tenantInfo.logo_url,
+        receipt_header_text: `Thank you for choosing ${tenantInfo.hotel_name}`,
+        receipt_footer_text: prev.receipt_footer_text || 'We hope to see you again soon!'
+      }));
+    }
+  }, [tenantInfo, config]);
 
   const handleSave = async () => {
     setSaving(true);

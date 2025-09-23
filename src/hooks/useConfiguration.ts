@@ -355,26 +355,37 @@ export const useConfiguration = () => {
     setError(null);
 
     try {
-      // Upload file to Supabase Storage
+      // Upload file to Supabase Storage (using hotel-logos bucket)
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.tenant_id}-logo-${Date.now()}.${fileExt}`;
       
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('tenant_assets')
+        .from('hotel-logos')
         .upload(fileName, file);
 
       if (uploadError) throw uploadError;
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from('tenant_assets')
+        .from('hotel-logos')
         .getPublicUrl(fileName);
 
       // Update tenant record with logo URL
-      await updateConfiguration('branding', {
-        ...configuration.branding,
-        logo_url: publicUrl
-      });
+      const { error: updateError } = await supabase
+        .from('tenants')
+        .update({ logo_url: publicUrl })
+        .eq('tenant_id', user.tenant_id);
+
+      if (updateError) throw updateError;
+
+      // Update local configuration
+      setConfiguration(prev => ({
+        ...prev,
+        branding: {
+          ...prev.branding,
+          logo_url: publicUrl
+        }
+      }));
 
       return publicUrl;
     } catch (err: any) {

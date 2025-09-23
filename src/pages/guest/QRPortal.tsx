@@ -34,6 +34,7 @@ export default function QRPortal() {
   const { qrToken } = useParams<{ qrToken: string }>();
   const navigate = useNavigate();
   const [sessionToken, setSessionToken] = useState<string>('');
+  const [submittingService, setSubmittingService] = useState<string | null>(null);
 
   // Get QR info - graceful handling, no harsh errors
   const { data: qrInfo, isLoading } = useQuery({
@@ -101,8 +102,8 @@ export default function QRPortal() {
     });
   }
 
-  const handleServiceRequest = (service: string) => {
-    if (!qrInfo) return;
+  const handleServiceRequest = async (service: string) => {
+    if (!qrInfo || submittingService) return;
 
     // Simple rate limiting check (optional)
     const lastRequest = localStorage.getItem('last_service_request');
@@ -112,8 +113,40 @@ export default function QRPortal() {
     }
     localStorage.setItem('last_service_request', now.toString());
 
-    // Navigate to service request page with session token
-    navigate(`/guest/service/${service.toLowerCase().replace(/\s+/g, '-')}?token=${sessionToken}&qr=${qrInfo.qr_token}`);
+    try {
+      setSubmittingService(service);
+      
+      // Create a service request directly via API
+      const response = await fetch(`https://dxisnnjsbuuiunjmzzqj.supabase.co/functions/v1/qr-guest-portal/guest/qr/${qrInfo.qr_token}/requests`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          service_type: service.toLowerCase().replace(/[\s-]/g, '_'),
+          request_details: {
+            service_name: service,
+            requested_at: new Date().toISOString(),
+            guest_session_id: sessionToken
+          },
+          priority: 1,
+          notes: `${service} request from guest`
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        // Show success message or update UI
+        alert(`Your ${service} request has been submitted successfully! Request ID: ${result.request_id || 'N/A'}`);
+      } else {
+        throw new Error('Failed to submit request');
+      }
+    } catch (error) {
+      console.error('Error submitting service request:', error);
+      alert('Failed to submit your request. Please try again or contact the front desk.');
+    } finally {
+      setSubmittingService(null);
+    }
   };
 
   // Show loading only briefly
@@ -225,13 +258,20 @@ export default function QRPortal() {
                   variant="outline"
                   className="w-full justify-start h-auto p-4"
                   onClick={() => handleServiceRequest(service)}
+                  disabled={submittingService !== null}
                 >
                   <div className="flex items-center gap-3 w-full">
                     <div className="flex-shrink-0">
-                      {serviceIcons[service as keyof typeof serviceIcons] || <Star className="h-5 w-5" />}
+                      {submittingService === service ? (
+                        <span className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></span>
+                      ) : (
+                        serviceIcons[service as keyof typeof serviceIcons] || <Star className="h-5 w-5" />
+                      )}
                     </div>
                     <div className="text-left flex-1">
-                      <div className="font-medium">{service}</div>
+                      <div className="font-medium">
+                        {submittingService === service ? 'Submitting...' : service}
+                      </div>
                       <div className="text-xs text-muted-foreground">
                         {service === 'Wi-Fi' && 'Get network credentials and support'}
                         {service === 'Room Service' && 'Order food and beverages'}

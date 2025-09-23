@@ -73,8 +73,8 @@ export const useStaffInvites = () => {
         // Return a structured error response with better messaging
         return { 
           success: false, 
-          error: 'Failed to connect to invitation service',
-          details: error.message 
+          error: 'Network connection failed',
+          details: `Unable to reach the invitation service: ${error.message}` 
         };
       }
 

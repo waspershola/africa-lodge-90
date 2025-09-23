@@ -126,7 +126,7 @@ serve(async (req) => {
 
     console.log('Generated temporary password for user');
 
-    // Check for global email uniqueness across ALL tenants
+    // Check for global email uniqueness across ALL tenants AND auth system
     const { data: existingUsers, error: checkError } = await supabaseAdmin
       .from('users')
       .select('id, email, is_active, tenant_id')
@@ -143,6 +143,17 @@ serve(async (req) => {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Also check auth.users for existing auth accounts
+    let existingAuthUser = null;
+    try {
+      const { data: authUsers, error: authListError } = await supabaseAdmin.auth.admin.listUsers();
+      if (!authListError && authUsers?.users) {
+        existingAuthUser = authUsers.users.find(u => u.email === email);
+      }
+    } catch (error) {
+      console.warn('Could not check auth users:', error);
     }
 
     // Check if email exists in ANY tenant (global uniqueness)
@@ -196,6 +207,29 @@ serve(async (req) => {
       }
     }
 
+    // If auth user exists but no public user record, clean up auth user
+    if (existingAuthUser && (!existingUsers || existingUsers.length === 0)) {
+      console.log('Cleaning up orphaned auth user for email:', email);
+      try {
+        await supabaseAdmin.auth.admin.deleteUser(existingAuthUser.id, false);
+      } catch (error) {
+        console.warn('Failed to clean up orphaned auth user:', error);
+      }
+    }
+
+    // If we still have an existing auth user after cleanup, return error
+    if (existingAuthUser && existingUsers && existingUsers.length > 0) {
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'User account already exists',
+        details: `A user account with email ${email} already exists in the system.`,
+        temp_password: !send_email ? tempPassword : undefined
+      }), {
+        status: 409,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Create auth user with metadata
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -212,30 +246,38 @@ serve(async (req) => {
     if (authError) {
       console.error('Error creating auth user:', authError);
       
-      // Provide specific error messages based on the error type
-      let errorMessage = 'Failed to create user account';
-      let errorDetails = authError.message;
-      
-      if (authError.message?.includes('already_registered')) {
-        errorMessage = 'Email already registered';
-        errorDetails = 'This email address is already registered in the system.';
+      // Handle specific auth errors with proper status codes
+      if (authError.code === 'email_exists' || authError.message?.includes('already been registered')) {
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: 'Email already registered',
+          details: 'This email address is already registered in the authentication system. Please use a different email or contact support.',
+          temp_password: !send_email ? tempPassword : undefined
+        }), {
+          status: 409, // Conflict status code
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       } else if (authError.message?.includes('invalid_email')) {
-        errorMessage = 'Invalid email address';
-        errorDetails = 'Please provide a valid email address.';
-      } else if (authError.message?.includes('password')) {
-        errorMessage = 'Password creation failed';
-        errorDetails = 'Unable to create secure password for user.';
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: 'Invalid email address',
+          details: 'Please provide a valid email address.',
+          temp_password: !send_email ? tempPassword : undefined
+        }), {
+          status: 400, // Bad request
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } else {
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: 'Failed to create user account',
+          details: authError.message || 'Unknown authentication error occurred.',
+          temp_password: !send_email ? tempPassword : undefined
+        }), {
+          status: 422, // Unprocessable entity
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
-      
-      return new Response(JSON.stringify({ 
-        success: false,
-        error: errorMessage,
-        details: errorDetails,
-        temp_password: !send_email ? tempPassword : undefined
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
     }
 
     console.log('Auth user created successfully:', authUser.user?.id);

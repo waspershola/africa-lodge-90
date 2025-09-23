@@ -291,10 +291,16 @@ export function EnhancedStaffInvitationDialog({
             `❌ ${errorMessage}\n\nA user with this email already exists in your tenant. Please check your staff directory or use a different email.`,
             { duration: 6000 }
           );
-        } else if (result.error?.includes('Failed to connect')) {
-          errorMessage = 'Connection Failed';
+        } else if (result.error?.includes('Network connection failed')) {
+          errorMessage = 'Network Connection Failed';
           toast.error(
-            `❌ ${errorMessage}\n\nUnable to connect to the invitation service. Please check your internet connection and try again.`,
+            `❌ ${errorMessage}\n\nUnable to reach the invitation service. Please check your internet connection and try again.`,
+            { duration: 6000 }
+          );
+        } else if (result.error?.includes('Email already registered')) {
+          errorMessage = 'Email Already Registered';
+          toast.error(
+            `❌ ${errorMessage}\n\nThis email is already registered in the system. Please use a different email or contact support.`,
             { duration: 6000 }
           );
         } else {
@@ -947,24 +953,29 @@ export function EnhancedStaffInvitationDialog({
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    {inviteResult?.error?.includes('already registered in another tenant') ? (
-                      <div className="space-y-2">
-                        <div className="font-medium">Email Already Used in Another Tenant</div>
-                        <div>This email address is already registered under a different tenant. Please remove the user from their current tenant first, or use a different email address.</div>
-                      </div>
-                    ) : inviteResult?.error?.includes('already exists in this tenant') ? (
-                      <div className="space-y-2">
-                        <div className="font-medium">User Already Exists</div>
-                        <div>A user with this email already exists in your tenant. Please check your staff directory or use a different email address.</div>
-                      </div>
-                    ) : inviteResult?.error?.includes('Failed to connect') ? (
-                      <div className="space-y-2">
-                        <div className="font-medium">Connection Failed</div>
-                        <div>Unable to connect to the invitation service. Please check your internet connection and try again.</div>
-                      </div>
-                    ) : (
-                      inviteResult?.error || 'Failed to send invitation. Please try again.'
-                    )}
+                     {inviteResult?.error?.includes('already registered in another tenant') ? (
+                       <div className="space-y-2">
+                         <div className="font-medium">Email Already Used in Another Tenant</div>
+                         <div>This email address is already registered under a different tenant. Please remove the user from their current tenant first, or use a different email address.</div>
+                       </div>
+                     ) : inviteResult?.error?.includes('already exists in this tenant') ? (
+                       <div className="space-y-2">
+                         <div className="font-medium">User Already Exists</div>
+                         <div>A user with this email already exists in your tenant. Please check your staff directory or use a different email address.</div>
+                       </div>
+                     ) : inviteResult?.error?.includes('Network connection failed') ? (
+                       <div className="space-y-2">
+                         <div className="font-medium">Network Connection Failed</div>
+                         <div>Unable to reach the invitation service. Please check your internet connection and try again.</div>
+                       </div>
+                     ) : inviteResult?.error?.includes('Email already registered') ? (
+                       <div className="space-y-2">
+                         <div className="font-medium">Email Already Registered</div>
+                         <div>This email is already registered in the system. Please use a different email or contact support.</div>
+                       </div>
+                     ) : (
+                       inviteResult?.error || 'Failed to send invitation. Please try again.'
+                     )}
                   </AlertDescription>
                 </Alert>
 

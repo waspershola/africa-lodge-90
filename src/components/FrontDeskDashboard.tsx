@@ -41,6 +41,7 @@ import { QRRequestsPanel } from "./frontdesk/QRRequestsPanel";
 import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 import DashboardNotificationBar from '@/components/layout/DashboardNotificationBar';
 import type { Room } from "./frontdesk/RoomGrid";
+import { useTenantInfo } from "@/hooks/useTenantInfo";
 
 // Mock data
 const mockData = {
@@ -321,7 +322,7 @@ const FrontDeskDashboard = () => {
                 Front Desk Dashboard
               </h1>
               <p className="text-muted-foreground">
-                Lagos Grand Hotel • {new Date().toLocaleDateString('en-US', { 
+                {tenantInfo?.hotel_name || "Loading..."} • {new Date().toLocaleDateString('en-US', { 
                   weekday: 'long', 
                   year: 'numeric', 
                   month: 'long', 

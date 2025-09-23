@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import UnifiedDashboardLayout from './UnifiedDashboardLayout';
 import { TrialBanner } from '@/components/trial/TrialBanner';
+import { useTenantInfo } from '@/hooks/useTenantInfo';
 
 const navigation = [
   { name: 'Dashboard', href: '/owner-dashboard/dashboard', icon: BarChart3 },
@@ -31,6 +32,7 @@ const navigation = [
 ];
 
 export default function OwnerLayout() {
+  const { data: tenantInfo } = useTenantInfo();
   const handleUpgradeClick = () => {
     // Navigate to billing/upgrade page
     window.location.href = '/owner-dashboard/billing';
@@ -47,7 +49,7 @@ export default function OwnerLayout() {
       
       <UnifiedDashboardLayout
         navigation={navigation}
-        title="Lagos Grand Hotel"
+        title={tenantInfo?.hotel_name || "Loading..."}
         subtitle="Hotel Owner Dashboard"
         backToSiteUrl="/"
         headerBadge={{

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,12 +14,14 @@ import {
   RefreshCw
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useTenantInfo } from "@/hooks/useTenantInfo";
 
 interface BrandingFormProps {
   onDataChange: () => void;
 }
 
 const BrandingForm = ({ onDataChange }: BrandingFormProps) => {
+  const { data: tenantInfo } = useTenantInfo();
   const [brandingData, setBrandingData] = useState({
     // Logo & Images
     logo: "/placeholder.svg",
@@ -38,8 +40,18 @@ const BrandingForm = ({ onDataChange }: BrandingFormProps) => {
     
     // Brand Identity
     brandTagline: "Luxury Redefined",
-    brandDescription: "Experience unparalleled luxury and comfort at Lagos Grand Hotel"
+    brandDescription: "Experience unparalleled luxury and comfort"
   });
+
+  // Load tenant data when available
+  useEffect(() => {
+    if (tenantInfo) {
+      setBrandingData(prev => ({
+        ...prev,
+        brandDescription: `Experience unparalleled luxury and comfort at ${tenantInfo.hotel_name}`
+      }));
+    }
+  }, [tenantInfo]);
 
   const [previewMode, setPreviewMode] = useState(false);
 

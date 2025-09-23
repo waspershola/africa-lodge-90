@@ -13,6 +13,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import UnifiedDashboardLayout from './UnifiedDashboardLayout';
+import { useTenantInfo } from '@/hooks/useTenantInfo';
 
 const navigation = [
   { name: 'Overview', href: '/manager-dashboard/dashboard', icon: Home },
@@ -29,10 +30,12 @@ const navigation = [
 ];
 
 export default function ManagerLayout() {
+  const { data: tenantInfo } = useTenantInfo();
+  
   return (
     <UnifiedDashboardLayout
       navigation={navigation}
-      title="Lagos Grand Hotel"
+      title={tenantInfo?.hotel_name || "Loading..."}
       subtitle="Manager Operations Center"
       backToSiteUrl="/"
       headerBadge={{

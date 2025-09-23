@@ -10,6 +10,7 @@ import {
   Clock
 } from 'lucide-react';
 import UnifiedDashboardLayout from './UnifiedDashboardLayout';
+import { useTenantInfo } from '@/hooks/useTenantInfo';
 
 const navigation = [
   { name: 'Live Orders', href: '/pos/dashboard', icon: Home },
@@ -22,10 +23,12 @@ const navigation = [
 ];
 
 export default function POSLayout() {
+  const { data: tenantInfo } = useTenantInfo();
+  
   return (
     <UnifiedDashboardLayout
       navigation={navigation}
-      title="Lagos Grand Hotel"
+      title={tenantInfo?.hotel_name || "Loading..."}
       subtitle="Restaurant POS System"
       backToSiteUrl="/"
       headerBadge={{

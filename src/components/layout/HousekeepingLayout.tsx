@@ -9,6 +9,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import UnifiedDashboardLayout from './UnifiedDashboardLayout';
+import { useTenantInfo } from '@/hooks/useTenantInfo';
 
 const navigation = [
   { name: 'Dashboard', href: '/housekeeping-dashboard/dashboard', icon: Home },
@@ -21,10 +22,12 @@ const navigation = [
 ];
 
 export default function HousekeepingLayout() {
+  const { data: tenantInfo } = useTenantInfo();
+  
   return (
     <UnifiedDashboardLayout
       navigation={navigation}
-      title="Lagos Grand Hotel"
+      title={tenantInfo?.hotel_name || "Loading..."}
       subtitle="Housekeeping Operations Center"
       backToSiteUrl="/"
       headerBadge={{

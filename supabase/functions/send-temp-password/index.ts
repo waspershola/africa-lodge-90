@@ -9,10 +9,14 @@ const corsHeaders = {
 };
 
 interface SendTempPasswordRequest {
-  to_email: string;
-  hotel_name: string;
-  temp_password: string;
-  login_url: string;
+  to_email?: string; // Legacy field for backward compatibility
+  email?: string;    // New field for staff invites
+  hotel_name?: string;
+  temp_password?: string;
+  tempPassword?: string; // Alternative field name
+  login_url?: string;
+  name?: string;     // Recipient name for staff invites
+  role?: string;     // User role for staff invites
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -22,11 +26,35 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { to_email, hotel_name, temp_password, login_url }: SendTempPasswordRequest = await req.json();
+    const { 
+      to_email, 
+      email, 
+      hotel_name = "Hotel Management System", 
+      temp_password, 
+      tempPassword,
+      login_url,
+      name,
+      role 
+    }: SendTempPasswordRequest = await req.json();
+
+    // Normalize field names (support both old and new formats)
+    const recipientEmail = email || to_email;
+    const password = tempPassword || temp_password;
+    const recipientName = name || 'User';
+    const userRole = role || 'Staff';
+    
+    if (!recipientEmail || !password) {
+      return new Response(JSON.stringify({ 
+        error: 'Missing required fields: email and password' 
+      }), {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
 
     // Only send to verified domain owner in Resend test mode
-    if (to_email !== 'engsholawasiu@gmail.com') {
-      console.log(`Skipping email to ${to_email} - only verified domain owner (engsholawasiu@gmail.com) can receive emails in Resend test mode`);
+    if (recipientEmail !== 'engsholawasiu@gmail.com') {
+      console.log(`Skipping email to ${recipientEmail} - only verified domain owner (engsholawasiu@gmail.com) can receive emails in Resend test mode`);
       return new Response(JSON.stringify({ 
         success: true, 
         message: 'Email skipped - Resend test mode only allows verified domain owner',
@@ -37,13 +65,67 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    console.log(`Sending temporary password email to ${to_email} for ${hotel_name}`);
+    console.log(`Sending temporary password email to ${recipientEmail} for ${hotel_name}`);
+
+    // Determine if this is a staff invite or hotel owner signup
+    const isStaffInvite = role && role !== 'OWNER';
+    const defaultLoginUrl = login_url || (role === 'SUPER_ADMIN' ? 'https://your-domain.com/sa-dashboard' : 'https://your-domain.com/owner-dashboard');
 
     const emailResponse = await resend.emails.send({
       from: "Hotel SaaS <onboarding@resend.dev>",
-      to: [to_email],
-      subject: `Welcome to Hotel SaaS - Your ${hotel_name} account is ready!`,
-      html: `
+      to: [recipientEmail],
+      subject: isStaffInvite 
+        ? `Welcome to ${hotel_name} - Your Account Details`
+        : `Welcome to Hotel SaaS - Your ${hotel_name} account is ready!`,
+      html: isStaffInvite ? `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: #4f46e5; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+            <h1>Welcome to ${hotel_name}</h1>
+            <p>Your account has been created</p>
+          </div>
+          
+          <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px;">
+            <h2>Hello ${recipientName},</h2>
+            
+            <p>You've been invited to join <strong>${hotel_name}</strong> as a <strong>${userRole.replace('_', ' ')}</strong>.</p>
+            
+            <div style="background: white; padding: 20px; border-radius: 6px; border-left: 4px solid #4f46e5; margin: 20px 0;">
+              <h3>Your Login Credentials:</h3>
+              <p><strong>Email:</strong> ${recipientEmail}</p>
+              <p><strong>Temporary Password:</strong> <strong>${password}</strong></p>
+              <p><strong>Role:</strong> ${userRole.replace('_', ' ')}</p>
+            </div>
+            
+            <div style="background: #fef3c7; color: #92400e; padding: 15px; border-radius: 6px; margin: 20px 0;">
+              <strong>⚠️ Important Security Notice:</strong>
+              <ul>
+                <li>This is a temporary password that expires in 24 hours</li>
+                <li>You must change your password on first login</li>
+                <li>Keep these credentials secure and don't share them</li>
+              </ul>
+            </div>
+            
+            <div style="text-align: center;">
+              <a href="${defaultLoginUrl}" style="display: inline-block; background: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0;">Login to Your Dashboard</a>
+            </div>
+            
+            <h3>What's Next?</h3>
+            <ol>
+              <li>Click the login button above or visit your dashboard</li>
+              <li>Use the credentials provided to sign in</li>
+              <li>You'll be prompted to create a new secure password</li>
+              <li>Complete your profile setup</li>
+            </ol>
+            
+            <p>If you have any questions or need assistance, please contact your system administrator.</p>
+            
+            <div style="text-align: center; margin-top: 30px; color: #6b7280; font-size: 14px;">
+              <p>This invitation was sent automatically by the ${hotel_name} management system.</p>
+              <p>If you didn't expect this invitation, please contact support immediately.</p>
+            </div>
+          </div>
+        </div>
+      ` : `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="text-align: center; margin-bottom: 30px;">
             <h1 style="color: #1a202c; margin-bottom: 10px;">Welcome to Hotel SaaS!</h1>
@@ -53,8 +135,8 @@ const handler = async (req: Request): Promise<Response> => {
           <div style="background: #f7fafc; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
             <h2 style="color: #2d3748; margin-top: 0;">Your Account Details</h2>
             <p style="margin: 10px 0;"><strong>Hotel:</strong> ${hotel_name}</p>
-            <p style="margin: 10px 0;"><strong>Email:</strong> ${to_email}</p>
-            <p style="margin: 10px 0;"><strong>Temporary Password:</strong> <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-family: monospace;">${temp_password}</code></p>
+            <p style="margin: 10px 0;"><strong>Email:</strong> ${recipientEmail}</p>
+            <p style="margin: 10px 0;"><strong>Temporary Password:</strong> <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-family: monospace;">${password}</code></p>
           </div>
           
           <div style="background: #fed7d7; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
@@ -63,7 +145,7 @@ const handler = async (req: Request): Promise<Response> => {
           </div>
           
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${login_url}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600;">
+            <a href="${defaultLoginUrl}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600;">
               Login to Your Dashboard
             </a>
           </div>
@@ -71,7 +153,7 @@ const handler = async (req: Request): Promise<Response> => {
           <div style="margin-top: 30px;">
             <h3 style="color: #2d3748;">Next Steps:</h3>
             <ol style="color: #4a5568; padding-left: 20px;">
-              <li>Click the login button above or visit: <a href="${login_url}">${login_url}</a></li>
+              <li>Click the login button above or visit: <a href="${defaultLoginUrl}">${defaultLoginUrl}</a></li>
               <li>Use the temporary password to sign in</li>
               <li>You'll be prompted to create a new secure password</li>
               <li>Complete your hotel setup through the onboarding wizard</li>

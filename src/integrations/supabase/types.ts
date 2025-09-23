@@ -90,6 +90,45 @@ export type Database = {
           },
         ]
       }
+      branding_assets: {
+        Row: {
+          asset_name: string
+          asset_type: string
+          created_at: string | null
+          file_size: number | null
+          file_url: string
+          id: string
+          is_active: boolean | null
+          mime_type: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          asset_name: string
+          asset_type: string
+          created_at?: string | null
+          file_size?: number | null
+          file_url: string
+          id?: string
+          is_active?: boolean | null
+          mime_type?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          asset_name?: string
+          asset_type?: string
+          created_at?: string | null
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          is_active?: boolean | null
+          mime_type?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       corporate_accounts: {
         Row: {
           address: string | null
@@ -159,6 +198,141 @@ export type Database = {
         }
         Relationships: []
       }
+      currency_settings: {
+        Row: {
+          base_currency: string
+          created_at: string | null
+          currency_position: string | null
+          currency_symbol: string | null
+          decimal_places: number | null
+          decimal_separator: string | null
+          exchange_rates: Json | null
+          id: string
+          last_updated: string | null
+          supported_currencies: Json | null
+          tenant_id: string
+          thousands_separator: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          base_currency?: string
+          created_at?: string | null
+          currency_position?: string | null
+          currency_symbol?: string | null
+          decimal_places?: number | null
+          decimal_separator?: string | null
+          exchange_rates?: Json | null
+          id?: string
+          last_updated?: string | null
+          supported_currencies?: Json | null
+          tenant_id: string
+          thousands_separator?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          base_currency?: string
+          created_at?: string | null
+          currency_position?: string | null
+          currency_symbol?: string | null
+          decimal_places?: number | null
+          decimal_separator?: string | null
+          exchange_rates?: Json | null
+          id?: string
+          last_updated?: string | null
+          supported_currencies?: Json | null
+          tenant_id?: string
+          thousands_separator?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      debt_tracking: {
+        Row: {
+          amount_owed: number
+          created_at: string | null
+          currency: string | null
+          due_date: string | null
+          folio_id: string | null
+          guest_id: string
+          id: string
+          notes: string | null
+          overdue_days: number | null
+          status: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount_owed: number
+          created_at?: string | null
+          currency?: string | null
+          due_date?: string | null
+          folio_id?: string | null
+          guest_id: string
+          id?: string
+          notes?: string | null
+          overdue_days?: number | null
+          status?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount_owed?: number
+          created_at?: string | null
+          currency?: string | null
+          due_date?: string | null
+          folio_id?: string | null
+          guest_id?: string
+          id?: string
+          notes?: string | null
+          overdue_days?: number | null
+          status?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      documents: {
+        Row: {
+          content: Json | null
+          created_at: string | null
+          created_by: string | null
+          document_type: string
+          file_url: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          tenant_id: string
+          updated_at: string | null
+          version: number | null
+        }
+        Insert: {
+          content?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          document_type: string
+          file_url?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          tenant_id: string
+          updated_at?: string | null
+          version?: number | null
+        }
+        Update: {
+          content?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          document_type?: string
+          file_url?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          tenant_id?: string
+          updated_at?: string | null
+          version?: number | null
+        }
+        Relationships: []
+      }
       feature_flags: {
         Row: {
           config: Json | null
@@ -192,6 +366,57 @@ export type Database = {
           target_plans?: string[] | null
           target_tenants?: string[] | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      financial_transactions: {
+        Row: {
+          account_code: string | null
+          amount: number
+          category: string
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          description: string | null
+          id: string
+          processed_at: string | null
+          reference_id: string | null
+          reference_type: string | null
+          status: string | null
+          tenant_id: string
+          transaction_type: string
+        }
+        Insert: {
+          account_code?: string | null
+          amount: number
+          category: string
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          description?: string | null
+          id?: string
+          processed_at?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          status?: string | null
+          tenant_id: string
+          transaction_type: string
+        }
+        Update: {
+          account_code?: string | null
+          amount?: number
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          description?: string | null
+          id?: string
+          processed_at?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          status?: string | null
+          tenant_id?: string
+          transaction_type?: string
         }
         Relationships: []
       }
@@ -337,6 +562,54 @@ export type Database = {
           },
         ]
       }
+      fuel_logs: {
+        Row: {
+          cost_per_liter: number | null
+          created_at: string | null
+          created_by: string | null
+          equipment_id: string | null
+          fuel_type: string
+          id: string
+          log_date: string
+          notes: string | null
+          odometer_reading: number | null
+          purpose: string | null
+          quantity_liters: number
+          tenant_id: string
+          total_cost: number | null
+        }
+        Insert: {
+          cost_per_liter?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          equipment_id?: string | null
+          fuel_type: string
+          id?: string
+          log_date: string
+          notes?: string | null
+          odometer_reading?: number | null
+          purpose?: string | null
+          quantity_liters: number
+          tenant_id: string
+          total_cost?: number | null
+        }
+        Update: {
+          cost_per_liter?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          equipment_id?: string | null
+          fuel_type?: string
+          id?: string
+          log_date?: string
+          notes?: string | null
+          odometer_reading?: number | null
+          purpose?: string | null
+          quantity_liters?: number
+          tenant_id?: string
+          total_cost?: number | null
+        }
+        Relationships: []
+      }
       guests: {
         Row: {
           address: string | null
@@ -412,6 +685,63 @@ export type Database = {
           total_stays?: number | null
           updated_at?: string | null
           vip_status?: string | null
+        }
+        Relationships: []
+      }
+      hotel_settings: {
+        Row: {
+          amenities: Json | null
+          cancellation_policy: Json | null
+          check_in_time: string | null
+          check_out_time: string | null
+          contact_info: Json | null
+          created_at: string | null
+          default_currency: string | null
+          early_checkin_fee: number | null
+          house_rules: Json | null
+          id: string
+          late_checkout_fee: number | null
+          service_charge_rate: number | null
+          tax_rate: number | null
+          tenant_id: string
+          timezone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amenities?: Json | null
+          cancellation_policy?: Json | null
+          check_in_time?: string | null
+          check_out_time?: string | null
+          contact_info?: Json | null
+          created_at?: string | null
+          default_currency?: string | null
+          early_checkin_fee?: number | null
+          house_rules?: Json | null
+          id?: string
+          late_checkout_fee?: number | null
+          service_charge_rate?: number | null
+          tax_rate?: number | null
+          tenant_id: string
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amenities?: Json | null
+          cancellation_policy?: Json | null
+          check_in_time?: string | null
+          check_out_time?: string | null
+          contact_info?: Json | null
+          created_at?: string | null
+          default_currency?: string | null
+          early_checkin_fee?: number | null
+          house_rules?: Json | null
+          id?: string
+          late_checkout_fee?: number | null
+          service_charge_rate?: number | null
+          tax_rate?: number | null
+          tenant_id?: string
+          timezone?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -1052,6 +1382,48 @@ export type Database = {
             referencedColumns: ["tenant_id"]
           },
         ]
+      }
+      power_logs: {
+        Row: {
+          consumption_kwh: number | null
+          cost_per_kwh: number | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          meter_id: string | null
+          meter_reading: number
+          notes: string | null
+          reading_date: string
+          tenant_id: string
+          total_cost: number | null
+        }
+        Insert: {
+          consumption_kwh?: number | null
+          cost_per_kwh?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          meter_id?: string | null
+          meter_reading: number
+          notes?: string | null
+          reading_date: string
+          tenant_id: string
+          total_cost?: number | null
+        }
+        Update: {
+          consumption_kwh?: number | null
+          cost_per_kwh?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          meter_id?: string | null
+          meter_reading?: number
+          notes?: string | null
+          reading_date?: string
+          tenant_id?: string
+          total_cost?: number | null
+        }
+        Relationships: []
       }
       qr_codes: {
         Row: {
@@ -1886,6 +2258,54 @@ export type Database = {
             referencedColumns: ["tenant_id"]
           },
         ]
+      }
+      utility_costs: {
+        Row: {
+          budget_amount: number | null
+          cost_month: string
+          created_at: string | null
+          electricity_cost: number | null
+          fuel_cost: number | null
+          gas_cost: number | null
+          id: string
+          other_utilities: Json | null
+          tenant_id: string
+          total_cost: number | null
+          updated_at: string | null
+          variance: number | null
+          water_cost: number | null
+        }
+        Insert: {
+          budget_amount?: number | null
+          cost_month: string
+          created_at?: string | null
+          electricity_cost?: number | null
+          fuel_cost?: number | null
+          gas_cost?: number | null
+          id?: string
+          other_utilities?: Json | null
+          tenant_id: string
+          total_cost?: number | null
+          updated_at?: string | null
+          variance?: number | null
+          water_cost?: number | null
+        }
+        Update: {
+          budget_amount?: number | null
+          cost_month?: string
+          created_at?: string | null
+          electricity_cost?: number | null
+          fuel_cost?: number | null
+          gas_cost?: number | null
+          id?: string
+          other_utilities?: Json | null
+          tenant_id?: string
+          total_cost?: number | null
+          updated_at?: string | null
+          variance?: number | null
+          water_cost?: number | null
+        }
+        Relationships: []
       }
       work_orders: {
         Row: {

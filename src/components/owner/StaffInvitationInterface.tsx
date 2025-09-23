@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   UserPlus, 
   Users, 
@@ -29,7 +30,10 @@ import {
   MoreHorizontal,
   Edit,
   Trash2,
-  RotateCcw
+  RotateCcw,
+  Copy,
+  AlertCircle,
+  CheckCircle
 } from 'lucide-react';
 import { 
   DropdownMenu,
@@ -43,6 +47,7 @@ import { useToast } from '@/hooks/use-toast';
 import { TemporaryPasswordResetDialog } from '@/components/auth/TemporaryPasswordResetDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useUsers } from '@/hooks/useUsers';
+import { useStaffInvites } from '@/hooks/useStaffInvites';
 
 interface StaffMember {
   id: string;
@@ -58,38 +63,62 @@ interface InviteStaffForm {
   email: string;
   name: string;
   role: string;
+  department: string;
+  send_email: boolean;
 }
 
 const staffRoles = [
+  { id: 'OWNER', label: 'Owner', description: 'Full control over the hotel' },
   { id: 'MANAGER', label: 'Manager', description: 'Full operational access' },
   { id: 'FRONT_DESK', label: 'Front Desk', description: 'Check-in/out, reservations' },
   { id: 'HOUSEKEEPING', label: 'Housekeeping', description: 'Room cleaning, maintenance' },
   { id: 'MAINTENANCE', label: 'Maintenance', description: 'Technical repairs, upkeep' },
-  { id: 'POS', label: 'POS/Kitchen', description: 'Restaurant, food service' },
-  { id: 'STAFF', label: 'General Staff', description: 'Limited access' }
+  { id: 'POS', label: 'Restaurant/Bar', description: 'Food & beverage operations' },
+  { id: 'ACCOUNTANT', label: 'Accountant', description: 'Billing, payments, financial reports' }
+];
+
+const departments = [
+  'Front Office',
+  'Housekeeping', 
+  'Food & Beverage',
+  'Maintenance',
+  'Accounting',
+  'Administration',
+  'Security',
+  'Other'
 ];
 
 export function StaffInvitationInterface() {
   const { tenant, user } = useAuth();
   const { toast } = useToast();
   const { users: staffMembers, loading: usersLoading, createUser, deactivateUser } = useUsers();
+  const { inviteUser, isLoading: inviteLoading } = useStaffInvites();
   const [staffMembersDisplay, setStaffMembersDisplay] = useState<StaffMember[]>([]);
 
   const [inviteForm, setInviteForm] = useState<InviteStaffForm>({
     email: '',
     name: '',
-    role: ''
+    role: '',
+    department: '',
+    send_email: true
   });
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
+  const [inviteResult, setInviteResult] = useState<{
+    success: boolean;
+    temp_password?: string;
+    email_sent?: boolean;
+    error?: string;
+  } | null>(null);
+  const [showResultDialog, setShowResultDialog] = useState(false);
 
   const handleInviteStaff = async () => {
     if (!inviteForm.email || !inviteForm.name || !inviteForm.role) {
       toast({
         title: "Missing information",
-        description: "Please fill in all fields",
+        description: "Please fill in all required fields",
         variant: "destructive"
       });
       return;
@@ -97,19 +126,45 @@ export function StaffInvitationInterface() {
 
     setLoading(true);
     try {
-      await createUser({
+      const result = await inviteUser({
         email: inviteForm.email,
         name: inviteForm.name,
-        role: inviteForm.role as "MANAGER" | "FRONT_DESK" | "HOUSEKEEPING" | "MAINTENANCE" | "POS" | "STAFF" | "SUPER_ADMIN" | "OWNER"
+        role: inviteForm.role,
+        department: inviteForm.department || undefined,
+        send_email: inviteForm.send_email,
+        tenant_id: tenant?.tenant_id
       });
-      
-      setInviteForm({ email: '', name: '', role: '' });
-      setInviteDialogOpen(false);
-      
-      toast({
-        title: "Invitation sent",
-        description: `Invited ${inviteForm.name} as ${staffRoles.find(r => r.id === inviteForm.role)?.label}`
-      });
+
+      if (result.success) {
+        setInviteResult({
+          success: true,
+          temp_password: result.temp_password,
+          email_sent: result.email_sent,
+          error: result.email_error
+        });
+        setShowResultDialog(true);
+        
+        // Reset form
+        setInviteForm({ 
+          email: '', 
+          name: '', 
+          role: '', 
+          department: '', 
+          send_email: true 
+        });
+        setInviteDialogOpen(false);
+        
+        toast({
+          title: "Invitation sent",
+          description: `Invited ${inviteForm.name} as ${staffRoles.find(r => r.id === inviteForm.role)?.label}`
+        });
+      } else {
+        setInviteResult({
+          success: false,
+          error: result.error || 'Failed to send invitation'
+        });
+        setShowResultDialog(true);
+      }
     } catch (error: any) {
       toast({
         title: "Error",

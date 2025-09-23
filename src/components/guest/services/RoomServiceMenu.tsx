@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import ChatInterface from '@/components/guest/messaging/ChatInterface';
+import { QRPortalAPI } from '@/lib/qr-api';
 
 interface RoomServiceMenuProps {
   qrToken: string;
@@ -137,27 +138,20 @@ export default function RoomServiceMenu({ qrToken, sessionToken }: RoomServiceMe
         currency: 'NGN'
       };
 
-      const response = await fetch(`https://dxisnnjsbuuiunjmzzqj.supabase.co/functions/v1/qr-guest-portal/guest/qr/${qrToken}/room-service`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          guest_session_id: sessionToken,
-          order_details: orderDetails,
-          total_amount: getTotalPrice(),
-          priority: 2,
-          notes: `Room service order: ${cart.length} items, Total: ₦${getTotalPrice().toLocaleString()}`
-        })
+      const result = await QRPortalAPI.createRequest(sessionToken, 'room-service', {
+        guest_session_id: sessionToken,
+        order_details: orderDetails,
+        total_amount: getTotalPrice(),
+        priority: 2,
+        notes: `Room service order: ${cart.length} items, Total: ₦${getTotalPrice().toLocaleString()}`
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        setOrderId(result.request_id);
+      if (result.status === 200) {
+        setOrderId(result.data?.request_id);
         setSubmitted(true);
         setShowChat(true);
       } else {
-        throw new Error('Failed to submit order');
+        throw new Error(result.error || 'Failed to submit order');
       }
     } catch (error) {
       console.error('Error submitting room service order:', error);
@@ -181,7 +175,7 @@ export default function RoomServiceMenu({ qrToken, sessionToken }: RoomServiceMe
               <Crown className="h-6 w-6 text-amber-600" />
             </div>
             <p className="text-amber-700/80 mb-6 text-lg leading-relaxed">
-              Your gourmet order has been sent to our executive chef. 
+              Your order has been sent to our executive chef. 
               Estimated preparation and delivery: 30-45 minutes.
             </p>
             <div className="bg-gradient-to-r from-amber-50 to-amber-100 rounded-xl p-6 border border-amber-200/50 mb-6">
@@ -317,7 +311,7 @@ export default function RoomServiceMenu({ qrToken, sessionToken }: RoomServiceMe
                 <Coffee className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-xl font-serif">Your Gourmet Order</h3>
+                <h3 className="text-xl font-serif">Your Order</h3>
                 <p className="text-amber-100/80 text-sm font-normal">{cart.length} item{cart.length !== 1 ? 's' : ''} selected</p>
               </div>
             </CardTitle>
@@ -386,7 +380,7 @@ export default function RoomServiceMenu({ qrToken, sessionToken }: RoomServiceMe
               ) : (
                 <div className="flex items-center justify-center gap-3">
                   <Crown className="h-5 w-5" />
-                  <span>Place Gourmet Order - ₦{getTotalPrice().toLocaleString()}</span>
+                  <span>Place Order - ₦{getTotalPrice().toLocaleString()}</span>
                   <Crown className="h-5 w-5" />
                 </div>
               )}

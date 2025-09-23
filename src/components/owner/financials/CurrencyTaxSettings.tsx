@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -9,10 +9,10 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { DollarSign, Percent, Globe, Calculator } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { type CurrencyTaxSettings } from "@/hooks/useCurrency";
+import { useConfiguration } from "@/hooks/useConfiguration";
 
 interface CurrencyTaxSettingsProps {
-  onSettingsChange?: (settings: CurrencyTaxSettings) => void;
+  onSettingsChange?: (settings: any) => void;
 }
 
 const currencies = [
@@ -31,27 +31,52 @@ const currencies = [
 ];
 
 export default function CurrencyTaxSettings({ onSettingsChange }: CurrencyTaxSettingsProps) {
-  const [settings, setSettings] = useState<CurrencyTaxSettings>({
+  const { configuration, updateConfiguration, loading } = useConfiguration();
+  
+  const [settings, setSettings] = useState({
     currency: {
-      code: "USD",
-      symbol: "$",
-      name: "US Dollar"
+      code: configuration?.currency?.default_currency || "NGN",
+      symbol: configuration?.currency?.currency_symbol || "₦",
+      name: "Nigerian Naira"
     },
     taxes: {
-      vatEnabled: false,
-      vatRate: 0,
-      serviceChargeEnabled: false,
-      serviceChargeRate: 0,
+      vatEnabled: true,
+      vatRate: configuration?.tax?.vat_rate || 7.5,
+      serviceChargeEnabled: true,
+      serviceChargeRate: configuration?.tax?.service_charge_rate || 10,
       cityTaxEnabled: false,
       cityTaxAmount: 0,
       touristTaxEnabled: false,
       touristTaxAmount: 0,
     },
     priceDisplay: {
-      showTaxInclusive: true,
+      showTaxInclusive: configuration?.tax?.tax_inclusive || false,
       showTaxBreakdown: false,
     }
   });
+
+  // Update local state when configuration changes
+  useEffect(() => {
+    if (configuration) {
+      setSettings(prev => ({
+        ...prev,
+        currency: {
+          code: configuration.currency?.default_currency || "NGN",
+          symbol: configuration.currency?.currency_symbol || "₦",
+          name: currencies.find(c => c.code === configuration.currency?.default_currency)?.name || "Nigerian Naira"
+        },
+        taxes: {
+          ...prev.taxes,
+          vatRate: configuration.tax?.vat_rate || 7.5,
+          serviceChargeRate: configuration.tax?.service_charge_rate || 10
+        },
+        priceDisplay: {
+          ...prev.priceDisplay,
+          showTaxInclusive: configuration.tax?.tax_inclusive || false
+        }
+      }));
+    }
+  }, [configuration]);
 
   const handleCurrencyChange = (currencyCode: string) => {
     const currency = currencies.find(c => c.code === currencyCode);
@@ -120,11 +145,35 @@ export default function CurrencyTaxSettings({ onSettingsChange }: CurrencyTaxSet
 
   const samplePrice = calculateSamplePrice(100);
 
-  const handleSaveSettings = () => {
-    toast({
-      title: "Settings Saved",
-      description: "Currency and tax settings have been updated successfully.",
-    });
+  const handleSaveSettings = async () => {
+    try {
+      // Update currency configuration
+      await updateConfiguration('currency', {
+        default_currency: settings.currency.code,
+        currency_symbol: settings.currency.symbol,
+        symbol_position: 'before' as const,
+        decimal_places: 2
+      });
+
+      // Update tax configuration  
+      await updateConfiguration('tax', {
+        vat_rate: settings.taxes.vatRate,
+        service_charge_rate: settings.taxes.serviceChargeRate,
+        tax_inclusive: settings.priceDisplay.showTaxInclusive,
+        service_charge_inclusive: false
+      });
+
+      toast({
+        title: "Settings Saved",
+        description: "Currency and tax settings have been updated successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Save Failed",
+        description: "Failed to update settings.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -372,8 +421,12 @@ export default function CurrencyTaxSettings({ onSettingsChange }: CurrencyTaxSet
 
       {/* Save Button */}
       <div className="flex justify-end">
-        <Button onClick={handleSaveSettings} className="bg-gradient-primary">
-          Save Currency & Tax Settings
+        <Button 
+          onClick={handleSaveSettings} 
+          disabled={loading}
+          className="bg-gradient-primary"
+        >
+          {loading ? 'Saving...' : 'Save Currency & Tax Settings'}
         </Button>
       </div>
     </div>

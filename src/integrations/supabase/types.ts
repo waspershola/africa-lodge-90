@@ -610,6 +610,56 @@ export type Database = {
         }
         Relationships: []
       }
+      guest_messages: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean | null
+          message: string
+          message_type: string | null
+          metadata: Json | null
+          qr_order_id: string
+          sender_id: string | null
+          sender_type: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          message: string
+          message_type?: string | null
+          metadata?: Json | null
+          qr_order_id: string
+          sender_id?: string | null
+          sender_type: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          message_type?: string | null
+          metadata?: Json | null
+          qr_order_id?: string
+          sender_id?: string | null
+          sender_type?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_messages_qr_order_id_fkey"
+            columns: ["qr_order_id"]
+            isOneToOne: false
+            referencedRelation: "qr_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guests: {
         Row: {
           address: string | null

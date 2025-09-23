@@ -24,6 +24,78 @@ serve(async (req) => {
 
     console.log('QR Guest Portal API:', { method, path });
 
+    // Handle messaging endpoints
+    if (path.includes('messages')) {
+      if (method === 'POST') {
+        const { qr_order_id, message, guest_session_id } = await req.json();
+        
+        // Get order details to verify tenant
+        const { data: orderData, error: orderError } = await supabase
+          .from('qr_orders')
+          .select('tenant_id, id')
+          .eq('id', qr_order_id)
+          .single();
+
+        if (orderError || !orderData) {
+          return new Response(JSON.stringify({ error: 'Order not found' }), {
+            status: 404,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        // Insert guest message
+        const { data: messageData, error: messageError } = await supabase
+          .from('guest_messages')
+          .insert({
+            tenant_id: orderData.tenant_id,
+            qr_order_id: qr_order_id,
+            sender_type: 'guest',
+            message: message,
+            message_type: 'text'
+          })
+          .select()
+          .single();
+
+        if (messageError) throw messageError;
+
+        return new Response(JSON.stringify({
+          success: true,
+          message_id: messageData.id
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      if (method === 'GET') {
+        const qrOrderId = url.searchParams.get('qr_order_id');
+        
+        if (!qrOrderId) {
+          return new Response(JSON.stringify({ error: 'qr_order_id required' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        // Get messages for the order
+        const { data: messages, error } = await supabase
+          .from('guest_messages')
+          .select('*')
+          .eq('qr_order_id', qrOrderId)
+          .order('created_at', { ascending: true });
+
+        if (error) throw error;
+
+        return new Response(JSON.stringify({
+          success: true,
+          messages: messages || []
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     // GET /guest/qr/:slug - Get QR code info and available services
     if (method === 'GET' && path[1] === 'guest' && path[2] === 'qr' && path[3]) {
       const slug = path[3];
@@ -195,6 +267,23 @@ serve(async (req) => {
               }]);
           }
         }
+      }
+
+      // Create initial message for room service orders
+      if (serviceType === 'room-service' || serviceType === 'digital-menu') {
+        await supabase
+          .from('guest_messages')
+          .insert({
+            tenant_id: qrCode.tenant_id,
+            qr_order_id: newRequest.id,
+            sender_type: 'guest',
+            message: `Order placed: ${body.order_details?.items?.map(item => `${item.quantity}x ${item.name}`).join(', ')}. Total: ${body.total_amount ? `₦${body.total_amount.toLocaleString()}` : 'N/A'}`,
+            message_type: 'order_confirmation',
+            metadata: {
+              order_details: body.order_details,
+              total_amount: body.total_amount
+            }
+          });
       }
 
       const response = {

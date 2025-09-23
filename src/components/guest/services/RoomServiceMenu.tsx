@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Coffee, Plus, Minus, Check, Clock } from 'lucide-react';
+import { Coffee, Plus, Minus, Check, Clock, MessageCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import ChatInterface from '@/components/guest/messaging/ChatInterface';
 
 interface RoomServiceMenuProps {
   qrToken: string;
@@ -29,6 +30,8 @@ export default function RoomServiceMenu({ qrToken, sessionToken }: RoomServiceMe
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [orderId, setOrderId] = useState<string | null>(null);
+  const [showChat, setShowChat] = useState(false);
 
   // Sample menu items
   const menuItems: MenuItem[] = [
@@ -141,7 +144,10 @@ export default function RoomServiceMenu({ qrToken, sessionToken }: RoomServiceMe
       });
 
       if (response.ok) {
+        const result = await response.json();
+        setOrderId(result.order_id);
         setSubmitted(true);
+        setShowChat(true);
       } else {
         throw new Error('Failed to submit order');
       }
@@ -155,19 +161,42 @@ export default function RoomServiceMenu({ qrToken, sessionToken }: RoomServiceMe
 
   if (submitted) {
     return (
-      <Card>
-        <CardContent className="p-6 text-center">
-          <Check className="h-12 w-12 text-green-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Order Placed Successfully!</h3>
-          <p className="text-muted-foreground mb-4">
-            Your room service order has been sent to our kitchen. 
-            Estimated delivery time: 30-45 minutes.
-          </p>
-          <div className="text-sm text-muted-foreground">
-            Total: ₦{getTotalPrice().toLocaleString()}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        <Card>
+          <CardContent className="p-6 text-center">
+            <Check className="h-12 w-12 text-green-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Order Placed Successfully!</h3>
+            <p className="text-muted-foreground mb-4">
+              Your room service order has been sent to our kitchen. 
+              Estimated delivery time: 30-45 minutes.
+            </p>
+            <div className="text-sm text-muted-foreground mb-4">
+              Total: ₦{getTotalPrice().toLocaleString()}
+            </div>
+            
+            {!showChat && orderId && (
+              <Button 
+                onClick={() => setShowChat(true)}
+                variant="outline"
+                className="mt-2"
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Chat with Kitchen
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Chat Interface */}
+        {showChat && orderId && (
+          <ChatInterface 
+            qrOrderId={orderId}
+            qrToken={qrToken}
+            sessionToken={sessionToken}
+            orderStatus="pending"
+          />
+        )}
+      </div>
     );
   }
 

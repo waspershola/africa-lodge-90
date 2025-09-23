@@ -21,8 +21,10 @@ import {
   Phone,
   MapPin,
   AlertTriangle,
-  Send
+  Send,
+  MessageCircle
 } from 'lucide-react';
+import StaffOrderChat from '@/components/staff/messaging/StaffOrderChat';
 
 interface QRRequest {
   id: string;
@@ -58,6 +60,7 @@ interface QRRequestsDashboardProps {
 export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRole }) => {
   const { user } = useAuth();
   const [selectedRequest, setSelectedRequest] = useState<QRRequest | null>(null);
+  const [showChat, setShowChat] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [responseMessage, setResponseMessage] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('pending');

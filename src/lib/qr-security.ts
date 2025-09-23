@@ -45,9 +45,7 @@ export class QRSecurity {
   // Generate permanent QR URL using the QR token (no expiry)
   static generateQRUrl(qrToken: string): string {
     const baseUrl = window.location.origin;
-    const url = `${baseUrl}/guest/qr/${qrToken}`;
-    console.log('Generated QR URL:', url); // Debug logging
-    return url;
+    return `${baseUrl}/guest/qr/${qrToken}`;
   }
 
   static extractTokenFromUrl(): string | null {

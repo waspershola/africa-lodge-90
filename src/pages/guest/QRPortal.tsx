@@ -35,10 +35,6 @@ export default function QRPortal() {
   const navigate = useNavigate();
   const [sessionToken, setSessionToken] = useState<string>('');
 
-  // Debug logging
-  console.log('QR Portal loaded with token:', qrToken);
-  console.log('Current pathname:', window.location.pathname);
-
   // Get QR info - graceful handling, no harsh errors
   const { data: qrInfo, isLoading } = useQuery({
     queryKey: ['qr-portal', qrToken],
@@ -284,9 +280,6 @@ export default function QRPortal() {
             <span>Available 24/7</span>
           </div>
           <p>Powered by {qrInfo.hotel_name} Guest Services</p>
-          <p className="text-xs text-gray-400">
-            Debug: Token = {qrToken}
-          </p>
         </div>
       </div>
     </div>

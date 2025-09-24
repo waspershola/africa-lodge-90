@@ -44,6 +44,7 @@ export interface HotelConfiguration {
     accent_color: string;
     receipt_header_text: string;
     receipt_footer_text: string;
+    font_style: 'giveny' | 'didot' | 'bodoni' | 'cormorant' | 'playfair' | 'zabatana' | 'coldiac' | 'malligoe';
   };
 
   // Receipts & Documents

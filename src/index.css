@@ -232,6 +232,59 @@
   }
 }
 
+/* Apply global luxury fonts */
+html.font-giveny,
+html.font-giveny * { font-family: Georgia, serif !important; }
+
+html.font-didot,
+html.font-didot * { font-family: Didot, "Times New Roman", serif !important; }
+
+html.font-bodoni,
+html.font-bodoni * { font-family: "Bodoni Moda", "Times New Roman", serif !important; }
+
+html.font-cormorant,
+html.font-cormorant * { font-family: "Cormorant Garamond", Georgia, serif !important; }
+
+html.font-playfair,
+html.font-playfair * { font-family: "Playfair Display", Georgia, serif !important; }
+
+html.font-zabatana,
+html.font-zabatana * { font-family: "Arial Black", Helvetica, sans-serif !important; }
+
+html.font-coldiac,
+html.font-coldiac * { font-family: "Times New Roman", serif !important; }
+
+html.font-malligoe,
+html.font-malligoe * { font-family: "Brush Script MT", cursive !important; }
+
+/* Preserve heading styles with selected font */
+html[class*="font-"] h1,
+html[class*="font-"] h2,
+html[class*="font-"] h3,
+html[class*="font-"] h4,
+html[class*="font-"] h5,
+html[class*="font-"] h6 {
+  font-weight: 600;
+}
+
+/* Special styles for display fonts */
+html.font-zabatana h1,
+html.font-zabatana h2,
+html.font-zabatana h3,
+html.font-coldiac h1,
+html.font-coldiac h2,
+html.font-coldiac h3 {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+html.font-malligoe h1,
+html.font-malligoe h2,
+html.font-malligoe h3 {
+  font-style: italic;
+  font-weight: 500;
+}
+
 @layer utilities {
   /* Animation utilities - Enhanced with mobile optimizations */
   .animate-fade-in {

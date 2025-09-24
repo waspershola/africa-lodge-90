@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useConfiguration } from '@/hooks/useConfiguration';
 import { useTenantInfo } from '@/hooks/useTenantInfo';
@@ -15,6 +16,17 @@ interface BrandingIdentityProps {
   onUpdate: (updates: Partial<HotelConfiguration['branding']>) => Promise<boolean>;
   loading: boolean;
 }
+
+const LUXURY_FONTS = [
+  { id: 'giveny', name: 'Giveny', description: 'Classy Serif Font - Classic elegance, high-fashion inspired', sample: 'Hotel Elegance', style: 'font-giveny' },
+  { id: 'didot', name: 'Didot', description: 'Timeless Parisian Fashion - Iconic in fashion magazines', sample: 'Hotel Didot', style: 'font-didot' },
+  { id: 'bodoni', name: 'Bodoni Moda', description: 'Classic Modern Luxury - Refined Italian contrast serif', sample: 'Hotel Bodoni', style: 'font-bodoni' },
+  { id: 'cormorant', name: 'Cormorant Garamond', description: 'Regal & Royal - Ornamental Garamond variant', sample: 'Hotel Cormorant', style: 'font-cormorant' },
+  { id: 'playfair', name: 'Playfair Display', description: 'Modern Chic Serif - Editorial, contemporary yet timeless', sample: 'Hotel Playfair', style: 'font-playfair' },
+  { id: 'zabatana', name: 'Zabatana Poster', description: 'Bold Geometric Display - Artistic with unique flourishes', sample: 'HOTEL ELEGANCE', style: 'font-zabatana font-bold' },
+  { id: 'coldiac', name: 'Coldiac', description: 'Luxury Serif Font - Elegant all-caps serif, tall and refined', sample: 'HOTEL ELEGANCE', style: 'font-coldiac' },
+  { id: 'malligoe', name: 'Malligoe', description: 'Script Branding Font - Flowing cursive, indulgent and romantic', sample: 'Hotel Malligoe', style: 'font-malligoe italic' },
+] as const;
 
 export const BrandingIdentity = ({ config, onUpdate, loading }: BrandingIdentityProps) => {
   const { toast } = useToast();
@@ -31,7 +43,8 @@ export const BrandingIdentity = ({ config, onUpdate, loading }: BrandingIdentity
         ...prev,
         logo_url: tenantInfo.logo_url,
         receipt_header_text: `Thank you for choosing ${tenantInfo.hotel_name}`,
-        receipt_footer_text: prev.receipt_footer_text || 'We hope to see you again soon!'
+        receipt_footer_text: prev.receipt_footer_text || 'We hope to see you again soon!',
+        font_style: prev.font_style || 'playfair'
       }));
     }
   }, [tenantInfo, config]);
@@ -265,6 +278,62 @@ export const BrandingIdentity = ({ config, onUpdate, loading }: BrandingIdentity
                   />
                   <span className="text-sm">Accent</span>
                 </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Luxury Font Selection */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Type className="h-5 w-5" />
+              Luxury Font Style
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="font_style">Hotel Font Style</Label>
+              <Select 
+                value={formData.font_style || 'playfair'} 
+                onValueChange={(value) => updateField('font_style', value as any)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select luxury font style" />
+                </SelectTrigger>
+                <SelectContent className="max-h-96">
+                  {LUXURY_FONTS.map((font) => (
+                    <SelectItem key={font.id} value={font.id}>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-lg ${font.style}`}>{font.sample}</span>
+                          <span className="text-sm font-medium">{font.name}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{font.description}</p>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Font will be applied globally: QR Portal, Dashboard, Receipts, and all branded materials
+              </p>
+            </div>
+
+            {/* Font Preview */}
+            <div className="p-4 bg-muted rounded-lg">
+              <Label className="text-sm font-medium">Font Preview</Label>
+              <div className="mt-3 space-y-2">
+                {LUXURY_FONTS.find(f => f.id === (formData.font_style || 'playfair')) && (
+                  <div className="space-y-1">
+                    <div className={`text-2xl ${LUXURY_FONTS.find(f => f.id === (formData.font_style || 'playfair'))?.style}`}>
+                      {tenantInfo?.hotel_name || 'Your Hotel Name'}
+                    </div>
+                    <div className={`text-sm ${LUXURY_FONTS.find(f => f.id === (formData.font_style || 'playfair'))?.style}`}>
+                      Welcome to luxury hospitality
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>

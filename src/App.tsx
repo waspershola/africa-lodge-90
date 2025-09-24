@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useFontManager } from "@/hooks/useFontManager";
 import Index from "./pages/Index";
 import SignUp from "./pages/SignUp";
 import NotFound from "./pages/NotFound";
@@ -89,10 +90,17 @@ import RealtimeMonitoring from "./pages/sa/RealtimeMonitoring";
 
 const queryClient = new QueryClient();
 
+// Font manager component to apply global font styles
+const FontManager = () => {
+  useFontManager();
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <MultiTenantAuthProvider>
+        <FontManager />
         <Toaster />
         <Sonner />
         <BrowserRouter>

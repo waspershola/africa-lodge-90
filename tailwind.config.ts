@@ -23,6 +23,14 @@ export default {
 				playfair: ['Playfair Display', 'serif'],
 				sans: ['Inter', 'system-ui', 'sans-serif'],
 				serif: ['Playfair Display', 'Georgia', 'serif'],
+				// Luxury Hotel Fonts
+				'giveny': ['Georgia', 'serif'], // Fallback as Giveny is premium
+				'didot': ['Didot', 'Times New Roman', 'serif'],
+				'bodoni': ['Bodoni Moda', 'Times New Roman', 'serif'],
+				'cormorant': ['Cormorant Garamond', 'Georgia', 'serif'],
+				'zabatana': ['Arial Black', 'Helvetica', 'sans-serif'], // Fallback as Zabatana is premium
+				'coldiac': ['Times New Roman', 'serif'], // Fallback as Coldiac is premium
+				'malligoe': ['Brush Script MT', 'cursive'], // Fallback as Malligoe is premium
 			},
 			colors: {
 				border: 'hsl(var(--border))',

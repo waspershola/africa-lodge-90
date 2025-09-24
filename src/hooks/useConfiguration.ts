@@ -42,7 +42,8 @@ const defaultConfiguration: HotelConfiguration = {
     secondary_color: '#64748b',
     accent_color: '#f59e0b',
     receipt_header_text: 'Thank you for choosing Grand Palace Lagos',
-    receipt_footer_text: 'We hope to see you again soon!'
+    receipt_footer_text: 'We hope to see you again soon!',
+    font_style: 'playfair' as const
   },
   documents: {
     default_receipt_template: 'A4',
@@ -187,7 +188,8 @@ export const useConfiguration = () => {
           accent_color: (tenant.brand_colors as any)?.accent || '#f59e0b',
           logo_url: tenant.logo_url,
           receipt_header_text: `Thank you for choosing ${tenant.hotel_name}`,
-          receipt_footer_text: 'We hope to see you again soon!'
+          receipt_footer_text: 'We hope to see you again soon!',
+          font_style: 'playfair' as const
         },
         documents: {
           default_receipt_template: (tenant.receipt_template as 'A4' | 'thermal_80mm' | 'thermal_58mm' | 'half_page') || 'A4',

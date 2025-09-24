@@ -13,6 +13,15 @@ export interface Room {
   description?: string;
   created_at: string;
   updated_at: string;
+  notes?: string;
+  last_cleaned?: string;
+  room_types?: {
+    id: string;
+    name: string;
+    base_rate: number;
+    max_occupancy: number;
+    amenities?: string[];
+  };
 }
 
 export const useRooms = () => {
@@ -21,7 +30,16 @@ export const useRooms = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('rooms')
-        .select('*')
+        .select(`
+          *,
+          room_types:room_type_id (
+            id,
+            name,
+            base_rate,
+            max_occupancy,
+            amenities
+          )
+        `)
         .order('room_number');
 
       if (error) throw new Error(error.message);

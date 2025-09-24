@@ -89,12 +89,12 @@ export default function RoomInventoryGrid() {
   const rooms: Room[] = liveRooms.map(room => ({
     id: room.id,
     number: room.room_number,
-    category: room.room_type_id || 'Standard',
+    category: room.room_types?.name || 'Standard',
     floor: room.floor || 1,
     status: room.status === 'dirty' ? 'cleaning' : room.status === 'out_of_order' ? 'out-of-order' : room.status as Room['status'],
-    baseRate: 0, // room_types data would be needed for actual rates
-    currentRate: 0, // room_types data would be needed for actual rates
-    amenities: ['wifi', 'tv', 'ac'], // Default amenities
+    baseRate: room.room_types?.base_rate || 0,
+    currentRate: room.room_types?.base_rate || 0,
+    amenities: room.room_types?.amenities || ['wifi', 'tv', 'ac'],
     lastCleaned: room.last_cleaned || new Date().toISOString(),
     nextMaintenance: room.updated_at ? new Date(new Date(room.updated_at).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     description: room.notes || ''

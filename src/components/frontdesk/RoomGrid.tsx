@@ -12,9 +12,12 @@ export interface Room {
   id: string;
   room_number: string;
   status: 'available' | 'occupied' | 'reserved' | 'oos' | 'overstay' | 'dirty' | 'clean' | 'maintenance';
-  room_type?: {
+  room_types?: {
+    id: string;
     name: string;
     base_rate: number;
+    max_occupancy?: number;
+    amenities?: string[];
   };
   current_reservation?: {
     guest_name: string;
@@ -87,7 +90,7 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
       id: room.id,
       room_number: room.room_number,
       status: mappedStatus,
-      room_type: undefined, // Use room_type_id instead
+      room_types: room.room_types,
       current_reservation: currentReservation ? {
         guest_name: currentReservation.guest_name,
         check_in_date: currentReservation.check_in_date,
@@ -98,8 +101,8 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
       last_cleaned: room.last_cleaned,
       // Legacy compatibility fields
       number: room.room_number,
-      name: room.room_type_id || 'Standard',
-      type: room.room_type_id || 'Standard',
+      name: room.room_types?.name || 'Standard',
+      type: room.room_types?.name || 'Standard',
       guest: currentReservation?.guest_name,
       checkIn: currentReservation?.check_in_date,
       checkOut: currentReservation?.check_out_date,

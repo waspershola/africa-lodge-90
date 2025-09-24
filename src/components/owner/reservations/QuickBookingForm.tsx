@@ -24,9 +24,9 @@ import {
   useGuestProfiles, 
   useCompanies, 
   useImportOTAReservation,
-  useAssignRoom as useAutoAssignRoom
+  useAssignRoom as useAutoAssignRoom,
+  useRoomAvailability
 } from '@/hooks/useApi';
-import { useRooms } from '@/hooks/useRooms';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, differenceInDays } from 'date-fns';
@@ -74,7 +74,7 @@ export default function QuickBookingForm({ onClose }: QuickBookingFormProps) {
   // Note: autoAssignRoom is imported as alias from useAssignRoom
   const { data: guestProfiles = [] } = useGuestProfiles();
   const { data: companies = [] } = useCompanies();
-  const { data: rooms = [] } = useRooms();
+  const { data: roomAvailability = [] } = useRoomAvailability();
 
   // Room types
   const roomTypes = [
@@ -85,14 +85,14 @@ export default function QuickBookingForm({ onClose }: QuickBookingFormProps) {
     { value: 'presidential', label: 'Presidential Suite', price: 350000 }
   ];
 
-  // Available rooms based on selection  
-  const availableRooms = rooms
+  // Available rooms based on selection
+  const availableRooms = roomAvailability
     .filter(room => room.status === 'available' && 
       (!formData.roomType || room.room_types?.name?.toLowerCase().includes(formData.roomType)))
     .map(room => ({
       number: room.room_number,
       type: room.room_types?.name || 'Standard',
-      capacity: room.room_types?.max_occupancy || 2,
+      capacity: (room.room_types as any)?.max_occupancy || 2,
       price: room.room_types?.base_rate || 0
     }));
 

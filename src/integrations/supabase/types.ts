@@ -1991,83 +1991,6 @@ export type Database = {
           },
         ]
       }
-      rate_plans: {
-        Row: {
-          adjustment: number
-          adjustment_type: string
-          advance_booking: number | null
-          base_rate: number
-          corporate_code: string | null
-          created_at: string | null
-          description: string | null
-          end_date: string
-          final_rate: number
-          id: string
-          is_active: boolean | null
-          max_stay: number | null
-          min_stay: number | null
-          name: string
-          restrictions: string[] | null
-          room_type_id: string | null
-          start_date: string
-          tenant_id: string
-          type: string
-          updated_at: string | null
-        }
-        Insert: {
-          adjustment?: number
-          adjustment_type: string
-          advance_booking?: number | null
-          base_rate: number
-          corporate_code?: string | null
-          created_at?: string | null
-          description?: string | null
-          end_date: string
-          final_rate: number
-          id?: string
-          is_active?: boolean | null
-          max_stay?: number | null
-          min_stay?: number | null
-          name: string
-          restrictions?: string[] | null
-          room_type_id?: string | null
-          start_date: string
-          tenant_id: string
-          type: string
-          updated_at?: string | null
-        }
-        Update: {
-          adjustment?: number
-          adjustment_type?: string
-          advance_booking?: number | null
-          base_rate?: number
-          corporate_code?: string | null
-          created_at?: string | null
-          description?: string | null
-          end_date?: string
-          final_rate?: number
-          id?: string
-          is_active?: boolean | null
-          max_stay?: number | null
-          min_stay?: number | null
-          name?: string
-          restrictions?: string[] | null
-          room_type_id?: string | null
-          start_date?: string
-          tenant_id?: string
-          type?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "rate_plans_room_type_id_fkey"
-            columns: ["room_type_id"]
-            isOneToOne: false
-            referencedRelation: "room_types"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       reservations: {
         Row: {
           adults: number | null
@@ -3424,26 +3347,6 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
-      gtrgm_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gtrgm_decompress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gtrgm_in: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gtrgm_options: {
-        Args: { "": unknown }
-        Returns: undefined
-      }
-      gtrgm_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
       is_super_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -3459,18 +3362,6 @@ export type Database = {
       refresh_revenue_views: {
         Args: Record<PropertyKey, never>
         Returns: undefined
-      }
-      set_limit: {
-        Args: { "": number }
-        Returns: number
-      }
-      show_limit: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      show_trgm: {
-        Args: { "": string }
-        Returns: string[]
       }
       strict_tenant_access: {
         Args: { target_tenant_id: string }

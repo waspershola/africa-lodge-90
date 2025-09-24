@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, User, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useReservations } from '@/hooks/useReservations';
+import { useReservations } from '@/hooks/useRooms';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
 
 interface InteractiveReservationCalendarProps {
@@ -24,7 +24,7 @@ export default function InteractiveReservationCalendar({
 }: InteractiveReservationCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<Date>(currentDate);
   const { toast } = useToast();
-  const { data: reservations = [], isLoading: loading } = useReservations();
+  const { reservations = [], loading } = useReservations();
 
   // Generate calendar days
   const calendarDays = useMemo(() => {

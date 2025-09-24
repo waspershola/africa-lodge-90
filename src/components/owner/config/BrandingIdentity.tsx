@@ -18,14 +18,14 @@ interface BrandingIdentityProps {
 }
 
 const LUXURY_FONTS = [
-  { id: 'giveny', name: 'Giveny', description: 'Classy Serif Font - Classic elegance, high-fashion inspired', sample: 'Hotel Elegance', style: 'font-giveny text-xl' },
-  { id: 'didot', name: 'Didot', description: 'Timeless Parisian Fashion - Iconic in fashion magazines', sample: 'Hotel Didot', style: 'font-didot text-xl' },
-  { id: 'bodoni', name: 'Bodoni Moda', description: 'Classic Modern Luxury - Refined Italian contrast serif', sample: 'Hotel Bodoni', style: 'font-bodoni text-xl' },
-  { id: 'cormorant', name: 'Cormorant Garamond', description: 'Regal & Royal - Ornamental Garamond variant', sample: 'Hotel Cormorant', style: 'font-cormorant text-xl' },
-  { id: 'playfair', name: 'Playfair Display', description: 'Modern Chic Serif - Editorial, contemporary yet timeless', sample: 'Hotel Playfair', style: 'font-playfair text-xl' },
-  { id: 'zabatana', name: 'Zabatana Poster', description: 'Bold Geometric Display - Artistic with unique flourishes', sample: 'HOTEL ELEGANCE', style: 'font-zabatana text-lg font-bold' },
-  { id: 'coldiac', name: 'Coldiac', description: 'Luxury Serif Font - Elegant all-caps serif, tall and refined', sample: 'HOTEL ELEGANCE', style: 'font-coldiac text-lg' },
-  { id: 'malligoe', name: 'Malligoe', description: 'Script Branding Font - Flowing cursive, indulgent and romantic', sample: 'Hotel Malligoe', style: 'font-malligoe text-xl' },
+  { id: 'giveny', name: 'Giveny', description: 'Classy Serif Font - Classic elegance, high-fashion inspired', sample: 'Hotel Elegance', style: 'font-giveny' },
+  { id: 'didot', name: 'Didot', description: 'Timeless Parisian Fashion - Iconic in fashion magazines', sample: 'Hotel Didot', style: 'font-didot' },
+  { id: 'bodoni', name: 'Bodoni Moda', description: 'Classic Modern Luxury - Refined Italian contrast serif', sample: 'Hotel Bodoni', style: 'font-bodoni' },
+  { id: 'cormorant', name: 'Cormorant Garamond', description: 'Regal & Royal - Ornamental Garamond variant', sample: 'Hotel Cormorant', style: 'font-cormorant' },
+  { id: 'playfair', name: 'Playfair Display', description: 'Modern Chic Serif - Editorial, contemporary yet timeless', sample: 'Hotel Playfair', style: 'font-playfair' },
+  { id: 'zabatana', name: 'Zabatana Poster', description: 'Bold Geometric Display - Artistic with unique flourishes', sample: 'HOTEL ELEGANCE', style: 'font-zabatana font-bold' },
+  { id: 'coldiac', name: 'Coldiac', description: 'Luxury Serif Font - Elegant all-caps serif, tall and refined', sample: 'HOTEL ELEGANCE', style: 'font-coldiac' },
+  { id: 'malligoe', name: 'Malligoe', description: 'Script Branding Font - Flowing cursive, indulgent and romantic', sample: 'Hotel Malligoe', style: 'font-malligoe italic' },
 ] as const;
 
 export const BrandingIdentity = ({ config, onUpdate, loading }: BrandingIdentityProps) => {

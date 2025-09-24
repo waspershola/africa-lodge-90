@@ -232,76 +232,42 @@
   }
 }
 
-/* Apply global luxury fonts with distinctive styling */
+/* Apply global luxury fonts */
 html.font-giveny,
-html.font-giveny * { 
-  font-family: "Lora", Georgia, serif !important; 
-  font-weight: 500 !important;
-  letter-spacing: 0.02em !important;
-}
+html.font-giveny * { font-family: Georgia, serif !important; }
 
 html.font-didot,
-html.font-didot * { 
-  font-family: "Playfair Display", "Times New Roman", serif !important; 
-  font-weight: 600 !important;
-  letter-spacing: 0.01em !important;
-}
+html.font-didot * { font-family: Didot, "Times New Roman", serif !important; }
 
 html.font-bodoni,
-html.font-bodoni * { 
-  font-family: "Bodoni Moda", "Times New Roman", serif !important; 
-  font-weight: 500 !important;
-  letter-spacing: 0.03em !important;
-}
+html.font-bodoni * { font-family: "Bodoni Moda", "Times New Roman", serif !important; }
 
 html.font-cormorant,
-html.font-cormorant * { 
-  font-family: "Cormorant Garamond", Georgia, serif !important; 
-  font-weight: 500 !important;
-  letter-spacing: 0.02em !important;
-}
+html.font-cormorant * { font-family: "Cormorant Garamond", Georgia, serif !important; }
 
 html.font-playfair,
-html.font-playfair * { 
-  font-family: "Playfair Display", Georgia, serif !important; 
-  font-weight: 500 !important;
-  letter-spacing: 0.01em !important;
-}
+html.font-playfair * { font-family: "Playfair Display", Georgia, serif !important; }
 
 html.font-zabatana,
-html.font-zabatana * { 
-  font-family: "Cinzel", "Arial Black", sans-serif !important; 
-  font-weight: 600 !important;
-  letter-spacing: 0.15em !important;
-  text-transform: uppercase !important;
-}
+html.font-zabatana * { font-family: "Arial Black", Helvetica, sans-serif !important; }
 
 html.font-coldiac,
-html.font-coldiac * { 
-  font-family: "Libre Caslon Text", "Times New Roman", serif !important; 
-  font-weight: 600 !important;
-  letter-spacing: 0.08em !important;
-  text-transform: uppercase !important;
-}
+html.font-coldiac * { font-family: "Times New Roman", serif !important; }
 
 html.font-malligoe,
-html.font-malligoe * { 
-  font-family: "Great Vibes", "Brush Script MT", cursive !important; 
-  font-weight: 400 !important;
-  letter-spacing: 0.02em !important;
-}
+html.font-malligoe * { font-family: "Brush Script MT", cursive !important; }
 
-/* Preserve heading styles with selected font and enhance distinctiveness */
+/* Preserve heading styles with selected font */
 html[class*="font-"] h1,
 html[class*="font-"] h2,
 html[class*="font-"] h3,
 html[class*="font-"] h4,
 html[class*="font-"] h5,
 html[class*="font-"] h6 {
-  font-weight: 700;
+  font-weight: 600;
 }
 
-/* Special styles for display fonts - more dramatic styling */
+/* Special styles for display fonts */
 html.font-zabatana h1,
 html.font-zabatana h2,
 html.font-zabatana h3,
@@ -309,31 +275,6 @@ html.font-coldiac h1,
 html.font-coldiac h2,
 html.font-coldiac h3 {
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-weight: 700;
-}
-
-/* Script font special styling */
-html.font-malligoe h1,
-html.font-malligoe h2,
-html.font-malligoe h3 {
-  font-size: 1.2em;
-  line-height: 1.2;
-}
-
-/* High contrast serif styling */
-html.font-didot h1,
-html.font-didot h2,
-html.font-didot h3 {
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-
-/* Classic luxury serif styling */
-html.font-bodoni h1,
-html.font-bodoni h2,
-html.font-bodoni h3 {
-  font-weight: 600;
   letter-spacing: 0.05em;
 }
 

@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Calendar, Users, Phone, Mail, MapPin, MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
-import { useReservations } from '@/hooks/useReservations';
+import { useReservations } from '@/hooks/useRooms';
 
 interface ReservationListProps {
   searchTerm: string;
@@ -19,7 +19,7 @@ export default function ReservationList({
   statusFilter, 
   onReservationSelect 
 }: ReservationListProps) {
-  const { data: reservations = [], isLoading } = useReservations();
+  const { reservations = [], loading: isLoading } = useReservations();
 
   const filteredReservations = reservations.filter(reservation => {
     const matchesSearch = searchTerm === '' || 

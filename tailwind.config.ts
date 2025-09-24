@@ -23,15 +23,15 @@ export default {
 				playfair: ['Playfair Display', 'serif'],
 				sans: ['Inter', 'system-ui', 'sans-serif'],
 				serif: ['Playfair Display', 'Georgia', 'serif'],
-				// Luxury Hotel Fonts - Using high-quality Google Fonts alternatives
-				'giveny': ['Crimson Text', 'Georgia', 'serif'], // Elegant serif similar to Giveny
-				'didot': ['EB Garamond', 'Times New Roman', 'serif'], // High-fashion serif
-				'bodoni': ['Bodoni Moda', 'Times New Roman', 'serif'], // Classic Italian serif
-				'cormorant': ['Cormorant Garamond', 'Georgia', 'serif'], // Royal serif
-				'playfair': ['Playfair Display', 'Georgia', 'serif'], // Modern chic serif
-				'zabatana': ['Cinzel', 'Arial Black', 'sans-serif'], // Bold geometric display
-				'coldiac': ['Libre Baskerville', 'Times New Roman', 'serif'], // Luxury serif
-				'malligoe': ['Dancing Script', 'Brush Script MT', 'cursive'], // Script branding font
+				// Luxury Hotel Fonts - Carefully selected for distinct luxury styles
+				'giveny': ['Lora', 'Georgia', 'serif'], // Classic elegance, high-fashion inspired
+				'didot': ['Playfair Display', 'Times New Roman', 'serif'], // Timeless Parisian Fashion, high contrast
+				'bodoni': ['Bodoni Moda', 'Times New Roman', 'serif'], // Classic Modern Luxury, refined Italian serif
+				'cormorant': ['Cormorant Garamond', 'Georgia', 'serif'], // Regal & Royal, ornamental
+				'playfair': ['Playfair Display', 'Georgia', 'serif'], // Modern Chic Serif, editorial
+				'zabatana': ['Cinzel', 'Arial Black', 'sans-serif'], // Bold Geometric Display, artistic
+				'coldiac': ['Libre Caslon Text', 'Times New Roman', 'serif'], // Luxury Serif, elegant all-caps
+				'malligoe': ['Great Vibes', 'Brush Script MT', 'cursive'], // Script Branding, flowing cursive
 			},
 			colors: {
 				border: 'hsl(var(--border))',

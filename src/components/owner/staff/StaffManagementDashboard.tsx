@@ -93,7 +93,7 @@ const staffRoles = [
 
 export function StaffManagementDashboard() {
   const { tenant, user } = useAuth();
-  const { users: staffMembers, loading: usersLoading, deactivateUser } = useUsers();
+  const { users: staffMembers, loading: usersLoading, deactivateUser, refresh: refreshUsers } = useUsers();
   const { resetUserPassword } = useStaffInvites();
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -238,7 +238,11 @@ export function StaffManagementDashboard() {
             Export Staff
           </Button>
           <Button 
-            onClick={() => setInviteDialogOpen(true)}
+            onClick={() => {
+              console.log('📋 Invite Staff button clicked, opening invitation dialog...');
+              setInviteDialogOpen(true);
+              console.log('📋 Dialog state set to true, inviteDialogOpen:', true);
+            }}
             className="bg-gradient-primary"
           >
             <UserPlus className="h-4 w-4 mr-2" />
@@ -329,7 +333,10 @@ export function StaffManagementDashboard() {
                       : "No staff members match your search criteria"
                     }
                   </p>
-                  <Button onClick={() => setInviteDialogOpen(true)} className="bg-gradient-primary">
+                  <Button onClick={() => {
+                    console.log('📋 Invite Staff Member button clicked (empty state), opening dialog...');
+                    setInviteDialogOpen(true);
+                  }} className="bg-gradient-primary">
                     <UserPlus className="h-4 w-4 mr-2" />
                     Invite Staff Member
                   </Button>
@@ -478,10 +485,15 @@ export function StaffManagementDashboard() {
       {/* Dialogs */}
       <EnhancedStaffInvitationDialog
         open={inviteDialogOpen}
-        onOpenChange={setInviteDialogOpen}
+        onOpenChange={(open) => {
+          console.log('📋 EnhancedStaffInvitationDialog open state changed:', open);
+          setInviteDialogOpen(open);
+        }}
         onSuccess={() => {
-          // Force refresh by reloading the component
-          window.location.reload();
+          console.log('📋 Staff invitation successful, refreshing staff list...');
+          // Refresh users list instead of full page reload
+          refreshUsers();
+          toast.success('Staff member invited successfully!');
         }}
       />
 
@@ -500,8 +512,10 @@ export function StaffManagementDashboard() {
         open={bulkImportDialogOpen}
         onOpenChange={setBulkImportDialogOpen}
         onSuccess={() => {
-          // Force refresh by reloading the component
-          window.location.reload();
+          console.log('📋 Bulk import successful, refreshing staff list...');
+          // Refresh users list instead of full page reload
+          refreshUsers();
+          toast.success('Staff bulk import completed successfully!');
         }}
       />
 

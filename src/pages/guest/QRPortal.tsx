@@ -63,23 +63,27 @@ export default function QRPortal() {
       if (!qrToken) return null;
 
       try {
-        // Get QR code info from database
-        const { data: qrData, error } = await supabase
-          .from('qr_codes')
-          .select(`
-            qr_token,
-            services,
-            is_active,
-            label,
-            tenant_id,
-            rooms:room_id (room_number)
-          `)
-          .eq('qr_token', qrToken)
-          .eq('is_active', true)
-          .maybeSingle();
+        // Use the secure validation function
+        const { data: validationData, error: validationError } = await supabase
+          .rpc('validate_qr_token_public', { token_input: qrToken });
 
-        if (error || !qrData) {
+        if (validationError || !validationData || !Array.isArray(validationData) || 
+            validationData.length === 0 || !validationData[0].is_valid) {
+          console.error('QR validation failed:', validationError);
           return null;
+        }
+
+        const qrData = validationData[0];
+
+        // Get room number if room_id exists
+        let roomNumber = null;
+        if (qrData.room_id) {
+          const { data: roomData } = await supabase
+            .from('rooms')
+            .select('room_number')
+            .eq('id', qrData.room_id)
+            .maybeSingle();
+          roomNumber = roomData?.room_number;
         }
 
         // Get QR settings for hotel branding
@@ -97,12 +101,12 @@ export default function QRPortal() {
         setSessionToken(token);
 
         return {
-          qr_token: qrData.qr_token,
-          room_number: qrData.rooms?.room_number,
-          hotel_name: qrSettings?.hotel_name || 'Hotel',
+          qr_token: qrToken,
+          room_number: roomNumber,
+          hotel_name: qrData.hotel_name || qrSettings?.hotel_name || 'Hotel',
           services: qrData.services || [],
-          is_active: qrData.is_active,
-          label: qrData.label,
+          is_active: qrData.is_valid,
+          label: null, // Not available from validation function
           tenant_id: qrData.tenant_id,
           hotel_logo: qrSettings?.show_logo_on_qr ? qrSettings?.hotel_logo_url : undefined,
           front_desk_phone: qrSettings?.front_desk_phone || '+2347065937769',

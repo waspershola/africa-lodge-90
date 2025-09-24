@@ -89,7 +89,7 @@ const OwnerDashboard = () => {
             <DollarSign className="h-4 w-4 text-warning" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-warning">₦{performance?.totalRevenue?.toLocaleString() || '0'}</div>
+            <div className="text-2xl font-bold text-warning">₦{performance?.kpis?.totalRevenue?.toLocaleString() || '0'}</div>
             <p className="text-xs text-muted-foreground">Month to date</p>
           </CardContent>
         </Card>
@@ -148,11 +148,11 @@ const OwnerDashboard = () => {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Average Daily Rate</span>
-              <span className="font-medium">₦{performance?.averageDailyRate?.toLocaleString() || '0'}</span>
+              <span className="font-medium">₦{performance?.kpis?.adr?.toLocaleString() || '0'}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Revenue Per Room</span>
-              <span className="font-medium">₦{performance?.revenuePerRoom?.toLocaleString() || '0'}</span>
+              <span className="font-medium">₦{performance?.kpis?.revpar?.toLocaleString() || '0'}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Satisfaction Score</span>

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import { getThemeClassName } from '@/utils/themeUtils';
 
 // Service Components
 import WiFiService from '@/components/guest/services/WiFiService';
@@ -130,11 +131,8 @@ export default function QRPortal() {
     window.location.href = `tel:${phoneNumber}`;
   };
 
-  // Get theme class name
-  const getThemeClassName = (theme?: string) => {
-    const themeClass = `qr-theme-${theme || 'classic-luxury-gold'}`;
-    return themeClass;
-  };
+  // Get theme class name using utility function
+  const themeClassName = getThemeClassName(qrInfo?.theme);
 
   // Loading state
   if (isLoading) {
@@ -273,7 +271,7 @@ export default function QRPortal() {
   }
 
   return (
-    <div className={`qr-portal ${getThemeClassName(qrInfo?.theme)}`}>
+    <div className={`qr-portal ${themeClassName}`}>
       {/* Luxury Header */}
       <div className="qr-card shadow-2xl">
         <div className="max-w-2xl mx-auto px-6 py-12">

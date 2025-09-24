@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Upload, X, Crown, Sparkles } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ThemeShowcase } from '@/components/owner/ThemeShowcase';
 
 interface QRSettings {
   id?: string;
@@ -40,26 +41,30 @@ const THEME_OPTIONS = [
   {
     id: 'classic-luxury-gold',
     name: 'Classic Luxury Gold',
-    description: 'Gold accents on dark background with serif fonts',
-    colors: { primary: '#D4AF37', background: '#1A1A1A', accent: '#F4F1EB' }
+    description: 'Sophisticated gold accents on dark background with elegant serif typography',
+    colors: { primary: '#D4AF37', background: '#1A1A1A', accent: '#F4F1EB' },
+    features: ['Elegant serif fonts', 'Luxurious gold gradients', 'Subtle animations']
   },
   {
     id: 'royal-white-gold',
     name: 'Royal White & Gold',
-    description: 'White marble-like background with gold accents',
-    colors: { primary: '#D4AF37', background: '#FEFEFE', accent: '#F8F6F0' }
+    description: 'Clean white marble aesthetic with gold highlights and refined elegance',
+    colors: { primary: '#D4AF37', background: '#FEFEFE', accent: '#F8F6F0' },
+    features: ['Pure white design', 'Gold accent lines', 'Premium feel']
   },
   {
     id: 'modern-minimal',
     name: 'Modern Minimal',
-    description: 'Black background with silver accents and clean typography',
-    colors: { primary: '#C0C0C0', background: '#000000', accent: '#2A2A2A' }
+    description: 'Bold black background with silver accents and clean sans-serif typography',
+    colors: { primary: '#C0C0C0', background: '#000000', accent: '#1A1A1A' },
+    features: ['Clean sans-serif fonts', 'Neon glow effects', 'Ultra-modern aesthetic']
   },
   {
     id: 'tropical-elegance',
     name: 'Tropical Elegance',
-    description: 'Gradient background with emerald and gold accents',
-    colors: { primary: '#50C878', background: '#0F4C3A', accent: '#D4AF37' }
+    description: 'Rich emerald gradient with gold accents and natural elegance',
+    colors: { primary: '#50C878', background: '#0F4C3A', accent: '#D4AF37' },
+    features: ['Natural green palette', 'Shimmering animations', 'Resort luxury feel']
   }
 ];
 
@@ -294,49 +299,114 @@ export default function QRSettings() {
             <p className="text-amber-700/70">Choose the visual theme for your guest QR portal</p>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {THEME_OPTIONS.map((themeOption) => (
                 <div
                   key={themeOption.id}
                   onClick={() => setFormData(prev => ({ ...prev, theme: themeOption.id }))}
-                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
+                  className={`group p-6 rounded-xl border-2 cursor-pointer transition-all duration-300 hover:scale-[1.02] ${
                     formData.theme === themeOption.id 
-                      ? 'border-amber-400 bg-amber-50/50 shadow-lg' 
-                      : 'border-amber-200 bg-white hover:border-amber-300'
+                      ? 'border-amber-400 bg-amber-50/50 shadow-xl ring-2 ring-amber-400/20' 
+                      : 'border-amber-200 bg-white hover:border-amber-300 hover:shadow-lg'
                   }`}
                 >
-                  <div className="flex items-center gap-3 mb-3">
+                  {/* Theme Header */}
+                  <div className="flex items-center gap-3 mb-4">
                     <div 
-                      className="w-6 h-6 rounded-full border-2 border-white shadow-sm"
+                      className="w-8 h-8 rounded-full border-2 border-white shadow-md transition-transform group-hover:scale-110"
                       style={{ backgroundColor: themeOption.colors.primary }}
                     />
-                    <h4 className="font-medium text-amber-900">{themeOption.name}</h4>
-                    {formData.theme === themeOption.id && (
-                      <Badge className="ml-auto bg-amber-500 text-white">Selected</Badge>
-                    )}
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-amber-900 text-lg">{themeOption.name}</h4>
+                      {formData.theme === themeOption.id && (
+                        <Badge className="ml-2 bg-amber-500 text-white">Active</Badge>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-sm text-amber-700/70">{themeOption.description}</p>
                   
-                  {/* Mini color palette preview */}
-                  <div className="flex items-center gap-2 mt-3">
-                    <div 
-                      className="w-4 h-4 rounded border"
-                      style={{ backgroundColor: themeOption.colors.primary }}
-                      title="Primary"
-                    />
-                    <div 
-                      className="w-4 h-4 rounded border"
-                      style={{ backgroundColor: themeOption.colors.background }}
-                      title="Background"
-                    />
-                    <div 
-                      className="w-4 h-4 rounded border"
-                      style={{ backgroundColor: themeOption.colors.accent }}
-                      title="Accent"
-                    />
+                  {/* Theme Description */}
+                  <p className="text-sm text-amber-700/70 mb-4 leading-relaxed">
+                    {themeOption.description}
+                  </p>
+                  
+                  {/* Theme Features */}
+                  <div className="mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles className="h-4 w-4 text-amber-600" />
+                      <span className="text-xs font-medium text-amber-800 uppercase tracking-wide">Features</span>
+                    </div>
+                    <div className="space-y-1">
+                      {themeOption.features.map((feature, index) => (
+                        <div key={index} className="flex items-center gap-2 text-xs text-amber-700/60">
+                          <div className="w-1 h-1 bg-amber-400 rounded-full" />
+                          <span>{feature}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
+                  
+                  {/* Color Palette Preview */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Crown className="h-4 w-4 text-amber-600" />
+                      <span className="text-xs font-medium text-amber-800 uppercase tracking-wide">Color Palette</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-6 h-6 rounded-md border shadow-sm transition-transform group-hover:scale-110"
+                          style={{ backgroundColor: themeOption.colors.primary }}
+                          title="Primary Color"
+                        />
+                        <span className="text-xs text-amber-700/60">Primary</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-6 h-6 rounded-md border shadow-sm transition-transform group-hover:scale-110"
+                          style={{ backgroundColor: themeOption.colors.background }}
+                          title="Background Color"
+                        />
+                        <span className="text-xs text-amber-700/60">Background</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-6 h-6 rounded-md border shadow-sm transition-transform group-hover:scale-110"
+                          style={{ backgroundColor: themeOption.colors.accent }}
+                          title="Accent Color"
+                        />
+                        <span className="text-xs text-amber-700/60">Accent</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Selection Indicator */}
+                  {formData.theme === themeOption.id && (
+                    <div className="mt-4 p-3 bg-amber-100/50 rounded-lg border border-amber-200/50">
+                      <div className="flex items-center gap-2 text-amber-800">
+                        <Crown className="h-4 w-4" />
+                        <span className="text-sm font-medium">Currently Applied</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
+            </div>
+            
+            {/* Theme Preview Note */}
+            <div className="mt-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200/50">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="h-4 w-4 text-purple-600" />
+                </div>
+                <div>
+                  <h5 className="font-medium text-purple-900 mb-1">Theme Preview</h5>
+                  <p className="text-sm text-purple-700/70 leading-relaxed">
+                    Your selected theme will be applied to all guest QR portal experiences. 
+                    The theme includes custom colors, typography, animations, and visual effects 
+                    that match your hotel's brand identity.
+                  </p>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

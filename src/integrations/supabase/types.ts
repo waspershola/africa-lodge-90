@@ -3174,6 +3174,15 @@ export type Database = {
           total_rooms: number
         }[]
       }
+      get_qr_portal_info: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          hotel_logo_url: string
+          hotel_name: string
+          primary_color: string
+          theme: string
+        }[]
+      }
       get_revenue_by_payment_method: {
         Args: {
           p_end_date?: string

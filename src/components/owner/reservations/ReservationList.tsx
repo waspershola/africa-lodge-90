@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Calendar, Users, Phone, Mail, MapPin, MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
-import { useReservations } from '@/hooks/useRooms';
+import { useReservations } from '@/hooks/useReservations';
 
 interface ReservationListProps {
   searchTerm: string;

@@ -11,7 +11,7 @@ import InteractiveReservationCalendar from '@/components/owner/reservations/Inte
 import ReservationList from '@/components/owner/reservations/ReservationList';
 import NewReservationDialog from '@/components/owner/reservations/NewReservationDialog';
 import ReservationDetails from '@/components/owner/reservations/ReservationDetails';
-import { useReservations } from '@/hooks/useRooms';
+import { useReservations } from '@/hooks/useReservations';
 
 export default function ReservationsPage() {
   const [view, setView] = useState('calendar');

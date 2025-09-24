@@ -40,11 +40,12 @@ export default function NewReservationDialog({
     source: 'direct'
   });
 
-  const { createReservation, rooms } = useRooms();
+  const { data: rooms = [] } = useRooms();
+  const { mutate: createReservation } = useCreateReservation();
   const { toast } = useToast();
 
   // Use live room types from API
-  const { roomTypes: liveRoomTypes = [] } = useRooms();
+  const { data: liveRoomTypes = [] } = useRoomTypes();
   const roomTypes = liveRoomTypes.map(type => ({
     value: type.id,
     label: type.name,

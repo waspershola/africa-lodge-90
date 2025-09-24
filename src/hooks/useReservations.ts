@@ -46,7 +46,7 @@ export const useReservations = () => {
 export const useCreateReservation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (reservationData: Omit<Reservation, 'id' | 'created_at' | 'updated_at' | 'reservation_number'>) => {
+    mutationFn: async (reservationData: Omit<Reservation, 'id' | 'created_at' | 'updated_at'>) => {
       const { data, error } = await supabase
         .from('reservations')
         .insert(reservationData)

@@ -111,8 +111,9 @@ export const useTrialStatus = (): UseTrialStatusReturn => {
         throw new Error(result?.error || 'Failed to start trial signup');
       }
       
-      // Mock starting trial for now
-      localStorage.setItem('hasActiveTrial', 'true');
+      // SECURITY: Use secure storage for trial status
+      const { SecureStorage } = await import('../lib/secure-storage');
+      SecureStorage.setSessionData('hasActiveTrial', 'true');
       
       const newTrial: TrialStatus = {
         id: `trial-${Date.now()}`,

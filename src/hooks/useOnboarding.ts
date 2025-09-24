@@ -174,13 +174,15 @@ export function useOnboarding() {
         lastUpdated: new Date().toISOString()
       }));
 
-      // Also update localStorage as backup
-      localStorage.setItem(`onboarding_${user.id}`, JSON.stringify({
-        currentStep: step,
-        completed,
-        data,
-        lastUpdated: new Date().toISOString()
-      }));
+      // SECURITY: Use secure storage for non-sensitive onboarding data
+      import('../lib/secure-storage').then(({ SecureStorage }) => {
+        SecureStorage.setSessionData(`onboarding_${user.id}`, {
+          currentStep: step,
+          completed,
+          data,
+          lastUpdated: new Date().toISOString()
+        });
+      }).catch(console.error);
 
       console.log('Onboarding progress saved successfully');
       

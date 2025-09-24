@@ -55,7 +55,7 @@ export class QRSecurity {
   }
 
   // Rate limiting for security
-  static checkRateLimit(sessionId: string, action: string): boolean {
+  static async checkRateLimit(sessionId: string, action: string): Promise<boolean> {
     const key = `rate_limit_${sessionId}_${action}`;
     const now = Date.now();
     const window = 60 * 1000; // 1 minute window
@@ -73,12 +73,18 @@ export class QRSecurity {
     }
 
     validRequests.push(now);
-    localStorage.setItem(key, JSON.stringify(validRequests));
+    // SECURITY: Use secure storage for rate limiting data
+    try {
+      const { SecureStorage } = await import('./secure-storage');
+      SecureStorage.setSessionData(key.replace('qr_rate_limit_', ''), validRequests);
+    } catch {
+      localStorage.setItem(key, JSON.stringify(validRequests)); // Fallback
+    }
     return true;
   }
 
   // Audit logging
-  static logAction(sessionId: string, action: string, details: any) {
+  static async logAction(sessionId: string, action: string, details: any): Promise<void> {
     const auditLog = {
       session_id: sessionId,
       action,
@@ -91,9 +97,15 @@ export class QRSecurity {
     // In production, send to audit service
     console.log('Audit Log:', auditLog);
     
-    // Store locally for demo (in production, send to backend)
-    const logs = JSON.parse(localStorage.getItem('audit_logs') || '[]');
-    logs.push(auditLog);
-    localStorage.setItem('audit_logs', JSON.stringify(logs.slice(-100))); // Keep last 100
+    // SECURITY: Store audit logs securely (in production, send to backend)
+    try {
+      const { SecureStorage } = await import('./secure-storage');
+      SecureStorage.storeAuditLog(auditLog);
+    } catch {
+      // Fallback for compatibility
+      const logs = JSON.parse(localStorage.getItem('audit_logs') || '[]');
+      logs.push(auditLog);
+      localStorage.setItem('audit_logs', JSON.stringify(logs.slice(-50)));
+    }
   }
 }

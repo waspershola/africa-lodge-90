@@ -3235,6 +3235,15 @@ export type Database = {
         Args: { target_tenant_id: string }
         Returns: boolean
       }
+      validate_qr_token_public: {
+        Args: { token_input: string }
+        Returns: {
+          hotel_name: string
+          is_valid: boolean
+          location_type: string
+          services: string[]
+        }[]
+      }
     }
     Enums: {
       role_scope: "global" | "tenant"

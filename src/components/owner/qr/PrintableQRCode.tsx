@@ -123,43 +123,58 @@ export const PrintableQRCode = ({
   const handlePrint = () => {
     if (!printableRef.current) return;
     
-    const content = printableRef.current.innerHTML;
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>QR Code - ${roomNumber || assignedTo}</title>
-            <style>
-              body { 
-                margin: 0; 
-                padding: 20px; 
-                font-family: 'Inter', sans-serif;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                min-height: 100vh;
-              }
-              .printable-content { 
-                width: ${config.width}px;
-                height: ${config.height}px;
-              }
-              @media print {
-                body { padding: 0; }
-                .printable-content { 
-                  page-break-inside: avoid;
-                }
-              }
-            </style>
-          </head>
-          <body>
-            <div class="printable-content">${content}</div>
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.print();
-    }
+    // SECURITY FIX: Use safe canvas-based printing instead of innerHTML
+    const printSecurely = async () => {
+      try {
+        const canvas = await html2canvas(printableRef.current!, {
+          scale: 2,
+          backgroundColor: '#ffffff',
+          useCORS: true
+        });
+        
+        const imgData = canvas.toDataURL('image/png');
+        const printWindow = window.open('', '_blank');
+        
+        if (printWindow) {
+          const safeTitle = (roomNumber || assignedTo).replace(/[<>'"&]/g, ''); // Sanitize title
+          printWindow.document.write(`
+            <html>
+              <head>
+                <title>QR Code - ${safeTitle}</title>
+                <style>
+                  body { 
+                    margin: 0; 
+                    padding: 20px; 
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    min-height: 100vh;
+                  }
+                  img { 
+                    max-width: 100%;
+                    height: auto;
+                  }
+                  @media print {
+                    body { padding: 0; }
+                  }
+                </style>
+              </head>
+              <body>
+                <img src="${imgData}" alt="QR Code Print" />
+              </body>
+            </html>
+          `);
+          printWindow.document.close();
+          printWindow.print();
+        }
+      } catch (error) {
+        console.error('Secure printing error:', error);
+        // Fallback to browser's native print dialog
+        window.print();
+      }
+    };
+    
+    printSecurely();
   };
 
   const primaryColor = '#2563eb';

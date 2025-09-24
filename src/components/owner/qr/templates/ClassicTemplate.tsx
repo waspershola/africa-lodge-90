@@ -75,10 +75,14 @@ export const ClassicTemplate = ({
       </div>
 
       {/* QR Code */}
-      <div className="flex-1 flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center p-4">
         <div 
-          className="bg-white p-12 rounded-xl shadow-xl border-4"
-          style={{ borderColor: primaryColor }}
+          className="bg-white p-8 rounded-xl shadow-xl border-4 flex items-center justify-center"
+          style={{ 
+            borderColor: primaryColor,
+            minWidth: Math.floor(templateConfig.qrSize * sizeConfig.scale) + 64, // Add padding
+            minHeight: Math.floor(templateConfig.qrSize * sizeConfig.scale) + 64 // Add padding
+          }}
         >
           {qrDataUrl ? (
             <img 
@@ -87,12 +91,15 @@ export const ClassicTemplate = ({
               className="block"
               style={{ 
                 width: Math.floor(templateConfig.qrSize * sizeConfig.scale), 
-                height: Math.floor(templateConfig.qrSize * sizeConfig.scale) 
+                height: Math.floor(templateConfig.qrSize * sizeConfig.scale),
+                maxWidth: '100%',
+                maxHeight: '100%',
+                objectFit: 'contain'
               }}
             />
           ) : (
             <div 
-              className="flex items-center justify-center bg-gray-100 border-2 border-dashed border-gray-300"
+              className="flex items-center justify-center bg-gray-100 border-2 border-dashed border-gray-300 rounded"
               style={{ 
                 width: Math.floor(templateConfig.qrSize * sizeConfig.scale), 
                 height: Math.floor(templateConfig.qrSize * sizeConfig.scale) 

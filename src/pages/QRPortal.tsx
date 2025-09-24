@@ -177,27 +177,29 @@ export default function QRPortal() {
 
   return (
     <div 
-      className={`min-h-screen p-4 ${themeClassName}`}
+      className={`min-h-screen p-4 qr-portal qr-theme-${currentThemeId}`}
       style={{ 
-        background: themeInfo ? `linear-gradient(135deg, ${themeInfo.colors.background}dd, ${themeInfo.colors.accent}20)` : 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
-        fontFamily: themeInfo?.fontBody || 'Inter'
+        background: 'var(--qr-background)',
+        color: 'var(--qr-foreground)',
+        fontFamily: 'var(--qr-font-body)'
       }}
     >
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
         <Card 
-          className="shadow-lg"
+          className="shadow-lg qr-card"
           style={{ 
-            borderColor: themeInfo?.colors.primary + '40' || '#e2e8f0',
-            backgroundColor: themeInfo?.colors.background === '#000000' || themeInfo?.colors.background === '#1A1A1A' ? themeInfo.colors.background + 'dd' : '#ffffff'
+            backgroundColor: 'var(--qr-card)',
+            borderColor: 'var(--qr-primary)',
+            color: 'var(--qr-card-foreground)'
           }}
         >
           <CardHeader className="text-center">
             <CardTitle 
               className="text-2xl font-bold"
               style={{ 
-                color: themeInfo?.colors.primary || '#1f2937',
-                fontFamily: themeInfo?.fontHeading || 'Playfair Display'
+                color: 'var(--qr-primary)',
+                fontFamily: 'var(--qr-font-heading)'
               }}
             >
               {qrData.hotel_name}
@@ -207,8 +209,9 @@ export default function QRPortal() {
                 variant="outline" 
                 className="w-fit mx-auto"
                 style={{ 
-                  borderColor: themeInfo?.colors.primary || '#e2e8f0',
-                  color: themeInfo?.colors.primary || '#1f2937'
+                  borderColor: 'var(--qr-primary)',
+                  color: 'var(--qr-primary)',
+                  backgroundColor: 'var(--qr-accent)'
                 }}
               >
                 Room {qrData.room_number}
@@ -217,7 +220,7 @@ export default function QRPortal() {
             <p 
               className="text-muted-foreground"
               style={{ 
-                color: themeInfo?.colors.primary ? themeInfo.colors.primary + '80' : '#6b7280'
+                color: 'var(--qr-muted)'
               }}
             >
               Select a service to get started
@@ -237,10 +240,11 @@ export default function QRPortal() {
             return (
               <Card 
                 key={service}
-                className="hover:shadow-lg transition-all duration-200 cursor-pointer border-2"
+                className="qr-service-card hover:shadow-lg transition-all duration-200 cursor-pointer border-2"
                 style={{ 
-                  borderColor: themeInfo?.colors.primary + '30' || '#e2e8f0',
-                  backgroundColor: themeInfo?.colors.background === '#000000' || themeInfo?.colors.background === '#1A1A1A' ? themeInfo.colors.background + 'dd' : '#ffffff'
+                  backgroundColor: 'var(--qr-card)',
+                  borderColor: 'var(--qr-accent)',
+                  color: 'var(--qr-card-foreground)'
                 }}
                 onClick={() => handleServiceRequest(service)}
               >
@@ -248,7 +252,7 @@ export default function QRPortal() {
                   <div className="flex items-center space-x-4">
                     <div 
                       className="p-3 rounded-full text-white"
-                      style={{ backgroundColor: themeInfo?.colors.primary || config.color.replace('bg-', '#') }}
+                      style={{ backgroundColor: 'var(--qr-primary)' }}
                     >
                       <IconComponent className="h-6 w-6" />
                     </div>
@@ -256,8 +260,8 @@ export default function QRPortal() {
                       <h3 
                         className="font-semibold text-lg"
                         style={{ 
-                          color: themeInfo?.colors.primary || '#1f2937',
-                          fontFamily: themeInfo?.fontHeading || 'Playfair Display'
+                          color: 'var(--qr-card-foreground)',
+                          fontFamily: 'var(--qr-font-heading)'
                         }}
                       >
                         {config.label}
@@ -265,7 +269,7 @@ export default function QRPortal() {
                       <p 
                         className="text-sm"
                         style={{ 
-                          color: themeInfo?.colors.primary ? themeInfo.colors.primary + '80' : '#6b7280'
+                          color: 'var(--qr-muted)'
                         }}
                       >
                         {config.description}
@@ -277,8 +281,9 @@ export default function QRPortal() {
                     className="w-full mt-4" 
                     disabled={isSubmitting || submittingService !== null}
                     style={{ 
-                      backgroundColor: themeInfo?.colors.primary || '#2563eb',
-                      color: themeInfo?.colors.background || '#ffffff'
+                      backgroundColor: 'var(--qr-primary)',
+                      color: 'var(--qr-primary-foreground)',
+                      borderColor: 'var(--qr-primary)'
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -302,17 +307,18 @@ export default function QRPortal() {
 
         {/* Footer */}
         <Card 
-          className="shadow-sm"
+          className="shadow-sm qr-card"
           style={{ 
-            borderColor: themeInfo?.colors.primary + '20' || '#e2e8f0',
-            backgroundColor: themeInfo?.colors.background === '#000000' || themeInfo?.colors.background === '#1A1A1A' ? themeInfo.colors.background + 'dd' : '#ffffff'
+            backgroundColor: 'var(--qr-card)',
+            borderColor: 'var(--qr-accent)',
+            color: 'var(--qr-card-foreground)'
           }}
         >
           <CardContent className="text-center py-4">
             <p 
               className="text-sm"
               style={{ 
-                color: themeInfo?.colors.primary ? themeInfo.colors.primary + '80' : '#6b7280'
+                color: 'var(--qr-muted)'
               }}
             >
               Need immediate assistance? Call the front desk or visit the lobby.

@@ -77,16 +77,16 @@ export const PrintableQRCode = ({
         
         const qrOptions = {
           width: Math.floor(templateConfig.qrSize * sizeConfig.scale),
-          margin: 1,
+          margin: 2, // Increased margin to prevent clipping
           color: {
             dark: '#000000', // Always use black for maximum contrast and scannability
             light: '#FFFFFF' // Always use white background for maximum contrast
           },
           errorCorrectionLevel: 'H' as const, // High error correction for better scanning
           type: 'image/png' as const,
-          quality: 0.92,
+          quality: 1.0, // Maximum quality for better scanning
           rendererOpts: {
-            quality: 0.92
+            quality: 1.0
           }
         };
         
@@ -163,7 +163,15 @@ export const PrintableQRCode = ({
   const handlePrint = () => {
     if (!printableRef.current) return;
     
-    const content = printableRef.current.innerHTML;
+    // Create a clean copy of the content without the scale transform
+    const originalElement = printableRef.current;
+    const clonedElement = originalElement.cloneNode(true) as HTMLElement;
+    
+    // Reset any scaling on the cloned element
+    clonedElement.style.transform = 'none';
+    clonedElement.style.transformOrigin = 'initial';
+    
+    const content = clonedElement.innerHTML;
     const finalWidth = Math.floor(templateConfig.width * sizeConfig.scale);
     const finalHeight = Math.floor(templateConfig.height * sizeConfig.scale);
     
@@ -179,6 +187,7 @@ export const PrintableQRCode = ({
                 -webkit-print-color-adjust: exact !important;
                 color-adjust: exact !important;
                 print-color-adjust: exact !important;
+                box-sizing: border-box;
               }
               body { 
                 margin: 0; 
@@ -192,14 +201,31 @@ export const PrintableQRCode = ({
                 min-height: 100vh;
               }
               .printable-content { 
-                width: ${finalWidth}px;
-                height: ${finalHeight}px;
-                background: inherit !important;
+                width: ${finalWidth}px !important;
+                height: ${finalHeight}px !important;
+                max-width: none !important;
+                max-height: none !important;
+                overflow: visible !important;
+                transform: none !important;
+                border: none !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
               }
               .printable-content * {
-                background: inherit !important;
                 -webkit-print-color-adjust: exact !important;
                 color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              .printable-content img {
+                max-width: 100% !important;
+                height: auto !important;
+                display: block !important;
+              }
+              /* Preserve background colors and images */
+              .printable-content [style*="background"] {
+                -webkit-print-color-adjust: exact !important;
+                color-adjust: exact !important;
+                print-color-adjust: exact !important;
               }
               @media print {
                 * { 
@@ -208,12 +234,21 @@ export const PrintableQRCode = ({
                   print-color-adjust: exact !important;
                 }
                 body { 
-                  padding: 0; 
+                  padding: 0 !important;
+                  margin: 0 !important;
                   background: ${themeInfo?.colors.background || '#ffffff'} !important;
+                  min-height: auto !important;
+                  display: block !important;
                 }
                 .printable-content { 
                   page-break-inside: avoid;
-                  background: inherit !important;
+                  width: ${finalWidth}px !important;
+                  height: ${finalHeight}px !important;
+                  margin: 0 auto !important;
+                }
+                @page {
+                  size: ${finalWidth}px ${finalHeight}px;
+                  margin: 0;
                 }
               }
             </style>
@@ -224,7 +259,11 @@ export const PrintableQRCode = ({
         </html>
       `);
       printWindow.document.close();
-      printWindow.print();
+      
+      // Wait for fonts to load before printing
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
     }
   };
 
@@ -320,18 +359,20 @@ export const PrintableQRCode = ({
 
       {/* Preview */}
       <div className="flex justify-center">
-        <div 
-          ref={printableRef}
-          className={`border rounded-lg shadow-lg overflow-hidden ${getThemeClassName(currentThemeId)}`}
-          style={{ 
-            width: Math.floor(templateConfig.width * sizeConfig.scale),
-            height: Math.floor(templateConfig.height * sizeConfig.scale),
-            maxWidth: '100%',
-            transform: 'scale(0.8)',
-            transformOrigin: 'top center'
-          }}
-        >
-          {renderTemplate()}
+        <div className="max-w-full" style={{ maxHeight: '80vh', overflow: 'auto' }}>
+          <div 
+            ref={printableRef}
+            className={`border rounded-lg shadow-lg overflow-hidden ${getThemeClassName(currentThemeId)}`}
+            style={{ 
+              width: Math.floor(templateConfig.width * sizeConfig.scale),
+              height: Math.floor(templateConfig.height * sizeConfig.scale),
+              maxWidth: '100%',
+              transform: 'scale(0.8)',
+              transformOrigin: 'top center'
+            }}
+          >
+            {renderTemplate()}
+          </div>
         </div>
       </div>
 

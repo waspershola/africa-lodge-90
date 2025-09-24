@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useRooms } from '@/hooks/useRooms';
 import { useAvailabilityEngine } from '@/hooks/useAvailabilityEngine';
 import { useRatePlans } from '@/hooks/useRatePlans';
+import { useCorporateAccounts } from '@/hooks/useCorporateAccounts';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 
 interface NewReservationDialogProps {

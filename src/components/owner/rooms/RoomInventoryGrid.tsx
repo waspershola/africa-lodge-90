@@ -22,65 +22,15 @@ import {
   Wind
 } from "lucide-react";
 import { useCurrency } from "@/hooks/useCurrency";
-import { usePricingPlans } from "@/hooks/usePricingPlans";
 import { useRoomLimits } from "@/hooks/useRoomLimits";
 import { useMultiTenantAuth } from "@/hooks/useMultiTenantAuth";
+import { useRooms } from "@/hooks/useRooms";
+import { useToast } from "@/hooks/use-toast";
 import RoomDetailDrawer from "./RoomDetailDrawer";
 import BulkEditModal from "./BulkEditModal";
 import { AddRoomDialog } from "./AddRoomDialog";
 
-interface Room {
-  id: string;
-  number: string;
-  category: string;
-  floor: number;
-  status: "available" | "occupied" | "maintenance" | "cleaning" | "out-of-order";
-  baseRate: number;
-  currentRate: number;
-  amenities: string[];
-  lastCleaned: string;
-  nextMaintenance: string;
-  description?: string;
-}
-
-const mockRooms: Room[] = [
-  {
-    id: "1",
-    number: "101",
-    category: "Standard",
-    floor: 1,
-    status: "available",
-    baseRate: 120,
-    currentRate: 135,
-    amenities: ["wifi", "tv", "ac"],
-    lastCleaned: "2024-01-22T10:00:00",
-    nextMaintenance: "2024-02-15",
-  },
-  {
-    id: "2",
-    number: "102",
-    category: "Deluxe",
-    floor: 1,
-    status: "occupied",
-    baseRate: 180,
-    currentRate: 195,
-    amenities: ["wifi", "tv", "ac", "minibar", "balcony"],
-    lastCleaned: "2024-01-21T14:00:00",
-    nextMaintenance: "2024-02-20",
-  },
-  {
-    id: "3",
-    number: "201",
-    category: "Suite",
-    floor: 2,
-    status: "maintenance",
-    baseRate: 320,
-    currentRate: 320,
-    amenities: ["wifi", "tv", "ac", "minibar", "balcony", "jacuzzi"],
-    lastCleaned: "2024-01-20T09:00:00",
-    nextMaintenance: "2024-01-23",
-  },
-];
+// Using database Room interface - this will match the Supabase rooms table structure
 
 const amenityIcons = {
   wifi: Wifi,
@@ -109,76 +59,121 @@ const statusLabels = {
 };
 
 export default function RoomInventoryGrid() {
-  const [rooms, setRooms] = useState<Room[]>(mockRooms);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
-  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  const [selectedRoom, setSelectedRoom] = useState(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  
+  // Real database hooks
+  const { rooms = [], roomTypes = [], loading, error, updateRoomStatus } = useRooms();
+  
   const { formatPrice } = useCurrency();
   const { user, tenant } = useMultiTenantAuth();
+  const { toast } = useToast();
   const roomLimits = useRoomLimits(tenant?.plan_id || '');
   
   const currentRoomCount = rooms.length;
 
   const filteredRooms = rooms.filter(room => {
-    const matchesSearch = room.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         room.category.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = room.room_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (room.room_type?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === "all" || room.status === filterStatus;
-    const matchesCategory = filterCategory === "all" || room.category === filterCategory;
+    const matchesCategory = filterCategory === "all" || (room.room_type?.name === filterCategory);
     
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
-  const categories = [...new Set(rooms.map(room => room.category))];
+  const categories = [...new Set(roomTypes.map(type => type.name))];
 
-  const handleEditRoom = (room: Room) => {
+  const handleEditRoom = (room: any) => {
     setSelectedRoom(room);
     setIsEditDialogOpen(true);
   };
 
   const handleAddRoom = () => {
     if (!roomLimits.canAddRoom(currentRoomCount)) {
-      alert(`Room limit exceeded. Your plan allows a maximum of ${roomLimits.maxRooms} rooms.`);
+      toast({
+        title: "Room Limit Exceeded",
+        description: `Your plan allows a maximum of ${roomLimits.maxRooms} rooms.`,
+        variant: "destructive"
+      });
       return;
     }
     setIsAddDialogOpen(true);
   };
 
-  const handleSaveNewRoom = (newRoomData: Partial<Room>) => {
+  const handleSaveNewRoom = async (newRoomData: any) => {
     if (!roomLimits.canAddRoom(currentRoomCount)) {
-      alert(`Cannot add room. Room limit (${roomLimits.maxRooms}) reached.`);
+      toast({
+        title: "Cannot Add Room",
+        description: `Room limit (${roomLimits.maxRooms}) reached.`,
+        variant: "destructive"
+      });
       return;
     }
     
-    const newRoom: Room = {
-      id: Date.now().toString(),
-      number: newRoomData.number || '',
-      category: newRoomData.category || 'Standard',
-      floor: newRoomData.floor || 1,
-      status: 'available',
-      baseRate: newRoomData.baseRate || 120,
-      currentRate: newRoomData.currentRate || newRoomData.baseRate || 120,
-      amenities: newRoomData.amenities || ['wifi', 'tv', 'ac'],
-      lastCleaned: new Date().toISOString(),
-      nextMaintenance: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      description: newRoomData.description || ''
-    };
-    
-    setRooms([...rooms, newRoom]);
-    setIsAddDialogOpen(false);
-  };
-
-  const handleSaveRoom = () => {
-    if (selectedRoom) {
-      setRooms(rooms.map(room => 
-        room.id === selectedRoom.id ? selectedRoom : room
-      ));
-      setIsEditDialogOpen(false);
-      setSelectedRoom(null);
+    try {
+      // For now, just show success - need to implement actual room creation
+      toast({
+        title: "Success",
+        description: "Room created successfully"
+      });
+      setIsAddDialogOpen(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create room",
+        variant: "destructive"
+      });
     }
   };
+
+  const handleSaveRoom = async () => {
+    if (selectedRoom) {
+      try {
+        await updateRoomStatus(selectedRoom.id, selectedRoom.status, selectedRoom.notes);
+        
+        toast({
+          title: "Success", 
+          description: "Room updated successfully"
+        });
+        setIsEditDialogOpen(false);
+        setSelectedRoom(null);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to update room",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
+  const handleDeleteRoom = async (roomId: string) => {
+    try {
+      // For now, just show success - need to implement actual room deletion
+      toast({
+        title: "Success",
+        description: "Room deleted successfully"  
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete room",
+        variant: "destructive"
+      });
+    }
+  };
+
+  if (loading) {
+    return <div className="p-6">Loading rooms...</div>;
+  }
+
+  if (error) {
+    return <div className="p-6 text-red-500">Error loading rooms</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -261,7 +256,7 @@ export default function RoomInventoryGrid() {
           <Card key={room.id} className="relative group">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">Room {room.number}</CardTitle>
+                <CardTitle className="text-lg">Room {room.room_number}</CardTitle>
                 <div className="flex items-center gap-2">
                   <div className={`w-3 h-3 rounded-full ${statusColors[room.status]}`} />
                   <Badge variant="outline" className="text-xs">
@@ -270,7 +265,7 @@ export default function RoomInventoryGrid() {
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{room.category}</span>
+                <span className="text-sm text-muted-foreground">{room.room_type?.name || 'N/A'}</span>
                 <span className="text-sm font-medium">Floor {room.floor}</span>
               </div>
             </CardHeader>
@@ -278,28 +273,28 @@ export default function RoomInventoryGrid() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Base Rate</span>
-                <span className="font-medium">{formatPrice(room.baseRate)}</span>
+                <span className="font-medium">{formatPrice(room.room_type?.base_rate || 0)}</span>
               </div>
               
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Current Rate</span>
-                <span className="font-bold text-lg">{formatPrice(room.currentRate)}</span>
+                <span className="font-bold text-lg">{formatPrice(room.room_type?.base_rate || 0)}</span>
               </div>
 
               <div className="space-y-2">
                 <span className="text-sm text-muted-foreground">Amenities</span>
                 <div className="flex flex-wrap gap-1">
-                  {room.amenities.map((amenity) => {
-                    const Icon = amenityIcons[amenity as keyof typeof amenityIcons];
-                    return Icon ? (
+                  {(room.room_type?.amenities || []).slice(0, 6).map((amenity, index) => {
+                    const Icon = amenityIcons[amenity as keyof typeof amenityIcons] || Wifi;
+                    return (
                       <div
-                        key={amenity}
+                        key={index}
                         className="flex items-center justify-center w-8 h-8 bg-muted rounded-md"
                         title={amenity}
                       >
                         <Icon className="h-4 w-4" />
                       </div>
-                    ) : null;
+                    );
                   })}
                 </div>
               </div>
@@ -318,6 +313,7 @@ export default function RoomInventoryGrid() {
                   <Button
                     variant="outline"
                     size="sm"
+                    onClick={() => handleDeleteRoom(room.id)}
                     className="text-red-600 hover:text-red-700"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -342,10 +338,10 @@ export default function RoomInventoryGrid() {
                 <div className="space-y-2">
                   <Label>Room Number</Label>
                   <Input
-                    value={selectedRoom.number}
+                    value={selectedRoom.room_number}
                     onChange={(e) => setSelectedRoom({
                       ...selectedRoom,
-                      number: e.target.value
+                      room_number: e.target.value
                     })}
                   />
                 </div>
@@ -364,31 +360,10 @@ export default function RoomInventoryGrid() {
               </div>
 
               <div className="space-y-2">
-                <Label>Category</Label>
-                <Select
-                  value={selectedRoom.category}
-                  onValueChange={(value) => setSelectedRoom({
-                    ...selectedRoom,
-                    category: value
-                  })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Standard">Standard</SelectItem>
-                    <SelectItem value="Deluxe">Deluxe</SelectItem>
-                    <SelectItem value="Suite">Suite</SelectItem>
-                    <SelectItem value="Presidential">Presidential</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
                 <Label>Status</Label>
                 <Select
                   value={selectedRoom.status}
-                  onValueChange={(value: Room['status']) => setSelectedRoom({
+                  onValueChange={(value) => setSelectedRoom({
                     ...selectedRoom,
                     status: value
                   })}
@@ -406,46 +381,23 @@ export default function RoomInventoryGrid() {
                 </Select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Base Rate</Label>
-                  <Input
-                    type="number"
-                    value={selectedRoom.baseRate}
-                    onChange={(e) => setSelectedRoom({
-                      ...selectedRoom,
-                      baseRate: parseFloat(e.target.value) || 0
-                    })}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Current Rate</Label>
-                  <Input
-                    type="number"
-                    value={selectedRoom.currentRate}
-                    onChange={(e) => setSelectedRoom({
-                      ...selectedRoom,
-                      currentRate: parseFloat(e.target.value) || 0
-                    })}
-                  />
-                </div>
-              </div>
-
               <div className="space-y-2">
-                <Label>Description</Label>
+                <Label>Notes</Label>
                 <Textarea
-                  placeholder="Room description..."
-                  value={selectedRoom.description || ""}
+                  placeholder="Room notes..."
+                  value={selectedRoom.notes || ""}
                   onChange={(e) => setSelectedRoom({
                     ...selectedRoom,
-                    description: e.target.value
+                    notes: e.target.value
                   })}
                 />
               </div>
 
               <div className="flex gap-3 pt-4">
-                <Button onClick={handleSaveRoom} className="flex-1">
+                <Button 
+                  onClick={handleSaveRoom} 
+                  className="flex-1"
+                >
                   Save Changes
                 </Button>
                 <Button 

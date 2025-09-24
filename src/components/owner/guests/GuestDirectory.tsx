@@ -25,11 +25,11 @@ interface GuestDirectoryProps {
 }
 
 export default function GuestDirectory({ onGuestSelect, onNewGuest }: GuestDirectoryProps) {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');  
   const [statusFilter, setStatusFilter] = useState('all');
   const [tierFilter, setTierFilter] = useState('all');
   const [sortBy, setSortBy] = useState('name');
-  const { data: guests = [], isLoading } = useGuests();
+  const { data: guests = [], isLoading, error, refetch } = useGuests();
 
   const getStatusColor = (status: string) => {
     switch (status) {

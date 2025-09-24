@@ -27,10 +27,10 @@ type PrintTemplate = 'classic' | 'a4-poster' | 'flyer' | 'tent-card';
 type PrintSize = 'small' | 'medium' | 'large' | 'poster' | 'a4';
 
 const templateConfigs = {
-  'classic': { width: 400, height: 500, qrSize: 280, title: 'Classic Card', icon: CreditCard },
-  'a4-poster': { width: 595, height: 842, qrSize: 400, title: 'A4 Poster', icon: FileText },
-  'flyer': { width: 600, height: 400, qrSize: 240, title: 'Flyer (Landscape)', icon: FileImage },
-  'tent-card': { width: 350, height: 250, qrSize: 180, title: 'Tent Card', icon: CreditCard }
+  'classic': { width: 400, height: 500, qrSize: 320, title: 'Classic Card', icon: CreditCard },
+  'a4-poster': { width: 595, height: 842, qrSize: 480, title: 'A4 Poster', icon: FileText },
+  'flyer': { width: 600, height: 400, qrSize: 280, title: 'Flyer (Landscape)', icon: FileImage },
+  'tent-card': { width: 350, height: 250, qrSize: 220, title: 'Tent Card', icon: CreditCard }
 };
 
 const sizeConfigs = {

@@ -242,7 +242,7 @@ export function StaffManagementDashboard() {
             className="bg-gradient-primary"
           >
             <UserPlus className="h-4 w-4 mr-2" />
-            Invite Staff
+            Add Staff Member
           </Button>
         </div>
       </div>

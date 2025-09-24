@@ -19,7 +19,7 @@ export default function ReservationList({
   statusFilter, 
   onReservationSelect 
 }: ReservationListProps) {
-  const { reservations = [], loading: isLoading } = useReservations();
+  const { reservations = [], loading } = useReservations();
 
   const filteredReservations = reservations.filter(reservation => {
     const matchesSearch = searchTerm === '' || 
@@ -53,7 +53,7 @@ export default function ReservationList({
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
-  if (isLoading) {
+  if (loading) {
     return <div className="p-6">Loading reservations...</div>;
   }
 

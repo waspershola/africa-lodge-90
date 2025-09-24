@@ -20,7 +20,7 @@ export default function ReservationsPage() {
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState(null);
 
-  const { reservations = [], loading: isLoading, error } = useReservations();
+  const { reservations = [], loading, error } = useReservations();
 
   // Calculate stats from API data
   const reservationStats = {
@@ -69,7 +69,7 @@ export default function ReservationsPage() {
     })
     .filter(Boolean);
 
-  if (isLoading) {
+      if (loading) {
     return <div className="p-6">Loading reservations...</div>;
   }
 

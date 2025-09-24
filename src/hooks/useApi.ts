@@ -257,25 +257,8 @@ export const useMetrics = () => {
   });
 };
 
-// Reservations API with real Supabase integration
-export const useReservations = () => {
-  return useQuery({
-    queryKey: ['reservations'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('reservations')
-        .select(`
-          *,
-          rooms:room_id (room_number, room_types:room_type_id (name)),
-          guests:guest_id (first_name, last_name, email, phone, vip_status)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) throw new Error(error.message);
-      return data || [];
-    },
-  });
-};
+// NOTE: useReservations and useRooms query hooks have been moved to useRooms.ts to avoid conflicts
+// But we keep the mutation hooks here for compatibility with existing components
 
 export const useCreateReservation = () => {
   const queryClient = useQueryClient();
@@ -389,25 +372,6 @@ export const useRefundReservation = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
-    },
-  });
-};
-
-// Rooms API with real Supabase integration
-export const useRooms = () => {
-  return useQuery({
-    queryKey: ['rooms'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('rooms')
-        .select(`
-          *,
-          room_types:room_type_id (name, base_rate, max_occupancy, amenities)
-        `)
-        .order('room_number');
-
-      if (error) throw new Error(error.message);
-      return data || [];
     },
   });
 };

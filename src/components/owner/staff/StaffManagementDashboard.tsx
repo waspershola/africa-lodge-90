@@ -238,11 +238,17 @@ export function StaffManagementDashboard() {
             Export Staff
           </Button>
           <Button 
-            onClick={() => setInviteDialogOpen(true)}
+            onClick={() => {
+              console.log("Button clicked - Setting dialog to open");
+              alert("Add Staff Member button clicked!");
+              setInviteDialogOpen(true);
+              console.log("Dialog state changed to:", true);
+            }}
             className="bg-gradient-primary"
+            disabled={usersLoading}
           >
             <UserPlus className="h-4 w-4 mr-2" />
-            Invite Staff
+            Add Staff Member
           </Button>
         </div>
       </div>
@@ -478,10 +484,13 @@ export function StaffManagementDashboard() {
       {/* Dialogs */}
       <EnhancedStaffInvitationDialog
         open={inviteDialogOpen}
-        onOpenChange={setInviteDialogOpen}
+        onOpenChange={(open) => {
+          console.log("Dialog onOpenChange called with:", open);
+          alert(`Dialog state changing to: ${open}`);
+          setInviteDialogOpen(open);
+        }}
         onSuccess={() => {
-          // Force refresh by reloading the component
-          window.location.reload();
+          alert("Staff member added successfully!");
         }}
       />
 

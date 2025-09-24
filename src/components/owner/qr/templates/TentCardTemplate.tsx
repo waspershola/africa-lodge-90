@@ -44,7 +44,7 @@ export const TentCardTemplate = ({
           className="bg-white p-6 rounded-lg shadow-lg border-4"
           style={{ borderColor: primaryColor }}
         >
-          {qrDataUrl && (
+          {qrDataUrl ? (
             <img 
               src={qrDataUrl}
               alt="QR Code"
@@ -54,6 +54,16 @@ export const TentCardTemplate = ({
                 height: Math.floor(templateConfig.qrSize * sizeConfig.scale) 
               }}
             />
+          ) : (
+            <div 
+              className="flex items-center justify-center bg-gray-100 border-2 border-dashed border-gray-300"
+              style={{ 
+                width: Math.floor(templateConfig.qrSize * sizeConfig.scale), 
+                height: Math.floor(templateConfig.qrSize * sizeConfig.scale) 
+              }}
+            >
+              <span className="text-gray-500 text-xs">Loading...</span>
+            </div>
           )}
         </div>
         

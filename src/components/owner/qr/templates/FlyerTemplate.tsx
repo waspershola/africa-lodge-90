@@ -132,7 +132,7 @@ export const FlyerTemplate = ({
             className="bg-white p-10 rounded-xl shadow-xl border-4 mx-auto"
             style={{ borderColor: primaryColor }}
           >
-            {qrDataUrl && (
+            {qrDataUrl ? (
               <img 
                 src={qrDataUrl}
                 alt="QR Code"
@@ -142,6 +142,16 @@ export const FlyerTemplate = ({
                   height: Math.floor(templateConfig.qrSize * sizeConfig.scale) 
                 }}
               />
+            ) : (
+              <div 
+                className="flex items-center justify-center bg-gray-100 border-2 border-dashed border-gray-300"
+                style={{ 
+                  width: Math.floor(templateConfig.qrSize * sizeConfig.scale), 
+                  height: Math.floor(templateConfig.qrSize * sizeConfig.scale) 
+                }}
+              >
+                <span className="text-gray-500 text-sm">Loading QR...</span>
+              </div>
             )}
           </div>
 

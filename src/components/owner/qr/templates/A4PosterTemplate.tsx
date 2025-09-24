@@ -89,7 +89,7 @@ export const A4PosterTemplate = ({
           className="bg-white p-12 rounded-3xl shadow-2xl border-4 mb-8"
           style={{ borderColor: primaryColor }}
         >
-          {qrDataUrl && (
+          {qrDataUrl ? (
             <img 
               src={qrDataUrl}
               alt="QR Code"
@@ -99,6 +99,16 @@ export const A4PosterTemplate = ({
                 height: Math.floor(templateConfig.qrSize * sizeConfig.scale) 
               }}
             />
+          ) : (
+            <div 
+              className="flex items-center justify-center bg-gray-100 border-2 border-dashed border-gray-300"
+              style={{ 
+                width: Math.floor(templateConfig.qrSize * sizeConfig.scale), 
+                height: Math.floor(templateConfig.qrSize * sizeConfig.scale) 
+              }}
+            >
+              <span className="text-gray-500 text-sm">Loading QR Code...</span>
+            </div>
           )}
         </div>
 

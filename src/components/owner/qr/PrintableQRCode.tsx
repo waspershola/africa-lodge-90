@@ -65,9 +65,14 @@ export const PrintableQRCode = ({
 
   useEffect(() => {
     const generateQRCode = async () => {
-      if (!qrUrl || !canvasRef.current) return;
+      if (!qrUrl || !canvasRef.current) {
+        console.log('QR generation skipped:', { qrUrl, hasCanvas: !!canvasRef.current });
+        return;
+      }
       
       try {
+        console.log('Generating QR code for:', qrUrl);
+        
         // Theme-aware QR code colors
         const isDarkTheme = themeInfo?.colors.background === '#000000' || themeInfo?.colors.background === '#1A1A1A' || themeInfo?.colors.background === '#0F4C3A';
         
@@ -81,9 +86,12 @@ export const PrintableQRCode = ({
           errorCorrectionLevel: 'M' as const
         };
         
+        console.log('QR options:', qrOptions);
+        
         await QRCode.toCanvas(canvasRef.current, qrUrl, qrOptions);
         
         const dataUrl = canvasRef.current.toDataURL('image/png');
+        console.log('QR data URL generated:', dataUrl.length > 0 ? 'Success' : 'Failed');
         setQrDataUrl(dataUrl);
       } catch (error) {
         console.error('QR Code generation error:', error);

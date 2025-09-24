@@ -25,7 +25,8 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { usePricingPlans } from "@/hooks/usePricingPlans";
 import { useRoomLimits } from "@/hooks/useRoomLimits";
 import { useMultiTenantAuth } from "@/hooks/useMultiTenantAuth";
-import { useRooms } from "@/hooks/useRooms";
+import { useRooms, useUpdateRoom } from "@/hooks/useRooms";  
+import { useRoomTypes } from "@/hooks/useRoomTypes";
 import RoomDetailDrawer from "./RoomDetailDrawer";
 import BulkEditModal from "./BulkEditModal";
 import { AddRoomDialog } from "./AddRoomDialog";
@@ -80,7 +81,8 @@ export default function RoomInventoryGrid() {
   const { formatPrice } = useCurrency();
   const { user, tenant } = useMultiTenantAuth();
   const roomLimits = useRoomLimits(tenant?.plan_id || '');
-  const { rooms: liveRooms = [], updateRoomStatus } = useRooms();
+  const { data: liveRooms = [] } = useRooms();
+  const { mutate: updateRoomStatus } = useUpdateRoom();
   
   // Transform live rooms data to match component interface
   const rooms: Room[] = liveRooms.map(room => ({

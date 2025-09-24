@@ -20,7 +20,7 @@ export default function ReservationsPage() {
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState(null);
 
-  const { reservations = [], loading: isLoading, error } = useReservations();
+  const { data: reservations = [], isLoading, error } = useReservations();
 
   // Calculate stats from API data
   const reservationStats = {

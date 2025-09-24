@@ -247,20 +247,14 @@ export const FrontDeskDashboard = () => {
       <DashboardNotificationBar />
       
       {isOffline && (
-        <NotificationBanner 
-          type="warning"
-          message={`Operating in offline mode. ${offlineTimeRemaining} hours remaining.`}
-          showWifiIcon={false}
-        />
+      <NotificationBanner 
+        message={`Operating in offline mode. ${offlineTimeRemaining} hours remaining.`}
+        showWifiIcon={false}
+      />
       )}
 
       {/* Quick Actions Bar */}
       <ActionBar 
-        onNewReservation={() => setShowNewReservation(true)}
-        onSearch={() => setShowSearch(true)}
-        onPayment={() => setShowPayment(true)}
-        onShowActionQueue={() => setShowActionQueue(true)}
-        onShowKeyboardHelp={() => setShowKeyboardHelp(true)}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />
@@ -293,8 +287,12 @@ export const FrontDeskDashboard = () => {
       <QuickFilters 
         activeFilter={activeFilter}
         onFilterChange={setActiveFilter}
-        alerts={activeAlerts}
-        onViewAllAlerts={handleViewAllAlerts}
+        statusCounts={{
+          available: availableRooms,
+          occupied: occupiedRooms,
+          maintenance: maintenanceRooms,
+          'out-of-service': oosRooms
+        }}
       />
 
       {/* Main Content Grid */}
@@ -312,7 +310,6 @@ export const FrontDeskDashboard = () => {
               <RoomGrid 
                 searchQuery={searchQuery}
                 activeFilter={activeFilter}
-                onRoomAction={handleRoomAction}
               />
             </CardContent>
           </Card>
@@ -322,8 +319,7 @@ export const FrontDeskDashboard = () => {
         <div className="col-span-4 space-y-6">
           {/* Guest Queue */}
           <GuestQueuePanel 
-            arrivals={mockArrivals}
-            departures={mockDepartures}
+            onGuestAction={(guest, action) => console.log('Guest action:', guest, action)}
           />
 
           {/* QR Requests Panel */}
@@ -345,12 +341,18 @@ export const FrontDeskDashboard = () => {
 
       {/* Action Queue Panel */}
       {showActionQueue && (
-        <ActionQueue onClose={() => setShowActionQueue(false)} />
+        <ActionQueue 
+          isVisible={showActionQueue}
+          isOnline={!isOffline}
+        />
       )}
 
       {/* Keyboard Shortcuts Helper */}
       {showKeyboardHelp && (
-        <KeyboardShortcutsHelper onClose={() => setShowKeyboardHelp(false)} />
+        <KeyboardShortcutsHelper 
+          isVisible={showKeyboardHelp}
+          onClose={() => setShowKeyboardHelp(false)} 
+        />
       )}
 
       {/* Dialogs */}

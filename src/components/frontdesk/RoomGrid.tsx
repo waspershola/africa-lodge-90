@@ -49,7 +49,7 @@ interface RoomGridProps {
 }
 
 export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridProps) => {
-  const { rooms, loading, error } = useRooms();
+  const { data: rooms = [], isLoading: loading, error } = useRooms();
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [filteredRooms, setFilteredRooms] = useState<Room[]>([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);

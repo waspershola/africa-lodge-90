@@ -18,8 +18,7 @@ import StaffRoles from "./pages/owner/StaffRoles";
 import Financials from "./pages/owner/Financials";
 import Billing from "./pages/owner/Billing";
 import EnhancedBilling from "./pages/owner/EnhancedBilling";
-import StaffManagement from "./components/owner/staff/StaffManagement";
-import HotelPerformanceOverview from "./components/owner/performance/HotelPerformanceOverview";
+import StaffManagement from "./pages/owner/StaffManagement";
 import { OnboardingWizard } from "./components/onboarding/OnboardingWizard";
 import QRManager from "./pages/owner/QRManager";
 import QRPortal from "./pages/guest/QRPortal";
@@ -31,6 +30,8 @@ import Utilities from "./pages/owner/Utilities";
 import Housekeeping from "./pages/owner/Housekeeping";
 import { OwnerProfileSettings } from "./components/owner/profile/OwnerProfileSettings";
 import QRAnalytics from "./pages/owner/QRAnalytics";
+import QRExportPage from "./components/QRExportPage";
+import ReportsInterface from "./components/ReportsInterface";
 import ManagerLayout from "./components/layout/ManagerLayout";
 import ManagerDashboard from "./pages/manager/Dashboard";
 import ManagerOperations from "./pages/manager/Operations";
@@ -118,6 +119,7 @@ const App = () => (
               <FrontDeskDashboard />
             </TenantAwareLayout>
           } />
+          <Route path="/reports" element={<ReportsInterface />} />
           
           {/* Owner Dashboard Routes */}
           <Route path="/owner-dashboard" element={
@@ -129,7 +131,6 @@ const App = () => (
             <Route path="dashboard" element={<OwnerDashboardPage />} />
             <Route path="configuration" element={<Configuration />} />
             <Route path="staff" element={<StaffManagement />} />
-            <Route path="performance" element={<HotelPerformanceOverview />} />
             <Route path="financials" element={<Financials />} />
             <Route path="billing" element={<EnhancedBilling />} />
             <Route path="qr-manager" element={<QRManager />} />
@@ -143,6 +144,7 @@ const App = () => (
             <Route path="housekeeping" element={<Housekeeping />} />
             <Route path="profile" element={<OwnerProfileSettings />} />
           </Route>
+          <Route path="/qr-export" element={<QRExportPage />} />
           
           {/* Manager Dashboard Routes */}
           <Route path="/manager-dashboard" element={

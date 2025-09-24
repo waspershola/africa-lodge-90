@@ -10,12 +10,14 @@ import DynamicPricingControls from "@/components/owner/rooms/DynamicPricingContr
 import RoomInventoryGrid from "@/components/owner/rooms/RoomInventoryGrid";
 import CurrencyTaxSettings from "@/components/owner/financials/CurrencyTaxSettings";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useRooms } from "@/hooks/useRooms";
+import { useRooms } from "@/hooks/useRooms";  
+import { useRoomTypes } from "@/hooks/useRoomTypes";
 
 export default function Rooms() {
   const [activeTab, setActiveTab] = useState("rooms");
   const { formatPrice, updateSettings } = useCurrency();
-  const { rooms = [], roomTypes = [] } = useRooms();
+  const { data: rooms = [] } = useRooms();
+  const { data: roomTypes = [] } = useRoomTypes();
 
   // Calculate real room stats from API data
   const roomStats = {

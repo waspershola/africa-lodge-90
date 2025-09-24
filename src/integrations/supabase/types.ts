@@ -3245,16 +3245,6 @@ export type Database = {
       }
     }
     Functions: {
-      apply_rate_plan_bulk: {
-        Args: {
-          p_end_date: string
-          p_rate_plan_id: string
-          p_room_type_ids: string[]
-          p_start_date: string
-          p_tenant_id: string
-        }
-        Returns: number
-      }
       can_access_tenant: {
         Args: { tenant_uuid: string }
         Returns: boolean
@@ -3319,23 +3309,6 @@ export type Database = {
           total_revenue: number
         }[]
       }
-      fn_get_availability: {
-        Args: {
-          p_check_in_date: string
-          p_check_out_date: string
-          p_room_type_id?: string
-          p_tenant_id: string
-        }
-        Returns: {
-          available_rate: number
-          base_rate: number
-          is_available: boolean
-          max_occupancy: number
-          room_id: string
-          room_number: string
-          room_type_name: string
-        }[]
-      }
       fn_revpar: {
         Args: { end_date?: string; start_date?: string; tenant_uuid: string }
         Returns: number
@@ -3382,26 +3355,6 @@ export type Database = {
           status: string
           total_charges: number
           total_payments: number
-        }[]
-      }
-      get_guest_analytics: {
-        Args: {
-          p_end_date?: string
-          p_guest_id?: string
-          p_start_date?: string
-          p_tenant_id: string
-        }
-        Returns: {
-          avg_stay_length: number
-          guest_id: string
-          guest_name: string
-          guest_tier: string
-          is_repeat_guest: boolean
-          last_stay_date: string
-          lifetime_value: number
-          preferred_room_type: string
-          total_spent: number
-          total_stays: number
         }[]
       }
       get_guest_stats: {

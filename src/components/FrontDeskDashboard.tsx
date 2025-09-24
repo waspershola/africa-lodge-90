@@ -42,34 +42,70 @@ import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 import DashboardNotificationBar from '@/components/layout/DashboardNotificationBar';
 import type { Room } from "./frontdesk/RoomGrid";
 import { useTenantInfo } from "@/hooks/useTenantInfo";
-import { useRooms, useReservations } from "@/hooks/useRooms";
-import { useStaff } from "@/hooks/useStaff";
+import { useRooms } from "@/hooks/useRooms";
+import { useReservations } from "@/hooks/useReservations";
 
-
-const FrontDeskDashboard = () => {
-  const { data: tenantInfo } = useTenantInfo();
-  const { rooms: roomsData } = useRooms();
-  const { reservations } = useReservations();
-  const { staff } = useStaff();
+export const FrontDeskDashboard = () => {
+  const { data: tenant } = useTenantInfo();
   
-  // Calculate real metrics
-  const totalRooms = roomsData.length;
-  const occupiedRooms = roomsData.filter(r => r.status === 'occupied').length;
-  const availableRooms = roomsData.filter(r => r.status === 'available').length;
-  const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
+  // Live data from Supabase
+  const { data: rooms = [] } = useRooms();
+  const { data: reservations = [] } = useReservations();
+
+  // Calculate live dashboard metrics from actual data
+  const totalRooms = rooms.length;
+  const availableRooms = rooms.filter(room => room.status === 'available').length;
+  const occupiedRooms = rooms.filter(room => room.status === 'occupied').length;
+  const oosRooms = rooms.filter(room => room.status === 'out_of_order').length;
+  const maintenanceRooms = rooms.filter(room => room.status === 'maintenance').length;
   
   const today = new Date().toISOString().split('T')[0];
-  const arrivalsToday = reservations.filter(r => 
-    r.check_in_date === today && r.status === 'confirmed'
+  const arrivalsToday = reservations.filter(res => 
+    res.check_in_date === today && res.status === 'confirmed'
   ).length;
-  const departuresToday = reservations.filter(r => 
-    r.check_out_date === today && r.status === 'checked_in'
+  const departuresToday = reservations.filter(res => 
+    res.check_out_date === today && res.status === 'checked_in'
   ).length;
   
-  const inHouseGuests = reservations.filter(r => r.status === 'checked_in').length;
+  const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
+  const inHouseGuests = reservations.filter(res => res.status === 'checked_in').length;
+  
+  // Mock values for now - these will be replaced with actual billing data
+  const pendingPayments = 5;
+  const dieselLevel = 75;
+  const generatorRuntime = 8;
+
+  // Live arrivals data for today
+  const mockArrivals = reservations
+    .filter(res => res.check_in_date === today && res.status === 'confirmed')
+    .slice(0, 5)
+    .map(res => ({
+      name: res.guest_name,
+      room: res.room_id,
+      time: '14:00',
+      status: 'pending' as const,
+      phone: res.guest_phone || 'N/A'
+    }));
+
+  const mockDepartures = reservations
+    .filter(res => res.check_out_date === today && res.status === 'checked_in')
+    .slice(0, 5)
+    .map(res => ({
+      name: res.guest_name,
+      room: res.room_id,
+      time: '12:00',
+      status: 'pending' as const,
+      phone: res.guest_phone || 'N/A'
+    }));
+
+  const mockAlerts = [
+    { id: 1, type: "payment", message: "Room 305 payment overdue", priority: "high" },
+    { id: 2, type: "maintenance", message: "Room 102 AC needs repair", priority: "medium" },
+    { id: 3, type: "compliance", message: "Missing ID for Room 201", priority: "high" }
+  ];
   
   const [isOffline, setIsOffline] = useState(false);
-  const [offlineTimeRemaining, setOfflineTimeRemaining] = useState(22); // hours
+  const [offlineTimeRemaining, setOfflineTimeRemaining] = useState(22);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<string | undefined>(undefined);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
@@ -79,140 +115,19 @@ const FrontDeskDashboard = () => {
     { id: '1', type: 'payment' as const, message: 'Pending payments require collection', count: 3, priority: 'high' as const },
     { id: '2', type: 'id' as const, message: 'Missing guest ID documentation', count: 2, priority: 'high' as const },
     { id: '3', type: 'deposit' as const, message: 'Deposit payments due', count: 1, priority: 'medium' as const },
-    { id: '4', type: 'maintenance' as const, message: 'Work orders pending', count: 2, priority: 'medium' as const },
+    { id: '4', type: 'maintenance' as const, message: 'Work orders pending', count: 2, priority: 'medium' as const }
   ]);
-  
+
   // Dialog states
   const [showNewReservation, setShowNewReservation] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [showQuickCapture, setShowQuickCapture] = useState(false);
+  const [captureAction, setCaptureAction] = useState("");
   const [showCheckout, setShowCheckout] = useState(false);
-  const [checkoutRoomId, setCheckoutRoomId] = useState<string | undefined>(undefined);
-  const [captureAction, setCaptureAction] = useState<"assign" | "walkin" | "check-in" | "check-out" | "assign-room" | "extend-stay" | "transfer-room" | "add-service" | "work-order" | "housekeeping" | "">("");
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [activePanel, setActivePanel] = useState<'overview' | 'qr-requests' | 'staff-ops' | 'billing' | 'handover' | 'qr-manager'>('overview');
+  const [checkoutRoomId, setCheckoutRoomId] = useState<string | null>(null);
 
-  // Set up real-time updates for live dashboard experience
   useRealtimeUpdates();
-
-  // Simulate online/offline status
-  useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handle if no input is focused and no modal is open
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (showNewReservation || showSearch || showPayment || showQuickCapture || showCheckout) return;
-      
-      switch (e.key.toLowerCase()) {
-        case 'a':
-          e.preventDefault();
-          setCaptureAction('assign-room');
-          setShowQuickCapture(true);
-          break;
-        case 'i':
-          e.preventDefault();
-          setCaptureAction('check-in');
-          setShowQuickCapture(true);
-          break;
-        case 'o':
-          e.preventDefault();
-          setCaptureAction('check-out');
-          setShowQuickCapture(true);
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showNewReservation, showSearch, showPayment, showQuickCapture, showCheckout]);
-
-  const handleCardClick = (filterKey: string) => {
-    setActiveFilter(activeFilter === filterKey ? undefined : filterKey);
-  };
-
-  const handleAction = (action: string) => {
-    console.log('Front desk action:', action);
-    
-    switch (action) {
-      case 'new-reservation':
-        setShowNewReservation(true);
-        break;
-      case 'assign-room':
-        setCaptureAction('assign-room');
-        setShowQuickCapture(true);
-        break;
-      case 'check-in':
-        setCaptureAction('check-in');
-        setShowQuickCapture(true);
-        break;
-      case 'check-out':
-        if (selectedRoom?.number) {
-          setCheckoutRoomId(selectedRoom.number);
-          setShowCheckout(true);
-        } else {
-          setCaptureAction('check-out');
-          setShowQuickCapture(true);
-        }
-        break;
-      case 'collect-payment':
-        setShowPayment(true);
-        break;
-      case 'search':
-        setShowSearch(true);
-        break;
-      case 'extend-stay':
-      case 'transfer-room':
-      case 'add-service':
-      case 'work-order':
-      case 'housekeeping':
-        setCaptureAction(action);
-        setShowQuickCapture(true);
-        break;
-      default:
-        console.log('Unhandled action:', action);
-    }
-  };
-
-  const handleRoomUpdate = (updatedRoom: Room) => {
-    setRooms(prev => prev.map(room => 
-      room.number === updatedRoom.number ? updatedRoom : room
-    ));
-  };
-
-  const handleGuestCaptureComplete = (guestData: any) => {
-    console.log('Guest capture completed:', { action: captureAction, guestData });
-    setShowQuickCapture(false);
-    setCaptureAction("");
-  };
-
-  const handleGuestAction = (guest: any, action: string) => {
-    console.log('Guest action:', action, guest);
-    // Handle guest-specific actions here
-  };
-
-  const handleDismissAlert = (alertId: string) => {
-    setActiveAlerts(prev => prev.filter(alert => alert.id !== alertId));
-  };
-
-  const handleViewAllAlerts = (type: string) => {
-    console.log('View all alerts of type:', type);
-    // Filter room grid or open alerts modal
-    setActiveFilter(type === 'payment' ? 'pending-payments' : undefined);
-  };
 
   const dashboardCards = [
     {
@@ -225,7 +140,7 @@ const FrontDeskDashboard = () => {
       filterKey: "available"
     },
     {
-      title: "Occupancy Rate",
+      title: "Occupancy Rate", 
       value: `${occupancyRate}%`,
       subtitle: "Current occupancy",
       icon: <Users className="h-6 w-6" />,
@@ -262,7 +177,7 @@ const FrontDeskDashboard = () => {
     },
     {
       title: "Pending Payments",
-      value: 0, // Will be replaced with real payment data
+      value: pendingPayments,
       subtitle: "Requires collection",
       icon: <CreditCard className="h-6 w-6" />,
       action: "Collect Now",
@@ -271,7 +186,7 @@ const FrontDeskDashboard = () => {
     },
     {
       title: "OOS Rooms",
-      value: roomsData.filter(r => r.status === 'out_of_order').length,
+      value: oosRooms + maintenanceRooms,
       subtitle: "Out of service",
       icon: <Wrench className="h-6 w-6" />,
       action: "Create Work Order",
@@ -280,225 +195,182 @@ const FrontDeskDashboard = () => {
     },
     {
       title: "Diesel Level",
-      value: "75%", // Will be replaced with real fuel data
-      subtitle: "Gen: 4.2h today",
+      value: `${dieselLevel}%`,
+      subtitle: `Gen: ${generatorRuntime}h today`,
       icon: <Battery className="h-6 w-6" />,
       action: "Open Power Panel",
-      color: "success",
+      color: dieselLevel < 30 ? "danger" : "success",
       filterKey: undefined
     }
   ];
 
+  const handleCardAction = (filterKey: string | undefined) => {
+    if (filterKey) {
+      setActiveFilter(activeFilter === filterKey ? undefined : filterKey);
+    }
+  };
+
+  const handleViewAllAlerts = (type: string) => {
+    console.log('View all alerts of type:', type);
+    setActiveFilter(type === 'payment' ? 'pending-payments' : undefined);
+  };
+
+  const handleRoomAction = (room: Room, action: string) => {
+    console.log(`Performing ${action} on room:`, room);
+    setSelectedRoom(room);
+    
+    switch (action) {
+      case 'check-in':
+      case 'check-out':
+      case 'assign':
+      case 'extend-stay':
+        setCaptureAction(action);
+        setShowQuickCapture(true);
+        break;
+      case 'checkout':
+        setCheckoutRoomId(room.id);
+        setShowCheckout(true);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const handleGuestCaptureComplete = (guestData: any) => {
+    console.log('Guest capture completed:', guestData);
+    setShowQuickCapture(false);
+    setCaptureAction("");
+  };
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* Offline Banner */}
-      {isOffline && (
-        <div className="offline-banner p-3 text-center">
-          <div className="flex items-center justify-center gap-2">
-            <WifiOff className="h-5 w-5" />
-            <span className="font-medium">
-              Offline Mode Active - {offlineTimeRemaining}h remaining
-            </span>
-          </div>
-          <p className="text-sm mt-1">
-            All actions are queued and will sync when connection is restored
-          </p>
-        </div>
-      )}
-
-      {/* Header */}
-      <div className="border-b bg-card">
-        <div className="p-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="font-playfair text-3xl font-bold text-gradient">
-                Front Desk Dashboard
-              </h1>
-              <p className="text-muted-foreground">
-                {tenantInfo?.hotel_name || "Loading..."} • {new Date().toLocaleDateString('en-US', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })}
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Search guests, rooms, folios..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 w-80"
-                />
-              </div>
-              <DashboardNotificationBar />
-              <Button 
-                variant="outline"
-                onClick={() => setIsOffline(!isOffline)}
-              >
-                {isOffline ? 'Go Online' : 'Simulate Offline'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="p-6 space-y-6">
-        {/* Action Queue (when offline) */}
-        {showActionQueue && (
-          <ActionQueue isVisible={showActionQueue} isOnline={!isOffline} />
-        )}
-
-        {/* Room Status Overview - Priority #1 */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Room Status Overview</h2>
-          <RoomGrid 
-            searchQuery={searchQuery}
-            activeFilter={activeFilter}
-            onRoomSelect={setSelectedRoom}
-          />
-        </div>
-
-        {/* Quick KPIs - Horizontal row under Room Status Overview */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Quick KPIs</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-            {dashboardCards.map((card, index) => (
-              <Card 
-                key={index} 
-                className={`luxury-card cursor-pointer transition-all duration-200 hover:shadow-md ${
-                  activeFilter === card.filterKey ? 'ring-2 ring-primary shadow-lg' : ''
-                }`}
-                onClick={() => card.filterKey && handleCardClick(card.filterKey)}
-              >
-                <CardContent className="p-3 text-center">
-                  <div className={`h-6 w-6 rounded-full flex items-center justify-center mx-auto mb-2 ${
-                    card.color === 'success' ? 'bg-success/10 text-success' :
-                    card.color === 'primary' ? 'bg-primary/10 text-primary' :
-                    card.color === 'accent' ? 'bg-accent/10 text-accent-foreground' :
-                    card.color === 'warning' ? 'bg-warning/10 text-warning-foreground' :
-                    card.color === 'danger' ? 'bg-danger/10 text-danger' :
-                    'bg-muted/50 text-muted-foreground'
-                  }`}>
-                    {card.icon}
-                  </div>
-                  <div className="text-lg font-bold">{card.value}</div>
-                  <div className="text-xs text-muted-foreground">{card.title}</div>
-                  {activeFilter === card.filterKey && (
-                    <Badge variant="default" className="mt-2 text-xs">
-                      <Filter className="h-2 w-2 mr-1" />
-                      Active
-                    </Badge>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-
-        {/* Action Bar - Under Quick KPIs */}
-        <ActionBar 
-          onAction={handleAction}
-          showKeyboardHelp={showKeyboardHelp}
-          onToggleKeyboardHelp={() => setShowKeyboardHelp(!showKeyboardHelp)}
-        />
-
-        {/* Panel Navigation */}
-        <div className="flex gap-2 flex-wrap">
-          <Button 
-            variant={activePanel === 'overview' ? 'default' : 'outline'}
-            onClick={() => setActivePanel('overview')}
-            size="sm"
-          >
-            Overview
-          </Button>
-          <Button 
-            variant={activePanel === 'qr-requests' ? 'default' : 'outline'}
-            onClick={() => setActivePanel('qr-requests')}
-            size="sm"
-          >
-            QR Requests
-          </Button>
-          <Button 
-            variant={activePanel === 'staff-ops' ? 'default' : 'outline'}
-            onClick={() => setActivePanel('staff-ops')}
-            size="sm"
-          >
-            Staff Operations
-          </Button>
-          <Button 
-            variant={activePanel === 'billing' ? 'default' : 'outline'}
-            onClick={() => setActivePanel('billing')}
-            size="sm"
-          >
-            Billing Overview
-          </Button>
-          <Button 
-            variant={activePanel === 'handover' ? 'default' : 'outline'}
-            onClick={() => setActivePanel('handover')}
-            size="sm"
-          >
-            Shift Handover
-          </Button>
-          <Button 
-            variant={activePanel === 'qr-manager' ? 'default' : 'outline'}
-            onClick={() => setActivePanel('qr-manager')}
-            size="sm"
-          >
-            QR Directory
-          </Button>
-        </div>
-
-        {/* Dynamic Panel Content */}
-        {activePanel === 'overview' && (
-          <>
-            {/* Notification Alerts */}
-            <NotificationBanner 
-              alerts={activeAlerts}
-              onDismiss={handleDismissAlert}
-              onViewAll={handleViewAllAlerts}
-            />
-
-            {/* Guest Queue Panel */}
-            <GuestQueuePanel onGuestAction={handleGuestAction} />
-
-            {/* Room Legend */}
-            <RoomLegend />
-          </>
-        )}
-
-        {activePanel === 'qr-requests' && (
-          <QRRequestsPanel />
-        )}
-
-        {activePanel === 'staff-ops' && (
-          <StaffOpsPanel />
-        )}
-
-        {activePanel === 'billing' && (
-          <BillingOverviewFD />
-        )}
-
-        {activePanel === 'handover' && (
-          <HandoverPanel />
-        )}
-
-        {activePanel === 'qr-manager' && (
-          <QRDirectoryFD />
-        )}
-      </div>
-
-      {/* Keyboard Shortcuts Helper */}
-      <KeyboardShortcutsHelper 
-        isVisible={showKeyboardHelp}
-        onClose={() => setShowKeyboardHelp(false)}
+    <div className="space-y-6 p-6">
+      <DashboardNotificationBar />
+      
+      {/* Alert Notifications */}
+      <NotificationBanner 
+        alerts={activeAlerts}
+        onDismiss={(id) => setActiveAlerts(alerts => alerts.filter(alert => alert.id !== id))}
+        onViewAll={handleViewAllAlerts}
       />
 
-      {/* Action Dialogs */}
+      {/* Quick Actions Bar */}
+      <ActionBar 
+        onAction={(action) => {
+          switch (action) {
+            case 'new-reservation':
+              setShowNewReservation(true);
+              break;
+            case 'search':
+              setShowSearch(true);
+              break;
+            case 'collect-payment':
+              setShowPayment(true);
+              break;
+            default:
+              console.log('Action:', action);
+          }
+        }}
+        showKeyboardHelp={showKeyboardHelp}
+        onToggleKeyboardHelp={() => setShowKeyboardHelp(!showKeyboardHelp)}
+      />
+
+      {/* Dashboard Cards */}
+      <div className="grid grid-cols-4 gap-4">
+        {dashboardCards.map((card, index) => (
+          <Card key={index} className="cursor-pointer hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
+              {card.icon}
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{card.value}</div>
+              <p className="text-xs text-muted-foreground">{card.subtitle}</p>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="mt-2 p-0 h-auto font-normal text-xs"
+                onClick={() => handleCardAction(card.filterKey)}
+              >
+                {card.action}
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Quick Filters */}
+      <QuickFilters 
+        activeFilter={activeFilter}
+        onFilterChange={setActiveFilter}
+        statusCounts={{
+          available: availableRooms,
+          occupied: occupiedRooms,
+          maintenance: maintenanceRooms,
+          'out-of-service': oosRooms
+        }}
+      />
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-12 gap-6">
+        {/* Room Grid - Main Content */}
+        <div className="col-span-8">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Room Status</CardTitle>
+                <RoomLegend />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <RoomGrid 
+                searchQuery={searchQuery}
+                activeFilter={activeFilter}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Sidebar */}
+        <div className="col-span-4 space-y-6">
+          {/* Guest Queue */}
+          <GuestQueuePanel 
+            onGuestAction={(guest, action) => console.log('Guest action:', guest, action)}
+          />
+
+          {/* QR Requests Panel */}
+          <QRRequestsPanel />
+
+          {/* Staff Operations */}
+          <StaffOpsPanel />
+
+          {/* Billing Overview */}
+          <BillingOverviewFD />
+
+          {/* Handover Panel */}
+          <HandoverPanel />
+
+          {/* QR Directory */}
+          <QRDirectoryFD />
+        </div>
+      </div>
+
+      {/* Action Queue Panel */}
+      {showActionQueue && (
+        <ActionQueue 
+          isVisible={showActionQueue}
+          isOnline={!isOffline}
+        />
+      )}
+
+      {/* Keyboard Shortcuts Helper */}
+      {showKeyboardHelp && (
+        <KeyboardShortcutsHelper 
+          isVisible={showKeyboardHelp}
+          onClose={() => setShowKeyboardHelp(false)} 
+        />
+      )}
+
+      {/* Dialogs */}
       <NewReservationDialog 
         open={showNewReservation}
         onOpenChange={setShowNewReservation}

@@ -22,53 +22,36 @@ interface ReservationCalendarProps {
   onReservationSelect: (reservation: Reservation) => void;
 }
 
+import { useReservations } from "@/hooks/useApi";
+
 export default function ReservationCalendar({ 
   searchTerm, 
   statusFilter, 
   onReservationSelect 
 }: ReservationCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
-
-  // Mock reservations data
-  const mockReservations: Reservation[] = [
-    {
-      id: '1',
-      guestName: 'John Smith',
-      room: '205',
-      checkIn: new Date(2024, 7, 22),
-      checkOut: new Date(2024, 7, 25),
-      status: 'confirmed',
-      guests: 2,
-      amount: 450000
-    },
-    {
-      id: '2',
-      guestName: 'Sarah Wilson',
-      room: '312',
-      checkIn: new Date(2024, 7, 23),
-      checkOut: new Date(2024, 7, 26),
-      status: 'checked-in',
-      guests: 1,
-      amount: 285000
-    },
-    {
-      id: '3',
-      guestName: 'Michael Chen',
-      room: '108',
-      checkIn: new Date(2024, 7, 24),
-      checkOut: new Date(2024, 7, 27),
-      status: 'pending',
-      guests: 3,
-      amount: 520000
-    }
-  ];
+  
+  // Live reservations data from Supabase
+  const { data: liveReservations = [], isLoading } = useReservations();
+  
+  // Transform live reservations to component format
+  const reservations: Reservation[] = liveReservations.map(res => ({
+    id: res.id,
+    guestName: res.guest_name || `${res.guests?.first_name} ${res.guests?.last_name}`,
+    room: res.rooms?.room_number || 'N/A',
+    checkIn: new Date(res.check_in_date),
+    checkOut: new Date(res.check_out_date),
+    status: res.status as Reservation['status'],
+    guests: res.adults + (res.children || 0),
+    amount: res.total_amount
+  }));
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const calendarDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
   const getReservationsForDate = (date: Date) => {
-    return mockReservations.filter(reservation => {
+    return reservations.filter(reservation => {
       const matchesSearch = searchTerm === '' || 
         reservation.guestName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         reservation.room.includes(searchTerm);

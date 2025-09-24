@@ -9,9 +9,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { useRoomTypes, useCreateReservation } from "@/hooks/useApi";
-import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
-import { useToast } from "@/hooks/use-toast";
 
 interface NewReservationDialogProps {
   open: boolean;
@@ -22,77 +19,17 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
   const [checkIn, setCheckIn] = useState<Date>();
   const [checkOut, setCheckOut] = useState<Date>();
   const [guestName, setGuestName] = useState("");
-  const [guestEmail, setGuestEmail] = useState("");
-  const [guestPhone, setGuestPhone] = useState("");
-  const [roomTypeId, setRoomTypeId] = useState("");
-  const [adults, setAdults] = useState("1");
-  const [children, setChildren] = useState("0");
+  const [roomType, setRoomType] = useState("");
+  const [contact, setContact] = useState("");
 
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const { data: roomTypes, isLoading: roomTypesLoading } = useRoomTypes();
-  const createReservationMutation = useCreateReservation();
-
-  const selectedRoomType = roomTypes?.find(rt => rt.id === roomTypeId);
-  const nights = checkIn && checkOut ? Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)) : 0;
-  const totalAmount = selectedRoomType && nights > 0 ? selectedRoomType.base_rate * nights : 0;
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!user?.tenant_id || !selectedRoomType || !checkIn || !checkOut) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Split guest name into first and last name
-    const nameParts = guestName.trim().split(' ');
-    const firstName = nameParts[0] || '';
-    const lastName = nameParts.slice(1).join(' ') || '';
-
-    try {
-      await createReservationMutation.mutateAsync({
-        tenant_id: user.tenant_id,
-        guest_first_name: firstName,
-        guest_last_name: lastName,
-        guest_email: guestEmail,
-        guest_phone: guestPhone,
-        room_id: selectedRoomType.id, // We'll use room type ID for now, should be actual room ID
-        check_in_date: checkIn.toISOString().split('T')[0],
-        check_out_date: checkOut.toISOString().split('T')[0],
-        adults: parseInt(adults),
-        children: parseInt(children),
-        room_rate: selectedRoomType.base_rate,
-        total_amount: totalAmount
-      });
-
-      toast({
-        title: "Success",
-        description: "Reservation created successfully"
-      });
-      
-      onOpenChange(false);
-      resetForm();
-    } catch (error) {
-      toast({
-        title: "Error", 
-        description: "Failed to create reservation",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const resetForm = () => {
+    console.log("New reservation:", { guestName, roomType, checkIn, checkOut, contact });
+    onOpenChange(false);
+    // Reset form
     setGuestName("");
-    setGuestEmail("");
-    setGuestPhone("");
-    setRoomTypeId("");
-    setAdults("1");
-    setChildren("0");
+    setRoomType("");
+    setContact("");
     setCheckIn(undefined);
     setCheckOut(undefined);
   };
@@ -115,79 +52,35 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
                 id="guestName"
                 value={guestName}
                 onChange={(e) => setGuestName(e.target.value)}
-                placeholder="Enter full name"
+                placeholder="Enter guest name"
                 required
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="guestEmail">Email</Label>
+              <Label htmlFor="contact">Contact</Label>
               <Input
-                id="guestEmail"
-                type="email"
-                value={guestEmail}
-                onChange={(e) => setGuestEmail(e.target.value)}
-                placeholder="guest@email.com"
+                id="contact"
+                value={contact}
+                onChange={(e) => setContact(e.target.value)}
+                placeholder="Phone or Email"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="guestPhone">Phone</Label>
-              <Input
-                id="guestPhone"
-                value={guestPhone}
-                onChange={(e) => setGuestPhone(e.target.value)}
-                placeholder="+1234567890"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="roomType">Room Type *</Label>
-              <Select value={roomTypeId} onValueChange={setRoomTypeId} required disabled={roomTypesLoading}>
-                <SelectTrigger>
-                  <SelectValue placeholder={roomTypesLoading ? "Loading..." : "Select room type"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {roomTypes?.map((roomType) => (
-                    <SelectItem key={roomType.id} value={roomType.id}>
-                      {roomType.name} - ${roomType.base_rate}/night
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Adults *</Label>
-              <Select value={adults} onValueChange={setAdults}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[1, 2, 3, 4, 5, 6].map((num) => (
-                    <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Children</Label>
-              <Select value={children} onValueChange={setChildren}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[0, 1, 2, 3, 4].map((num) => (
-                    <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="roomType">Room Type *</Label>
+            <Select value={roomType} onValueChange={setRoomType} required>
+              <SelectTrigger>
+                <SelectValue placeholder="Select room type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="standard">Standard Room</SelectItem>
+                <SelectItem value="deluxe">Deluxe Room</SelectItem>
+                <SelectItem value="suite">Executive Suite</SelectItem>
+                <SelectItem value="presidential">Presidential Suite</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -244,19 +137,6 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
             </div>
           </div>
 
-          {totalAmount > 0 && (
-            <div className="bg-muted p-4 rounded-lg space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Rate: ${selectedRoomType?.base_rate}/night</span>
-                <span>Nights: {nights}</span>
-              </div>
-              <div className="flex justify-between font-semibold">
-                <span>Total Amount:</span>
-                <span>${totalAmount.toFixed(2)}</span>
-              </div>
-            </div>
-          )}
-
           <div className="flex justify-end gap-3">
             <Button 
               type="button" 
@@ -265,11 +145,8 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
             >
               Cancel
             </Button>
-            <Button 
-              type="submit" 
-              disabled={createReservationMutation.isPending || !guestName || !roomTypeId || !checkIn || !checkOut}
-            >
-              {createReservationMutation.isPending ? "Creating..." : "Create Reservation"}
+            <Button type="submit">
+              Create Reservation
             </Button>
           </div>
         </form>

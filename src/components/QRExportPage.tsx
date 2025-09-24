@@ -17,8 +17,6 @@ import {
   FileImage,
   Grid3X3
 } from "lucide-react";
-import { useMultiTenantAuth } from "@/hooks/useMultiTenantAuth";
-import { useRooms } from "@/hooks/useApi";
 
 // Mock hotel data
 const hotelInfo = {
@@ -29,16 +27,17 @@ const hotelInfo = {
   logo: "/api/placeholder/120/80"
 };
 
-// Live room data from Supabase
-const { data: liveRooms = [], isLoading: roomsLoading } = useRooms();
-
-// Transform live rooms to component format
-const rooms = liveRooms.map(room => ({
-  number: room.room_number,
-  floor: room.floor || 1,
-  type: room.room_types?.name || 'Standard',
-  active: room.status !== 'out_of_order'
-}));
+// Mock room data
+const mockRooms = [
+  { number: "101", floor: 1, type: "Standard", active: true },
+  { number: "102", floor: 1, type: "Standard", active: true },
+  { number: "103", floor: 1, type: "Deluxe", active: false },
+  { number: "201", floor: 2, type: "Standard", active: true },
+  { number: "202", floor: 2, type: "Deluxe", active: true },
+  { number: "301", floor: 3, type: "Suite", active: true },
+  { number: "305", floor: 3, type: "Suite", active: true },
+  { number: "401", floor: 4, type: "Presidential", active: true }
+];
 
 const QRExportPage = () => {
   const [selectedRooms, setSelectedRooms] = useState<string[]>([]);
@@ -58,13 +57,13 @@ const QRExportPage = () => {
   };
 
   const selectFloor = (floor: number) => {
-    const floorRooms = rooms
+    const floorRooms = mockRooms
       .filter(room => room.floor === floor && room.active)
       .map(room => room.number);
     
     setSelectedRooms(prev => {
       const withoutFloorRooms = prev.filter(r => {
-        const room = rooms.find(room => room.number === r);
+        const room = mockRooms.find(room => room.number === r);
         return room?.floor !== floor;
       });
       return [...withoutFloorRooms, ...floorRooms];
@@ -72,7 +71,7 @@ const QRExportPage = () => {
   };
 
   const selectAll = () => {
-    const allActiveRooms = rooms
+    const allActiveRooms = mockRooms
       .filter(room => room.active)
       .map(room => room.number);
     setSelectedRooms(allActiveRooms);
@@ -199,7 +198,7 @@ const QRExportPage = () => {
               </div>
 
               <div className="grid grid-cols-4 gap-2">
-                {rooms.map(room => (
+                {mockRooms.map(room => (
                   <Button
                     key={room.number}
                     variant={selectedRooms.includes(room.number) ? "default" : "outline"}

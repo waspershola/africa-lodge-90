@@ -11,7 +11,7 @@ import InteractiveReservationCalendar from '@/components/owner/reservations/Inte
 import ReservationList from '@/components/owner/reservations/ReservationList';
 import NewReservationDialog from '@/components/owner/reservations/NewReservationDialog';
 import ReservationDetails from '@/components/owner/reservations/ReservationDetails';
-import { useReservations } from '@/hooks/useReservations';
+import { useReservations } from '@/hooks/useRooms';
 
 export default function ReservationsPage() {
   const [view, setView] = useState('calendar');
@@ -20,7 +20,7 @@ export default function ReservationsPage() {
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState(null);
 
-  const { data: reservations = [], isLoading, error } = useReservations();
+  const { reservations = [], loading: isLoading, error } = useReservations();
 
   // Calculate stats from API data
   const reservationStats = {
@@ -74,7 +74,7 @@ export default function ReservationsPage() {
   }
 
   if (error) {
-    return <div className="p-6 text-destructive">Error loading reservations: {error.message}</div>;
+    return <div className="p-6 text-destructive">Error loading reservations: {error}</div>;
   }
 
   return (

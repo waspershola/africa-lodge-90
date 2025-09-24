@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -80,7 +80,49 @@ interface MockGuest {
   totalStays: number;
 }
 
-import { useGuests } from "@/hooks/useGuests";
+// Mock guest database - in a real app this would come from backend
+const MOCK_GUESTS: MockGuest[] = [
+  {
+    id: '1',
+    name: 'John Doe',
+    phone: '08012345678',
+    email: 'john.doe@email.com',
+    idType: 'national-id',
+    idNumber: 'NID123456789',
+    lastStay: '2024-07-15',
+    totalStays: 3
+  },
+  {
+    id: '2', 
+    name: 'Jane Smith',
+    phone: '08087654321',
+    email: 'jane.smith@email.com',
+    idType: 'passport',
+    idNumber: 'P1234567',
+    lastStay: '2024-06-20',
+    totalStays: 1
+  },
+  {
+    id: '3',
+    name: 'Mike Wilson',
+    phone: '08098765432',
+    email: 'mike.wilson@email.com',
+    idType: 'drivers-license',
+    idNumber: 'DL987654321',
+    lastStay: '2024-08-01',
+    totalStays: 5
+  },
+  {
+    id: '4',
+    name: 'Sarah Johnson',
+    phone: '08056789012',
+    email: 'sarah.j@email.com',
+    idType: 'national-id',
+    idNumber: 'NID987654321',
+    lastStay: '2024-05-10',
+    totalStays: 2
+  }
+];
 
 const ID_TYPES = [
   { value: 'national-id', label: 'National ID' },
@@ -100,31 +142,13 @@ export const QuickGuestCapture = ({
 }: QuickGuestCaptureProps) => {
   const { toast } = useToast();
   const { enabledMethods } = usePaymentMethods();
-  
-  // Live guest data from Supabase
-  const { data: liveGuests = [], isLoading: guestsLoading } = useGuests();
-  
-  // Transform live guests to component format
-  const transformedGuestList = useMemo(() => {
-    return liveGuests.map(guest => ({
-      id: guest.id,
-      name: `${guest.first_name} ${guest.last_name}`,
-      phone: guest.phone || '',
-      email: guest.email || '',
-      idType: 'national-id',
-      idNumber: guest.guest_id_number || '',
-      lastStay: guest.last_stay_date || '',
-      totalStays: guest.total_stays || 0
-    }));
-  }, [liveGuests]);
-  
   const [isProcessing, setIsProcessing] = useState(false);
   const [showOptionalFields, setShowOptionalFields] = useState(false);
   const [guestMode, setGuestMode] = useState<'existing' | 'new'>('existing');
   const [selectedGuest, setSelectedGuest] = useState<MockGuest | null>(null);
   const [guestSearchOpen, setGuestSearchOpen] = useState(false);
   const [guestSearchValue, setGuestSearchValue] = useState("");
-  const [guestList, setGuestList] = useState<MockGuest[]>([]);
+  const [guestList, setGuestList] = useState<MockGuest[]>(MOCK_GUESTS);
   
   const [formData, setFormData] = useState<GuestFormData>({
     guestName: '',
@@ -137,11 +161,6 @@ export const QuickGuestCapture = ({
     printNow: true,
     notes: '',
   });
-
-  // Update guest list when live data changes
-  useEffect(() => {
-    setGuestList(transformedGuestList);
-  }, [transformedGuestList]);
 
   // Filter guests based on search
   const filteredGuests = useMemo(() => {

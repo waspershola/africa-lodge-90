@@ -11,8 +11,6 @@ import { CalendarIcon, User, Phone, Mail } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useRooms } from '@/hooks/useRooms';
-import { useCreateReservation } from '@/hooks/useCreateReservation';
-import { useRoomTypes } from '@/hooks/useRoomTypes';
 
 interface NewReservationDialogProps {
   open: boolean;
@@ -42,17 +40,15 @@ export default function NewReservationDialog({
     source: 'direct'
   });
 
-  const { data: rooms = [] } = useRooms();
-  const { mutate: createReservation } = useCreateReservation();
+  const { createReservation, rooms } = useRooms();
   const { toast } = useToast();
 
-  // Use live room types from API
-  const { data: liveRoomTypes = [] } = useRoomTypes();
-  const roomTypes = liveRoomTypes.map(type => ({
-    value: type.id,
-    label: type.name,
-    price: type.base_rate
-  }));
+  const roomTypes = [
+    { value: 'standard', label: 'Standard Room', price: 85000 },
+    { value: 'deluxe', label: 'Deluxe King', price: 125000 },
+    { value: 'suite', label: 'Family Suite', price: 185000 },
+    { value: 'presidential', label: 'Presidential Suite', price: 350000 }
+  ];
 
   const calculateNights = () => {
     const diffTime = Math.abs(formData.checkOut.getTime() - formData.checkIn.getTime());
@@ -77,11 +73,11 @@ export default function NewReservationDialog({
       const nights = calculateNights();
       const roomTypeData = roomTypes.find(r => r.value === formData.roomType);
       
-  // Find an available room of the selected type or use first available room
-  const availableRoom = rooms?.find(room => 
-    room.status === 'available' && 
-    room.room_type_id === formData.roomType
-  ) || rooms?.find(room => room.status === 'available');
+      // Find an available room of the selected type or use first available room
+      const availableRoom = rooms?.find(room => 
+        room.status === 'available' && 
+        room.room_type?.name.toLowerCase().includes(formData.roomType)
+      ) || rooms?.find(room => room.status === 'available');
 
       if (!availableRoom) {
         toast({
@@ -96,6 +92,7 @@ export default function NewReservationDialog({
         guest_name: formData.guestName,
         guest_email: formData.email,
         guest_phone: formData.phone,
+        guest_id_number: formData.idNumber,
         check_in_date: formData.checkIn.toISOString().split('T')[0],
         check_out_date: formData.checkOut.toISOString().split('T')[0],
         room_id: availableRoom.id,

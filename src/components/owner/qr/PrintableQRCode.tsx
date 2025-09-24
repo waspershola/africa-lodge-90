@@ -2,11 +2,16 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Download, Printer, Palette } from 'lucide-react';
+import { Download, Printer, Palette, FileImage, FileText, CreditCard } from 'lucide-react';
 import QRCode from 'qrcode';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { useTenantInfo } from '@/hooks/useTenantInfo';
+import { getThemeInfo, getThemeClassName, getDefaultTheme } from '@/utils/themeUtils';
+import { A4PosterTemplate } from './templates/A4PosterTemplate';
+import { FlyerTemplate } from './templates/FlyerTemplate';
+import { TentCardTemplate } from './templates/TentCardTemplate';
+import { ClassicTemplate } from './templates/ClassicTemplate';
 
 interface PrintableQRCodeProps {
   qrId: string;
@@ -15,16 +20,25 @@ interface PrintableQRCodeProps {
   roomNumber?: string;
   services?: string[];
   qrUrl?: string;
+  themeId?: string;
 }
 
+type PrintTemplate = 'classic' | 'a4-poster' | 'flyer' | 'tent-card';
 type PrintSize = 'small' | 'medium' | 'large' | 'poster' | 'a4';
 
+const templateConfigs = {
+  'classic': { width: 400, height: 500, qrSize: 200, title: 'Classic Card', icon: CreditCard },
+  'a4-poster': { width: 595, height: 842, qrSize: 300, title: 'A4 Poster', icon: FileText },
+  'flyer': { width: 600, height: 400, qrSize: 180, title: 'Flyer (Landscape)', icon: FileImage },
+  'tent-card': { width: 350, height: 250, qrSize: 120, title: 'Tent Card', icon: CreditCard }
+};
+
 const sizeConfigs = {
-  small: { width: 300, height: 400, qrSize: 150, title: 'Small (3x4 inch)' },
-  medium: { width: 400, height: 500, qrSize: 200, title: 'Medium (4x5 inch)' },
-  large: { width: 600, height: 800, qrSize: 300, title: 'Large (6x8 inch)' },
-  poster: { width: 800, height: 1200, qrSize: 400, title: 'Poster (8x12 inch)' },
-  a4: { width: 595, height: 842, qrSize: 250, title: 'A4 Paper' }
+  small: { scale: 0.7, title: 'Small' },
+  medium: { scale: 1.0, title: 'Medium' },
+  large: { scale: 1.3, title: 'Large' },
+  poster: { scale: 1.6, title: 'Poster' },
+  a4: { scale: 1.4, title: 'A4 Size' }
 };
 
 export const PrintableQRCode = ({ 
@@ -33,28 +47,36 @@ export const PrintableQRCode = ({
   hotelName, 
   roomNumber, 
   services, 
-  qrUrl 
+  qrUrl,
+  themeId 
 }: PrintableQRCodeProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const printableRef = useRef<HTMLDivElement>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
+  const [selectedTemplate, setSelectedTemplate] = useState<PrintTemplate>('classic');
   const [selectedSize, setSelectedSize] = useState<PrintSize>('medium');
   const [isGenerating, setIsGenerating] = useState(false);
   const { data: tenantInfo } = useTenantInfo();
 
-  const config = sizeConfigs[selectedSize];
+  const currentThemeId = themeId || getDefaultTheme();
+  const themeInfo = getThemeInfo(currentThemeId);
+  const templateConfig = templateConfigs[selectedTemplate];
+  const sizeConfig = sizeConfigs[selectedSize];
 
   useEffect(() => {
     const generateQRCode = async () => {
       if (!qrUrl || !canvasRef.current) return;
       
       try {
+        // Theme-aware QR code colors
+        const isDarkTheme = themeInfo?.colors.background === '#000000' || themeInfo?.colors.background === '#1A1A1A' || themeInfo?.colors.background === '#0F4C3A';
+        
         const qrOptions = {
-          width: config.qrSize,
+          width: Math.floor(templateConfig.qrSize * sizeConfig.scale),
           margin: 2,
           color: {
-            dark: '#000000',
-            light: '#FFFFFF'
+            dark: themeInfo?.colors.primary || '#000000',
+            light: isDarkTheme ? themeInfo?.colors.background || '#FFFFFF' : '#FFFFFF'
           },
           errorCorrectionLevel: 'M' as const
         };
@@ -69,7 +91,7 @@ export const PrintableQRCode = ({
     };
 
     generateQRCode();
-  }, [qrUrl, config.qrSize]);
+  }, [qrUrl, templateConfig.qrSize, sizeConfig.scale, themeInfo, currentThemeId]);
 
   const handleDownloadPNG = async () => {
     if (!printableRef.current) return;
@@ -77,14 +99,16 @@ export const PrintableQRCode = ({
     setIsGenerating(true);
     try {
       const canvas = await html2canvas(printableRef.current, {
-        scale: 2,
-        backgroundColor: '#ffffff',
-        useCORS: true
+        scale: 3,
+        backgroundColor: themeInfo?.colors.background || '#ffffff',
+        useCORS: true,
+        allowTaint: true,
+        foreignObjectRendering: true
       });
       
       const link = document.createElement('a');
-      link.download = `qr-code-${roomNumber || assignedTo}-${selectedSize}.png`;
-      link.href = canvas.toDataURL();
+      link.download = `qr-${selectedTemplate}-${roomNumber || assignedTo}-${currentThemeId}.png`;
+      link.href = canvas.toDataURL('image/png', 0.95);
       link.click();
     } catch (error) {
       console.error('PNG generation error:', error);
@@ -99,20 +123,25 @@ export const PrintableQRCode = ({
     setIsGenerating(true);
     try {
       const canvas = await html2canvas(printableRef.current, {
-        scale: 2,
-        backgroundColor: '#ffffff',
-        useCORS: true
+        scale: 3,
+        backgroundColor: themeInfo?.colors.background || '#ffffff',
+        useCORS: true,
+        allowTaint: true,
+        foreignObjectRendering: true
       });
       
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = canvas.toDataURL('image/png', 0.95);
+      const finalWidth = Math.floor(templateConfig.width * sizeConfig.scale);
+      const finalHeight = Math.floor(templateConfig.height * sizeConfig.scale);
+      
       const pdf = new jsPDF({
-        orientation: config.height > config.width ? 'portrait' : 'landscape',
+        orientation: finalHeight > finalWidth ? 'portrait' : 'landscape',
         unit: 'px',
-        format: [config.width, config.height]
+        format: [finalWidth, finalHeight]
       });
       
-      pdf.addImage(imgData, 'PNG', 0, 0, config.width, config.height);
-      pdf.save(`qr-code-${roomNumber || assignedTo}-${selectedSize}.pdf`);
+      pdf.addImage(imgData, 'PNG', 0, 0, finalWidth, finalHeight);
+      pdf.save(`qr-${selectedTemplate}-${roomNumber || assignedTo}-${currentThemeId}.pdf`);
     } catch (error) {
       console.error('PDF generation error:', error);
     } finally {
@@ -124,25 +153,31 @@ export const PrintableQRCode = ({
     if (!printableRef.current) return;
     
     const content = printableRef.current.innerHTML;
+    const finalWidth = Math.floor(templateConfig.width * sizeConfig.scale);
+    const finalHeight = Math.floor(templateConfig.height * sizeConfig.scale);
+    
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(`
         <html>
           <head>
-            <title>QR Code - ${roomNumber || assignedTo}</title>
+            <title>QR ${selectedTemplate} - ${roomNumber || assignedTo}</title>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
             <style>
               body { 
                 margin: 0; 
                 padding: 20px; 
-                font-family: 'Inter', sans-serif;
+                font-family: '${themeInfo?.fontBody || 'Inter'}', sans-serif;
+                background: ${themeInfo?.colors.background || '#ffffff'};
+                color: ${themeInfo?.colors.primary || '#000000'};
                 display: flex;
                 justify-content: center;
                 align-items: center;
                 min-height: 100vh;
               }
               .printable-content { 
-                width: ${config.width}px;
-                height: ${config.height}px;
+                width: ${finalWidth}px;
+                height: ${finalHeight}px;
               }
               @media print {
                 body { padding: 0; }
@@ -162,15 +197,57 @@ export const PrintableQRCode = ({
     }
   };
 
-  const primaryColor = '#2563eb';
-  const secondaryColor = '#64748b';
+  const renderTemplate = () => {
+    const templateProps = {
+      qrId,
+      assignedTo,
+      hotelName: hotelName || tenantInfo?.hotel_name || 'Hotel',
+      roomNumber,
+      services,
+      qrDataUrl,
+      themeInfo,
+      tenantInfo,
+      templateConfig,
+      sizeConfig
+    };
+
+    switch (selectedTemplate) {
+      case 'a4-poster':
+        return <A4PosterTemplate {...templateProps} />;
+      case 'flyer':
+        return <FlyerTemplate {...templateProps} />;
+      case 'tent-card':
+        return <TentCardTemplate {...templateProps} />;
+      default:
+        return <ClassicTemplate {...templateProps} />;
+    }
+  };
 
   return (
     <div className="space-y-6">
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-4">
-        <Select value={selectedSize} onValueChange={(value: PrintSize) => setSelectedSize(value)}>
+        <Select value={selectedTemplate} onValueChange={(value: PrintTemplate) => setSelectedTemplate(value)}>
           <SelectTrigger className="w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(templateConfigs).map(([key, config]) => {
+              const Icon = config.icon;
+              return (
+                <SelectItem key={key} value={key}>
+                  <div className="flex items-center gap-2">
+                    <Icon className="h-4 w-4" />
+                    {config.title}
+                  </div>
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
+
+        <Select value={selectedSize} onValueChange={(value: PrintSize) => setSelectedSize(value)}>
+          <SelectTrigger className="w-32">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -214,126 +291,16 @@ export const PrintableQRCode = ({
       <div className="flex justify-center">
         <div 
           ref={printableRef}
-          className="bg-white border rounded-lg shadow-lg overflow-hidden"
+          className={`border rounded-lg shadow-lg overflow-hidden ${getThemeClassName(currentThemeId)}`}
           style={{ 
-            width: config.width,
-            height: config.height,
+            width: Math.floor(templateConfig.width * sizeConfig.scale),
+            height: Math.floor(templateConfig.height * sizeConfig.scale),
             maxWidth: '100%',
             transform: 'scale(0.8)',
             transformOrigin: 'top center'
           }}
         >
-          <div 
-            className="h-full flex flex-col justify-between p-8 text-center relative"
-            style={{ 
-              background: `linear-gradient(135deg, ${primaryColor}10, ${secondaryColor}10)`,
-              borderTop: `4px solid ${primaryColor}`
-            }}
-          >
-            {/* Header */}
-            <div className="space-y-4">
-              {tenantInfo?.logo_url && (
-                <div className="flex justify-center">
-                  <img 
-                    src={tenantInfo.logo_url} 
-                    alt="Hotel Logo" 
-                    className="h-16 object-contain"
-                  />
-                </div>
-              )}
-              
-              <div>
-                <h1 
-                  className="text-2xl font-bold mb-2"
-                  style={{ color: primaryColor }}
-                >
-                  {hotelName || tenantInfo?.hotel_name || 'Hotel'}
-                </h1>
-                {roomNumber && (
-                  <p className="text-xl font-semibold text-gray-700">
-                    Room {roomNumber}
-                  </p>
-                )}
-                {!roomNumber && assignedTo && (
-                  <p className="text-lg text-gray-600">
-                    {assignedTo}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* QR Code */}
-            <div className="flex-1 flex items-center justify-center">
-              <div 
-                className="bg-white p-6 rounded-xl shadow-lg border-2"
-                style={{ borderColor: primaryColor }}
-              >
-                <canvas 
-                  ref={canvasRef}
-                  className="block"
-                  style={{ width: config.qrSize, height: config.qrSize }}
-                />
-              </div>
-            </div>
-
-            {/* Services */}
-            {services && services.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-lg font-semibold text-gray-800">
-                  Available Services
-                </h3>
-                <div className="flex flex-wrap justify-center gap-2">
-                  {services.slice(0, 6).map((service) => (
-                    <span 
-                      key={service}
-                      className="px-3 py-1 rounded-full text-sm font-medium text-white"
-                      style={{ backgroundColor: secondaryColor }}
-                    >
-                      {service}
-                    </span>
-                  ))}
-                  {services.length > 6 && (
-                    <span 
-                      className="px-3 py-1 rounded-full text-sm font-medium"
-                      style={{ 
-                        backgroundColor: primaryColor + '20',
-                        color: primaryColor
-                      }}
-                    >
-                      +{services.length - 6} more
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Instructions */}
-            <div className="space-y-2 text-gray-600">
-              <p className="text-lg font-medium">
-                📱 Scan with your phone camera
-              </p>
-              <p className="text-sm">
-                Access hotel services instantly
-              </p>
-              <p className="text-xs font-mono text-gray-400">
-                ID: {qrId}
-              </p>
-            </div>
-
-            {/* Decorative Elements */}
-            <div 
-              className="absolute top-0 right-0 w-32 h-32 opacity-5"
-              style={{
-                background: `radial-gradient(circle, ${primaryColor} 0%, transparent 70%)`
-              }}
-            />
-            <div 
-              className="absolute bottom-0 left-0 w-24 h-24 opacity-5"
-              style={{
-                background: `radial-gradient(circle, ${secondaryColor} 0%, transparent 70%)`
-              }}
-            />
-          </div>
+          {renderTemplate()}
         </div>
       </div>
 

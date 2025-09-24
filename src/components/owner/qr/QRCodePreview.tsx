@@ -98,6 +98,7 @@ export const QRCodePreview = ({
           roomNumber={roomNumber}
           services={services}
           qrUrl={qrUrl}
+          themeId={branding?.theme || 'classic-luxury-gold'}
         />
       </div>
     );

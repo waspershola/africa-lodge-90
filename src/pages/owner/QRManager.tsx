@@ -81,7 +81,8 @@ export default function QRManagerPage() {
     showLogo: !!tenantInfo?.logo_url,
     primaryColor: '#2563eb',
     secondaryColor: '#64748b',
-    defaultServices: ['Wi-Fi', 'Room Service', 'Housekeeping']
+    defaultServices: ['Wi-Fi', 'Room Service', 'Housekeeping'],
+    theme: 'classic-luxury-gold'
   });
 
   const handleViewQR = (qr: QRCodeData) => {

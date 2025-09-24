@@ -5,8 +5,8 @@ import { QRRequest } from '@/components/qr-portal/QRPortal';
 export interface QRSession {
   id: string;
   hotel_id: string;
-  room_id: string;
-  location_type: 'room' | 'bar' | 'pool' | 'restaurant';
+  room_id: string | null;
+  location_type: 'room' | 'bar' | 'pool' | 'restaurant' | 'lobby';
   guest_session_id: string;
   expires_at: string;
 }
@@ -67,27 +67,22 @@ export const useQRSession = (sessionToken?: string | null) => {
       const hotelId = tokenParts[1] || 'hotel-1';
       const roomNumber = tokenParts[2] || '205';
 
-      // Look up QR code and session info
+      // Look up QR code and session info using secure validation function
       const { data: qrData, error: qrError } = await supabase
-        .from('qr_codes')
-        .select(`
-          *,
-          room:rooms!inner(id, room_number, tenant_id)
-        `)
-        .eq('qr_token', sessionToken)
-        .eq('is_active', true)
-        .single();
+        .rpc('validate_qr_token_public', { token_input: sessionToken });
 
-      if (qrError || !qrData) {
+      if (qrError || !qrData || !Array.isArray(qrData) || qrData.length === 0 || !qrData[0].is_valid) {
         throw new Error('QR code not found or expired');
       }
 
+      const validationResult = qrData[0];
+
       // Create session object
       const sessionData: QRSession = {
-        id: `session-${qrData.id}`,
-        hotel_id: qrData.tenant_id,
-        room_id: qrData.room_id,
-        location_type: 'room',
+        id: `session-${sessionToken}`,
+        hotel_id: validationResult.tenant_id,
+        room_id: validationResult.room_id,
+        location_type: validationResult.location_type as 'room' | 'bar' | 'pool' | 'restaurant' | 'lobby',
         guest_session_id: `guest-${Date.now()}`,
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       };
@@ -95,7 +90,7 @@ export const useQRSession = (sessionToken?: string | null) => {
       setSession(sessionData);
       
       // Load hotel config and existing requests
-      await loadHotelConfig(qrData.tenant_id);
+      await loadHotelConfig(validationResult.tenant_id);
       await loadRequestsForSession(sessionData.guest_session_id);
 
     } catch (error) {

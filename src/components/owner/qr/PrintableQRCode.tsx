@@ -50,7 +50,6 @@ export const PrintableQRCode = ({
   qrUrl,
   themeId 
 }: PrintableQRCodeProps) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const printableRef = useRef<HTMLDivElement>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [selectedTemplate, setSelectedTemplate] = useState<PrintTemplate>('classic');
@@ -65,8 +64,8 @@ export const PrintableQRCode = ({
 
   useEffect(() => {
     const generateQRCode = async () => {
-      if (!qrUrl || !canvasRef.current) {
-        console.log('QR generation skipped:', { qrUrl, hasCanvas: !!canvasRef.current });
+      if (!qrUrl) {
+        console.log('QR generation skipped: no URL provided');
         return;
       }
       
@@ -88,9 +87,8 @@ export const PrintableQRCode = ({
         
         console.log('QR options:', qrOptions);
         
-        await QRCode.toCanvas(canvasRef.current, qrUrl, qrOptions);
-        
-        const dataUrl = canvasRef.current.toDataURL('image/png');
+        // Generate QR code directly as data URL without canvas dependency
+        const dataUrl = await QRCode.toDataURL(qrUrl, qrOptions);
         console.log('QR data URL generated:', dataUrl.length > 0 ? 'Success' : 'Failed');
         setQrDataUrl(dataUrl);
       } catch (error) {

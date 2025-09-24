@@ -1,5 +1,5 @@
 import { Routes, Route } from 'react-router-dom';
-import { OwnerDashboard } from '@/components/OwnerDashboard';
+import OwnerDashboard from '@/components/OwnerDashboard';
 import HotelConfigurationPage from '@/components/owner/HotelConfigurationPage';
 import ReservationCalendar from '@/components/owner/reservations/ReservationCalendar';
 import RoomInventoryGrid from '@/components/owner/rooms/RoomInventoryGrid';

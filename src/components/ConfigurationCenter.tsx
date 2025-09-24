@@ -47,7 +47,10 @@ export function ConfigurationCenter() {
         <TabsContent value="branding" className="space-y-6">
           <BrandingIdentity
             config={configuration.branding}
-            onUpdate={(updates) => updateConfiguration('branding', updates)}
+            onUpdate={async (updates) => {
+              await updateConfiguration('branding', updates);
+              return true;
+            }}
             loading={loading}
           />
         </TabsContent>

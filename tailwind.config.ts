@@ -23,14 +23,15 @@ export default {
 				playfair: ['Playfair Display', 'serif'],
 				sans: ['Inter', 'system-ui', 'sans-serif'],
 				serif: ['Playfair Display', 'Georgia', 'serif'],
-				// Luxury Hotel Fonts
-				'giveny': ['Georgia', 'serif'], // Fallback as Giveny is premium
-				'didot': ['Didot', 'Times New Roman', 'serif'],
-				'bodoni': ['Bodoni Moda', 'Times New Roman', 'serif'],
-				'cormorant': ['Cormorant Garamond', 'Georgia', 'serif'],
-				'zabatana': ['Arial Black', 'Helvetica', 'sans-serif'], // Fallback as Zabatana is premium
-				'coldiac': ['Times New Roman', 'serif'], // Fallback as Coldiac is premium
-				'malligoe': ['Brush Script MT', 'cursive'], // Fallback as Malligoe is premium
+				// Luxury Hotel Fonts - Using high-quality Google Fonts alternatives
+				'giveny': ['Crimson Text', 'Georgia', 'serif'], // Elegant serif similar to Giveny
+				'didot': ['EB Garamond', 'Times New Roman', 'serif'], // High-fashion serif
+				'bodoni': ['Bodoni Moda', 'Times New Roman', 'serif'], // Classic Italian serif
+				'cormorant': ['Cormorant Garamond', 'Georgia', 'serif'], // Royal serif
+				'playfair': ['Playfair Display', 'Georgia', 'serif'], // Modern chic serif
+				'zabatana': ['Cinzel', 'Arial Black', 'sans-serif'], // Bold geometric display
+				'coldiac': ['Libre Baskerville', 'Times New Roman', 'serif'], // Luxury serif
+				'malligoe': ['Dancing Script', 'Brush Script MT', 'cursive'], // Script branding font
 			},
 			colors: {
 				border: 'hsl(var(--border))',

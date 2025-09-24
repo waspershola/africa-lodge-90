@@ -189,7 +189,7 @@ export const useConfiguration = () => {
           logo_url: tenant.logo_url,
           receipt_header_text: `Thank you for choosing ${tenant.hotel_name}`,
           receipt_footer_text: 'We hope to see you again soon!',
-          font_style: 'playfair' as const
+          font_style: ((tenant as any).font_style as HotelConfiguration['branding']['font_style']) || 'playfair'
         },
         documents: {
           default_receipt_template: (tenant.receipt_template as 'A4' | 'thermal_80mm' | 'thermal_58mm' | 'half_page') || 'A4',
@@ -297,6 +297,7 @@ export const useConfiguration = () => {
           };
           
           if (brandingUpdates.logo_url) tenantUpdates.logo_url = brandingUpdates.logo_url;
+          if (brandingUpdates.font_style) (tenantUpdates as any).font_style = brandingUpdates.font_style;
           break;
         case 'documents':
           const docUpdates = updates as Partial<HotelConfiguration['documents']>;

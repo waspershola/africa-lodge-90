@@ -12,6 +12,7 @@ import { useTenantInfo } from '@/hooks/useTenantInfo';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Upload, X, Crown, Sparkles } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface QRSettings {
   id?: string;
@@ -22,6 +23,7 @@ interface QRSettings {
   show_logo_on_qr: boolean;
   default_services: string[];
   front_desk_phone: string;
+  theme: string;
 }
 
 const AVAILABLE_SERVICES = [
@@ -32,6 +34,33 @@ const AVAILABLE_SERVICES = [
   'Digital Menu',
   'Events & Packages',
   'Feedback'
+];
+
+const THEME_OPTIONS = [
+  {
+    id: 'classic-luxury-gold',
+    name: 'Classic Luxury Gold',
+    description: 'Gold accents on dark background with serif fonts',
+    colors: { primary: '#D4AF37', background: '#1A1A1A', accent: '#F4F1EB' }
+  },
+  {
+    id: 'royal-white-gold',
+    name: 'Royal White & Gold',
+    description: 'White marble-like background with gold accents',
+    colors: { primary: '#D4AF37', background: '#FEFEFE', accent: '#F8F6F0' }
+  },
+  {
+    id: 'modern-minimal',
+    name: 'Modern Minimal',
+    description: 'Black background with silver accents and clean typography',
+    colors: { primary: '#C0C0C0', background: '#000000', accent: '#2A2A2A' }
+  },
+  {
+    id: 'tropical-elegance',
+    name: 'Tropical Elegance',
+    description: 'Gradient background with emerald and gold accents',
+    colors: { primary: '#50C878', background: '#0F4C3A', accent: '#D4AF37' }
+  }
 ];
 
 export default function QRSettings() {
@@ -47,7 +76,8 @@ export default function QRSettings() {
     primary_color: '#D4AF37',
     show_logo_on_qr: true,
     default_services: ['Wi-Fi', 'Room Service', 'Housekeeping'],
-    front_desk_phone: '+2347065937769'
+    front_desk_phone: '+2347065937769',
+    theme: 'classic-luxury-gold'
   });
   
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -85,7 +115,8 @@ export default function QRSettings() {
         primary_color: qrSettings?.primary_color || '#D4AF37',
         show_logo_on_qr: qrSettings?.show_logo_on_qr ?? true,
         default_services: qrSettings?.default_services || ['Wi-Fi', 'Room Service', 'Housekeeping'],
-        front_desk_phone: qrSettings?.front_desk_phone || '+2347065937769'
+        front_desk_phone: qrSettings?.front_desk_phone || '+2347065937769',
+        theme: qrSettings?.theme || 'classic-luxury-gold'
       }));
     }
   }, [tenantInfo, qrSettings]);
@@ -251,6 +282,65 @@ export default function QRSettings() {
 
       {/* Content */}
       <div className="max-w-4xl mx-auto p-6 space-y-8">
+        {/* Theme Selection */}
+        <Card className="shadow-xl border-amber-200/50 bg-white/90 backdrop-blur-sm">
+          <CardHeader className="pb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-purple-600 rounded-lg flex items-center justify-center">
+                <Crown className="h-5 w-5 text-white" />
+              </div>
+              <CardTitle className="text-xl font-serif text-amber-900">QR Portal Theme</CardTitle>
+            </div>
+            <p className="text-amber-700/70">Choose the visual theme for your guest QR portal</p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {THEME_OPTIONS.map((themeOption) => (
+                <div
+                  key={themeOption.id}
+                  onClick={() => setFormData(prev => ({ ...prev, theme: themeOption.id }))}
+                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
+                    formData.theme === themeOption.id 
+                      ? 'border-amber-400 bg-amber-50/50 shadow-lg' 
+                      : 'border-amber-200 bg-white hover:border-amber-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div 
+                      className="w-6 h-6 rounded-full border-2 border-white shadow-sm"
+                      style={{ backgroundColor: themeOption.colors.primary }}
+                    />
+                    <h4 className="font-medium text-amber-900">{themeOption.name}</h4>
+                    {formData.theme === themeOption.id && (
+                      <Badge className="ml-auto bg-amber-500 text-white">Selected</Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-amber-700/70">{themeOption.description}</p>
+                  
+                  {/* Mini color palette preview */}
+                  <div className="flex items-center gap-2 mt-3">
+                    <div 
+                      className="w-4 h-4 rounded border"
+                      style={{ backgroundColor: themeOption.colors.primary }}
+                      title="Primary"
+                    />
+                    <div 
+                      className="w-4 h-4 rounded border"
+                      style={{ backgroundColor: themeOption.colors.background }}
+                      title="Background"
+                    />
+                    <div 
+                      className="w-4 h-4 rounded border"
+                      style={{ backgroundColor: themeOption.colors.accent }}
+                      title="Accent"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Hotel Branding */}
         <Card className="shadow-xl border-amber-200/50 bg-white/90 backdrop-blur-sm">
           <CardHeader className="pb-6">

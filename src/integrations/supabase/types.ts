@@ -1789,6 +1789,7 @@ export type Database = {
           primary_color: string | null
           show_logo_on_qr: boolean | null
           tenant_id: string
+          theme: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1801,6 +1802,7 @@ export type Database = {
           primary_color?: string | null
           show_logo_on_qr?: boolean | null
           tenant_id: string
+          theme?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1813,6 +1815,7 @@ export type Database = {
           primary_color?: string | null
           show_logo_on_qr?: boolean | null
           tenant_id?: string
+          theme?: string | null
           updated_at?: string | null
         }
         Relationships: []

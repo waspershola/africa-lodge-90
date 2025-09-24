@@ -1,0 +1,143 @@
+/* QR Portal Theme Variables */
+
+/* Classic Luxury Gold Theme (Default) */
+.qr-theme-classic-luxury-gold {
+  --qr-primary: #D4AF37;
+  --qr-primary-foreground: #000000;
+  --qr-background: #1A1A1A;
+  --qr-foreground: #F4F1EB;
+  --qr-card: #2A2A2A;
+  --qr-card-foreground: #F4F1EB;
+  --qr-accent: #F4F1EB;
+  --qr-accent-foreground: #1A1A1A;
+  --qr-muted: #404040;
+  --qr-muted-foreground: #D4AF37;
+  --qr-border: #D4AF37;
+  --qr-shadow: 0 10px 30px -10px rgba(212, 175, 55, 0.3);
+  --qr-gradient: linear-gradient(135deg, #D4AF37, #F4F1EB);
+  --qr-font-heading: 'Playfair Display', serif;
+  --qr-font-body: 'Inter', sans-serif;
+}
+
+/* Royal White & Gold Theme */
+.qr-theme-royal-white-gold {
+  --qr-primary: #D4AF37;
+  --qr-primary-foreground: #000000;
+  --qr-background: #FEFEFE;
+  --qr-foreground: #2A2A2A;
+  --qr-card: #FFFFFF;
+  --qr-card-foreground: #2A2A2A;
+  --qr-accent: #F8F6F0;
+  --qr-accent-foreground: #2A2A2A;
+  --qr-muted: #F0F0F0;
+  --qr-muted-foreground: #666666;
+  --qr-border: #E0E0E0;
+  --qr-shadow: 0 10px 30px -10px rgba(212, 175, 55, 0.2);
+  --qr-gradient: linear-gradient(135deg, #FFFFFF, #F8F6F0);
+  --qr-font-heading: 'Playfair Display', serif;
+  --qr-font-body: 'Inter', sans-serif;
+}
+
+/* Modern Minimal Theme */
+.qr-theme-modern-minimal {
+  --qr-primary: #C0C0C0;
+  --qr-primary-foreground: #000000;
+  --qr-background: #000000;
+  --qr-foreground: #FFFFFF;
+  --qr-card: #1A1A1A;
+  --qr-card-foreground: #FFFFFF;
+  --qr-accent: #2A2A2A;
+  --qr-accent-foreground: #FFFFFF;
+  --qr-muted: #404040;
+  --qr-muted-foreground: #C0C0C0;
+  --qr-border: #C0C0C0;
+  --qr-shadow: 0 0 40px rgba(192, 192, 192, 0.4);
+  --qr-gradient: linear-gradient(135deg, #000000, #2A2A2A);
+  --qr-font-heading: 'Inter', sans-serif;
+  --qr-font-body: 'Inter', sans-serif;
+}
+
+/* Tropical Elegance Theme */
+.qr-theme-tropical-elegance {
+  --qr-primary: #50C878;
+  --qr-primary-foreground: #FFFFFF;
+  --qr-background: #0F4C3A;
+  --qr-foreground: #F0FFF0;
+  --qr-card: #1A5D4A;
+  --qr-card-foreground: #F0FFF0;
+  --qr-accent: #D4AF37;
+  --qr-accent-foreground: #000000;
+  --qr-muted: #2A6E5A;
+  --qr-muted-foreground: #50C878;
+  --qr-border: #50C878;
+  --qr-shadow: 0 10px 30px -10px rgba(80, 200, 120, 0.3);
+  --qr-gradient: linear-gradient(135deg, #50C878, #D4AF37);
+  --qr-font-heading: 'Playfair Display', serif;
+  --qr-font-body: 'Inter', sans-serif;
+}
+
+/* Base QR Portal Styling */
+.qr-portal {
+  background-color: var(--qr-background);
+  color: var(--qr-foreground);
+  min-height: 100vh;
+  font-family: var(--qr-font-body);
+}
+
+.qr-portal h1,
+.qr-portal h2,
+.qr-portal h3,
+.qr-portal h4,
+.qr-portal h5,
+.qr-portal h6 {
+  font-family: var(--qr-font-heading);
+}
+
+.qr-card {
+  background-color: var(--qr-card);
+  color: var(--qr-card-foreground);
+  border: 1px solid var(--qr-border);
+  box-shadow: var(--qr-shadow);
+}
+
+.qr-button-primary {
+  background: var(--qr-gradient);
+  color: var(--qr-primary-foreground);
+  border: 1px solid var(--qr-primary);
+}
+
+.qr-button-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+  box-shadow: var(--qr-shadow);
+}
+
+.qr-accent {
+  background-color: var(--qr-accent);
+  color: var(--qr-accent-foreground);
+}
+
+.qr-muted {
+  color: var(--qr-muted-foreground);
+}
+
+/* Service Card Styling */
+.qr-service-card {
+  background-color: var(--qr-card);
+  color: var(--qr-card-foreground);
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.qr-service-card:hover {
+  border-color: var(--qr-primary);
+  box-shadow: var(--qr-shadow);
+  transform: translateY(-4px);
+}
+
+/* Responsive Typography */
+@media (max-width: 768px) {
+  .qr-portal {
+    font-size: 14px;
+  }
+}

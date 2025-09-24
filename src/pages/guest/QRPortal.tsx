@@ -26,6 +26,7 @@ interface QRCodeInfo {
   tenant_id: string;
   hotel_logo?: string;
   front_desk_phone?: string;
+  theme?: string;
 }
 
 const serviceIcons = {
@@ -83,7 +84,7 @@ export default function QRPortal() {
         // Get QR settings for hotel branding
         const { data: qrSettings, error: settingsError } = await supabase
           .from('qr_settings')
-          .select('hotel_name, hotel_logo_url, primary_color, show_logo_on_qr, front_desk_phone')
+          .select('hotel_name, hotel_logo_url, primary_color, show_logo_on_qr, front_desk_phone, theme')
           .eq('tenant_id', qrData.tenant_id)
           .maybeSingle();
 
@@ -103,7 +104,8 @@ export default function QRPortal() {
           label: qrData.label,
           tenant_id: qrData.tenant_id,
           hotel_logo: qrSettings?.show_logo_on_qr ? qrSettings?.hotel_logo_url : undefined,
-          front_desk_phone: qrSettings?.front_desk_phone || '+2347065937769'
+          front_desk_phone: qrSettings?.front_desk_phone || '+2347065937769',
+          theme: qrSettings?.theme || 'classic-luxury-gold'
         } as QRCodeInfo;
       } catch (error) {
         console.error('QR lookup error:', error);
@@ -126,6 +128,12 @@ export default function QRPortal() {
   const callFrontDesk = () => {
     const phoneNumber = qrInfo?.front_desk_phone || '+2347065937769';
     window.location.href = `tel:${phoneNumber}`;
+  };
+
+  // Get theme class name
+  const getThemeClassName = (theme?: string) => {
+    const themeClass = `qr-theme-${theme || 'classic-luxury-gold'}`;
+    return themeClass;
   };
 
   // Loading state
@@ -265,12 +273,12 @@ export default function QRPortal() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-amber-100 to-amber-200">
+    <div className={`qr-portal ${getThemeClassName(qrInfo?.theme)}`}>
       {/* Luxury Header */}
-      <div className="bg-gradient-to-r from-amber-900 via-amber-800 to-amber-900 shadow-2xl">
+      <div className="qr-card shadow-2xl">
         <div className="max-w-2xl mx-auto px-6 py-12">
           <div className="text-center">
-            <div className="w-24 h-24 mx-auto mb-6 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm border-2 border-amber-600/30 shadow-2xl">
+            <div className="w-24 h-24 mx-auto mb-6 qr-accent rounded-full flex items-center justify-center backdrop-blur-sm border-2 border-opacity-30 shadow-2xl">
               {qrInfo.hotel_logo ? (
                 <img 
                   src={qrInfo.hotel_logo} 
@@ -278,13 +286,13 @@ export default function QRPortal() {
                   className="w-full h-full object-contain rounded-full"
                 />
               ) : (
-                <Crown className="h-12 w-12 text-amber-200" />
+                <Crown className="h-12 w-12" />
               )}
             </div>
-            <h1 className="text-4xl font-serif text-white mb-3 tracking-wide">
+            <h1 className="text-4xl font-serif mb-3 tracking-wide">
               {qrInfo.hotel_name}
             </h1>
-            <div className="flex items-center justify-center gap-3 text-amber-200/90 mb-2">
+            <div className="flex items-center justify-center gap-3 qr-muted mb-2">
               <Sparkles className="h-5 w-5" />
               {qrInfo.room_number ? (
                 <>
@@ -299,7 +307,7 @@ export default function QRPortal() {
               )}
               <Sparkles className="h-5 w-5" />
             </div>
-            <p className="text-amber-100/80 text-lg font-light">
+            <p className="qr-muted opacity-80 text-lg font-light">
               Luxury Guest Services
             </p>
           </div>
@@ -309,68 +317,66 @@ export default function QRPortal() {
       {/* Content */}
       <div className="max-w-2xl mx-auto p-6 space-y-8">
         {/* Welcome Card */}
-        <Card className="shadow-2xl border-amber-200/50 bg-white/90 backdrop-blur-sm">
-          <CardContent className="p-8 text-center">
+        <div className="qr-card shadow-2xl backdrop-blur-sm">
+          <div className="p-8 text-center">
             <div className="flex items-center justify-center gap-2 mb-4">
-              <Crown className="h-6 w-6 text-amber-600" />
-              <h2 className="text-2xl font-serif text-amber-900">Welcome</h2>
-              <Crown className="h-6 w-6 text-amber-600" />
+              <Crown className="h-6 w-6" />
+              <h2 className="text-2xl font-serif">Welcome</h2>
+              <Crown className="h-6 w-6" />
             </div>
-            <p className="text-amber-700/70 text-lg leading-relaxed">
+            <p className="qr-muted text-lg leading-relaxed">
               Experience our exclusive guest services designed for your comfort and convenience. 
               Our dedicated staff is ready to assist you.
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Service Grid */}
         <div className="space-y-4">
           <div className="text-center mb-6">
-            <h3 className="text-2xl font-serif text-amber-900 mb-2">Guest Services</h3>
-            <div className="w-24 h-1 bg-gradient-to-r from-amber-400 to-amber-600 mx-auto rounded-full"></div>
+            <h3 className="text-2xl font-serif mb-2">Guest Services</h3>
+            <div className="w-24 h-1 qr-button-primary mx-auto rounded-full"></div>
           </div>
           
           {qrInfo.services.length === 0 ? (
-            <Card className="shadow-xl border-amber-200/50 bg-white/90 backdrop-blur-sm">
-              <CardContent className="p-8 text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-amber-400/20 to-amber-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Star className="h-8 w-8 text-amber-600/50" />
+            <div className="qr-card shadow-xl backdrop-blur-sm">
+              <div className="p-8 text-center">
+                <div className="w-16 h-16 qr-accent rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Star className="h-8 w-8 opacity-50" />
                 </div>
-                <p className="text-amber-700/70 text-lg">
+                <p className="qr-muted text-lg">
                   No services are currently available for this location.
                 </p>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ) : (
             <div className="grid gap-4">
               {qrInfo.services.map((service) => (
                 <button
                   key={service}
                   onClick={() => selectService(service)}
-                  className="w-full text-left focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 rounded-xl"
+                  className="w-full text-left focus:outline-none focus:ring-2 focus:ring-offset-2 rounded-xl"
                 >
-                  <Card className="group cursor-pointer shadow-lg hover:shadow-2xl border-amber-200/50 bg-white/90 backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] hover:bg-white/95 active:scale-[0.98]">
-                    <CardContent className="p-6 sm:p-8 min-h-[120px] flex items-center">
-                      <div className="flex items-center gap-4 w-full">
-                        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-amber-400/20 to-amber-600/20 rounded-xl flex items-center justify-center group-hover:from-amber-400/30 group-hover:to-amber-600/30 transition-all duration-300 group-hover:scale-110 flex-shrink-0">
-                          <div className="text-amber-700 group-hover:text-amber-800 transition-colors duration-300">
-                            {serviceIcons[service as keyof typeof serviceIcons] || <Star className="h-6 w-6 sm:h-8 sm:w-8" />}
-                          </div>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-xl sm:text-2xl font-serif text-amber-900 group-hover:text-amber-800 transition-colors duration-300 mb-2 leading-tight">
-                            {service}
-                          </h4>
-                          <p className="text-amber-700/70 group-hover:text-amber-700/90 transition-colors duration-300 text-sm sm:text-base leading-relaxed">
-                            {serviceDescriptions[service as keyof typeof serviceDescriptions]}
-                          </p>
-                        </div>
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110 flex-shrink-0">
-                          <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5 text-white transform rotate-180" />
+                  <div className="qr-service-card shadow-lg transition-all duration-300 min-h-[120px] flex items-center">
+                    <div className="p-6 sm:p-8 flex items-center gap-4 w-full">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 qr-accent rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 flex-shrink-0">
+                        <div className="transition-colors duration-300">
+                          {serviceIcons[service as keyof typeof serviceIcons] || <Star className="h-6 w-6 sm:h-8 sm:w-8" />}
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-xl sm:text-2xl font-serif transition-colors duration-300 mb-2 leading-tight">
+                          {service}
+                        </h4>
+                        <p className="qr-muted transition-colors duration-300 text-sm sm:text-base leading-relaxed">
+                          {serviceDescriptions[service as keyof typeof serviceDescriptions]}
+                        </p>
+                      </div>
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 qr-button-primary rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110 flex-shrink-0">
+                        <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5 transform rotate-180" />
+                      </div>
+                    </div>
+                  </div>
                 </button>
               ))}
             </div>
@@ -378,35 +384,34 @@ export default function QRPortal() {
         </div>
 
         {/* Direct Contact */}
-        <Card className="shadow-xl border-amber-200/50 bg-gradient-to-br from-amber-800 to-amber-900 text-white">
-          <CardContent className="p-6">
+        <div className="qr-card shadow-xl">
+          <div className="p-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm border border-amber-600/30">
-                <Phone className="h-6 w-6 text-amber-200" />
+              <div className="w-12 h-12 qr-accent rounded-full flex items-center justify-center backdrop-blur-sm border border-opacity-30">
+                <Phone className="h-6 w-6" />
               </div>
               <div className="flex-1">
                 <h4 className="text-lg font-serif mb-1">Need Immediate Assistance?</h4>
-                <p className="text-amber-100/80">Connect directly with our front desk</p>
+                <p className="qr-muted">Connect directly with our front desk</p>
               </div>
               <Button 
                 onClick={callFrontDesk}
-                variant="secondary"
-                className="bg-white/10 hover:bg-white/20 text-white border-amber-600/30 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 rounded-full px-6"
+                className="qr-button-primary backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 rounded-full px-6"
               >
                 <Phone className="h-4 w-4 mr-2" />
                 Call Now
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Footer */}
         <div className="text-center py-6 space-y-3">
-          <div className="flex items-center justify-center gap-2 text-amber-700/60">
+          <div className="flex items-center justify-center gap-2 qr-muted">
             <Clock className="h-4 w-4" />
             <span className="text-sm font-medium">Available 24/7</span>
           </div>
-          <p className="text-sm text-amber-600/50 font-light">
+          <p className="qr-muted text-xs">
             Powered by luxuryhotelpro.com
           </p>
         </div>

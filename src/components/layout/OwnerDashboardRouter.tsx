@@ -1,7 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import OwnerDashboard from '@/components/OwnerDashboard';
 import HotelConfigurationPage from '@/components/owner/HotelConfigurationPage';
-import ReservationsPage from '@/pages/owner/Reservations';
+import ReservationCalendar from '@/components/owner/reservations/ReservationCalendar';
 import RoomInventoryGrid from '@/components/owner/rooms/RoomInventoryGrid';
 import GuestDirectory from '@/components/owner/guests/GuestDirectory';
 import { QRCodeManager } from '@/components/frontdesk/QRCodeManager';
@@ -30,7 +30,7 @@ export function OwnerDashboardRouter() {
       <Routes>
         <Route path="/" element={<OwnerDashboard />} />
         <Route path="/configuration" element={<HotelConfigurationPage />} />
-        <Route path="/reservations" element={<ReservationsPage />} />
+        <Route path="/reservations" element={<ReservationCalendar searchTerm="" statusFilter="all" onReservationSelect={() => {}} />} />
         <Route path="/rooms" element={<RoomInventoryGrid />} />
         <Route path="/guests" element={<GuestDirectory onGuestSelect={() => {}} onNewGuest={() => {}} />} />
         <Route path="/qr-manager" element={<QRCodeManager />} />

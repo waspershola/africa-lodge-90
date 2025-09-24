@@ -93,7 +93,7 @@ const staffRoles = [
 
 export function StaffManagementDashboard() {
   const { tenant, user } = useAuth();
-  const { users: staffMembers, loading: usersLoading, deactivateUser, refresh: refreshUsers } = useUsers();
+  const { users: staffMembers, loading: usersLoading, deactivateUser } = useUsers();
   const { resetUserPassword } = useStaffInvites();
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -238,16 +238,8 @@ export function StaffManagementDashboard() {
             Export Staff
           </Button>
           <Button 
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              console.log('🔥 BUTTON CLICKED - Invite Staff button clicked!');
-              alert('Button clicked!'); // Temporary visual confirmation
-              setInviteDialogOpen(true);
-              console.log('🔥 Dialog state set to true, inviteDialogOpen should be:', true);
-            }}
+            onClick={() => setInviteDialogOpen(true)}
             className="bg-gradient-primary"
-            type="button"
           >
             <UserPlus className="h-4 w-4 mr-2" />
             Invite Staff
@@ -337,13 +329,7 @@ export function StaffManagementDashboard() {
                       : "No staff members match your search criteria"
                     }
                   </p>
-                  <Button onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('🔥 EMPTY STATE - Invite Staff Member button clicked!');
-                    alert('Empty state button clicked!'); // Temporary visual confirmation
-                    setInviteDialogOpen(true);
-                  }} className="bg-gradient-primary" type="button">
+                  <Button onClick={() => setInviteDialogOpen(true)} className="bg-gradient-primary">
                     <UserPlus className="h-4 w-4 mr-2" />
                     Invite Staff Member
                   </Button>
@@ -492,19 +478,10 @@ export function StaffManagementDashboard() {
       {/* Dialogs */}
       <EnhancedStaffInvitationDialog
         open={inviteDialogOpen}
-        onOpenChange={(open) => {
-          console.log('🔥 DIALOG STATE CHANGE - EnhancedStaffInvitationDialog open state changed to:', open);
-          if (open) {
-            alert('Dialog should be opening now!'); // Temporary visual confirmation
-          }
-          setInviteDialogOpen(open);
-        }}
+        onOpenChange={setInviteDialogOpen}
         onSuccess={() => {
-          console.log('🔥 SUCCESS - Staff invitation successful, refreshing staff list...');
-          alert('Staff invitation was successful!'); // Temporary visual confirmation
-          // Refresh users list instead of full page reload
-          refreshUsers();
-          toast.success('Staff member invited successfully!');
+          // Force refresh by reloading the component
+          window.location.reload();
         }}
       />
 
@@ -523,10 +500,8 @@ export function StaffManagementDashboard() {
         open={bulkImportDialogOpen}
         onOpenChange={setBulkImportDialogOpen}
         onSuccess={() => {
-          console.log('📋 Bulk import successful, refreshing staff list...');
-          // Refresh users list instead of full page reload
-          refreshUsers();
-          toast.success('Staff bulk import completed successfully!');
+          // Force refresh by reloading the component
+          window.location.reload();
         }}
       />
 

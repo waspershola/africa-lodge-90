@@ -9,13 +9,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, User, Phone, Mail } from 'lucide-react';
 import { format } from 'date-fns';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useRooms } from '@/hooks/useRooms';
-import { useAvailabilityEngine } from '@/hooks/useAvailabilityEngine';
-import { useRatePlans } from '@/hooks/useRatePlans';
-import { useCorporateAccounts } from '@/hooks/useCorporateAccounts';
-import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 
 interface NewReservationDialogProps {
   open: boolean;
@@ -40,61 +35,20 @@ export default function NewReservationDialog({
     checkOut: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
     adults: 1,
     children: 0,
-    roomId: '',
+    roomType: '',
     specialRequests: '',
     source: 'direct'
   });
 
   const { createReservation, rooms } = useRooms();
   const { toast } = useToast();
-  const { getAvailability, calculatePricePreview } = useAvailabilityEngine();
-  const { ratePlans } = useRatePlans();
-  const { accounts: corporateAccounts } = useCorporateAccounts();
-  const { tenant } = useAuth();
-  
-  const [availableRooms, setAvailableRooms] = useState([]);
-  const [pricePreview, setPricePreview] = useState(null);
-  const [selectedCorporateAccount, setSelectedCorporateAccount] = useState('');
 
-  // Fetch available rooms when dates change
-  const fetchAvailableRooms = async () => {
-    if (formData.checkIn && formData.checkOut) {
-      try {
-        const checkInDate = formData.checkIn.toISOString().split('T')[0];
-        const checkOutDate = formData.checkOut.toISOString().split('T')[0];
-        const available = await getAvailability(checkInDate, checkOutDate);
-        setAvailableRooms(available);
-      } catch (error) {
-        console.error('Error fetching available rooms:', error);
-        setAvailableRooms([]);
-      }
-    }
-  };
-
-  // Calculate price preview when room is selected
-  const calculatePrice = async () => {
-    if (formData.roomId && formData.checkIn && formData.checkOut) {
-      try {
-        const checkInDate = formData.checkIn.toISOString().split('T')[0];
-        const checkOutDate = formData.checkOut.toISOString().split('T')[0];
-        const preview = await calculatePricePreview(formData.roomId, checkInDate, checkOutDate);
-        setPricePreview(preview);
-      } catch (error) {
-        console.error('Error calculating price:', error);
-        setPricePreview(null);
-      }
-    }
-  };
-
-  // Effect to fetch rooms when dates change
-  React.useEffect(() => {
-    fetchAvailableRooms();
-  }, [formData.checkIn, formData.checkOut]);
-
-  // Effect to calculate price when room is selected
-  React.useEffect(() => {
-    calculatePrice();
-  }, [formData.roomId, formData.checkIn, formData.checkOut]);
+  const roomTypes = [
+    { value: 'standard', label: 'Standard Room', price: 85000 },
+    { value: 'deluxe', label: 'Deluxe King', price: 125000 },
+    { value: 'suite', label: 'Family Suite', price: 185000 },
+    { value: 'presidential', label: 'Presidential Suite', price: 350000 }
+  ];
 
   const calculateNights = () => {
     const diffTime = Math.abs(formData.checkOut.getTime() - formData.checkIn.getTime());
@@ -113,48 +67,40 @@ export default function NewReservationDialog({
       return;
     }
 
-    if (!formData.roomId) {
-      toast({
-        title: "Validation Error",
-        description: "Please select a room",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsLoading(true);
 
     try {
-      // Use the atomic reservation creation edge function
-      const { data, error } = await supabase.functions.invoke('create-reservation-atomic', {
-        body: {
-          guest_data: {
-            first_name: formData.guestName.split(' ')[0],
-            last_name: formData.guestName.split(' ').slice(1).join(' ') || formData.guestName.split(' ')[0],
-            email: formData.email,
-            phone: formData.phone,
-            guest_id_number: formData.idNumber
-          },
-          reservation_data: {
-            room_id: formData.roomId,
-            check_in_date: formData.checkIn.toISOString().split('T')[0],
-            check_out_date: formData.checkOut.toISOString().split('T')[0],
-            adults: formData.adults,
-            children: formData.children,
-            room_rate: pricePreview?.final_rate || 0,
-            total_amount: pricePreview?.total || 0,
-            special_requests: formData.specialRequests,
-            corporate_account_id: selectedCorporateAccount || undefined
-          },
-          tenant_id: tenant?.tenant_id || '' // Get from auth context
-        }
-      });
+      const nights = calculateNights();
+      const roomTypeData = roomTypes.find(r => r.value === formData.roomType);
+      
+      // Find an available room of the selected type or use first available room
+      const availableRoom = rooms?.find(room => 
+        room.status === 'available' && 
+        room.room_type?.name.toLowerCase().includes(formData.roomType)
+      ) || rooms?.find(room => room.status === 'available');
 
-      if (error) throw error;
-
-      if (!data?.success) {
-        throw new Error(data?.error || 'Failed to create reservation');
+      if (!availableRoom) {
+        toast({
+          title: "No Rooms Available",
+          description: "No rooms are available for the selected dates",
+          variant: "destructive",
+        });
+        return;
       }
+
+      await createReservation({
+        guest_name: formData.guestName,
+        guest_email: formData.email,
+        guest_phone: formData.phone,
+        guest_id_number: formData.idNumber,
+        check_in_date: formData.checkIn.toISOString().split('T')[0],
+        check_out_date: formData.checkOut.toISOString().split('T')[0],
+        room_id: availableRoom.id,
+        adults: formData.adults,
+        children: formData.children,
+        room_rate: roomTypeData?.price || 85000,
+        status: 'confirmed' as const
+      });
       
       toast({
         title: "Success",
@@ -171,7 +117,7 @@ export default function NewReservationDialog({
         checkOut: new Date(Date.now() + 24 * 60 * 60 * 1000),
         adults: 1,
         children: 0,
-        roomId: '',
+        roomType: '',
         specialRequests: '',
         source: 'direct'
       });
@@ -323,45 +269,22 @@ export default function NewReservationDialog({
             </div>
           </div>
 
-          {/* Available Rooms */}
+          {/* Room Selection */}
           <div className="space-y-2">
-            <Label htmlFor="roomId">Available Rooms</Label>
-            <Select value={formData.roomId} onValueChange={(value) => setFormData({ ...formData, roomId: value })}>
+            <Label htmlFor="roomType">Room Type</Label>
+            <Select value={formData.roomType} onValueChange={(value) => setFormData({ ...formData, roomType: value })}>
               <SelectTrigger>
-                <SelectValue placeholder="Select an available room" />
+                <SelectValue placeholder="Select room type" />
               </SelectTrigger>
               <SelectContent>
-                {availableRooms.map(room => (
-                  <SelectItem key={room.room_id} value={room.room_id}>
-                    Room {room.room_number} - {room.room_type_name} - ₦{room.available_rate.toLocaleString()}/night
+                {roomTypes.map(room => (
+                  <SelectItem key={room.value} value={room.value}>
+                    {room.label} - ₦{room.price.toLocaleString()}/night
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            {availableRooms.length === 0 && formData.checkIn && formData.checkOut && (
-              <p className="text-sm text-muted-foreground">No rooms available for selected dates</p>
-            )}
           </div>
-
-          {/* Corporate Account Selection */}
-          {corporateAccounts.length > 0 && (
-            <div className="space-y-2">
-              <Label htmlFor="corporateAccount">Corporate Account (Optional)</Label>
-              <Select value={selectedCorporateAccount} onValueChange={setSelectedCorporateAccount}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select corporate account for discount" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">No corporate account</SelectItem>
-                  {corporateAccounts.map(account => (
-                    <SelectItem key={account.id} value={account.id}>
-                      {account.company_name} ({account.discount_rate}% discount)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
 
           {/* Special Requests */}
           <div className="space-y-2">
@@ -392,26 +315,16 @@ export default function NewReservationDialog({
           </div>
 
           {/* Summary */}
-          {pricePreview && formData.guestName && (
+          {formData.checkIn && formData.checkOut && formData.roomType && (
             <div className="p-4 bg-muted rounded-lg">
               <h4 className="font-semibold mb-2">Reservation Summary</h4>
               <div className="space-y-1 text-sm">
                 <div>Guest: {formData.guestName}</div>
-                <div>Room: {pricePreview.room_number}</div>
                 <div>Dates: {format(formData.checkIn, "PPP")} - {format(formData.checkOut, "PPP")}</div>
-                <div>Duration: {pricePreview.nights} nights</div>
+                <div>Duration: {calculateNights()} nights</div>
                 <div>Guests: {formData.adults} adults{formData.children > 0 && `, ${formData.children} children`}</div>
-                <div>Base Rate: ₦{pricePreview.base_rate.toLocaleString()}/night</div>
-                <div>Applied Rate: ₦{pricePreview.final_rate.toLocaleString()}/night</div>
-                {selectedCorporateAccount && (
-                  <div className="text-green-600">
-                    Corporate Discount: {corporateAccounts.find(acc => acc.id === selectedCorporateAccount)?.discount_rate}%
-                  </div>
-                )}
-                <div>Subtotal: ₦{pricePreview.subtotal.toLocaleString()}</div>
-                <div>Taxes: ₦{pricePreview.taxes.toLocaleString()}</div>
                 <div className="font-semibold">
-                  Total: ₦{pricePreview.total.toLocaleString()}
+                  Total: ₦{(calculateNights() * (roomTypes.find(r => r.value === formData.roomType)?.price || 0)).toLocaleString()}
                 </div>
               </div>
             </div>

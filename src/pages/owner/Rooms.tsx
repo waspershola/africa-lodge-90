@@ -5,8 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Plus, BedDouble, DollarSign, Calendar, TrendingUp, Settings } from "lucide-react";
 import RoomCategoryManager from "@/components/owner/rooms/RoomCategoryManager";
-import { RatePlanManager } from "@/components/rates/RatePlanManager";
-import LiveDynamicPricingControls from "@/components/owner/rooms/LiveDynamicPricingControls";
+import RatePlanManager from "@/components/owner/rooms/RatePlanManager";
+import DynamicPricingControls from "@/components/owner/rooms/DynamicPricingControls";
 import RoomInventoryGrid from "@/components/owner/rooms/RoomInventoryGrid";
 import CurrencyTaxSettings from "@/components/owner/financials/CurrencyTaxSettings";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -123,7 +123,7 @@ export default function Rooms() {
         </TabsContent>
 
         <TabsContent value="pricing">
-          <LiveDynamicPricingControls />
+          <DynamicPricingControls />
         </TabsContent>
 
         <TabsContent value="settings">

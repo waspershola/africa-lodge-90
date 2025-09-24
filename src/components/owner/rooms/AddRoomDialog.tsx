@@ -26,7 +26,7 @@ interface Room {
   number: string;
   category: string;
   floor: number;
-  status: "available" | "occupied" | "dirty" | "maintenance" | "out_of_order";
+  status: "available" | "occupied" | "maintenance" | "cleaning" | "out-of-order";
   baseRate: number;
   currentRate: number;
   amenities: string[];

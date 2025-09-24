@@ -21,14 +21,66 @@ import {
   Bath,
   Wind
 } from "lucide-react";
-import { Room, useRooms } from "@/hooks/useRooms";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
+import { usePricingPlans } from "@/hooks/usePricingPlans";
+import { useRoomLimits } from "@/hooks/useRoomLimits";
+import { useMultiTenantAuth } from "@/hooks/useMultiTenantAuth";
 import RoomDetailDrawer from "./RoomDetailDrawer";
 import BulkEditModal from "./BulkEditModal";
 import { AddRoomDialog } from "./AddRoomDialog";
 
+interface Room {
+  id: string;
+  number: string;
+  category: string;
+  floor: number;
+  status: "available" | "occupied" | "maintenance" | "cleaning" | "out-of-order";
+  baseRate: number;
+  currentRate: number;
+  amenities: string[];
+  lastCleaned: string;
+  nextMaintenance: string;
+  description?: string;
+}
 
+const mockRooms: Room[] = [
+  {
+    id: "1",
+    number: "101",
+    category: "Standard",
+    floor: 1,
+    status: "available",
+    baseRate: 120,
+    currentRate: 135,
+    amenities: ["wifi", "tv", "ac"],
+    lastCleaned: "2024-01-22T10:00:00",
+    nextMaintenance: "2024-02-15",
+  },
+  {
+    id: "2",
+    number: "102",
+    category: "Deluxe",
+    floor: 1,
+    status: "occupied",
+    baseRate: 180,
+    currentRate: 195,
+    amenities: ["wifi", "tv", "ac", "minibar", "balcony"],
+    lastCleaned: "2024-01-21T14:00:00",
+    nextMaintenance: "2024-02-20",
+  },
+  {
+    id: "3",
+    number: "201",
+    category: "Suite",
+    floor: 2,
+    status: "maintenance",
+    baseRate: 320,
+    currentRate: 320,
+    amenities: ["wifi", "tv", "ac", "minibar", "balcony", "jacuzzi"],
+    lastCleaned: "2024-01-20T09:00:00",
+    nextMaintenance: "2024-01-23",
+  },
+];
 
 const amenityIcons = {
   wifi: Wifi,
@@ -44,41 +96,42 @@ const statusColors = {
   available: "bg-green-500",
   occupied: "bg-blue-500",
   maintenance: "bg-yellow-500",
-  dirty: "bg-orange-500",
-  out_of_order: "bg-red-500",
+  cleaning: "bg-orange-500",
+  "out-of-order": "bg-red-500",
 };
 
 const statusLabels = {
   available: "Available",
   occupied: "Occupied",
   maintenance: "Maintenance",
-  dirty: "Dirty",
-  out_of_order: "Out of Order",
+  cleaning: "Cleaning",
+  "out-of-order": "Out of Order",
 };
 
 export default function RoomInventoryGrid() {
+  const [rooms, setRooms] = useState<Room[]>(mockRooms);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
-  const [selectedRoom, setSelectedRoom] = useState<any | null>(null);
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const { formatPrice } = useCurrency();
-  const { user, tenant } = useAuth();
-  const { rooms = [], roomTypes = [] } = useRooms();
+  const { user, tenant } = useMultiTenantAuth();
+  const roomLimits = useRoomLimits(tenant?.plan_id || '');
   
   const currentRoomCount = rooms.length;
 
   const filteredRooms = rooms.filter(room => {
-    const matchesSearch = room.room_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (room.room_type?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = room.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         room.category.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === "all" || room.status === filterStatus;
-    const matchesCategory = filterCategory === "all" || (room.room_type?.name || '') === filterCategory;
+    const matchesCategory = filterCategory === "all" || room.category === filterCategory;
     
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
-  const categories = [...new Set(rooms.map(room => room.room_type?.name).filter(Boolean))];
+  const categories = [...new Set(rooms.map(room => room.category))];
 
   const handleEditRoom = (room: Room) => {
     setSelectedRoom(room);
@@ -86,19 +139,42 @@ export default function RoomInventoryGrid() {
   };
 
   const handleAddRoom = () => {
+    if (!roomLimits.canAddRoom(currentRoomCount)) {
+      alert(`Room limit exceeded. Your plan allows a maximum of ${roomLimits.maxRooms} rooms.`);
+      return;
+    }
     setIsAddDialogOpen(true);
   };
 
   const handleSaveNewRoom = (newRoomData: Partial<Room>) => {
-    // This would typically call an API to create the room
-    console.log('Creating new room:', newRoomData);
+    if (!roomLimits.canAddRoom(currentRoomCount)) {
+      alert(`Cannot add room. Room limit (${roomLimits.maxRooms}) reached.`);
+      return;
+    }
+    
+    const newRoom: Room = {
+      id: Date.now().toString(),
+      number: newRoomData.number || '',
+      category: newRoomData.category || 'Standard',
+      floor: newRoomData.floor || 1,
+      status: 'available',
+      baseRate: newRoomData.baseRate || 120,
+      currentRate: newRoomData.currentRate || newRoomData.baseRate || 120,
+      amenities: newRoomData.amenities || ['wifi', 'tv', 'ac'],
+      lastCleaned: new Date().toISOString(),
+      nextMaintenance: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      description: newRoomData.description || ''
+    };
+    
+    setRooms([...rooms, newRoom]);
     setIsAddDialogOpen(false);
   };
 
   const handleSaveRoom = () => {
     if (selectedRoom) {
-      // This would typically call an API to update the room
-      console.log('Updating room:', selectedRoom);
+      setRooms(rooms.map(room => 
+        room.id === selectedRoom.id ? selectedRoom : room
+      ));
       setIsEditDialogOpen(false);
       setSelectedRoom(null);
     }
@@ -116,10 +192,11 @@ export default function RoomInventoryGrid() {
             </CardTitle>
             <div className="flex items-center gap-2">
               <Badge variant="outline">
-                {currentRoomCount} rooms
+                {currentRoomCount} / {roomLimits.maxRooms === 9999 ? '∞' : roomLimits.maxRooms} rooms
               </Badge>
               <Button 
                 onClick={handleAddRoom}
+                disabled={!roomLimits.canAddRoom(currentRoomCount)}
                 size="sm"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -151,11 +228,11 @@ export default function RoomInventoryGrid() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="available">Available</SelectItem>
-                    <SelectItem value="occupied">Occupied</SelectItem>
-                    <SelectItem value="maintenance">Maintenance</SelectItem>
-                    <SelectItem value="dirty">Dirty</SelectItem>
-                    <SelectItem value="out_of_order">Out of Order</SelectItem>
+                  <SelectItem value="available">Available</SelectItem>
+                  <SelectItem value="occupied">Occupied</SelectItem>
+                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                  <SelectItem value="cleaning">Cleaning</SelectItem>
+                  <SelectItem value="out-of-order">Out of Order</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -184,35 +261,35 @@ export default function RoomInventoryGrid() {
           <Card key={room.id} className="relative group">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">Room {room.room_number}</CardTitle>
+                <CardTitle className="text-lg">Room {room.number}</CardTitle>
                 <div className="flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${statusColors[room.status] || 'bg-gray-500'}`} />
+                  <div className={`w-3 h-3 rounded-full ${statusColors[room.status]}`} />
                   <Badge variant="outline" className="text-xs">
-                    {statusLabels[room.status] || room.status}
+                    {statusLabels[room.status]}
                   </Badge>
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{room.room_type?.name || 'Unknown'}</span>
-                <span className="text-sm font-medium">Floor {room.floor || 1}</span>
+                <span className="text-sm text-muted-foreground">{room.category}</span>
+                <span className="text-sm font-medium">Floor {room.floor}</span>
               </div>
             </CardHeader>
             
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Base Rate</span>
-                <span className="font-medium">{formatPrice(room.room_type?.base_rate || 0)}</span>
+                <span className="font-medium">{formatPrice(room.baseRate)}</span>
               </div>
               
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Max Occupancy</span>
-                <span className="font-bold text-lg">{room.room_type?.max_occupancy || 2} guests</span>
+                <span className="text-sm text-muted-foreground">Current Rate</span>
+                <span className="font-bold text-lg">{formatPrice(room.currentRate)}</span>
               </div>
 
               <div className="space-y-2">
                 <span className="text-sm text-muted-foreground">Amenities</span>
                 <div className="flex flex-wrap gap-1">
-                  {(room.room_type?.amenities || []).map((amenity) => {
+                  {room.amenities.map((amenity) => {
                     const Icon = amenityIcons[amenity as keyof typeof amenityIcons];
                     return Icon ? (
                       <div
@@ -256,7 +333,7 @@ export default function RoomInventoryGrid() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Room {selectedRoom?.room_number}</DialogTitle>
+            <DialogTitle>Edit Room {selectedRoom?.number}</DialogTitle>
           </DialogHeader>
           
           {selectedRoom && (
@@ -265,10 +342,10 @@ export default function RoomInventoryGrid() {
                 <div className="space-y-2">
                   <Label>Room Number</Label>
                   <Input
-                    value={selectedRoom.room_number}
+                    value={selectedRoom.number}
                     onChange={(e) => setSelectedRoom({
                       ...selectedRoom,
-                      room_number: e.target.value
+                      number: e.target.value
                     })}
                   />
                 </div>
@@ -289,19 +366,20 @@ export default function RoomInventoryGrid() {
               <div className="space-y-2">
                 <Label>Category</Label>
                 <Select
-                  value={selectedRoom.room_type_id || ''}
+                  value={selectedRoom.category}
                   onValueChange={(value) => setSelectedRoom({
                     ...selectedRoom,
-                    room_type_id: value
+                    category: value
                   })}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {roomTypes.map(type => (
-                      <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
-                    ))}
+                    <SelectItem value="Standard">Standard</SelectItem>
+                    <SelectItem value="Deluxe">Deluxe</SelectItem>
+                    <SelectItem value="Suite">Suite</SelectItem>
+                    <SelectItem value="Presidential">Presidential</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -310,7 +388,7 @@ export default function RoomInventoryGrid() {
                 <Label>Status</Label>
                 <Select
                   value={selectedRoom.status}
-                  onValueChange={(value) => setSelectedRoom({
+                  onValueChange={(value: Room['status']) => setSelectedRoom({
                     ...selectedRoom,
                     status: value
                   })}
@@ -322,24 +400,49 @@ export default function RoomInventoryGrid() {
                     <SelectItem value="available">Available</SelectItem>
                     <SelectItem value="occupied">Occupied</SelectItem>
                     <SelectItem value="maintenance">Maintenance</SelectItem>
-                    <SelectItem value="dirty">Dirty</SelectItem>
-                    <SelectItem value="out_of_order">Out of Order</SelectItem>
+                    <SelectItem value="cleaning">Cleaning</SelectItem>
+                    <SelectItem value="out-of-order">Out of Order</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Base Rate</Label>
+                  <Input
+                    type="number"
+                    value={selectedRoom.baseRate}
+                    onChange={(e) => setSelectedRoom({
+                      ...selectedRoom,
+                      baseRate: parseFloat(e.target.value) || 0
+                    })}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Current Rate</Label>
+                  <Input
+                    type="number"
+                    value={selectedRoom.currentRate}
+                    onChange={(e) => setSelectedRoom({
+                      ...selectedRoom,
+                      currentRate: parseFloat(e.target.value) || 0
+                    })}
+                  />
+                </div>
+              </div>
+
               <div className="space-y-2">
-                <Label>Notes</Label>
+                <Label>Description</Label>
                 <Textarea
-                  placeholder="Room notes..."
-                  value={selectedRoom.notes || ""}
+                  placeholder="Room description..."
+                  value={selectedRoom.description || ""}
                   onChange={(e) => setSelectedRoom({
                     ...selectedRoom,
-                    notes: e.target.value
+                    description: e.target.value
                   })}
                 />
               </div>
-
 
               <div className="flex gap-3 pt-4">
                 <Button onClick={handleSaveRoom} className="flex-1">
@@ -361,10 +464,7 @@ export default function RoomInventoryGrid() {
       <AddRoomDialog
         isOpen={isAddDialogOpen}
         onClose={() => setIsAddDialogOpen(false)}
-                onSave={(roomData: Partial<Room>) => {
-                  console.log('Creating new room:', roomData);
-                  setIsAddDialogOpen(false);
-                }}
+        onSave={handleSaveNewRoom}
       />
     </div>
   );

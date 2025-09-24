@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,8 +17,7 @@ import {
 import GuestDirectory from '@/components/owner/guests/GuestDirectory';
 import GuestProfile from '@/components/owner/guests/GuestProfile';
 import NewGuestDialog from '@/components/owner/guests/NewGuestDialog';
-import { useCorporateAccounts } from '@/hooks/useCorporateAccounts';
-import CorporateAccountsManager from '@/components/corporate/CorporateAccountsManager';
+import CorporateAccounts from '@/components/owner/guests/CorporateAccounts';
 import { useGuests } from '@/hooks/useApi';
 
 export default function GuestsPage() {
@@ -29,17 +28,12 @@ export default function GuestsPage() {
 
   // Load guest data from API
   const { data: guestsData = [] } = useGuests();
-  const { accounts: corporateAccounts, fetchAccounts } = useCorporateAccounts();
-
-  useEffect(() => {
-    fetchAccounts();
-  }, [fetchAccounts]);
   
   // Calculate real guest stats from API data
   const guestStats = {
     totalGuests: guestsData.length,
     vipGuests: guestsData.filter(guest => guest.vip_status === 'gold' || guest.vip_status === 'silver').length,
-    corporateAccounts: corporateAccounts.length,
+    corporateAccounts: 0, // Will be calculated from corporate accounts table later
     totalRevenue: guestsData.reduce((total, guest) => total + (guest.total_spent || 0), 0)
   };
 
@@ -174,7 +168,7 @@ export default function GuestsPage() {
         </TabsContent>
 
         <TabsContent value="corporate">
-          <CorporateAccountsManager />
+          <CorporateAccounts />
         </TabsContent>
 
         <TabsContent value="analytics">

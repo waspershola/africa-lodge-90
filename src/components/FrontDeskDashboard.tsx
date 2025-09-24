@@ -246,17 +246,32 @@ export const FrontDeskDashboard = () => {
     <div className="space-y-6 p-6">
       <DashboardNotificationBar />
       
-      {isOffline && (
+      {/* Alert Notifications */}
       <NotificationBanner 
-        message={`Operating in offline mode. ${offlineTimeRemaining} hours remaining.`}
-        showWifiIcon={false}
+        alerts={activeAlerts}
+        onDismiss={(id) => setActiveAlerts(alerts => alerts.filter(alert => alert.id !== id))}
+        onViewAll={handleViewAllAlerts}
       />
-      )}
 
       {/* Quick Actions Bar */}
       <ActionBar 
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        onAction={(action) => {
+          switch (action) {
+            case 'new-reservation':
+              setShowNewReservation(true);
+              break;
+            case 'search':
+              setShowSearch(true);
+              break;
+            case 'collect-payment':
+              setShowPayment(true);
+              break;
+            default:
+              console.log('Action:', action);
+          }
+        }}
+        showKeyboardHelp={showKeyboardHelp}
+        onToggleKeyboardHelp={() => setShowKeyboardHelp(!showKeyboardHelp)}
       />
 
       {/* Dashboard Cards */}

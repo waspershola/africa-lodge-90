@@ -6,6 +6,7 @@ import { RoomTile } from "./RoomTile";
 import { RoomActionDrawer } from "./RoomActionDrawer";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRooms } from "@/hooks/useRooms";
+import { useReservations } from "@/hooks/useReservations";
 
 export interface Room {
   id: string;
@@ -50,6 +51,7 @@ interface RoomGridProps {
 
 export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridProps) => {
   const { data: rooms = [], isLoading: loading, error } = useRooms();
+  const { data: reservations = [] } = useReservations();
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [filteredRooms, setFilteredRooms] = useState<Room[]>([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -78,21 +80,29 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
         mappedStatus = 'available';
     }
     
+    // Find current reservation for this room
+    const currentReservation = reservations.find(r => r.room_id === room.id && r.status === 'checked_in');
+    
     return {
       id: room.id,
       room_number: room.room_number,
       status: mappedStatus,
-      room_type: room.room_type,
-      current_reservation: room.current_reservation,
+      room_type: undefined, // Use room_type_id instead
+      current_reservation: currentReservation ? {
+        guest_name: currentReservation.guest_name,
+        check_in_date: currentReservation.check_in_date,
+        check_out_date: currentReservation.check_out_date,
+        status: currentReservation.status
+      } : undefined,
       notes: room.notes,
       last_cleaned: room.last_cleaned,
       // Legacy compatibility fields
       number: room.room_number,
-      name: room.room_type?.name || 'Standard',
-      type: room.room_type?.name || 'Standard',
-      guest: room.current_reservation?.guest_name,
-      checkIn: room.current_reservation?.check_in_date,
-      checkOut: room.current_reservation?.check_out_date,
+      name: room.room_type_id || 'Standard',
+      type: room.room_type_id || 'Standard',
+      guest: currentReservation?.guest_name,
+      checkIn: currentReservation?.check_in_date,
+      checkOut: currentReservation?.check_out_date,
       alerts: {
         cleaning: room.status === 'dirty',
         maintenance: room.status === 'maintenance',
@@ -110,8 +120,8 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
     if (searchQuery.trim()) {
       filtered = filtered.filter(room => 
         room.room_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        room.room_type?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        room.current_reservation?.guest_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (room.name && room.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (room.guest && room.guest.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (room.number && room.number.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (room.name && room.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (room.guest && room.guest.toLowerCase().includes(searchQuery.toLowerCase())) ||

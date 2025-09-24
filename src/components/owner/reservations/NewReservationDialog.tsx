@@ -11,6 +11,8 @@ import { CalendarIcon, User, Phone, Mail } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useRooms } from '@/hooks/useRooms';
+import { useCreateReservation } from '@/hooks/useCreateReservation';
+import { useRoomTypes } from '@/hooks/useRoomTypes';
 
 interface NewReservationDialogProps {
   open: boolean;
@@ -75,11 +77,11 @@ export default function NewReservationDialog({
       const nights = calculateNights();
       const roomTypeData = roomTypes.find(r => r.value === formData.roomType);
       
-      // Find an available room of the selected type or use first available room
-      const availableRoom = rooms?.find(room => 
-        room.status === 'available' && 
-        room.room_type?.name.toLowerCase().includes(formData.roomType)
-      ) || rooms?.find(room => room.status === 'available');
+  // Find an available room of the selected type or use first available room
+  const availableRoom = rooms?.find(room => 
+    room.status === 'available' && 
+    room.room_type_id === formData.roomType
+  ) || rooms?.find(room => room.status === 'available');
 
       if (!availableRoom) {
         toast({
@@ -94,7 +96,6 @@ export default function NewReservationDialog({
         guest_name: formData.guestName,
         guest_email: formData.email,
         guest_phone: formData.phone,
-        guest_id_number: formData.idNumber,
         check_in_date: formData.checkIn.toISOString().split('T')[0],
         check_out_date: formData.checkOut.toISOString().split('T')[0],
         room_id: availableRoom.id,

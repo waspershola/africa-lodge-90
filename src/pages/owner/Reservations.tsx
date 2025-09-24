@@ -74,7 +74,7 @@ export default function ReservationsPage() {
   }
 
   if (error) {
-    return <div className="p-6 text-destructive">Error loading reservations: {error}</div>;
+    return <div className="p-6 text-destructive">Error loading reservations: {error.message}</div>;
   }
 
   return (

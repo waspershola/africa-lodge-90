@@ -90,7 +90,44 @@ class SecureStorage {
   static storeSensitiveData(key: string, data: any): void {
     console.error('SECURITY WARNING: Attempted to store sensitive data in localStorage');
     console.error('Use proper authentication session management instead');
+    
+    // Audit log the security violation attempt
+    this.storeAuditLog({
+      action: 'SECURITY_VIOLATION',
+      type: 'ATTEMPTED_SENSITIVE_STORAGE',
+      key: key,
+      userAgent: navigator.userAgent,
+      location: window.location.href,
+      blocked: true
+    });
+    
     throw new Error('Sensitive data storage not permitted');
+  }
+
+  // Rate limiting for security operations
+  private static rateLimitMap = new Map<string, number[]>();
+  
+  static checkRateLimit(identifier: string, maxAttempts = 5, windowMs = 60000): boolean {
+    const now = Date.now();
+    const attempts = this.rateLimitMap.get(identifier) || [];
+    
+    // Remove expired attempts
+    const validAttempts = attempts.filter(time => now - time < windowMs);
+    
+    if (validAttempts.length >= maxAttempts) {
+      this.storeAuditLog({
+        action: 'RATE_LIMIT_EXCEEDED',
+        identifier,
+        attempts: validAttempts.length,
+        maxAttempts,
+        windowMs
+      });
+      return false;
+    }
+    
+    validAttempts.push(now);
+    this.rateLimitMap.set(identifier, validAttempts);
+    return true;
   }
 }
 

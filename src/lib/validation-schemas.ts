@@ -1,46 +1,79 @@
-// SECURITY: Input validation schemas using Zod
-// Prevents injection attacks and ensures data integrity
+// SECURITY: Comprehensive Input validation schemas using Zod
+// Prevents injection attacks, XSS, and ensures data integrity
 
 import { z } from 'zod';
 
-// Guest registration validation
+// Enhanced sanitization helpers (must be defined before use)
+export const sanitizeInput = (input: string): string => {
+  return input
+    .replace(/[<>'"&]/g, '') // Remove HTML and dangerous characters
+    .replace(/javascript:/gi, '') // Remove javascript: protocols
+    .replace(/on\w+=/gi, '') // Remove event handlers
+    .replace(/data:/gi, '') // Remove data: URLs
+    .trim()
+    .slice(0, 1000); // Limit length
+};
+
+export const sanitizeHtml = (input: string): string => {
+  return input
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;');
+};
+
+// Enhanced guest registration validation with stronger security
 export const GuestRegistrationSchema = z.object({
   firstName: z.string()
     .min(1, 'First name is required')
     .max(50, 'First name too long')
-    .regex(/^[a-zA-Z\s'-]+$/, 'Invalid characters in name'),
+    .regex(/^[a-zA-Z\s'\-\.]+$/, 'Invalid characters in name')
+    .transform(sanitizeInput),
   
   lastName: z.string()
     .min(1, 'Last name is required')
     .max(50, 'Last name too long')
-    .regex(/^[a-zA-Z\s'-]+$/, 'Invalid characters in name'),
+    .regex(/^[a-zA-Z\s'\-\.]+$/, 'Invalid characters in name')
+    .transform(sanitizeInput),
   
   email: z.string()
     .email('Invalid email address')
     .max(100, 'Email too long')
-    .toLowerCase(),
+    .toLowerCase()
+    .transform(sanitizeInput),
   
   phone: z.string()
     .regex(/^\+?[\d\s\-\(\)]+$/, 'Invalid phone number format')
     .min(10, 'Phone number too short')
-    .max(20, 'Phone number too long'),
+    .max(20, 'Phone number too long')
+    .transform(sanitizeInput),
   
   guestIdNumber: z.string()
     .min(3, 'ID number too short')
     .max(30, 'ID number too long')
     .regex(/^[a-zA-Z0-9\-]+$/, 'Invalid ID format')
+    .transform(sanitizeInput)
     .optional(),
   
   nationality: z.string()
     .min(2, 'Nationality required')
     .max(50, 'Nationality too long')
     .regex(/^[a-zA-Z\s]+$/, 'Invalid nationality format')
+    .transform(sanitizeInput)
     .optional(),
   
   address: z.string()
     .max(200, 'Address too long')
+    .transform(sanitizeInput)
     .optional()
 });
+
+// QR Token validation for security
+export const QRTokenSchema = z.string()
+  .min(10, 'Invalid QR token')
+  .max(500, 'QR token too long')
+  .regex(/^[a-zA-Z0-9\-_.=]+$/, 'QR token contains invalid characters');
 
 // QR service request validation
 export const QRServiceRequestSchema = z.object({
@@ -129,13 +162,6 @@ export const HotelSettingsSchema = z.object({
     .optional()
 });
 
-// Sanitization helpers
-export const sanitizeInput = (input: string): string => {
-  return input
-    .replace(/[<>'"&]/g, '') // Remove potentially dangerous characters
-    .trim()
-    .slice(0, 1000); // Limit length
-};
 
 export const sanitizeFilename = (filename: string): string => {
   return filename

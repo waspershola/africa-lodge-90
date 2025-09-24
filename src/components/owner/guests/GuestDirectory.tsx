@@ -16,7 +16,7 @@ import {
   Filter,
   SlidersHorizontal
 } from 'lucide-react';
-import { useGuests } from '@/hooks/useApi';
+import { useGuests } from '@/hooks/useGuests';
 import { format } from 'date-fns';
 
 interface GuestDirectoryProps {
@@ -29,7 +29,7 @@ export default function GuestDirectory({ onGuestSelect, onNewGuest }: GuestDirec
   const [statusFilter, setStatusFilter] = useState('all');
   const [tierFilter, setTierFilter] = useState('all');
   const [sortBy, setSortBy] = useState('name');
-  const { data: guests = [], isLoading, error, refetch } = useGuests();
+  const { data: guests = [], isLoading, error } = useGuests();
 
   const getStatusColor = (status: string) => {
     switch (status) {

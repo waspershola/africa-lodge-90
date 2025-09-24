@@ -85,16 +85,16 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
       room_number: room.room_number,
       status: mappedStatus,
       room_type: room.room_type,
-      current_reservation: room.current_reservation,
+      current_reservation: undefined, // TODO: Implement reservation lookup
       notes: room.notes,
       last_cleaned: room.last_cleaned,
       // Legacy compatibility fields
       number: room.room_number,
-      name: room.room_type?.name || 'Standard',
+      name: room.room_type?.name || 'Standard',  
       type: room.room_type?.name || 'Standard',
-      guest: room.current_reservation?.guest_name,
-      checkIn: room.current_reservation?.check_in_date,
-      checkOut: room.current_reservation?.check_out_date,
+      guest: undefined, // TODO: Implement from reservations
+      checkIn: undefined, // TODO: Implement from reservations
+      checkOut: undefined, // TODO: Implement from reservations
       alerts: {
         cleaning: room.status === 'dirty',
         maintenance: room.status === 'maintenance',
@@ -113,7 +113,7 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
       filtered = filtered.filter(room => 
         room.room_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
         room.room_type?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        room.current_reservation?.guest_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        // TODO: Add guest name search when reservations are integrated
         (room.number && room.number.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (room.name && room.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (room.guest && room.guest.toLowerCase().includes(searchQuery.toLowerCase())) ||

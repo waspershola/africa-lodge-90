@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon, User, Phone, Mail } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { useCreateReservation } from '@/hooks/useReservations';
 import { useRooms } from '@/hooks/useRooms';
 
 interface NewReservationDialogProps {
@@ -43,7 +44,7 @@ export default function NewReservationDialog({
   const { data: roomsData } = useRooms();
   const rooms = roomsData?.rooms || [];
   
-  const { mutate: createReservation } = useCreateReservation();
+  const createReservation = useCreateReservation();
   const { toast } = useToast();
 
   const roomTypes = [
@@ -91,7 +92,7 @@ export default function NewReservationDialog({
         return;
       }
 
-      await createReservation({
+      await createReservation.mutateAsync({
         guest_name: formData.guestName,
         guest_email: formData.email,
         guest_phone: formData.phone,

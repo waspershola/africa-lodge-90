@@ -238,12 +238,16 @@ export function StaffManagementDashboard() {
             Export Staff
           </Button>
           <Button 
-            onClick={() => {
-              console.log('📋 Invite Staff button clicked, opening invitation dialog...');
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('🔥 BUTTON CLICKED - Invite Staff button clicked!');
+              alert('Button clicked!'); // Temporary visual confirmation
               setInviteDialogOpen(true);
-              console.log('📋 Dialog state set to true, inviteDialogOpen:', true);
+              console.log('🔥 Dialog state set to true, inviteDialogOpen should be:', true);
             }}
             className="bg-gradient-primary"
+            type="button"
           >
             <UserPlus className="h-4 w-4 mr-2" />
             Invite Staff
@@ -333,10 +337,13 @@ export function StaffManagementDashboard() {
                       : "No staff members match your search criteria"
                     }
                   </p>
-                  <Button onClick={() => {
-                    console.log('📋 Invite Staff Member button clicked (empty state), opening dialog...');
+                  <Button onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('🔥 EMPTY STATE - Invite Staff Member button clicked!');
+                    alert('Empty state button clicked!'); // Temporary visual confirmation
                     setInviteDialogOpen(true);
-                  }} className="bg-gradient-primary">
+                  }} className="bg-gradient-primary" type="button">
                     <UserPlus className="h-4 w-4 mr-2" />
                     Invite Staff Member
                   </Button>
@@ -486,11 +493,15 @@ export function StaffManagementDashboard() {
       <EnhancedStaffInvitationDialog
         open={inviteDialogOpen}
         onOpenChange={(open) => {
-          console.log('📋 EnhancedStaffInvitationDialog open state changed:', open);
+          console.log('🔥 DIALOG STATE CHANGE - EnhancedStaffInvitationDialog open state changed to:', open);
+          if (open) {
+            alert('Dialog should be opening now!'); // Temporary visual confirmation
+          }
           setInviteDialogOpen(open);
         }}
         onSuccess={() => {
-          console.log('📋 Staff invitation successful, refreshing staff list...');
+          console.log('🔥 SUCCESS - Staff invitation successful, refreshing staff list...');
+          alert('Staff invitation was successful!'); // Temporary visual confirmation
           // Refresh users list instead of full page reload
           refreshUsers();
           toast.success('Staff member invited successfully!');

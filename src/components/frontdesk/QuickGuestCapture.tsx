@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -82,21 +82,6 @@ interface MockGuest {
 
 import { useGuests } from "@/hooks/useGuests";
 
-// Live guest data from Supabase
-const { data: liveGuests = [], isLoading: guestsLoading } = useGuests();
-
-// Transform live guests to component format
-const transformedGuestList = liveGuests.map(guest => ({
-  id: guest.id,
-  name: `${guest.first_name} ${guest.last_name}`,
-  phone: guest.phone || '',
-  email: guest.email || '',
-  idType: 'national-id',
-  idNumber: guest.guest_id_number || '',
-  lastStay: guest.last_stay_date || '',
-  totalStays: guest.total_stays || 0
-}));
-
 const ID_TYPES = [
   { value: 'national-id', label: 'National ID' },
   { value: 'passport', label: 'International Passport' },
@@ -115,13 +100,31 @@ export const QuickGuestCapture = ({
 }: QuickGuestCaptureProps) => {
   const { toast } = useToast();
   const { enabledMethods } = usePaymentMethods();
+  
+  // Live guest data from Supabase
+  const { data: liveGuests = [], isLoading: guestsLoading } = useGuests();
+  
+  // Transform live guests to component format
+  const transformedGuestList = useMemo(() => {
+    return liveGuests.map(guest => ({
+      id: guest.id,
+      name: `${guest.first_name} ${guest.last_name}`,
+      phone: guest.phone || '',
+      email: guest.email || '',
+      idType: 'national-id',
+      idNumber: guest.guest_id_number || '',
+      lastStay: guest.last_stay_date || '',
+      totalStays: guest.total_stays || 0
+    }));
+  }, [liveGuests]);
+  
   const [isProcessing, setIsProcessing] = useState(false);
   const [showOptionalFields, setShowOptionalFields] = useState(false);
   const [guestMode, setGuestMode] = useState<'existing' | 'new'>('existing');
   const [selectedGuest, setSelectedGuest] = useState<MockGuest | null>(null);
   const [guestSearchOpen, setGuestSearchOpen] = useState(false);
   const [guestSearchValue, setGuestSearchValue] = useState("");
-  const [guestList, setGuestList] = useState<MockGuest[]>(transformedGuestList);
+  const [guestList, setGuestList] = useState<MockGuest[]>([]);
   
   const [formData, setFormData] = useState<GuestFormData>({
     guestName: '',
@@ -134,6 +137,11 @@ export const QuickGuestCapture = ({
     printNow: true,
     notes: '',
   });
+
+  // Update guest list when live data changes
+  useEffect(() => {
+    setGuestList(transformedGuestList);
+  }, [transformedGuestList]);
 
   // Filter guests based on search
   const filteredGuests = useMemo(() => {

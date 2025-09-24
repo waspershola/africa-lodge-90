@@ -86,7 +86,7 @@ import { useGuests } from "@/hooks/useGuests";
 const { data: liveGuests = [], isLoading: guestsLoading } = useGuests();
 
 // Transform live guests to component format
-const guestList = liveGuests.map(guest => ({
+const transformedGuestList = liveGuests.map(guest => ({
   id: guest.id,
   name: `${guest.first_name} ${guest.last_name}`,
   phone: guest.phone || '',
@@ -96,37 +96,6 @@ const guestList = liveGuests.map(guest => ({
   lastStay: guest.last_stay_date || '',
   totalStays: guest.total_stays || 0
 }));
-  {
-    id: '2', 
-    name: 'Jane Smith',
-    phone: '08087654321',
-    email: 'jane.smith@email.com',
-    idType: 'passport',
-    idNumber: 'P1234567',
-    lastStay: '2024-06-20',
-    totalStays: 1
-  },
-  {
-    id: '3',
-    name: 'Mike Wilson',
-    phone: '08098765432',
-    email: 'mike.wilson@email.com',
-    idType: 'drivers-license',
-    idNumber: 'DL987654321',
-    lastStay: '2024-08-01',
-    totalStays: 5
-  },
-  {
-    id: '4',
-    name: 'Sarah Johnson',
-    phone: '08056789012',
-    email: 'sarah.j@email.com',
-    idType: 'national-id',
-    idNumber: 'NID987654321',
-    lastStay: '2024-05-10',
-    totalStays: 2
-  }
-];
 
 const ID_TYPES = [
   { value: 'national-id', label: 'National ID' },
@@ -152,7 +121,7 @@ export const QuickGuestCapture = ({
   const [selectedGuest, setSelectedGuest] = useState<MockGuest | null>(null);
   const [guestSearchOpen, setGuestSearchOpen] = useState(false);
   const [guestSearchValue, setGuestSearchValue] = useState("");
-  const [guestList, setGuestList] = useState<MockGuest[]>(guestList);
+  const [guestList, setGuestList] = useState<MockGuest[]>(transformedGuestList);
   
   const [formData, setFormData] = useState<GuestFormData>({
     guestName: '',

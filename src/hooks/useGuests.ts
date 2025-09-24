@@ -39,7 +39,7 @@ export const useGuests = () => {
 export const useCreateGuest = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (guestData: Omit<Guest, 'id' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (guestData: Omit<Guest, 'id' | 'created_at' | 'updated_at'> & { tenant_id: string }) => {
       const { data, error } = await supabase
         .from('guests')
         .insert(guestData)
@@ -47,7 +47,7 @@ export const useCreateGuest = () => {
         .single();
 
       if (error) throw new Error(error.message);
-      return data;
+      return data;    
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guests'] });

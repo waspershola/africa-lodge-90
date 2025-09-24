@@ -77,7 +77,7 @@ export const ClassicTemplate = ({
       {/* QR Code */}
       <div className="flex-1 flex items-center justify-center">
         <div 
-          className="bg-white p-6 rounded-xl shadow-lg border-2"
+          className="bg-white p-8 rounded-xl shadow-lg border-4"
           style={{ borderColor: primaryColor }}
         >
           {qrDataUrl && (

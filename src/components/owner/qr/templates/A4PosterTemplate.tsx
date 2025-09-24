@@ -86,7 +86,7 @@ export const A4PosterTemplate = ({
       <div className="flex-1 flex flex-col items-center justify-center px-12 py-8">
         {/* QR Code */}
         <div 
-          className="bg-white p-8 rounded-2xl shadow-2xl border-4 mb-8"
+          className="bg-white p-12 rounded-3xl shadow-2xl border-4 mb-8"
           style={{ borderColor: primaryColor }}
         >
           {qrDataUrl && (

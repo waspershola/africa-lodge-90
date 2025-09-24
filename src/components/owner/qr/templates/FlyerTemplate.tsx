@@ -129,7 +129,7 @@ export const FlyerTemplate = ({
           
           {/* QR Code */}
           <div 
-            className="bg-white p-6 rounded-xl shadow-lg border-2 mx-auto"
+            className="bg-white p-8 rounded-xl shadow-lg border-4 mx-auto"
             style={{ borderColor: primaryColor }}
           >
             {qrDataUrl && (

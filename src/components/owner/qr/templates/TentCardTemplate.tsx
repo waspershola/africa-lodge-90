@@ -41,7 +41,7 @@ export const TentCardTemplate = ({
       {/* Left Section - QR Code */}
       <div className="w-2/5 flex flex-col items-center justify-center p-4">
         <div 
-          className="bg-white p-3 rounded-lg shadow-md border-2"
+          className="bg-white p-4 rounded-lg shadow-md border-4"
           style={{ borderColor: primaryColor }}
         >
           {qrDataUrl && (

@@ -1991,6 +1991,83 @@ export type Database = {
           },
         ]
       }
+      rate_plans: {
+        Row: {
+          adjustment: number
+          adjustment_type: string
+          advance_booking: number | null
+          base_rate: number
+          corporate_code: string | null
+          created_at: string | null
+          description: string | null
+          end_date: string
+          final_rate: number
+          id: string
+          is_active: boolean | null
+          max_stay: number | null
+          min_stay: number | null
+          name: string
+          restrictions: string[] | null
+          room_type_id: string | null
+          start_date: string
+          tenant_id: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          adjustment?: number
+          adjustment_type: string
+          advance_booking?: number | null
+          base_rate: number
+          corporate_code?: string | null
+          created_at?: string | null
+          description?: string | null
+          end_date: string
+          final_rate: number
+          id?: string
+          is_active?: boolean | null
+          max_stay?: number | null
+          min_stay?: number | null
+          name: string
+          restrictions?: string[] | null
+          room_type_id?: string | null
+          start_date: string
+          tenant_id: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          adjustment?: number
+          adjustment_type?: string
+          advance_booking?: number | null
+          base_rate?: number
+          corporate_code?: string | null
+          created_at?: string | null
+          description?: string | null
+          end_date?: string
+          final_rate?: number
+          id?: string
+          is_active?: boolean | null
+          max_stay?: number | null
+          min_stay?: number | null
+          name?: string
+          restrictions?: string[] | null
+          room_type_id?: string | null
+          start_date?: string
+          tenant_id?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rate_plans_room_type_id_fkey"
+            columns: ["room_type_id"]
+            isOneToOne: false
+            referencedRelation: "room_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reservations: {
         Row: {
           adults: number | null

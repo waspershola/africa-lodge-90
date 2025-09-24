@@ -43,12 +43,13 @@ export default function NewReservationDialog({
   const { createReservation, rooms } = useRooms();
   const { toast } = useToast();
 
-  const roomTypes = [
-    { value: 'standard', label: 'Standard Room', price: 85000 },
-    { value: 'deluxe', label: 'Deluxe King', price: 125000 },
-    { value: 'suite', label: 'Family Suite', price: 185000 },
-    { value: 'presidential', label: 'Presidential Suite', price: 350000 }
-  ];
+  // Use live room types from API
+  const { roomTypes: liveRoomTypes = [] } = useRooms();
+  const roomTypes = liveRoomTypes.map(type => ({
+    value: type.id,
+    label: type.name,
+    price: type.base_rate
+  }));
 
   const calculateNights = () => {
     const diffTime = Math.abs(formData.checkOut.getTime() - formData.checkIn.getTime());

@@ -8,8 +8,6 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { THEME_DEFINITIONS } from '@/utils/themeUtils';
 
 export interface BrandingSettings {
   hotelName: string;
@@ -18,7 +16,6 @@ export interface BrandingSettings {
   primaryColor: string;
   secondaryColor: string;
   defaultServices: string[];
-  theme: string;
 }
 
 interface GlobalSettingsDialogProps {
@@ -75,27 +72,6 @@ export const GlobalSettingsDialog = ({ open, onOpenChange, settings, onSave }: G
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="theme">QR Portal Theme</Label>
-                  <Select 
-                    value={formData.theme || 'classic-luxury-gold'} 
-                    onValueChange={(value) => setFormData({ ...formData, theme: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.values(THEME_DEFINITIONS).map((theme) => (
-                        <SelectItem key={theme.id} value={theme.id}>
-                          {theme.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="hotelName">Hotel Name</Label>

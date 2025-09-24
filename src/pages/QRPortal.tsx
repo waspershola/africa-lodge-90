@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Wifi, Phone, Utensils, Wrench, MessageCircle, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getThemeInfo, getThemeClassName, getDefaultTheme } from '@/utils/themeUtils';
 
 interface QRData {
   id: string;
@@ -15,8 +14,6 @@ interface QRData {
   hotel_name: string;
   services: string[];
   is_active: boolean;
-  theme_id?: string;
-  tenant_theme?: string;
 }
 
 interface ServiceConfig {
@@ -42,11 +39,6 @@ export default function QRPortal() {
   const [error, setError] = useState<string | null>(null);
   const [submittingService, setSubmittingService] = useState<string | null>(null);
   const { toast } = useToast();
-
-  // Get theme info
-  const currentThemeId = qrData?.theme_id || qrData?.tenant_theme || getDefaultTheme();
-  const themeInfo = getThemeInfo(currentThemeId);
-  const themeClassName = getThemeClassName(currentThemeId);
 
   useEffect(() => {
     if (!slug) return;
@@ -176,53 +168,20 @@ export default function QRPortal() {
   }
 
   return (
-    <div 
-      className={`min-h-screen p-4 qr-portal qr-theme-${currentThemeId}`}
-      style={{ 
-        background: 'var(--qr-background)',
-        color: 'var(--qr-foreground)',
-        fontFamily: 'var(--qr-font-body)'
-      }}
-    >
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5 p-4">
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
-        <Card 
-          className="shadow-lg qr-card"
-          style={{ 
-            backgroundColor: 'var(--qr-card)',
-            borderColor: 'var(--qr-primary)',
-            color: 'var(--qr-card-foreground)'
-          }}
-        >
+        <Card className="border-primary/20">
           <CardHeader className="text-center">
-            <CardTitle 
-              className="text-2xl font-bold"
-              style={{ 
-                color: 'var(--qr-primary)',
-                fontFamily: 'var(--qr-font-heading)'
-              }}
-            >
+            <CardTitle className="text-2xl font-bold text-primary">
               {qrData.hotel_name}
             </CardTitle>
             {qrData.room_number && (
-              <Badge 
-                variant="outline" 
-                className="w-fit mx-auto"
-                style={{ 
-                  borderColor: 'var(--qr-primary)',
-                  color: 'var(--qr-primary)',
-                  backgroundColor: 'var(--qr-accent)'
-                }}
-              >
+              <Badge variant="outline" className="w-fit mx-auto">
                 Room {qrData.room_number}
               </Badge>
             )}
-            <p 
-              className="text-muted-foreground"
-              style={{ 
-                color: 'var(--qr-muted)'
-              }}
-            >
+            <p className="text-muted-foreground">
               Select a service to get started
             </p>
           </CardHeader>
@@ -240,38 +199,17 @@ export default function QRPortal() {
             return (
               <Card 
                 key={service}
-                className="qr-service-card hover:shadow-lg transition-all duration-200 cursor-pointer border-2"
-                style={{ 
-                  backgroundColor: 'var(--qr-card)',
-                  borderColor: 'var(--qr-accent)',
-                  color: 'var(--qr-card-foreground)'
-                }}
+                className="hover:shadow-lg transition-all duration-200 cursor-pointer border-2 hover:border-primary/30"
                 onClick={() => handleServiceRequest(service)}
               >
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-4">
-                    <div 
-                      className="p-3 rounded-full text-white"
-                      style={{ backgroundColor: 'var(--qr-primary)' }}
-                    >
+                    <div className={`p-3 rounded-full ${config.color} text-white`}>
                       <IconComponent className="h-6 w-6" />
                     </div>
                     <div className="flex-1">
-                      <h3 
-                        className="font-semibold text-lg"
-                        style={{ 
-                          color: 'var(--qr-card-foreground)',
-                          fontFamily: 'var(--qr-font-heading)'
-                        }}
-                      >
-                        {config.label}
-                      </h3>
-                      <p 
-                        className="text-sm"
-                        style={{ 
-                          color: 'var(--qr-muted)'
-                        }}
-                      >
+                      <h3 className="font-semibold text-lg">{config.label}</h3>
+                      <p className="text-sm text-muted-foreground">
                         {config.description}
                       </p>
                     </div>
@@ -280,11 +218,6 @@ export default function QRPortal() {
                   <Button 
                     className="w-full mt-4" 
                     disabled={isSubmitting || submittingService !== null}
-                    style={{ 
-                      backgroundColor: 'var(--qr-primary)',
-                      color: 'var(--qr-primary-foreground)',
-                      borderColor: 'var(--qr-primary)'
-                    }}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleServiceRequest(service);
@@ -306,21 +239,9 @@ export default function QRPortal() {
         </div>
 
         {/* Footer */}
-        <Card 
-          className="shadow-sm qr-card"
-          style={{ 
-            backgroundColor: 'var(--qr-card)',
-            borderColor: 'var(--qr-accent)',
-            color: 'var(--qr-card-foreground)'
-          }}
-        >
+        <Card className="border-muted">
           <CardContent className="text-center py-4">
-            <p 
-              className="text-sm"
-              style={{ 
-                color: 'var(--qr-muted)'
-              }}
-            >
+            <p className="text-sm text-muted-foreground">
               Need immediate assistance? Call the front desk or visit the lobby.
             </p>
           </CardContent>

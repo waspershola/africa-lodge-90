@@ -660,6 +660,83 @@ export type Database = {
           },
         ]
       }
+      guest_sessions: {
+        Row: {
+          created_at: string | null
+          device_info: Json | null
+          expires_at: string
+          guest_email: string | null
+          guest_phone: string | null
+          id: string
+          is_active: boolean | null
+          last_activity_at: string | null
+          qr_code_id: string | null
+          request_count: number | null
+          room_id: string | null
+          session_id: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          device_info?: Json | null
+          expires_at: string
+          guest_email?: string | null
+          guest_phone?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_activity_at?: string | null
+          qr_code_id?: string | null
+          request_count?: number | null
+          room_id?: string | null
+          session_id?: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string | null
+          device_info?: Json | null
+          expires_at?: string
+          guest_email?: string | null
+          guest_phone?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_activity_at?: string | null
+          qr_code_id?: string | null
+          request_count?: number | null
+          room_id?: string | null
+          session_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_guest_sessions_qr_code"
+            columns: ["qr_code_id"]
+            isOneToOne: false
+            referencedRelation: "qr_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_guest_sessions_room"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_guest_sessions_tenant"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "occupancy_stats"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "fk_guest_sessions_tenant"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
       guests: {
         Row: {
           address: string | null
@@ -1613,6 +1690,7 @@ export type Database = {
           request_details: Json | null
           room_id: string | null
           service_type: string
+          session_id: string | null
           status: string
           tenant_id: string
           updated_at: string | null
@@ -1633,6 +1711,7 @@ export type Database = {
           request_details?: Json | null
           room_id?: string | null
           service_type: string
+          session_id?: string | null
           status?: string
           tenant_id: string
           updated_at?: string | null
@@ -1653,11 +1732,19 @@ export type Database = {
           request_details?: Json | null
           room_id?: string | null
           service_type?: string
+          session_id?: string | null
           status?: string
           tenant_id?: string
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_qr_orders_session"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "guest_sessions"
+            referencedColumns: ["session_id"]
+          },
           {
             foreignKeyName: "qr_orders_assigned_to_fkey"
             columns: ["assigned_to"]
@@ -1773,6 +1860,42 @@ export type Database = {
           is_global?: boolean | null
           name?: string
           requires_payment?: boolean | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      qr_session_settings: {
+        Row: {
+          allow_session_extension: boolean | null
+          created_at: string | null
+          enable_session_resume: boolean | null
+          id: string
+          max_requests_per_hour: number | null
+          require_phone_email: boolean | null
+          session_lifetime_hours: number
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          allow_session_extension?: boolean | null
+          created_at?: string | null
+          enable_session_resume?: boolean | null
+          id?: string
+          max_requests_per_hour?: number | null
+          require_phone_email?: boolean | null
+          session_lifetime_hours?: number
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          allow_session_extension?: boolean | null
+          created_at?: string | null
+          enable_session_resume?: boolean | null
+          id?: string
+          max_requests_per_hour?: number | null
+          require_phone_email?: boolean | null
+          session_lifetime_hours?: number
           tenant_id?: string
           updated_at?: string | null
         }
@@ -3063,6 +3186,15 @@ export type Database = {
         Args: { tenant_uuid: string }
         Returns: undefined
       }
+      create_guest_session: {
+        Args: {
+          p_device_info?: Json
+          p_qr_code_id: string
+          p_room_id?: string
+          p_tenant_id: string
+        }
+        Returns: string
+      }
       create_reservation_atomic: {
         Args: {
           p_guest_data: Json
@@ -3234,6 +3366,18 @@ export type Database = {
       strict_tenant_access: {
         Args: { target_tenant_id: string }
         Returns: boolean
+      }
+      validate_guest_session: {
+        Args: { p_increment_count?: boolean; p_session_id: string }
+        Returns: {
+          expires_at: string
+          guest_email: string
+          guest_phone: string
+          is_valid: boolean
+          qr_code_id: string
+          room_id: string
+          tenant_id: string
+        }[]
       }
       validate_qr_token_public: {
         Args: { token_input: string }

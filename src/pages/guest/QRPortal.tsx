@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Wifi, Coffee, Home, Wrench, MessageCircle, Star, Phone, Clock, User, ArrowLeft, Crown, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import { useGuestSession } from '@/hooks/useGuestSession';
 import { getThemeClassName } from '@/utils/themeUtils';
 
 // Service Components
@@ -53,8 +54,8 @@ const serviceDescriptions = {
 export default function QRPortal() {
   const { qrToken } = useParams<{ qrToken: string }>();
   const navigate = useNavigate();
-  const [sessionToken, setSessionToken] = useState<string>('');
   const [currentService, setCurrentService] = useState<string | null>(null);
+  const { session, createSession, isSessionValid } = useGuestSession();
 
   // Get QR info - graceful handling
   const { data: qrInfo, isLoading } = useQuery({
@@ -96,9 +97,25 @@ export default function QRPortal() {
         console.log('QR settings fetched:', qrSettings);
         console.log('Settings error:', settingsError);
 
-        // Generate session token
-        const token = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        setSessionToken(token);
+        // Create or validate guest session
+        let sessionId = session?.session_id;
+        
+        if (!session || !session.is_valid) {
+          // Get QR code ID from database for session creation
+          const { data: qrCodeData } = await supabase
+            .from('qr_codes')
+            .select('id')
+            .eq('qr_token', qrToken)
+            .maybeSingle();
+
+          if (qrCodeData?.id) {
+            sessionId = await createSession(
+              qrData.tenant_id,
+              qrCodeData.id,
+              qrData.room_id
+            );
+          }
+        }
 
         return {
           qr_token: qrToken,
@@ -228,16 +245,16 @@ export default function QRPortal() {
         {/* Service Content */}
         <div className="max-w-2xl mx-auto p-6">
           {currentService === 'Wi-Fi' && (
-            <WiFiService qrToken={qrInfo.qr_token} sessionToken={sessionToken} hotelName={qrInfo.hotel_name} />
+            <WiFiService qrToken={qrInfo.qr_token} sessionToken={session?.session_id || ''} hotelName={qrInfo.hotel_name} />
           )}
           {currentService === 'Housekeeping' && (
-            <HousekeepingService qrToken={qrInfo.qr_token} sessionToken={sessionToken} />
+            <HousekeepingService qrToken={qrInfo.qr_token} sessionToken={session?.session_id || ''} />
           )}
           {currentService === 'Maintenance' && (
-            <MaintenanceService qrToken={qrInfo.qr_token} sessionToken={sessionToken} />
+            <MaintenanceService qrToken={qrInfo.qr_token} sessionToken={session?.session_id || ''} />
           )}
           {(currentService === 'Room Service' || currentService === 'Digital Menu') && (
-            <RoomServiceMenu qrToken={qrInfo.qr_token} sessionToken={sessionToken} />
+            <RoomServiceMenu qrToken={qrInfo.qr_token} sessionToken={session?.session_id || ''} />
           )}
           {currentService === 'Events & Packages' && (
             <Card className="shadow-xl border-amber-200/50 bg-white/90 backdrop-blur-sm">
@@ -260,12 +277,12 @@ export default function QRPortal() {
             </Card>
           )}
           {currentService === 'Feedback' && (
-            <FeedbackService qrToken={qrInfo.qr_token} sessionToken={sessionToken} />
+            <FeedbackService qrToken={qrInfo.qr_token} sessionToken={session?.session_id || ''} />
           )}
           {currentService === 'Front Desk' && (
             <FrontDeskService 
               qrToken={qrInfo.qr_token} 
-              sessionToken={sessionToken}
+              sessionToken={session?.session_id || ''}
               hotelPhone={qrInfo.front_desk_phone || '+2347065937769'}
             />
           )}

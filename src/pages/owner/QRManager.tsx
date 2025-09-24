@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { QrCode, Plus, Download, Settings } from 'lucide-react';
+import { QrCode, Plus, Download, Settings, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { QRCodeTable } from '@/components/owner/qr/QRCodeTable';
 import { QRCodeDrawer } from '@/components/owner/qr/QRCodeDrawer';
 import { QRCodeWizard } from '@/components/owner/qr/QRCodeWizard';
 import { GlobalSettingsDialog, type BrandingSettings } from '@/components/owner/qr/GlobalSettingsDialog';
 import { BulkExportDialog } from '@/components/owner/qr/BulkExportDialog';
+import { SessionSettingsModal } from '@/components/qr/SessionSettingsModal';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
@@ -34,6 +35,7 @@ export default function QRManagerPage() {
   const [showDrawer, setShowDrawer] = useState(false);
   const [showGlobalSettings, setShowGlobalSettings] = useState(false);
   const [showBulkExport, setShowBulkExport] = useState(false);
+  const [showSessionSettings, setShowSessionSettings] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
   const { data: tenantInfo } = useTenantInfo();
@@ -260,7 +262,11 @@ export default function QRManagerPage() {
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => navigate('/owner-dashboard/qr-settings')}>
             <Settings className="h-4 w-4 mr-2" />
-            Global Settings
+            QR Settings
+          </Button>
+          <Button variant="outline" onClick={() => setShowSessionSettings(true)}>
+            <Clock className="h-4 w-4 mr-2" />
+            Session Settings
           </Button>
           <Button variant="outline" onClick={handleBulkExport}>
             <Download className="h-4 w-4 mr-2" />
@@ -312,6 +318,12 @@ export default function QRManagerPage() {
         onOpenChange={setShowBulkExport}
         qrCodes={qrCodes}
         onExport={handleExportSelected}
+      />
+
+      {/* Session Settings Modal */}
+      <SessionSettingsModal
+        open={showSessionSettings}
+        onOpenChange={setShowSessionSettings}
       />
     </div>
   );

@@ -44,17 +44,20 @@ export default function HousekeepingService({ qrToken, sessionToken }: Housekeep
 
     setSubmitting(true);
     try {
-      const response = await fetch(`https://dxisnnjsbuuiunjmzzqj.supabase.co/functions/v1/qr-guest-portal/guest/qr/${qrToken}/housekeeping`, {
+      const response = await fetch(`https://dxisnnjsbuuiunjmzzqj.supabase.co/functions/v1/qr-guest-portal/guest/qr/${qrToken}/requests`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          guest_session_id: sessionToken,
-          services: selectedServices,
-          special_requests: specialRequests,
-          priority: 1,
-          notes: `Housekeeping request: ${selectedServices.map(s => housekeepingOptions.find(o => o.id === s)?.label).join(', ')}`
+          session_id: sessionToken,
+          service_type: 'housekeeping',
+          request_details: {
+            services: selectedServices,
+            service_labels: selectedServices.map(s => housekeepingOptions.find(o => o.id === s)?.label).filter(Boolean)
+          },
+          notes: specialRequests || `Housekeeping request: ${selectedServices.map(s => housekeepingOptions.find(o => o.id === s)?.label).join(', ')}`,
+          priority: 1
         })
       });
 

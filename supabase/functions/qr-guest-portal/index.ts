@@ -89,86 +89,90 @@ serve(async (req) => {
       );
     }
     
-    // Route: POST /guest/qr/{token}/requests - Create service request
+    // Route: POST /guest/qr/{token}/requests - Create service request with session validation
     if (req.method === 'POST' && pathSegments[1] === 'guest' && pathSegments[2] === 'qr' && pathSegments[4] === 'requests') {
       const token = pathSegments[3];
       const body = await req.json();
       
-      console.log('Creating service request for token:', token);
-      
-      // First validate the QR token
-      const { data: validationData, error: validationError } = await supabase
-        .rpc('validate_qr_token_public', { token_input: token });
-      
-      if (validationError || !validationData || !validationData[0]?.is_valid) {
+      if (!body.session_id) {
         return new Response(
-          JSON.stringify({ error: 'Invalid QR code' }),
-          { 
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
+          JSON.stringify({ error: 'Session ID is required' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
         );
       }
-      
-      const validation = validationData[0];
-      
-      // Get the QR code ID
-      const { data: qrCodeData } = await supabase
-        .from('qr_codes')
-        .select('id')
-        .eq('qr_token', token)
-        .eq('tenant_id', validation.tenant_id)
+
+      console.log('Creating service request for token:', token, 'session:', body.session_id);
+
+      // Validate session and increment request count
+      const { data: sessionData, error: sessionError } = await supabase
+        .rpc('validate_guest_session', { 
+          p_session_id: body.session_id, 
+          p_increment_count: true 
+        });
+
+      if (sessionError || !sessionData || sessionData.length === 0 || !sessionData[0].is_valid) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired session' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+        );
+      }
+
+      const session = sessionData[0];
+
+      // Check rate limiting
+      const { data: sessionInfo } = await supabase
+        .from('guest_sessions')
+        .select('request_count')
+        .eq('session_id', body.session_id)
         .single();
+
+      const { data: settings } = await supabase
+        .from('qr_session_settings')
+        .select('max_requests_per_hour')
+        .eq('tenant_id', session.tenant_id)
+        .maybeSingle();
+
+      const maxRequests = settings?.max_requests_per_hour || 50;
       
-      if (!qrCodeData) {
+      if (sessionInfo && sessionInfo.request_count >= maxRequests) {
         return new Response(
-          JSON.stringify({ error: 'QR code not found' }),
-          { 
-            status: 404,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
+          JSON.stringify({ error: 'Rate limit exceeded. Please contact front desk.' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 }
         );
       }
-      
-      // Create the service request
+
+      // Create QR order
       const { data: orderData, error: orderError } = await supabase
         .from('qr_orders')
         .insert({
-          tenant_id: validation.tenant_id,
-          qr_code_id: qrCodeData.id,
-          room_id: validation.room_id,
+          tenant_id: session.tenant_id,
+          qr_code_id: session.qr_code_id,
+          room_id: session.room_id,
+          session_id: body.session_id,
           service_type: body.service_type,
-          guest_session_id: `guest-${Date.now()}`,
-          request_details: body.request_details,
-          status: 'pending',
-          created_by_guest: true
+          request_details: body.request_details || {},
+          notes: body.notes,
+          priority: body.priority || 0,
+          status: 'pending'
         })
-        .select()
+        .select('id')
         .single();
-      
+
       if (orderError) {
-        console.error('Order creation error:', orderError);
+        console.error('Error creating order:', orderError);
         return new Response(
           JSON.stringify({ error: 'Failed to create service request' }),
-          { 
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
         );
       }
       
-      console.log('Service request created:', orderData);
-      
       return new Response(
-        JSON.stringify({ 
-          success: true, 
+        JSON.stringify({
+          success: true,
           request_id: orderData.id,
-          message: 'Service request submitted successfully' 
+          message: 'Service request created successfully'
         }),
-        { 
-          status: 201,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     

@@ -242,7 +242,7 @@ export const QRCodeDrawer = ({ open, onOpenChange, qrCode, onUpdate, onDelete, b
                 hotelName={branding?.hotelName}
                 roomNumber={qrCode.assignedTo?.includes('Room') ? qrCode.assignedTo.replace('Room ', '') : undefined}
                 services={qrCode.servicesEnabled}
-                qrUrl={qrCode.qr_code_url || `${window.location.origin}/guest/qr/${qrCode.qr_token || qrCode.id}`}
+                qrUrl={`${window.location.origin}/guest/qr/${qrCode.qr_token || qrCode.id}`}
                 isActive={qrCode.status === 'Active'}
                 onDelete={() => onDelete?.(qrCode)}
               />

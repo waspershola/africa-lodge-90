@@ -44,7 +44,10 @@ export class QRSecurity {
 
   // Generate permanent QR URL using the QR token (no expiry)
   static generateQRUrl(qrToken: string): string {
-    const baseUrl = window.location.origin;
+    // For production, use the current domain. For development, use localhost
+    const baseUrl = typeof window !== 'undefined' && window.location 
+      ? window.location.origin 
+      : 'https://yourapp.com'; // Fallback for SSR
     return `${baseUrl}/guest/qr/${qrToken}`;
   }
 

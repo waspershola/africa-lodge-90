@@ -75,7 +75,14 @@ export const useQRSession = (sessionToken?: string | null) => {
         throw new Error('QR code not found or expired');
       }
 
-      const validationResult = qrData[0];
+      const validationResult = qrData[0] as {
+        is_valid: boolean;
+        hotel_name: string;
+        location_type: string;
+        services: string[];
+        tenant_id: string;
+        room_id: string;
+      };
 
       // Create session object
       const sessionData: QRSession = {

@@ -3241,7 +3241,9 @@ export type Database = {
           hotel_name: string
           is_valid: boolean
           location_type: string
+          room_id: string
           services: string[]
+          tenant_id: string
         }[]
       }
     }

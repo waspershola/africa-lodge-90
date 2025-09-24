@@ -42,40 +42,31 @@ import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 import DashboardNotificationBar from '@/components/layout/DashboardNotificationBar';
 import type { Room } from "./frontdesk/RoomGrid";
 import { useTenantInfo } from "@/hooks/useTenantInfo";
+import { useRooms, useReservations } from "@/hooks/useRooms";
+import { useStaff } from "@/hooks/useStaff";
 
-// Mock data
-const mockData = {
-  roomsAvailable: 15,
-  occupancyRate: 78,
-  arrivalsToday: 12,
-  departuresToday: 8,
-  inHouseGuests: 45,
-  pendingPayments: 3,
-  oosRooms: 2,
-  dieselLevel: 65,
-  generatorRuntime: 4.5,
-  cashVariance: -2500
-};
-
-const mockArrivals = [
-  { id: 1, guest: "Adebayo Johnson", room: "201", time: "14:00", status: "pending" },
-  { id: 2, guest: "Sarah Okonkwo", room: "305", time: "15:30", status: "checked-in" },
-  { id: 3, guest: "Michael Eze", room: "102", time: "16:00", status: "pending" }
-];
-
-const mockDepartures = [
-  { id: 1, guest: "Fatima Al-Hassan", room: "401", time: "11:00", status: "checked-out" },
-  { id: 2, guest: "David Okoro", room: "203", time: "12:00", status: "pending" }
-];
-
-const mockAlerts = [
-  { id: 1, type: "payment", message: "Room 305 payment overdue", priority: "high" },
-  { id: 2, type: "maintenance", message: "Room 102 AC needs repair", priority: "medium" },
-  { id: 3, type: "compliance", message: "Missing ID for Room 201", priority: "high" }
-];
 
 const FrontDeskDashboard = () => {
   const { data: tenantInfo } = useTenantInfo();
+  const { rooms: roomsData } = useRooms();
+  const { reservations } = useReservations();
+  const { staff } = useStaff();
+  
+  // Calculate real metrics
+  const totalRooms = roomsData.length;
+  const occupiedRooms = roomsData.filter(r => r.status === 'occupied').length;
+  const availableRooms = roomsData.filter(r => r.status === 'available').length;
+  const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
+  
+  const today = new Date().toISOString().split('T')[0];
+  const arrivalsToday = reservations.filter(r => 
+    r.check_in_date === today && r.status === 'confirmed'
+  ).length;
+  const departuresToday = reservations.filter(r => 
+    r.check_out_date === today && r.status === 'checked_in'
+  ).length;
+  
+  const inHouseGuests = reservations.filter(r => r.status === 'checked_in').length;
   
   const [isOffline, setIsOffline] = useState(false);
   const [offlineTimeRemaining, setOfflineTimeRemaining] = useState(22); // hours
@@ -226,7 +217,7 @@ const FrontDeskDashboard = () => {
   const dashboardCards = [
     {
       title: "Rooms Available",
-      value: mockData.roomsAvailable,
+      value: availableRooms,
       subtitle: "Ready for assignment",
       icon: <BedDouble className="h-6 w-6" />,
       action: "Assign Room",
@@ -235,7 +226,7 @@ const FrontDeskDashboard = () => {
     },
     {
       title: "Occupancy Rate",
-      value: `${mockData.occupancyRate}%`,
+      value: `${occupancyRate}%`,
       subtitle: "Current occupancy",
       icon: <Users className="h-6 w-6" />,
       action: "View Room Map",
@@ -244,7 +235,7 @@ const FrontDeskDashboard = () => {
     },
     {
       title: "Arrivals Today",
-      value: mockData.arrivalsToday,
+      value: arrivalsToday,
       subtitle: "Expected check-ins",
       icon: <LogIn className="h-6 w-6" />,
       action: "Start Check-In",
@@ -253,7 +244,7 @@ const FrontDeskDashboard = () => {
     },
     {
       title: "Departures Today",
-      value: mockData.departuresToday,
+      value: departuresToday,
       subtitle: "Expected check-outs",
       icon: <LogOut className="h-6 w-6" />,
       action: "Start Check-Out",
@@ -262,7 +253,7 @@ const FrontDeskDashboard = () => {
     },
     {
       title: "In-House Guests",
-      value: mockData.inHouseGuests,
+      value: inHouseGuests,
       subtitle: "Currently staying",
       icon: <Users className="h-6 w-6" />,
       action: "Open Folio",
@@ -271,7 +262,7 @@ const FrontDeskDashboard = () => {
     },
     {
       title: "Pending Payments",
-      value: mockData.pendingPayments,
+      value: 0, // Will be replaced with real payment data
       subtitle: "Requires collection",
       icon: <CreditCard className="h-6 w-6" />,
       action: "Collect Now",
@@ -280,7 +271,7 @@ const FrontDeskDashboard = () => {
     },
     {
       title: "OOS Rooms",
-      value: mockData.oosRooms,
+      value: roomsData.filter(r => r.status === 'out_of_order').length,
       subtitle: "Out of service",
       icon: <Wrench className="h-6 w-6" />,
       action: "Create Work Order",
@@ -289,11 +280,11 @@ const FrontDeskDashboard = () => {
     },
     {
       title: "Diesel Level",
-      value: `${mockData.dieselLevel}%`,
-      subtitle: `Gen: ${mockData.generatorRuntime}h today`,
+      value: "75%", // Will be replaced with real fuel data
+      subtitle: "Gen: 4.2h today",
       icon: <Battery className="h-6 w-6" />,
       action: "Open Power Panel",
-      color: mockData.dieselLevel < 30 ? "danger" : "success",
+      color: "success",
       filterKey: undefined
     }
   ];

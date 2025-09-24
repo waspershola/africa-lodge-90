@@ -31,8 +31,6 @@ import Utilities from "./pages/owner/Utilities";
 import Housekeeping from "./pages/owner/Housekeeping";
 import { OwnerProfileSettings } from "./components/owner/profile/OwnerProfileSettings";
 import QRAnalytics from "./pages/owner/QRAnalytics";
-import QRExportPage from "./components/QRExportPage";
-import ReportsInterface from "./components/ReportsInterface";
 import ManagerLayout from "./components/layout/ManagerLayout";
 import ManagerDashboard from "./pages/manager/Dashboard";
 import ManagerOperations from "./pages/manager/Operations";
@@ -120,7 +118,6 @@ const App = () => (
               <FrontDeskDashboard />
             </TenantAwareLayout>
           } />
-          <Route path="/reports" element={<ReportsInterface />} />
           
           {/* Owner Dashboard Routes */}
           <Route path="/owner-dashboard" element={
@@ -146,7 +143,6 @@ const App = () => (
             <Route path="housekeeping" element={<Housekeeping />} />
             <Route path="profile" element={<OwnerProfileSettings />} />
           </Route>
-          <Route path="/qr-export" element={<QRExportPage />} />
           
           {/* Manager Dashboard Routes */}
           <Route path="/manager-dashboard" element={

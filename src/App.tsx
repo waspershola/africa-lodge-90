@@ -18,7 +18,7 @@ import StaffRoles from "./pages/owner/StaffRoles";
 import Financials from "./pages/owner/Financials";
 import Billing from "./pages/owner/Billing";
 import EnhancedBilling from "./pages/owner/EnhancedBilling";
-import StaffManagement from "./pages/owner/StaffManagement";
+import { StaffManagementPage } from "./pages/owner/StaffManagement";
 import { OnboardingWizard } from "./components/onboarding/OnboardingWizard";
 import QRManager from "./pages/owner/QRManager";
 import QRPortal from "./pages/guest/QRPortal";
@@ -131,6 +131,7 @@ const App = () => (
             <Route path="dashboard" element={<OwnerDashboardPage />} />
             <Route path="configuration" element={<Configuration />} />
             <Route path="staff" element={<StaffManagement />} />
+            <Route path="performance" element={<HotelPerformanceOverview />} />
             <Route path="financials" element={<Financials />} />
             <Route path="billing" element={<EnhancedBilling />} />
             <Route path="qr-manager" element={<QRManager />} />

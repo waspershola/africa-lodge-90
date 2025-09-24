@@ -19,7 +19,7 @@ export default function ReservationList({
   statusFilter, 
   onReservationSelect 
 }: ReservationListProps) {
-  const { reservations = [], loading } = useReservations();
+  const { data: reservations = [], isLoading: loading, error } = useReservations();
 
   const filteredReservations = reservations.filter(reservation => {
     const matchesSearch = searchTerm === '' || 

@@ -15,7 +15,9 @@ import { useRooms } from "@/hooks/useRooms";
 export default function Rooms() {
   const [activeTab, setActiveTab] = useState("rooms");
   const { formatPrice, updateSettings } = useCurrency();
-  const { rooms = [], roomTypes = [] } = useRooms();
+  const { data: roomsData } = useRooms();
+  const rooms = roomsData?.rooms || [];
+  const roomTypes = roomsData?.roomTypes || [];
 
   // Calculate real room stats from API data
   const roomStats = {

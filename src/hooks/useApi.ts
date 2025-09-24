@@ -371,6 +371,7 @@ export const useRefundReservation = () => {
       return data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
     },
   });

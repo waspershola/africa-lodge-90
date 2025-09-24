@@ -40,7 +40,10 @@ export default function NewReservationDialog({
     source: 'direct'
   });
 
-  const { createReservation, rooms = [] } = useRooms();
+  const { data: roomsData } = useRooms();
+  const rooms = roomsData?.rooms || [];
+  
+  const { mutate: createReservation } = useCreateReservation();
   const { toast } = useToast();
 
   const roomTypes = [

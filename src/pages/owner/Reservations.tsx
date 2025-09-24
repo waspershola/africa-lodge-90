@@ -20,7 +20,7 @@ export default function ReservationsPage() {
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState(null);
 
-  const { reservations = [], loading, error } = useReservations();
+  const { data: reservations = [], isLoading: loading, error } = useReservations();
 
   // Calculate stats from API data
   const reservationStats = {
@@ -74,7 +74,7 @@ export default function ReservationsPage() {
   }
 
   if (error) {
-    return <div className="p-6 text-destructive">Error loading reservations: {error}</div>;
+    return <div className="p-6 text-red-500">Error loading reservations</div>;
   }
 
   return (

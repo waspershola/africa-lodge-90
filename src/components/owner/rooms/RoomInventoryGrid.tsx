@@ -24,7 +24,7 @@ import {
 import { useCurrency } from "@/hooks/useCurrency";
 import { useRoomLimits } from "@/hooks/useRoomLimits";
 import { useMultiTenantAuth } from "@/hooks/useMultiTenantAuth";
-import { useRooms } from "@/hooks/useRooms";
+import { useRooms, useCreateRoom, useUpdateRoom, useDeleteRoom } from "@/hooks/useRooms";
 import { useToast } from "@/hooks/use-toast";
 import RoomDetailDrawer from "./RoomDetailDrawer";
 import BulkEditModal from "./BulkEditModal";
@@ -67,7 +67,13 @@ export default function RoomInventoryGrid() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   
   // Real database hooks
-  const { rooms = [], roomTypes = [], loading, error, updateRoomStatus } = useRooms();
+  const { data: roomsData, isLoading, error } = useRooms();
+  const createRoom = useCreateRoom();
+  const updateRoom = useUpdateRoom();
+  const deleteRoom = useDeleteRoom();
+  
+  const rooms = roomsData?.rooms || [];
+  const roomTypes = roomsData?.roomTypes || [];
   
   const { formatPrice } = useCurrency();
   const { user, tenant } = useMultiTenantAuth();
@@ -115,59 +121,50 @@ export default function RoomInventoryGrid() {
     }
     
     try {
-      // For now, just show success - need to implement actual room creation
-      toast({
-        title: "Success",
-        description: "Room created successfully"
+      await createRoom.mutateAsync({
+        room_number: newRoomData.room_number,
+        room_type_id: newRoomData.room_type_id,
+        floor: newRoomData.floor,
+        status: 'available',
+        notes: newRoomData.notes || ''
       });
+      
       setIsAddDialogOpen(false);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create room",
-        variant: "destructive"
-      });
+      // Error is handled by the mutation
     }
   };
 
   const handleSaveRoom = async () => {
     if (selectedRoom) {
       try {
-        await updateRoomStatus(selectedRoom.id, selectedRoom.status, selectedRoom.notes);
-        
-        toast({
-          title: "Success", 
-          description: "Room updated successfully"
+        await updateRoom.mutateAsync({
+          id: selectedRoom.id,
+          room_number: selectedRoom.room_number,
+          floor: selectedRoom.floor,
+          status: selectedRoom.status,
+          notes: selectedRoom.notes || ''
         });
+        
         setIsEditDialogOpen(false);
         setSelectedRoom(null);
       } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to update room",
-          variant: "destructive"
-        });
+        // Error is handled by the mutation
       }
     }
   };
 
   const handleDeleteRoom = async (roomId: string) => {
-    try {
-      // For now, just show success - need to implement actual room deletion
-      toast({
-        title: "Success",
-        description: "Room deleted successfully"  
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete room",
-        variant: "destructive"
-      });
+    if (window.confirm('Are you sure you want to delete this room?')) {
+      try {
+        await deleteRoom.mutateAsync(roomId);
+      } catch (error) {
+        // Error is handled by the mutation
+      }
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return <div className="p-6">Loading rooms...</div>;
   }
 
@@ -191,7 +188,7 @@ export default function RoomInventoryGrid() {
               </Badge>
               <Button 
                 onClick={handleAddRoom}
-                disabled={!roomLimits.canAddRoom(currentRoomCount)}
+                disabled={!roomLimits.canAddRoom(currentRoomCount) || createRoom.isPending}
                 size="sm"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -306,6 +303,7 @@ export default function RoomInventoryGrid() {
                     size="sm"
                     onClick={() => handleEditRoom(room)}
                     className="flex-1"
+                    disabled={updateRoom.isPending}
                   >
                     <Edit className="h-4 w-4 mr-2" />
                     Edit
@@ -314,6 +312,7 @@ export default function RoomInventoryGrid() {
                     variant="outline"
                     size="sm"
                     onClick={() => handleDeleteRoom(room.id)}
+                    disabled={deleteRoom.isPending}
                     className="text-red-600 hover:text-red-700"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -397,12 +396,14 @@ export default function RoomInventoryGrid() {
                 <Button 
                   onClick={handleSaveRoom} 
                   className="flex-1"
+                  disabled={updateRoom.isPending}
                 >
-                  Save Changes
+                  {updateRoom.isPending ? "Saving..." : "Save Changes"}
                 </Button>
                 <Button 
                   variant="outline" 
                   onClick={() => setIsEditDialogOpen(false)}
+                  disabled={updateRoom.isPending}
                 >
                   Cancel
                 </Button>

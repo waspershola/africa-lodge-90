@@ -9,48 +9,34 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useRooms } from '@/hooks/useRooms';
 
 const addRoomSchema = z.object({
-  number: z.string().min(1, 'Room number is required'),
-  category: z.string().min(1, 'Category is required'),
+  room_number: z.string().min(1, 'Room number is required'),
+  room_type_id: z.string().min(1, 'Room type is required'),
   floor: z.number().min(1, 'Floor must be at least 1'),
-  baseRate: z.number().min(0, 'Base rate must be positive'),
-  currentRate: z.number().min(0, 'Current rate must be positive'),
-  description: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 type AddRoomForm = z.infer<typeof addRoomSchema>;
 
-interface Room {
-  id: string;
-  number: string;
-  category: string;
-  floor: number;
-  status: "available" | "occupied" | "maintenance" | "cleaning" | "out-of-order";
-  baseRate: number;
-  currentRate: number;
-  amenities: string[];
-  lastCleaned: string;
-  nextMaintenance: string;
-  description?: string;
-}
-
 interface AddRoomDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (roomData: Partial<Room>) => void;
+  onSave: (roomData: AddRoomForm) => void;
 }
 
 export function AddRoomDialog({ isOpen, onClose, onSave }: AddRoomDialogProps) {
+  const { data: roomsData } = useRooms();
+  const roomTypes = roomsData?.roomTypes || [];
+  
   const form = useForm<AddRoomForm>({
     resolver: zodResolver(addRoomSchema),
     defaultValues: {
-      number: '',
-      category: 'Standard',
+      room_number: '',
+      room_type_id: '',
       floor: 1,
-      baseRate: 120,
-      currentRate: 120,
-      description: ''
+      notes: ''
     },
   });
 
@@ -71,7 +57,7 @@ export function AddRoomDialog({ isOpen, onClose, onSave }: AddRoomDialogProps) {
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="number"
+                name="room_number"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Room Number</FormLabel>
@@ -105,21 +91,22 @@ export function AddRoomDialog({ isOpen, onClose, onSave }: AddRoomDialogProps) {
 
             <FormField
               control={form.control}
-              name="category"
+              name="room_type_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Category</FormLabel>
+                  <FormLabel>Room Type</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
+                        <SelectValue placeholder="Select room type" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="Standard">Standard</SelectItem>
-                      <SelectItem value="Deluxe">Deluxe</SelectItem>
-                      <SelectItem value="Suite">Suite</SelectItem>
-                      <SelectItem value="Presidential">Presidential</SelectItem>
+                      {roomTypes.map((type: any) => (
+                        <SelectItem key={type.id} value={type.id}>
+                          {type.name} - {type.base_rate ? `₦${type.base_rate}` : 'No rate set'}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -127,55 +114,15 @@ export function AddRoomDialog({ isOpen, onClose, onSave }: AddRoomDialogProps) {
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="baseRate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Base Rate</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="120"
-                        {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="currentRate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Current Rate</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="120"
-                        {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
             <FormField
               control={form.control}
-              name="description"
+              name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description (Optional)</FormLabel>
+                  <FormLabel>Notes (Optional)</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Room description..."
+                      placeholder="Room notes..."
                       {...field}
                     />
                   </FormControl>

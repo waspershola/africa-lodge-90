@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Wifi, Phone, Utensils, Wrench, MessageCircle, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { getThemeInfo, getThemeClassName, getDefaultTheme } from '@/utils/themeUtils';
 
 interface QRData {
   id: string;
@@ -14,6 +15,8 @@ interface QRData {
   hotel_name: string;
   services: string[];
   is_active: boolean;
+  theme_id?: string;
+  tenant_theme?: string;
 }
 
 interface ServiceConfig {
@@ -39,6 +42,11 @@ export default function QRPortal() {
   const [error, setError] = useState<string | null>(null);
   const [submittingService, setSubmittingService] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Get theme info
+  const currentThemeId = qrData?.theme_id || qrData?.tenant_theme || getDefaultTheme();
+  const themeInfo = getThemeInfo(currentThemeId);
+  const themeClassName = getThemeClassName(currentThemeId);
 
   useEffect(() => {
     if (!slug) return;
@@ -168,20 +176,50 @@ export default function QRPortal() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5 p-4">
+    <div 
+      className={`min-h-screen p-4 ${themeClassName}`}
+      style={{ 
+        background: themeInfo ? `linear-gradient(135deg, ${themeInfo.colors.background}dd, ${themeInfo.colors.accent}20)` : 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
+        fontFamily: themeInfo?.fontBody || 'Inter'
+      }}
+    >
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
-        <Card className="border-primary/20">
+        <Card 
+          className="shadow-lg"
+          style={{ 
+            borderColor: themeInfo?.colors.primary + '40' || '#e2e8f0',
+            backgroundColor: themeInfo?.colors.background === '#000000' || themeInfo?.colors.background === '#1A1A1A' ? themeInfo.colors.background + 'dd' : '#ffffff'
+          }}
+        >
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-primary">
+            <CardTitle 
+              className="text-2xl font-bold"
+              style={{ 
+                color: themeInfo?.colors.primary || '#1f2937',
+                fontFamily: themeInfo?.fontHeading || 'Playfair Display'
+              }}
+            >
               {qrData.hotel_name}
             </CardTitle>
             {qrData.room_number && (
-              <Badge variant="outline" className="w-fit mx-auto">
+              <Badge 
+                variant="outline" 
+                className="w-fit mx-auto"
+                style={{ 
+                  borderColor: themeInfo?.colors.primary || '#e2e8f0',
+                  color: themeInfo?.colors.primary || '#1f2937'
+                }}
+              >
                 Room {qrData.room_number}
               </Badge>
             )}
-            <p className="text-muted-foreground">
+            <p 
+              className="text-muted-foreground"
+              style={{ 
+                color: themeInfo?.colors.primary ? themeInfo.colors.primary + '80' : '#6b7280'
+              }}
+            >
               Select a service to get started
             </p>
           </CardHeader>
@@ -199,17 +237,37 @@ export default function QRPortal() {
             return (
               <Card 
                 key={service}
-                className="hover:shadow-lg transition-all duration-200 cursor-pointer border-2 hover:border-primary/30"
+                className="hover:shadow-lg transition-all duration-200 cursor-pointer border-2"
+                style={{ 
+                  borderColor: themeInfo?.colors.primary + '30' || '#e2e8f0',
+                  backgroundColor: themeInfo?.colors.background === '#000000' || themeInfo?.colors.background === '#1A1A1A' ? themeInfo.colors.background + 'dd' : '#ffffff'
+                }}
                 onClick={() => handleServiceRequest(service)}
               >
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-4">
-                    <div className={`p-3 rounded-full ${config.color} text-white`}>
+                    <div 
+                      className="p-3 rounded-full text-white"
+                      style={{ backgroundColor: themeInfo?.colors.primary || config.color.replace('bg-', '#') }}
+                    >
                       <IconComponent className="h-6 w-6" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold text-lg">{config.label}</h3>
-                      <p className="text-sm text-muted-foreground">
+                      <h3 
+                        className="font-semibold text-lg"
+                        style={{ 
+                          color: themeInfo?.colors.primary || '#1f2937',
+                          fontFamily: themeInfo?.fontHeading || 'Playfair Display'
+                        }}
+                      >
+                        {config.label}
+                      </h3>
+                      <p 
+                        className="text-sm"
+                        style={{ 
+                          color: themeInfo?.colors.primary ? themeInfo.colors.primary + '80' : '#6b7280'
+                        }}
+                      >
                         {config.description}
                       </p>
                     </div>
@@ -218,6 +276,10 @@ export default function QRPortal() {
                   <Button 
                     className="w-full mt-4" 
                     disabled={isSubmitting || submittingService !== null}
+                    style={{ 
+                      backgroundColor: themeInfo?.colors.primary || '#2563eb',
+                      color: themeInfo?.colors.background || '#ffffff'
+                    }}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleServiceRequest(service);
@@ -239,9 +301,20 @@ export default function QRPortal() {
         </div>
 
         {/* Footer */}
-        <Card className="border-muted">
+        <Card 
+          className="shadow-sm"
+          style={{ 
+            borderColor: themeInfo?.colors.primary + '20' || '#e2e8f0',
+            backgroundColor: themeInfo?.colors.background === '#000000' || themeInfo?.colors.background === '#1A1A1A' ? themeInfo.colors.background + 'dd' : '#ffffff'
+          }}
+        >
           <CardContent className="text-center py-4">
-            <p className="text-sm text-muted-foreground">
+            <p 
+              className="text-sm"
+              style={{ 
+                color: themeInfo?.colors.primary ? themeInfo.colors.primary + '80' : '#6b7280'
+              }}
+            >
               Need immediate assistance? Call the front desk or visit the lobby.
             </p>
           </CardContent>

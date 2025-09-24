@@ -77,12 +77,17 @@ export const PrintableQRCode = ({
         
         const qrOptions = {
           width: Math.floor(templateConfig.qrSize * sizeConfig.scale),
-          margin: 2,
+          margin: 1,
           color: {
-            dark: themeInfo?.colors.primary || '#000000',
-            light: isDarkTheme ? themeInfo?.colors.background || '#FFFFFF' : '#FFFFFF'
+            dark: '#000000', // Always use black for maximum contrast and scannability
+            light: '#FFFFFF' // Always use white background for maximum contrast
           },
-          errorCorrectionLevel: 'M' as const
+          errorCorrectionLevel: 'H' as const, // High error correction for better scanning
+          type: 'image/png' as const,
+          quality: 0.92,
+          rendererOpts: {
+            quality: 0.92
+          }
         };
         
         console.log('QR options:', qrOptions);
@@ -170,12 +175,17 @@ export const PrintableQRCode = ({
             <title>QR ${selectedTemplate} - ${roomNumber || assignedTo}</title>
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
             <style>
+              * { 
+                -webkit-print-color-adjust: exact !important;
+                color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
               body { 
                 margin: 0; 
                 padding: 20px; 
                 font-family: '${themeInfo?.fontBody || 'Inter'}', sans-serif;
-                background: ${themeInfo?.colors.background || '#ffffff'};
-                color: ${themeInfo?.colors.primary || '#000000'};
+                background: ${themeInfo?.colors.background || '#ffffff'} !important;
+                color: ${themeInfo?.colors.primary || '#000000'} !important;
                 display: flex;
                 justify-content: center;
                 align-items: center;
@@ -184,11 +194,26 @@ export const PrintableQRCode = ({
               .printable-content { 
                 width: ${finalWidth}px;
                 height: ${finalHeight}px;
+                background: inherit !important;
+              }
+              .printable-content * {
+                background: inherit !important;
+                -webkit-print-color-adjust: exact !important;
+                color-adjust: exact !important;
               }
               @media print {
-                body { padding: 0; }
+                * { 
+                  -webkit-print-color-adjust: exact !important;
+                  color-adjust: exact !important;
+                  print-color-adjust: exact !important;
+                }
+                body { 
+                  padding: 0; 
+                  background: ${themeInfo?.colors.background || '#ffffff'} !important;
+                }
                 .printable-content { 
                   page-break-inside: avoid;
+                  background: inherit !important;
                 }
               }
             </style>

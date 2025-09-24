@@ -80,18 +80,22 @@ interface MockGuest {
   totalStays: number;
 }
 
-// Mock guest database - in a real app this would come from backend
-const MOCK_GUESTS: MockGuest[] = [
-  {
-    id: '1',
-    name: 'John Doe',
-    phone: '08012345678',
-    email: 'john.doe@email.com',
-    idType: 'national-id',
-    idNumber: 'NID123456789',
-    lastStay: '2024-07-15',
-    totalStays: 3
-  },
+import { useGuests } from "@/hooks/useGuests";
+
+// Live guest data from Supabase
+const { data: liveGuests = [], isLoading: guestsLoading } = useGuests();
+
+// Transform live guests to component format
+const guestList = liveGuests.map(guest => ({
+  id: guest.id,
+  name: `${guest.first_name} ${guest.last_name}`,
+  phone: guest.phone || '',
+  email: guest.email || '',
+  idType: 'national-id',
+  idNumber: guest.guest_id_number || '',
+  lastStay: guest.last_stay_date || '',
+  totalStays: guest.total_stays || 0
+}));
   {
     id: '2', 
     name: 'Jane Smith',
@@ -148,7 +152,7 @@ export const QuickGuestCapture = ({
   const [selectedGuest, setSelectedGuest] = useState<MockGuest | null>(null);
   const [guestSearchOpen, setGuestSearchOpen] = useState(false);
   const [guestSearchValue, setGuestSearchValue] = useState("");
-  const [guestList, setGuestList] = useState<MockGuest[]>(MOCK_GUESTS);
+  const [guestList, setGuestList] = useState<MockGuest[]>(guestList);
   
   const [formData, setFormData] = useState<GuestFormData>({
     guestName: '',

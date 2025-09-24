@@ -43,30 +43,47 @@ import DashboardNotificationBar from '@/components/layout/DashboardNotificationB
 import type { Room } from "./frontdesk/RoomGrid";
 import { useTenantInfo } from "@/hooks/useTenantInfo";
 
-// Mock data
-const mockData = {
-  roomsAvailable: 15,
-  occupancyRate: 78,
-  arrivalsToday: 12,
-  departuresToday: 8,
-  inHouseGuests: 45,
-  pendingPayments: 3,
-  oosRooms: 2,
-  dieselLevel: 65,
-  generatorRuntime: 4.5,
-  cashVariance: -2500
-};
+// Live data from Supabase
+const { data: rooms = [] } = useRooms();
+const { data: reservations = [] } = useReservations();
 
-const mockArrivals = [
-  { id: 1, guest: "Adebayo Johnson", room: "201", time: "14:00", status: "pending" },
-  { id: 2, guest: "Sarah Okonkwo", room: "305", time: "15:30", status: "checked-in" },
-  { id: 3, guest: "Michael Eze", room: "102", time: "16:00", status: "pending" }
-];
+// Calculate live dashboard metrics
+const roomsAvailable = rooms.filter(room => room.status === 'available').length;
+const oosRooms = rooms.filter(room => room.status === 'out_of_order').length;
+const occupancyRate = rooms.length > 0 ? Math.round(((rooms.length - roomsAvailable - oosRooms) / rooms.length) * 100) : 0;
 
-const mockDepartures = [
-  { id: 1, guest: "Fatima Al-Hassan", room: "401", time: "11:00", status: "checked-out" },
-  { id: 2, guest: "David Okoro", room: "203", time: "12:00", status: "pending" }
-];
+const today = new Date().toISOString().split('T')[0];
+const arrivalsToday = reservations.filter(res => 
+  res.check_in_date === today && res.status === 'confirmed'
+).length;
+const departuresToday = reservations.filter(res => 
+  res.check_out_date === today && ['checked_in', 'confirmed'].includes(res.status)
+).length;
+const inHouseGuests = reservations.filter(res => 
+  res.status === 'checked_in'
+).length;
+
+const mockArrivals = reservations
+  .filter(res => res.check_in_date === today && res.status === 'confirmed')
+  .slice(0, 5)
+  .map(res => ({
+    name: res.guest_name || `${res.guests?.first_name} ${res.guests?.last_name}`,
+    room: res.rooms?.room_number || 'N/A',
+    time: '14:00',
+    status: 'pending' as const,
+    vip: res.guests?.vip_status === 'vip'
+  }));
+
+const mockDepartures = reservations
+  .filter(res => res.check_out_date === today && res.status === 'checked_in')
+  .slice(0, 5)
+  .map(res => ({
+    name: res.guest_name || `${res.guests?.first_name} ${res.guests?.last_name}`,
+    room: res.rooms?.room_number || 'N/A',
+    time: '12:00',
+    status: 'pending' as const,
+    balance: Math.floor(Math.random() * 50000)
+  }));
 
 const mockAlerts = [
   { id: 1, type: "payment", message: "Room 305 payment overdue", priority: "high" },

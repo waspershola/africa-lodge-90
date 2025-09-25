@@ -84,7 +84,7 @@ const handler = async (req: Request): Promise<Response> => {
 
   } catch (error) {
     console.error('Error in stop-impersonation function:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: (error as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

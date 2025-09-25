@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -44,27 +44,30 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
 
-const verifyPaystackSignature = (rawBody: string, signature: string): boolean => {
+const verifyPaystackSignature = async (rawBody: string, signature: string): Promise<boolean> => {
   const secret = Deno.env.get('PAYSTACK_SECRET_KEY');
   if (!secret) return false;
 
-  const encoder = new TextEncoder();
-  const data = encoder.encode(rawBody);
-  const key = encoder.encode(secret);
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(rawBody);
+    const key = encoder.encode(secret);
 
-  return crypto.subtle.importKey(
-    'raw',
-    key,
-    { name: 'HMAC', hash: 'SHA-512' },
-    false,
-    ['sign']
-  ).then(cryptoKey =>
-    crypto.subtle.sign('HMAC', cryptoKey, data)
-  ).then(signature_buffer => {
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      key,
+      { name: 'HMAC', hash: 'SHA-512' },
+      false,
+      ['sign']
+    );
+    
+    const signature_buffer = await crypto.subtle.sign('HMAC', cryptoKey, data);
     const signature_array = Array.from(new Uint8Array(signature_buffer));
     const signature_hex = signature_array.map(b => b.toString(16).padStart(2, '0')).join('');
     return signature_hex === signature;
-  }).catch(() => false);
+  } catch {
+    return false;
+  }
 };
 
 const handleSubscriptionPayment = async (event: PaystackWebhookEvent) => {

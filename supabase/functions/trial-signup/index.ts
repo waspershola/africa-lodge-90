@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
-import { Resend } from "npm:resend@4.0.0";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -177,13 +177,24 @@ const handler = async (req: Request): Promise<Response> => {
       .replace(/\s+/g, '-')
       .substring(0, 50);
 
+    if (!starterPlan) {
+      console.error('Failed to find starter plan');
+      return new Response(JSON.stringify({ 
+        error: 'Service configuration error',
+        details: 'Starter plan not found' 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Use provided password
     const userPassword = password;
     const tempPasswordHash = await hashPassword(password); // For backup reference
     const tempExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    let tenantId: string;
-    let authUserId: string;
+    let tenantId: string | undefined;
+    let authUserId: string | undefined;
 
     try {
       // Step 1: Create tenant
@@ -349,7 +360,7 @@ const handler = async (req: Request): Promise<Response> => {
         emailSent = true;
       } catch (error) {
         console.error('Failed to send welcome email (non-critical):', error);
-        emailError = error.message;
+        emailError = (error as Error).message;
         // Continue anyway - email failure shouldn't break trial signup
       }
 

@@ -66,91 +66,112 @@ async function handleEmailVerification(
   clientIP: string, 
   userAgent?: string
 ) {
-  // Check if email is a platform owner
-  const { data: user, error: userError } = await supabaseClient
-    .from('users')
-    .select('id, email, security_questions, is_platform_owner, is_active')
-    .eq('email', email.trim())
-    .eq('is_platform_owner', true)
-    .eq('is_active', true)
-    .single();
-
-  if (userError || !user) {
-    // Log failed attempt
-    await logEmergencyAccess(supabaseClient, null, 'email', false, 'Invalid platform owner email', clientIP, userAgent);
+  try {
+    console.log(`Starting email verification for: ${email}`);
     
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: 'Invalid platform owner email or account not found' 
-      }),
-      {
-        status: 400,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      }
-    );
-  }
+    // Check if email is a platform owner
+    const { data: user, error: userError } = await supabaseClient
+      .from('users')
+      .select('id, email, security_questions, is_platform_owner, is_active')
+      .eq('email', email.trim())
+      .eq('is_platform_owner', true)
+      .eq('is_active', true)
+      .single();
 
-  // Create recovery session
-  const sessionToken = crypto.randomUUID();
-  const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    console.log('User query result:', { user, userError });
 
-  const { error: sessionError } = await supabaseClient
-    .from('recovery_sessions')
-    .insert({
-      user_id: user.id,
-      session_token: sessionToken,
-      steps_completed: ['email_verification'],
-      required_steps: ['email_verification', 'master_key', 'security_question'],
-      expires_at: expiresAt.toISOString(),
-      ip_address: clientIP,
-      user_agent: userAgent
-    });
-
-  if (sessionError) {
-    throw sessionError;
-  }
-
-  // Get random security question
-  const questions = user.security_questions || [];
-  
-  // Filter out questions with null or missing answer_hash
-  const validQuestions = questions.filter((q: any) => q && q.question && q.answer_hash);
-  
-  if (validQuestions.length === 0) {
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: 'No valid security questions configured for this account. Please contact system administrator.' 
-      }),
-      {
-        status: 400,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      }
-    );
-  }
-  
-  const randomQuestion = validQuestions[Math.floor(Math.random() * validQuestions.length)];
-
-  // Log successful email verification
-  await logEmergencyAccess(supabaseClient, user.id, 'email', true, 'Email verified successfully', clientIP, userAgent);
-
-  return new Response(
-    JSON.stringify({
-      success: true,
-      session: {
-        sessionToken,
-        stepsCompleted: ['email_verification'],
-        requiredSteps: ['email_verification', 'master_key', 'security_question'],
-        expiresAt: expiresAt.toISOString()
-      },
-      securityQuestion: randomQuestion.question
-    }),
-    {
-      status: 200,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders },
+    if (userError || !user) {
+      console.log('User not found or error:', userError);
+      // Log failed attempt
+      await logEmergencyAccess(supabaseClient, null, 'email', false, 'Invalid platform owner email', clientIP, userAgent);
+      
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Invalid platform owner email or account not found' 
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        }
+      );
     }
-  );
+
+    console.log('User found, creating recovery session...');
+
+    // Create recovery session
+    const sessionToken = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    const { error: sessionError } = await supabaseClient
+      .from('recovery_sessions')
+      .insert({
+        user_id: user.id,
+        session_token: sessionToken,
+        steps_completed: ['email_verification'],
+        required_steps: ['email_verification', 'master_key', 'security_question'],
+        expires_at: expiresAt.toISOString(),
+        ip_address: clientIP,
+        user_agent: userAgent
+      });
+
+    if (sessionError) {
+      console.error('Session creation error:', sessionError);
+      throw sessionError;
+    }
+
+    console.log('Recovery session created, processing security questions...');
+
+    // Get random security question
+    const questions = user.security_questions || [];
+    console.log('Security questions:', questions);
+    
+    // Filter out questions with null or missing answer_hash
+    const validQuestions = questions.filter((q: any) => q && q.question && q.answer_hash);
+    console.log('Valid questions:', validQuestions);
+    
+    if (validQuestions.length === 0) {
+      console.log('No valid security questions found');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'No valid security questions configured for this account. Please contact system administrator.' 
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        }
+      );
+    }
+    
+    const randomQuestion = validQuestions[Math.floor(Math.random() * validQuestions.length)];
+    console.log('Selected random question:', randomQuestion);
+
+    // Log successful email verification
+    await logEmergencyAccess(supabaseClient, user.id, 'email', true, 'Email verified successfully', clientIP, userAgent);
+
+    console.log('Email verification successful, returning response');
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        session: {
+          sessionToken,
+          stepsCompleted: ['email_verification'],
+          requiredSteps: ['email_verification', 'master_key', 'security_question'],
+          expiresAt: expiresAt.toISOString()
+        },
+        securityQuestion: randomQuestion.question
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      }
+    );
+  } catch (error: any) {
+    console.error('Error in handleEmailVerification:', error);
+    throw error;
+  }
 }
 
 async function handleMasterKeyVerification(

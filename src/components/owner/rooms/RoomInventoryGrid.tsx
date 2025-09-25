@@ -29,6 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 import RoomDetailDrawer from "./RoomDetailDrawer";
 import BulkEditModal from "./BulkEditModal";
 import { AddRoomDialog } from "./AddRoomDialog";
+import BulkRoomCreator from "./BulkRoomCreator";
 
 // Using database Room interface - this will match the Supabase rooms table structure
 
@@ -65,6 +66,7 @@ export default function RoomInventoryGrid() {
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isBulkCreateOpen, setIsBulkCreateOpen] = useState(false);
   
   // Real database hooks
   const { data: roomsData, isLoading, error } = useRooms();
@@ -193,6 +195,14 @@ export default function RoomInventoryGrid() {
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Room
+              </Button>
+              <Button 
+                variant="outline"
+                size="sm"
+                onClick={() => setIsBulkCreateOpen(true)}
+                disabled={!roomLimits.canAddRoom(currentRoomCount)}
+              >
+                Bulk Create
               </Button>
             </div>
           </div>
@@ -418,6 +428,14 @@ export default function RoomInventoryGrid() {
         isOpen={isAddDialogOpen}
         onClose={() => setIsAddDialogOpen(false)}
         onSave={handleSaveNewRoom}
+      />
+
+      {/* Bulk Room Creator */}
+      <BulkRoomCreator
+        isOpen={isBulkCreateOpen}
+        onClose={() => setIsBulkCreateOpen(false)}
+        roomTypes={roomTypes}
+        currentRoomCount={currentRoomCount}
       />
     </div>
   );

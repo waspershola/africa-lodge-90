@@ -26,9 +26,10 @@ import { cn } from "@/lib/utils";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useMultiTenantAuth } from "@/hooks/useMultiTenantAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useRatePlans, useCreateRatePlan, useUpdateRatePlan, useDeleteRatePlan, RatePlan } from "@/hooks/useRatePlans";
 import React from "react";
 
-interface RatePlan {
+interface LocalRatePlan {
   id: string;
   name: string;
   description: string;
@@ -48,64 +49,6 @@ interface RatePlan {
   corporateCode?: string;
 }
 
-const mockRatePlans: RatePlan[] = [
-  {
-    id: "1",
-    name: "Summer Special",
-    description: "Promotional rate for summer season with pool access",
-    type: "seasonal",
-    roomCategory: "Standard",
-    baseRate: 120,
-    adjustmentType: "percentage",
-    adjustment: -15,
-    finalRate: 102,
-    startDate: new Date(2024, 5, 1),
-    endDate: new Date(2024, 8, 30),
-    minStay: 2,
-    maxStay: 14,
-    advanceBooking: 7,
-    isActive: true,
-    restrictions: ["Non-refundable", "Weekend supplement applies"],
-  },
-  {
-    id: "2",
-    name: "Corporate Rate - Tech Companies",
-    description: "Special rate for technology companies with extended stay benefits",
-    type: "corporate",
-    roomCategory: "Deluxe",
-    baseRate: 180,
-    adjustmentType: "fixed",
-    adjustment: -30,
-    finalRate: 150,
-    startDate: new Date(2024, 0, 1),
-    endDate: new Date(2024, 11, 31),
-    minStay: 1,
-    maxStay: 30,
-    advanceBooking: 0,
-    isActive: true,
-    restrictions: ["Valid corporate ID required", "Breakfast included"],
-    corporateCode: "TECH2024",
-  },
-  {
-    id: "3",
-    name: "Weekend Getaway Package",
-    description: "Weekend package including breakfast and spa access",
-    type: "package",
-    roomCategory: "Suite",
-    baseRate: 320,
-    adjustmentType: "fixed",
-    adjustment: 50,
-    finalRate: 370,
-    startDate: new Date(2024, 0, 1),
-    endDate: new Date(2024, 11, 31),
-    minStay: 2,
-    maxStay: 3,
-    advanceBooking: 14,
-    isActive: true,
-    restrictions: ["Weekend only", "Includes breakfast & spa"],
-  },
-];
-
 const rateTypeColors = {
   seasonal: "bg-green-500",
   corporate: "bg-blue-500",
@@ -121,39 +64,61 @@ const rateTypeLabels = {
 };
 
 export default function RatePlanManager() {
-  const [ratePlans, setRatePlans] = useState<RatePlan[]>(mockRatePlans);
-  const [selectedPlan, setSelectedPlan] = useState<RatePlan | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<LocalRatePlan | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isNewPlan, setIsNewPlan] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   
   const { formatPrice } = useCurrency();
   const { user, tenant } = useMultiTenantAuth();
   const { toast } = useToast();
+  
+  // Use real database hooks
+  const { data: ratePlansData, isLoading } = useRatePlans();
+  const createRatePlan = useCreateRatePlan();
+  const updateRatePlan = useUpdateRatePlan();
+  const deleteRatePlan = useDeleteRatePlan();
+  
+  const ratePlans = ratePlansData || [];
 
-  // Load rate plans from database
-  React.useEffect(() => {
-    loadRatePlans();
-  }, []);
+  // Convert database rate plan to local format for display
+  const convertToLocalFormat = (dbPlan: RatePlan): LocalRatePlan => ({
+    id: dbPlan.id,
+    name: dbPlan.name,
+    description: dbPlan.description || '',
+    type: dbPlan.type,
+    roomCategory: 'Standard', // Default for now
+    baseRate: dbPlan.base_rate,
+    adjustmentType: dbPlan.adjustment_type,
+    adjustment: dbPlan.adjustment,
+    finalRate: dbPlan.final_rate,
+    startDate: new Date(dbPlan.start_date),
+    endDate: new Date(dbPlan.end_date),
+    minStay: dbPlan.min_stay || 1,
+    maxStay: dbPlan.max_stay || 30,
+    advanceBooking: dbPlan.advance_booking || 0,
+    isActive: dbPlan.is_active,
+    restrictions: dbPlan.restrictions || [],
+    corporateCode: dbPlan.corporate_code,
+  });
 
-  const loadRatePlans = async () => {
-    if (!tenant?.tenant_id && !user?.tenant_id) return;
-    
-    try {
-      setIsLoading(true);
-      // For now using mock data until rate_plans table is properly set up
-      setRatePlans(mockRatePlans);
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Error loading rate plans:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load rate plans",
-        variant: "destructive"
-      });
-      setIsLoading(false);
-    }
-  };
+  // Convert local format to database format
+  const convertToDbFormat = (localPlan: LocalRatePlan) => ({
+    name: localPlan.name,
+    description: localPlan.description,
+    type: localPlan.type,
+    base_rate: localPlan.baseRate,
+    adjustment_type: localPlan.adjustmentType,
+    adjustment: localPlan.adjustment,
+    final_rate: localPlan.finalRate,
+    start_date: localPlan.startDate.toISOString().split('T')[0],
+    end_date: localPlan.endDate.toISOString().split('T')[0],
+    min_stay: localPlan.minStay,
+    max_stay: localPlan.maxStay,
+    advance_booking: localPlan.advanceBooking,
+    corporate_code: localPlan.corporateCode,
+    restrictions: localPlan.restrictions,
+    is_active: localPlan.isActive,
+  });
 
   const handleNewPlan = () => {
     setSelectedPlan({
@@ -178,8 +143,8 @@ export default function RatePlanManager() {
     setIsEditDialogOpen(true);
   };
 
-  const handleEditPlan = (plan: RatePlan) => {
-    setSelectedPlan({ ...plan });
+  const handleEditPlan = (dbPlan: RatePlan) => {
+    setSelectedPlan(convertToLocalFormat(dbPlan));
     setIsNewPlan(false);
     setIsEditDialogOpen(true);
   };
@@ -203,33 +168,19 @@ export default function RatePlanManager() {
       );
 
       const updatedPlan = { ...selectedPlan, finalRate };
+      const dbData = convertToDbFormat(updatedPlan);
       
       if (isNewPlan) {
-        setRatePlans([...ratePlans, updatedPlan]);
-        toast({
-          title: "Success",
-          description: "Rate plan created successfully"
-        });
+        await createRatePlan.mutateAsync(dbData);
       } else {
-        setRatePlans(ratePlans.map(plan => 
-          plan.id === selectedPlan.id ? updatedPlan : plan
-        ));
-        toast({
-          title: "Success", 
-          description: "Rate plan updated successfully"
-        });
+        await updateRatePlan.mutateAsync({ id: selectedPlan.id, ...dbData });
       }
 
       setIsEditDialogOpen(false);
       setSelectedPlan(null);
       setIsNewPlan(false);
     } catch (error) {
-      console.error('Error saving rate plan:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save rate plan",
-        variant: "destructive"
-      });
+      // Error handling is done in the hooks
     }
   };
 
@@ -237,33 +188,23 @@ export default function RatePlanManager() {
     if (!window.confirm('Are you sure you want to delete this rate plan?')) return;
     
     try {
-      setRatePlans(ratePlans.filter(plan => plan.id !== planId));
-      toast({
-        title: "Success",
-        description: "Rate plan deleted successfully"
-      });
+      await deleteRatePlan.mutateAsync(planId);
     } catch (error) {
-      console.error('Error deleting rate plan:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete rate plan",
-        variant: "destructive"
-      });
+      // Error handling is done in the hooks
     }
   };
 
   const togglePlanStatus = async (planId: string) => {
     try {
-      setRatePlans(ratePlans.map(plan =>
-        plan.id === planId ? { ...plan, isActive: !plan.isActive } : plan
-      ));
+      const plan = ratePlans.find(p => p.id === planId);
+      if (plan) {
+        await updateRatePlan.mutateAsync({ 
+          id: planId, 
+          is_active: !plan.is_active 
+        });
+      }
     } catch (error) {
-      console.error('Error updating plan status:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update plan status",
-        variant: "destructive"
-      });
+      // Error handling is done in the hooks
     }
   };
 
@@ -285,33 +226,35 @@ export default function RatePlanManager() {
         </div>
       ) : (
         <div className="grid gap-4">
-          {ratePlans.map((plan) => (
-          <Card key={plan.id} className={`relative ${!plan.isActive ? 'opacity-60' : ''}`}>
+          {ratePlans.map((plan) => {
+            const localPlan = convertToLocalFormat(plan);
+            return (
+          <Card key={plan.id} className={`relative ${!localPlan.isActive ? 'opacity-60' : ''}`}>
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
                   <div className="flex items-center gap-3">
-                    <CardTitle className="text-xl">{plan.name}</CardTitle>
+                    <CardTitle className="text-xl">{localPlan.name}</CardTitle>
                     <div className="flex items-center gap-2">
-                      <div className={`w-3 h-3 rounded-full ${rateTypeColors[plan.type]}`} />
+                      <div className={`w-3 h-3 rounded-full ${rateTypeColors[localPlan.type]}`} />
                       <Badge variant="outline">
-                        {rateTypeLabels[plan.type]}
+                        {rateTypeLabels[localPlan.type]}
                       </Badge>
-                      {plan.corporateCode && (
-                        <Badge variant="secondary">{plan.corporateCode}</Badge>
+                      {localPlan.corporateCode && (
+                        <Badge variant="secondary">{localPlan.corporateCode}</Badge>
                       )}
                     </div>
                   </div>
-                  <p className="text-muted-foreground">{plan.description}</p>
+                  <p className="text-muted-foreground">{localPlan.description}</p>
                 </div>
                 
                 <div className="flex items-center gap-2">
                   <Switch
-                    checked={plan.isActive}
+                    checked={localPlan.isActive}
                     onCheckedChange={() => togglePlanStatus(plan.id)}
                   />
                   <span className="text-sm text-muted-foreground">
-                    {plan.isActive ? 'Active' : 'Inactive'}
+                    {localPlan.isActive ? 'Active' : 'Inactive'}
                   </span>
                 </div>
               </div>
@@ -321,65 +264,65 @@ export default function RatePlanManager() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="space-y-1">
                   <span className="text-sm text-muted-foreground">Room Category</span>
-                  <p className="font-medium">{plan.roomCategory}</p>
+                  <p className="font-medium">{localPlan.roomCategory}</p>
                 </div>
                 
                 <div className="space-y-1">
                   <span className="text-sm text-muted-foreground">Base Rate</span>
-                  <p className="font-medium">{formatPrice(plan.baseRate)}</p>
+                  <p className="font-medium">{formatPrice(localPlan.baseRate)}</p>
                 </div>
                 
                 <div className="space-y-1">
                   <span className="text-sm text-muted-foreground">Adjustment</span>
                   <div className="flex items-center gap-1">
-                    {plan.adjustmentType === "percentage" ? (
+                    {localPlan.adjustmentType === "percentage" ? (
                       <Percent className="h-4 w-4" />
                     ) : (
                       <DollarSign className="h-4 w-4" />
                     )}
-                    <span className={`font-medium ${plan.adjustment >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {plan.adjustment >= 0 ? '+' : ''}{plan.adjustment}
-                      {plan.adjustmentType === "percentage" ? '%' : ''}
+                    <span className={`font-medium ${localPlan.adjustment >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {localPlan.adjustment >= 0 ? '+' : ''}{localPlan.adjustment}
+                      {localPlan.adjustmentType === "percentage" ? '%' : ''}
                     </span>
                   </div>
                 </div>
                 
                 <div className="space-y-1">
                   <span className="text-sm text-muted-foreground">Final Rate</span>
-                  <p className="text-xl font-bold text-primary">{formatPrice(plan.finalRate)}</p>
+                  <p className="text-xl font-bold text-primary">{formatPrice(localPlan.finalRate)}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div className="flex items-center gap-2">
                   <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                  <span>{format(plan.startDate, "MMM d")} - {format(plan.endDate, "MMM d, yyyy")}</span>
+                  <span>{format(localPlan.startDate, "MMM d")} - {format(localPlan.endDate, "MMM d, yyyy")}</span>
                 </div>
                 
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span>{plan.minStay}-{plan.maxStay} nights</span>
+                  <span>{localPlan.minStay}-{localPlan.maxStay} nights</span>
                 </div>
                 
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-muted-foreground" />
-                  <span>{plan.advanceBooking} days advance</span>
+                  <span>{localPlan.advanceBooking} days advance</span>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                  <span className={plan.adjustment >= 0 ? 'text-green-600' : 'text-red-600'}>
-                    {Math.abs(Math.round((plan.adjustment / plan.baseRate) * 100))}% 
-                    {plan.adjustment >= 0 ? ' increase' : ' decrease'}
+                  <span className={localPlan.adjustment >= 0 ? 'text-green-600' : 'text-red-600'}>
+                    {Math.abs(Math.round((localPlan.adjustment / localPlan.baseRate) * 100))}% 
+                    {localPlan.adjustment >= 0 ? ' increase' : ' decrease'}
                   </span>
                 </div>
               </div>
 
-              {plan.restrictions.length > 0 && (
+              {localPlan.restrictions.length > 0 && (
                 <div className="space-y-2">
                   <span className="text-sm font-medium">Restrictions</span>
                   <div className="flex flex-wrap gap-1">
-                    {plan.restrictions.map((restriction, index) => (
+                    {localPlan.restrictions.map((restriction, index) => (
                       <Badge key={index} variant="outline" className="text-xs">
                         {restriction}
                       </Badge>
@@ -389,27 +332,28 @@ export default function RatePlanManager() {
               )}
 
               <div className="flex gap-2 pt-2 border-t">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleEditPlan(plan)}
-                  className="flex-1"
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit Plan
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDeletePlan(plan.id)}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEditPlan(plan)}
+                    className="flex-1"
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Plan
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDeletePlan(plan.id)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
               </div>
             </CardContent>
           </Card>
-          ))}
+          );
+          })}
         </div>
       )}
 

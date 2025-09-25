@@ -21,6 +21,13 @@ import {
   Target
 } from "lucide-react";
 import { useCurrency } from "@/hooks/useCurrency";
+import { 
+  usePricingRules, 
+  useDynamicPricingSettings, 
+  useCreatePricingRule, 
+  useUpdatePricingRule, 
+  useUpdateDynamicPricingSettings 
+} from "@/hooks/useDynamicPricing";
 
 interface PricingRule {
   id: string;
@@ -139,30 +146,60 @@ const ruleTypeLabels = {
 };
 
 export default function DynamicPricingControls() {
-  const [pricingRules, setPricingRules] = useState<PricingRule[]>(mockPricingRules);
-  const [settings, setSettings] = useState<DynamicPricingSettings>(mockSettings);
   const [activeTab, setActiveTab] = useState("rules");
   const { formatPrice } = useCurrency();
-
-  const toggleRule = (ruleId: string) => {
-    setPricingRules(rules => 
-      rules.map(rule => 
-        rule.id === ruleId ? { ...rule, isActive: !rule.isActive } : rule
-      )
-    );
+  
+  // Real database hooks
+  const { data: pricingRulesData, isLoading: rulesLoading } = usePricingRules();
+  const { data: settingsData, isLoading: settingsLoading } = useDynamicPricingSettings();
+  const createPricingRule = useCreatePricingRule();
+  const updatePricingRule = useUpdatePricingRule();
+  const updateSettings = useUpdateDynamicPricingSettings();
+  
+  const pricingRules = pricingRulesData || [];
+  const settings = settingsData || {
+    id: '',
+    tenant_id: '',
+    is_enabled: false,
+    update_frequency: 30,
+    max_price_increase: 50,
+    max_price_decrease: 30,
+    competitor_sync: false,
+    demand_forecast: false,
+    event_integration: false,
+    created_at: '',
+    updated_at: ''
   };
 
-  const updateSettings = (key: keyof DynamicPricingSettings, value: any) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+  const toggleRule = async (ruleId: string) => {
+    try {
+      const rule = pricingRules.find(r => r.id === ruleId);
+      if (rule) {
+        await updatePricingRule.mutateAsync({
+          id: ruleId,
+          is_active: !rule.is_active
+        });
+      }
+    } catch (error) {
+      // Error handling is done in the hook
+    }
   };
 
-  // Mock current pricing data
+  const updateSettingsValue = async (key: string, value: any) => {
+    try {
+      await updateSettings.mutateAsync({ [key]: value });
+    } catch (error) {
+      // Error handling is done in the hook
+    }
+  };
+
+  // Mock current pricing data (would come from analytics in real app)
   const currentPricing = {
     occupancyRate: 78,
     averageRate: 165,
     rateChange: 12,
     demandForecast: 85,
-    activeRules: pricingRules.filter(rule => rule.isActive).length
+    activeRules: pricingRules.filter(rule => rule.is_active).length
   };
 
   return (
@@ -176,16 +213,16 @@ export default function DynamicPricingControls() {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Switch 
-              checked={settings.isEnabled} 
-              onCheckedChange={(checked) => updateSettings('isEnabled', checked)}
+              checked={settings.is_enabled} 
+              onCheckedChange={(checked) => updateSettingsValue('is_enabled', checked)}
             />
             <span className="text-sm font-medium">
-              {settings.isEnabled ? 'Enabled' : 'Disabled'}
+              {settings.is_enabled ? 'Enabled' : 'Disabled'}
             </span>
           </div>
-          <Badge variant={settings.isEnabled ? "default" : "secondary"} className="gap-1">
+          <Badge variant={settings.is_enabled ? "default" : "secondary"} className="gap-1">
             <Zap className="h-3 w-3" />
-            {settings.isEnabled ? 'Auto Pricing ON' : 'Manual Pricing'}
+            {settings.is_enabled ? 'Auto Pricing ON' : 'Manual Pricing'}
           </Badge>
         </div>
       </div>
@@ -273,7 +310,7 @@ export default function DynamicPricingControls() {
 
           <div className="grid gap-4">
             {pricingRules.map((rule) => (
-              <Card key={rule.id} className={`${!rule.isActive ? 'opacity-60' : ''}`}>
+              <Card key={rule.id} className={`${!rule.is_active ? 'opacity-60' : ''}`}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -289,17 +326,17 @@ export default function DynamicPricingControls() {
                     
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
-                        {rule.isActive ? (
+                        {rule.is_active ? (
                           <CheckCircle className="h-4 w-4 text-green-500" />
                         ) : (
                           <AlertTriangle className="h-4 w-4 text-yellow-500" />
                         )}
                         <span className="text-sm text-muted-foreground">
-                          {rule.isActive ? 'Active' : 'Inactive'}
+                          {rule.is_active ? 'Active' : 'Inactive'}
                         </span>
                       </div>
                       <Switch
-                        checked={rule.isActive}
+                        checked={rule.is_active}
                         onCheckedChange={() => toggleRule(rule.id)}
                       />
                     </div>
@@ -307,54 +344,54 @@ export default function DynamicPricingControls() {
                 </CardHeader>
                 
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-1">
-                      <span className="text-sm font-medium">Trigger Condition</span>
-                      <p className="text-sm text-muted-foreground">
-                        {rule.trigger.condition.replace('_', ' ')} {rule.trigger.operator} {rule.trigger.value}
-                        {rule.trigger.condition === 'occupancy_rate' ? '%' : ''}
-                      </p>
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <span className="text-sm font-medium">Price Adjustment</span>
-                      <div className="flex items-center gap-1">
-                        <span className={`text-sm font-medium ${
-                          rule.adjustment.value >= 0 ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          {rule.adjustment.value >= 0 ? '+' : ''}{rule.adjustment.value}
-                          {rule.adjustment.type === 'percentage' ? '%' : '$'}
-                        </span>
-                        {rule.adjustment.value >= 0 ? (
-                          <TrendingUp className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <TrendingDown className="h-4 w-4 text-red-600" />
-                        )}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-1">
+                        <span className="text-sm font-medium">Trigger Condition</span>
+                        <p className="text-sm text-muted-foreground">
+                          {rule.trigger_condition.replace('_', ' ')} {rule.trigger_operator} {rule.trigger_value}
+                          {rule.trigger_condition === 'occupancy_rate' ? '%' : ''}
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <span className="text-sm font-medium">Price Adjustment</span>
+                        <div className="flex items-center gap-1">
+                          <span className={`text-sm font-medium ${
+                            rule.adjustment_value >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {rule.adjustment_value >= 0 ? '+' : ''}{rule.adjustment_value}
+                            {rule.adjustment_type === 'percentage' ? '%' : '$'}
+                          </span>
+                          {rule.adjustment_value >= 0 ? (
+                            <TrendingUp className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <TrendingDown className="h-4 w-4 text-red-600" />
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <span className="text-sm font-medium">Room Categories</span>
+                        <div className="flex flex-wrap gap-1">
+                          {rule.room_categories.map((category, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              {category}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                    
-                    <div className="space-y-1">
-                      <span className="text-sm font-medium">Room Categories</span>
-                      <div className="flex flex-wrap gap-1">
-                        {rule.roomCategories.map((category, index) => (
-                          <Badge key={index} variant="outline" className="text-xs">
-                            {category}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Max Increase:</span>
-                      <span className="font-medium">{rule.adjustment.maxIncrease}%</span>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Max Increase:</span>
+                        <span className="font-medium">{rule.max_increase}%</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Max Decrease:</span>
+                        <span className="font-medium">{rule.max_decrease}%</span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Max Decrease:</span>
-                      <span className="font-medium">{rule.adjustment.maxDecrease}%</span>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -372,8 +409,8 @@ export default function DynamicPricingControls() {
                   <div className="space-y-2">
                     <Label>Update Frequency (minutes)</Label>
                     <Select
-                      value={settings.updateFrequency.toString()}
-                      onValueChange={(value) => updateSettings('updateFrequency', parseInt(value))}
+                      value={settings.update_frequency.toString()}
+                      onValueChange={(value) => updateSettingsValue('update_frequency', parseInt(value))}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -391,28 +428,28 @@ export default function DynamicPricingControls() {
                   <div className="space-y-3">
                     <Label>Maximum Price Increase (%)</Label>
                     <Slider
-                      value={[settings.maxPriceIncrease]}
-                      onValueChange={([value]) => updateSettings('maxPriceIncrease', value)}
+                      value={[settings.max_price_increase]}
+                      onValueChange={([value]) => updateSettingsValue('max_price_increase', value)}
                       max={100}
                       step={5}
                       className="w-full"
                     />
                     <div className="text-right text-sm text-muted-foreground">
-                      {settings.maxPriceIncrease}%
+                      {settings.max_price_increase}%
                     </div>
                   </div>
 
                   <div className="space-y-3">
                     <Label>Maximum Price Decrease (%)</Label>
                     <Slider
-                      value={[settings.maxPriceDecrease]}
-                      onValueChange={([value]) => updateSettings('maxPriceDecrease', value)}
+                      value={[settings.max_price_decrease]}
+                      onValueChange={([value]) => updateSettingsValue('max_price_decrease', value)}
                       max={50}
                       step={5}
                       className="w-full"
                     />
                     <div className="text-right text-sm text-muted-foreground">
-                      {settings.maxPriceDecrease}%
+                      {settings.max_price_decrease}%
                     </div>
                   </div>
                 </div>
@@ -426,8 +463,8 @@ export default function DynamicPricingControls() {
                       </p>
                     </div>
                     <Switch
-                      checked={settings.competitorSync}
-                      onCheckedChange={(checked) => updateSettings('competitorSync', checked)}
+                      checked={settings.competitor_sync}
+                      onCheckedChange={(checked) => updateSettingsValue('competitor_sync', checked)}
                     />
                   </div>
 
@@ -439,8 +476,8 @@ export default function DynamicPricingControls() {
                       </p>
                     </div>
                     <Switch
-                      checked={settings.demandForecast}
-                      onCheckedChange={(checked) => updateSettings('demandForecast', checked)}
+                      checked={settings.demand_forecast}
+                      onCheckedChange={(checked) => updateSettingsValue('demand_forecast', checked)}
                     />
                   </div>
 
@@ -452,8 +489,8 @@ export default function DynamicPricingControls() {
                       </p>
                     </div>
                     <Switch
-                      checked={settings.eventIntegration}
-                      onCheckedChange={(checked) => updateSettings('eventIntegration', checked)}
+                      checked={settings.event_integration}
+                      onCheckedChange={(checked) => updateSettingsValue('event_integration', checked)}
                     />
                   </div>
                 </div>

@@ -33,6 +33,7 @@ interface SystemOwner {
 }
 
 export function EmergencyRecoverySettings() {
+  // System management page - updated with SystemOwnerManagement component
   const [systemOwners, setSystemOwners] = useState<SystemOwner[]>([]);
   const [loading, setLoading] = useState(false);
   const [masterKeyHash, setMasterKeyHash] = useState('');

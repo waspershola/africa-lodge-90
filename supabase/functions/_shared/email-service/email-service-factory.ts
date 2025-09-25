@@ -16,27 +16,48 @@ export class EmailServiceFactory {
 
   createEmailService(config: EmailProviderConfig, provider?: string): EmailService | null {
     const targetProvider = provider || config.default_provider;
+    console.log(`Creating email service for provider: ${targetProvider}`);
     
     switch (targetProvider) {
       case 'ses':
+        console.log('SES config check:', {
+          enabled: config.providers.ses.enabled,
+          hasAccessKey: !!config.providers.ses.access_key_id,
+          hasSecretKey: !!config.providers.ses.secret_access_key
+        });
         if (config.providers.ses.enabled && config.providers.ses.access_key_id && config.providers.ses.secret_access_key) {
+          console.log('Creating SES service...');
           return new SesEmailService(config.providers.ses);
         }
+        console.log('SES service creation failed - missing credentials or disabled');
         break;
       
       case 'mailersend':
+        console.log('MailerSend config check:', {
+          enabled: config.providers.mailersend.enabled,
+          hasApiKey: !!config.providers.mailersend.api_key
+        });
         if (config.providers.mailersend.enabled && config.providers.mailersend.api_key) {
+          console.log('Creating MailerSend service...');
           return new MailerSendEmailService(config.providers.mailersend);
         }
+        console.log('MailerSend service creation failed - missing API key or disabled');
         break;
       
       case 'resend':
+        console.log('Resend config check:', {
+          enabled: config.providers.resend.enabled,
+          hasApiKey: !!config.providers.resend.api_key
+        });
         if (config.providers.resend.enabled && config.providers.resend.api_key) {
+          console.log('Creating Resend service...');
           return new ResendEmailService(config.providers.resend);
         }
+        console.log('Resend service creation failed - missing API key or disabled');
         break;
     }
     
+    console.log(`No email service created for provider: ${targetProvider}`);
     return null;
   }
 

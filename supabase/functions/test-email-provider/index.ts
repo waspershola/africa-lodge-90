@@ -15,6 +15,8 @@ interface TestEmailRequest {
 }
 
 serve(async (req) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} request received`);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -40,6 +42,7 @@ serve(async (req) => {
       });
     }
 
+    console.log('Verifying authentication...');
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
     
@@ -54,6 +57,7 @@ serve(async (req) => {
       });
     }
 
+    console.log('Checking user permissions...');
     // Check if user is super admin
     const { data: userData, error: userError } = await supabaseClient
       .from('users')
@@ -72,11 +76,15 @@ serve(async (req) => {
       });
     }
 
-    const { provider_type, config, test_email }: TestEmailRequest = await req.json();
-    console.log('Test email request:', { provider_type, test_email, hasConfig: !!config });
+    console.log('Parsing request body...');
+    const requestBody = await req.text();
+    console.log('Request body:', requestBody);
+    
+    const { provider_type, config, test_email }: TestEmailRequest = JSON.parse(requestBody);
+    console.log('Parsed test email request:', { provider_type, test_email, configKeys: Object.keys(config || {}) });
 
     if (!provider_type || !config || !test_email) {
-      console.log('Missing required parameters');
+      console.log('Missing required parameters:', { provider_type: !!provider_type, config: !!config, test_email: !!test_email });
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'Missing required parameters' 
@@ -114,6 +122,14 @@ serve(async (req) => {
       }
     };
 
+    console.log('Test config created:', {
+      default_provider: testConfig.default_provider,
+      enabled: testConfig.providers[provider_type].enabled,
+      hasCredentials: provider_type === 'ses' 
+        ? !!(testConfig.providers.ses.access_key_id && testConfig.providers.ses.secret_access_key)
+        : !!(testConfig.providers[provider_type as 'mailersend' | 'resend'].api_key)
+    });
+
     console.log('Creating email factory...');
     const emailFactory = new EmailServiceFactory();
     
@@ -125,7 +141,7 @@ serve(async (req) => {
         to: [test_email],
         subject: `Test Email - ${provider_type.toUpperCase()} Provider`,
         html: generateTestEmailHTML(provider_type),
-        from: 'noreply@example.com',
+        from: provider_type === 'resend' ? 'onboarding@resend.dev' : 'noreply@example.com',
         fromName: 'Hotel Management System'
       },
       'provider_test'
@@ -134,20 +150,22 @@ serve(async (req) => {
     console.log('Test email result:', result);
 
     return new Response(JSON.stringify(result), {
-      status: result.success ? 200 : 500,
+      status: result.success ? 200 : (result.error?.includes('All email providers failed') ? 500 : 400),
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error: unknown) {
     console.error('Test email provider error:', error);
     if (error instanceof Error) {
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
     }
     return new Response(
       JSON.stringify({ 
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred',
-        details: error instanceof Error ? error.stack : undefined
+        details: error instanceof Error ? error.stack : String(error)
       }),
       {
         status: 500,

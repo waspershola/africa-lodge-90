@@ -53,3 +53,6 @@ verify_jwt = true
 
 [functions.test-email-provider]
 verify_jwt = true
+
+[functions.test-email-provider-simple]
+verify_jwt = false

@@ -87,6 +87,8 @@ export default function EmailProviders() {
     }
 
     try {
+      console.log('Testing provider:', provider.provider_type, 'with config:', provider.config);
+      
       const { data, error } = await supabase.functions.invoke('test-email-provider', {
         body: {
           provider_type: provider.provider_type,
@@ -95,18 +97,44 @@ export default function EmailProviders() {
         }
       });
 
+      console.log('Test result:', { data, error });
+
       if (error) {
+        console.error('Supabase function error:', error);
         throw error;
       }
       
       if (data?.success) {
-        toast({ title: "Success", description: `Test email sent successfully to ${testEmail}` });
+        toast({ 
+          title: "Success", 
+          description: `Test email sent successfully via ${provider.provider_type.toUpperCase()} to ${testEmail}`,
+          duration: 5000
+        });
       } else {
-        toast({ title: "Error", description: data?.error || "Test failed", variant: "destructive" });
+        console.error('Provider test failed:', data);
+        toast({ 
+          title: "Test Failed", 
+          description: data?.error || "Unknown error occurred during test",
+          variant: "destructive",
+          duration: 8000
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Test error:', error);
-      toast({ title: "Error", description: "Failed to test provider", variant: "destructive" });
+      let errorMessage = "Failed to test provider";
+      
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      toast({ 
+        title: "Error", 
+        description: errorMessage,
+        variant: "destructive",
+        duration: 8000
+      });
     }
   };
 

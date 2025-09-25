@@ -213,7 +213,46 @@ export const useDeleteGlobalUser = () => {
   });
 };
 
+// Regular password reset - sends reset email link
 export const useResetGlobalUserPassword = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      // Get user email first, then send reset email
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('email')
+        .eq('id', userId)
+        .single();
+        
+      if (userError || !userData) {
+        throw new Error('User not found');
+      }
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(userData.email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to send reset email');
+      }
+
+      return { success: true };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['global-users'] });
+      toast.success('Password reset email sent');
+    },
+    onError: (error: any) => {
+      console.error('Failed to reset password:', error);
+      toast.error(error.message || 'Failed to send password reset email');
+    },
+  });
+};
+
+// Temporary password reset - generates temp password and shows it
+export const useResetToTempPassword = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
@@ -224,25 +263,31 @@ export const useResetGlobalUserPassword = () => {
 
       if (error) {
         console.error('Edge function error:', error);
-        throw new Error(error.message || 'Failed to invoke password reset function');
+        throw new Error(error.message || 'Failed to invoke temp password function');
       }
       
       if (!data?.success) {
         console.error('Function returned error:', data);
-        throw new Error(data?.error || 'Failed to reset password');
+        throw new Error(data?.error || 'Failed to generate temporary password');
       }
 
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['global-users'] });
-      toast.success('Password reset email sent');
+      if (data?.tempPassword) {
+        toast.success(`Temporary password generated: ${data.tempPassword}`, {
+          duration: 10000,
+          description: 'Please share this with the user securely. They will be required to change it on next login.'
+        });
+      } else {
+        toast.success('Temporary password generated successfully');
+      }
     },
     onError: (error: any) => {
-      console.error('Failed to reset password:', error);
+      console.error('Failed to generate temporary password:', error);
       
-      // Show more specific error messages
-      let errorMessage = 'Failed to reset password';
+      let errorMessage = 'Failed to generate temporary password';
       if (error.message?.includes('platform owner')) {
         errorMessage = 'Cannot reset platform owner password';
       } else if (error.message?.includes('not found')) {

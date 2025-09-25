@@ -88,8 +88,8 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
-      message: 'Password reset successfully',
-      tempPassword
+      message: 'Temporary password generated successfully',
+      tempPassword: tempPassword
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

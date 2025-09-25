@@ -26,6 +26,7 @@ import {
   useUpdateGlobalUser, 
   useDeleteGlobalUser, 
   useResetGlobalUserPassword,
+  useResetToTempPassword,
   type GlobalUser 
 } from '@/hooks/useGlobalUsers';
 import { format } from 'date-fns';
@@ -40,6 +41,7 @@ export function GlobalUsersTable() {
   const updateUser = useUpdateGlobalUser();
   const deleteUser = useDeleteGlobalUser();
   const resetPassword = useResetGlobalUserPassword();
+  const resetToTempPassword = useResetToTempPassword();
 
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
 
@@ -104,6 +106,10 @@ export function GlobalUsersTable() {
 
   const handleResetPassword = async (user: GlobalUser) => {
     await resetPassword.mutateAsync(user.id);
+  };
+
+  const handleResetToTempPassword = async (user: GlobalUser) => {
+    await resetToTempPassword.mutateAsync(user.id);
   };
 
   if (error) {
@@ -255,7 +261,7 @@ export function GlobalUsersTable() {
                           
                           {/* Reset to temporary password only for non-platform owners */}
                           {!user.is_platform_owner && isSuperAdmin && (
-                            <DropdownMenuItem onClick={() => handleResetPassword(user)}>
+                            <DropdownMenuItem onClick={() => handleResetToTempPassword(user)}>
                               <Clock className="mr-2 h-4 w-4" />
                               Reset to Temporary Password
                             </DropdownMenuItem>

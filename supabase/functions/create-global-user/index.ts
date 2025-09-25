@@ -56,15 +56,44 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if user already exists in auth
-    const { data: existingAuthUser } = await supabase.auth.admin.listUsers();
-    const userExists = existingAuthUser?.users?.some(user => user.email === email);
+    // Check if user already exists in auth or users table
+    const { data: existingAuthUsers } = await supabase.auth.admin.listUsers();
+    const authUserExists = existingAuthUsers?.users?.find(user => user.email === email);
     
-    if (userExists) {
+    const { data: existingUserRecord } = await supabase
+      .from('users')
+      .select('id, email')
+      .eq('email', email)
+      .single();
+
+    // If user exists in both auth and users table, return error
+    if (authUserExists && existingUserRecord) {
       return new Response(
         JSON.stringify({ success: false, error: `User with email ${email} already exists` }),
         { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // If user exists only in auth but not in users table, we need to either:
+    // 1. Delete from auth and recreate, or 2. Create the missing users record
+    if (authUserExists && !existingUserRecord) {
+      console.log('Found orphaned auth user, cleaning up:', email);
+      try {
+        await supabase.auth.admin.deleteUser(authUserExists.id);
+        console.log('Cleaned up orphaned auth user');
+      } catch (cleanupError) {
+        console.error('Failed to cleanup orphaned auth user:', cleanupError);
+        return new Response(
+          JSON.stringify({ success: false, error: 'User exists but is in inconsistent state. Please contact admin.' }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // If user exists only in users table but not in auth (shouldn't happen, but handle it)
+    if (!authUserExists && existingUserRecord) {
+      console.log('Found orphaned users record, cleaning up:', email);
+      await supabase.from('users').delete().eq('id', existingUserRecord.id);
     }
 
     // Generate temporary password
@@ -110,31 +139,8 @@ Deno.serve(async (req) => {
 
     console.log('Auth user created successfully:', authUser.user.id);
 
-    // Check if user already exists in our users table (handle trigger failures)
-    const { data: existingUserRecord } = await supabase
-      .from('users')
-      .select('id')
-      .eq('id', authUser.user.id)
-      .single();
-
-    if (existingUserRecord) {
-      console.log('User record already exists in users table');
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          user: {
-            id: authUser.user.id,
-            email,
-            fullName,
-            role,
-            department,
-            tempPassword: generateTempPassword ? tempPassword : undefined
-          },
-          message: 'User already exists and is ready to use'
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Wait a moment for any database triggers to complete
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     // Create user record in our users table
     const { data: newUser, error: userError } = await supabase

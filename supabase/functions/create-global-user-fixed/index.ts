@@ -74,11 +74,19 @@ serve(async (req) => {
     
     const userRole = roleMapping[roleData.name] || roleData.name.toUpperCase().replace(' ', '_');
 
-    // 2) Prevent duplicate users
+    // 2) Prevent duplicate users - check BOTH auth and profile tables
     const { data: existingDbUser } = await supabaseAdmin.from('users').select('id, email').eq('email', email).maybeSingle();
     if (existingDbUser) {
-      console.log('User already exists:', existingDbUser.email);
+      console.log('User already exists in profiles:', existingDbUser.email);
       return new Response(JSON.stringify({ success: false, error: 'User with this email already exists', code: 'USER_EXISTS', existing_user: { id: existingDbUser.id, email: existingDbUser.email } }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // Check if auth user exists (in case of partial creation)
+    const { data: existingAuthUser } = await supabaseAdmin.auth.admin.listUsers();
+    const authUserExists = existingAuthUser.users?.find(u => u.email === email);
+    if (authUserExists) {
+      console.log('Auth user already exists:', email);
+      return new Response(JSON.stringify({ success: false, error: 'User with this email already exists in auth', code: 'USER_EXISTS', existing_user: { id: authUserExists.id, email: authUserExists.email } }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // 3) Generate secure temporary password
@@ -132,8 +140,13 @@ serve(async (req) => {
 
     if (userInsertError) {
       console.error('Failed to create user profile:', userInsertError);
-      // cleanup auth user
-      try { await supabaseAdmin.auth.admin.deleteUser(userId); } catch (e) { console.error('Cleanup failed:', e); }
+      // cleanup auth user on profile creation failure
+      try { 
+        await supabaseAdmin.auth.admin.deleteUser(userId); 
+        console.log('Cleaned up auth user after profile creation failure');
+      } catch (e) { 
+        console.error('Cleanup failed:', e); 
+      }
       return new Response(JSON.stringify({ success: false, error: 'Failed to create user profile', code: 'PROFILE_ERROR', details: userInsertError.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 

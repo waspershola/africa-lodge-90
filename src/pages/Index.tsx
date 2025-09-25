@@ -45,7 +45,7 @@ const Index = () => {
   const [password, setPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   
-  const { user, login } = useAuth();
+  const { user, login, needsPasswordReset } = useAuth();
   const navigate = useNavigate();
 
   const getUserDashboardPath = (role: string) => {
@@ -66,20 +66,32 @@ const Index = () => {
     // User will be redirected to onboarding by the auth system
   };
 
-  // Redirect authenticated users to appropriate dashboard
+  // Redirect authenticated users to appropriate dashboard (but only if password reset not needed)
   useEffect(() => {
-    if (user) {
+    if (user && !needsPasswordReset) {
       console.log('User authenticated, redirecting to:', getUserDashboardPath(user.role));
       navigate(getUserDashboardPath(user.role), { replace: true });
+    } else if (user && needsPasswordReset) {
+      console.log('User needs password reset, staying on login page');
     }
-  }, [user, navigate]);
+  }, [user, navigate, needsPasswordReset]);
 
-  // Don't render the page content if user is authenticated (will redirect)
-  if (user) {
+  // Don't render the page content if user is authenticated (will redirect) or needs password reset
+  if (user && !needsPasswordReset) {
     return <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
         <p>Redirecting to your dashboard...</p>
+      </div>
+    </div>;
+  }
+
+  // If user needs password reset, show a different loading state
+  if (user && needsPasswordReset) {
+    return <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+        <p>Please reset your password to continue...</p>
       </div>
     </div>;
   }

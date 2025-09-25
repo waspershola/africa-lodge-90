@@ -88,14 +88,30 @@ serve(async (req) => {
         message: 'Temporary password generated successfully',
         tempPassword: tempPassword
       }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        status: 200, 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json'
+        } 
+      }
     );
 
   } catch (error: any) {
     console.error(`[${operationId}] Error in generate-temp-password function:`, error);
     return new Response(
-      JSON.stringify({ success: false, error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ 
+        success: false, 
+        error: 'Internal server error',
+        details: error.message || 'Unknown error'
+      }),
+      { 
+        status: 500, 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json'
+        }
+      }
     );
   }
 });

@@ -249,47 +249,53 @@ export function GlobalUsersTable() {
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuContent align="end" className="w-56 bg-background border shadow-lg z-50">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuSeparator />
                           
-                          <DropdownMenuItem onClick={() => handleResetPassword(user)}>
-                            <Key className="mr-2 h-4 w-4" />
-                            Reset Password
-                          </DropdownMenuItem>
-                          
-                          {!user.is_platform_owner && isSuperAdmin && (
-                            <>
-                              <DropdownMenuItem onClick={() => handleGenerateTempPassword(user)}>
-                                <RotateCcw className="mr-2 h-4 w-4" />
-                                Generate Temp Password
-                              </DropdownMenuItem>
-                              
-                              <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
-                                {user.is_active ? (
-                                  <>
-                                    <UserX className="mr-2 h-4 w-4" />
-                                    Suspend User
-                                  </>
-                                ) : (
-                                  <>
-                                    <UserCheck className="mr-2 h-4 w-4" />
-                                    Activate User
-                                  </>
-                                )}
-                              </DropdownMenuItem>
-                            </>
+                          {/* Reset Password - Only for non-platform owners */}
+                          {!user.is_platform_owner && (
+                            <DropdownMenuItem onClick={() => handleResetPassword(user)}>
+                              <Key className="mr-2 h-4 w-4" />
+                              Reset Password
+                            </DropdownMenuItem>
                           )}
                           
+                          {/* Reset to Temporary Password - Only for non-platform owners */}
+                          {!user.is_platform_owner && isSuperAdmin && (
+                            <DropdownMenuItem onClick={() => handleGenerateTempPassword(user)}>
+                              <RotateCcw className="mr-2 h-4 w-4" />
+                              Reset to Temporary Password
+                            </DropdownMenuItem>
+                          )}
+                          
+                          {/* Suspend/Activate - Only for non-platform owners */}
+                          {!user.is_platform_owner && isSuperAdmin && (
+                            <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
+                              {user.is_active ? (
+                                <>
+                                  <UserX className="mr-2 h-4 w-4" />
+                                  Suspend User
+                                </>
+                              ) : (
+                                <>
+                                  <UserCheck className="mr-2 h-4 w-4" />
+                                  Activate User
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                          )}
+                          
+                          {/* Delete - Shows for Reset Required users OR non-platform owners */}
                           {(user.force_reset || !user.is_platform_owner) && isSuperAdmin && (
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem 
                                 onClick={() => handleDelete(user)}
-                                className="text-red-600 focus:text-red-600"
+                                className="text-red-600 focus:text-red-600 focus:bg-red-50"
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                Delete User
+                                Delete User{user.force_reset ? ' (Reset Required)' : ''}
                               </DropdownMenuItem>
                             </>
                           )}

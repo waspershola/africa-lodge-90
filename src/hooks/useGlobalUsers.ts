@@ -239,13 +239,18 @@ export const useGenerateTempPassword = () => {
       });
 
       if (error) {
-        console.error('Error generating temporary password:', error);
-        throw new Error(error.message || 'Failed to generate temporary password');
+        console.error('Error invoking generate-temp-password function:', error);
+        throw new Error(`EdgeFunction error: ${error.message || 'Failed to invoke function'}`);
       }
       
-      if (!data?.success) {
+      if (!data) {
+        console.error('No data returned from generate-temp-password function');
+        throw new Error('No response from server');
+      }
+
+      if (!data.success) {
         console.error('Generate temp password failed:', data);
-        throw new Error(data?.error || 'Failed to generate temporary password');
+        throw new Error(data.error || 'Failed to generate temporary password');
       }
 
       console.log('Temporary password generated successfully');
@@ -255,8 +260,8 @@ export const useGenerateTempPassword = () => {
       queryClient.invalidateQueries({ queryKey: ['global-users'] });
       if (data?.tempPassword) {
         toast.success(`Temporary password: ${data.tempPassword}`, {
-          duration: 10000,
-          description: 'User must change password on next login'
+          duration: 15000,
+          description: 'Please share this securely. User must change on next login.'
         });
       } else {
         toast.success('Temporary password generated successfully');

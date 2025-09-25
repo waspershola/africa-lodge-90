@@ -123,8 +123,8 @@ serve(async (req) => {
       });
     }
 
-    // Create user profile
-    const { error: userInsertError } = await supabaseAdmin.from('users').insert({
+    // Create or update user profile
+    const { error: userInsertError } = await supabaseAdmin.from('users').upsert({
       id: authUser.user.id,
       email,
       name,
@@ -134,7 +134,10 @@ serve(async (req) => {
       role_id: roleData.id,
       tenant_id: null,
       force_reset: true,
-      is_active: true
+      is_active: true,
+      updated_at: new Date().toISOString()
+    }, {
+      onConflict: 'id'
     });
 
     if (userInsertError) {

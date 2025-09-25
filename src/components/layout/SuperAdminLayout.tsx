@@ -27,6 +27,7 @@ const navigation = [
   { name: 'Templates', href: '/sa/templates', icon: Layers },
   { name: 'Roles', href: '/sa/roles', icon: Shield },
   { name: 'Global Users', href: '/sa/global-users', icon: UserCheck },
+  { name: 'System Owners', href: '/sa/system-owners', icon: Shield },
   { name: 'Support', href: '/sa/support', icon: Headphones },
   { name: 'Backups', href: '/sa/backups', icon: Database },
   { name: 'Wizard', href: '/sa/wizard', icon: Wand2 },

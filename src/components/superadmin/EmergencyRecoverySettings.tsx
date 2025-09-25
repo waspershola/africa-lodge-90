@@ -135,7 +135,44 @@ export function EmergencyRecoverySettings() {
       </div>
 
       {/* System Owner Management - Primary Section */}
-      <SystemOwnerManagement />
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            System Owner Quick Actions
+          </CardTitle>
+          <CardDescription>
+            Quick reset actions for all system owners. For individual management, visit System Owner Management page.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-3">
+            <Button 
+              onClick={async () => {
+                try {
+                  const { data, error } = await supabase.functions.invoke('reset-system-owner-passwords');
+                  if (error) throw error;
+                  if (data?.success) {
+                    toast.success('All system owner passwords reset successfully');
+                  } else {
+                    toast.error(data?.message || 'Failed to reset passwords');
+                  }
+                } catch (error: any) {
+                  toast.error(`Failed to reset passwords: ${error.message}`);
+                }
+              }}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Reset All System Owner Passwords
+            </Button>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            <p>System Owners: wasperstore@gmail.com, ceo@waspersolution.com, waspershola@gmail.com</p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Separator />
 

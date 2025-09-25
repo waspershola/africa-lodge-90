@@ -79,6 +79,7 @@ import DemoConfig from "./pages/sa/DemoConfig";
 import Templates from "./pages/sa/Templates";
 import Roles from "./pages/sa/Roles";
 import GlobalUsers from "./pages/sa/GlobalUsers";
+import SystemOwners from "./pages/sa/SystemOwners";
 import Support from "./pages/sa/Support";
 import Wizard from "./pages/sa/Wizard";
 import Plans from "./pages/sa/Plans";
@@ -234,6 +235,7 @@ const App = () => (
             <Route path="templates" element={<Templates />} />
             <Route path="roles" element={<Roles />} />
             <Route path="global-users" element={<GlobalUsers />} />
+            <Route path="system-owners" element={<SystemOwners />} />
             <Route path="support" element={<Support />} />
             <Route path="wizard" element={<Wizard />} />
             <Route path="plans" element={<Plans />} />

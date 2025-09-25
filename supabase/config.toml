@@ -1,7 +1,7 @@
 project_id = "dxisnnjsbuuiunjmzzqj"
 
 [functions.create-global-user]
-verify_jwt = true
+verify_jwt = false
 
 [functions.create-system-owners]
 verify_jwt = false

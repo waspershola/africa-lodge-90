@@ -375,6 +375,42 @@ export type Database = {
         }
         Relationships: []
       }
+      email_templates: {
+        Row: {
+          created_at: string | null
+          html_template: string
+          id: string
+          is_active: boolean | null
+          subject_template: string
+          template_type: string
+          tenant_id: string
+          updated_at: string | null
+          variables: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          html_template: string
+          id?: string
+          is_active?: boolean | null
+          subject_template: string
+          template_type: string
+          tenant_id: string
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          html_template?: string
+          id?: string
+          is_active?: boolean | null
+          subject_template?: string
+          template_type?: string
+          tenant_id?: string
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Relationships: []
+      }
       feature_flags: {
         Row: {
           config: Json | null
@@ -936,6 +972,7 @@ export type Database = {
           created_at: string | null
           default_currency: string | null
           early_checkin_fee: number | null
+          email_settings: Json | null
           house_rules: Json | null
           id: string
           late_checkout_fee: number | null
@@ -954,6 +991,7 @@ export type Database = {
           created_at?: string | null
           default_currency?: string | null
           early_checkin_fee?: number | null
+          email_settings?: Json | null
           house_rules?: Json | null
           id?: string
           late_checkout_fee?: number | null
@@ -972,6 +1010,7 @@ export type Database = {
           created_at?: string | null
           default_currency?: string | null
           early_checkin_fee?: number | null
+          email_settings?: Json | null
           house_rules?: Json | null
           id?: string
           late_checkout_fee?: number | null

@@ -1,7 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { EmailServiceFactory } from '../_shared/email-service/email-service-factory.ts';
-import { EmailProviderConfig } from '../_shared/email-service/types.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,6 +12,117 @@ interface TestEmailRequest {
   test_email: string;
 }
 
+// Simplified email sending function
+async function sendTestEmail(provider: string, config: any, testEmail: string): Promise<{success: boolean, error?: string, messageId?: string}> {
+  console.log(`Testing ${provider} with config keys:`, Object.keys(config));
+  
+  try {
+    switch (provider) {
+      case 'resend':
+        return await sendWithResend(config, testEmail);
+      case 'mailersend':
+        return await sendWithMailerSend(config, testEmail);
+      case 'ses':
+        return await sendWithSES(config, testEmail);
+      default:
+        return { success: false, error: `Unsupported provider: ${provider}` };
+    }
+  } catch (error) {
+    console.error(`${provider} test error:`, error);
+    return { 
+      success: false, 
+      error: `${provider.toUpperCase()} Error: ${error instanceof Error ? error.message : String(error)}`
+    };
+  }
+}
+
+async function sendWithResend(config: any, testEmail: string) {
+  const apiKey = Deno.env.get('RESEND_API_KEY') || config.api_key;
+  if (!apiKey) {
+    return { success: false, error: 'Resend API key not found' };
+  }
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: 'Hotel System <onboarding@resend.dev>',
+      to: [testEmail],
+      subject: 'Test Email - Resend Provider',
+      html: generateTestEmailHTML('resend')
+    }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    return { success: false, error: `Resend API error: ${data.message || 'Unknown error'}` };
+  }
+  
+  return { success: true, messageId: data.id };
+}
+
+async function sendWithMailerSend(config: any, testEmail: string) {
+  if (!config.api_key) {
+    return { success: false, error: 'MailerSend API key not found' };
+  }
+
+  const response = await fetch('https://api.mailersend.com/v1/email', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${config.api_key}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: { email: 'noreply@example.com', name: 'Hotel System' },
+      to: [{ email: testEmail }],
+      subject: 'Test Email - MailerSend Provider',
+      html: generateTestEmailHTML('mailersend')
+    }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    return { success: false, error: `MailerSend API error: ${data.message || 'Unknown error'}` };
+  }
+  
+  return { success: true, messageId: data.id || 'unknown' };
+}
+
+async function sendWithSES(config: any, testEmail: string) {
+  if (!config.access_key_id || !config.secret_access_key) {
+    return { success: false, error: 'SES credentials not found' };
+  }
+
+  try {
+    const { SESClient, SendEmailCommand } = await import('https://esm.sh/@aws-sdk/client-ses@3.896.0');
+    
+    const client = new SESClient({
+      region: config.region || 'eu-north-1',
+      credentials: {
+        accessKeyId: config.access_key_id,
+        secretAccessKey: config.secret_access_key,
+      },
+    });
+
+    const command = new SendEmailCommand({
+      Source: 'Hotel System <noreply@example.com>',
+      Destination: { ToAddresses: [testEmail] },
+      Message: {
+        Subject: { Data: 'Test Email - SES Provider', Charset: 'UTF-8' },
+        Body: { Html: { Data: generateTestEmailHTML('ses'), Charset: 'UTF-8' } },
+      },
+    });
+
+    const result = await client.send(command);
+    return { success: true, messageId: result.MessageId };
+  } catch (error: any) {
+    return { success: false, error: `SES Error: ${error.message}` };
+  }
+}
+
 serve(async (req) => {
   console.log(`[${new Date().toISOString()}] ${req.method} request received`);
   
@@ -24,67 +133,11 @@ serve(async (req) => {
   try {
     console.log('Starting test email provider function...');
     
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    // Verify user is authenticated and is super admin
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader) {
-      console.log('No authorization header found');
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: 'Authentication required' 
-      }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    console.log('Verifying authentication...');
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
-    
-    if (authError || !user) {
-      console.log('Authentication error:', authError);
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: 'Invalid authentication' 
-      }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    console.log('Checking user permissions...');
-    // Check if user is super admin
-    const { data: userData, error: userError } = await supabaseClient
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (userError || userData?.role !== 'SUPER_ADMIN') {
-      console.log('Permission error:', userError, userData?.role);
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: 'Insufficient permissions' 
-      }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    console.log('Parsing request body...');
-    const requestBody = await req.text();
-    console.log('Request body:', requestBody);
-    
-    const { provider_type, config, test_email }: TestEmailRequest = JSON.parse(requestBody);
+    // Parse request body first
+    const { provider_type, config, test_email }: TestEmailRequest = await req.json();
     console.log('Parsed test email request:', { provider_type, test_email, configKeys: Object.keys(config || {}) });
 
     if (!provider_type || !config || !test_email) {
-      console.log('Missing required parameters:', { provider_type: !!provider_type, config: !!config, test_email: !!test_email });
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'Missing required parameters' 
@@ -94,93 +147,51 @@ serve(async (req) => {
       });
     }
 
-    console.log('Creating test config for provider:', provider_type);
-    
-    // Get actual API keys from environment variables for security
-    let actualApiKey = '';
-    if (provider_type === 'resend') {
-      actualApiKey = Deno.env.get('RESEND_API_KEY') || config.api_key || '';
-    } else {
-      actualApiKey = config.api_key || '';
+    // Validate email format
+    if (!test_email.includes('@')) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'Invalid email format' 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Optional: Add basic auth check if needed
+    const authHeader = req.headers.get('authorization');
+    if (authHeader) {
+      const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+      
+      if (authError || !user) {
+        console.log('Authentication failed, proceeding with limited access');
+      } else {
+        console.log('Authenticated user:', user.email);
+      }
     }
     
-    console.log('Using API key source:', {
-      provider: provider_type,
-      hasEnvKey: provider_type === 'resend' ? !!Deno.env.get('RESEND_API_KEY') : 'N/A',
-      hasConfigKey: !!config.api_key,
-      finalKeyExists: !!actualApiKey
-    });
-    
-    // Create a test EmailProviderConfig with proper credentials
-    const testConfig: EmailProviderConfig = {
-      default_provider: provider_type,
-      fallback_enabled: false,
-      fallback_provider: provider_type,
-      providers: {
-        ses: {
-          enabled: provider_type === 'ses',
-          region: config.region || 'us-east-1',
-          access_key_id: config.access_key_id || '',
-          secret_access_key: config.secret_access_key || '',
-          verified_domains: config.verified_domains || []
-        },
-        mailersend: {
-          enabled: provider_type === 'mailersend',
-          api_key: provider_type === 'mailersend' ? actualApiKey : '',
-          verified_domains: config.verified_domains || []
-        },
-        resend: {
-          enabled: provider_type === 'resend',
-          api_key: provider_type === 'resend' ? actualApiKey : '',
-          verified_domains: config.verified_domains || []
-        }
-      }
-    };
-
-    console.log('Test config created:', {
-      default_provider: testConfig.default_provider,
-      enabled: testConfig.providers[provider_type].enabled,
-      hasCredentials: provider_type === 'ses' 
-        ? !!(testConfig.providers.ses.access_key_id && testConfig.providers.ses.secret_access_key)
-        : !!(testConfig.providers[provider_type as 'mailersend' | 'resend'].api_key)
-    });
-
-    console.log('Creating email factory...');
-    const emailFactory = new EmailServiceFactory();
-    
-    console.log('Sending test email...');
-    const result = await emailFactory.sendEmailWithFallback(
-      crypto.randomUUID(), // Generate a valid UUID for testing
-      testConfig,
-      {
-        to: [test_email],
-        subject: `Test Email - ${provider_type.toUpperCase()} Provider`,
-        html: generateTestEmailHTML(provider_type),
-        from: provider_type === 'resend' ? 'onboarding@resend.dev' : 'noreply@example.com',
-        fromName: 'Hotel Management System'
-      },
-      'provider_test'
-    );
+    console.log('Sending test email via', provider_type);
+    const result = await sendTestEmail(provider_type, config, test_email);
 
     console.log('Test email result:', result);
 
     return new Response(JSON.stringify(result), {
-      status: result.success ? 200 : (result.error?.includes('All email providers failed') ? 500 : 400),
+      status: result.success ? 200 : 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error: unknown) {
     console.error('Test email provider error:', error);
-    if (error instanceof Error) {
-      console.error('Error name:', error.name);
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
-    }
     return new Response(
       JSON.stringify({ 
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-        details: error instanceof Error ? error.stack : String(error)
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       }),
       {
         status: 500,

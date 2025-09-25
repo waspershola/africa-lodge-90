@@ -1,252 +1,343 @@
-import { EmailService, EmailProviderConfig, SendEmailParams, EmailResult, EmailLogEntry } from './types.ts';
-import { SesEmailService } from './providers/ses-service.ts';
-import { MailerSendEmailService } from './providers/mailersend-service.ts';
-import { ResendEmailService } from './providers/resend-service.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// Email service factory for handling multiple email providers
+
+import { EmailProviderConfig, EmailRequest, EmailResult } from './types.ts';
 
 export class EmailServiceFactory {
-  private supabase: any;
-
-  constructor() {
-    this.supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    );
-  }
-
-  createEmailService(config: EmailProviderConfig, provider?: string): EmailService | null {
-    const targetProvider = provider || config.default_provider;
-    console.log(`Creating email service for provider: ${targetProvider}`);
-    
-    switch (targetProvider) {
-      case 'ses':
-        console.log('SES config check:', {
-          enabled: config.providers.ses.enabled,
-          hasAccessKey: !!config.providers.ses.access_key_id,
-          hasSecretKey: !!config.providers.ses.secret_access_key
-        });
-        if (config.providers.ses.enabled && config.providers.ses.access_key_id && config.providers.ses.secret_access_key) {
-          console.log('Creating SES service...');
-          return new SesEmailService(config.providers.ses);
-        }
-        console.log('SES service creation failed - missing credentials or disabled');
-        break;
-      
-      case 'mailersend':
-        console.log('MailerSend config check:', {
-          enabled: config.providers.mailersend.enabled,
-          hasApiKey: !!config.providers.mailersend.api_key
-        });
-        if (config.providers.mailersend.enabled && config.providers.mailersend.api_key) {
-          console.log('Creating MailerSend service...');
-          return new MailerSendEmailService(config.providers.mailersend);
-        }
-        console.log('MailerSend service creation failed - missing API key or disabled');
-        break;
-      
-      case 'resend':
-        console.log('Resend config check:', {
-          enabled: config.providers.resend.enabled,
-          hasApiKey: !!config.providers.resend.api_key
-        });
-        if (config.providers.resend.enabled && config.providers.resend.api_key) {
-          console.log('Creating Resend service...');
-          return new ResendEmailService(config.providers.resend);
-        }
-        console.log('Resend service creation failed - missing API key or disabled');
-        break;
-    }
-    
-    console.log(`No email service created for provider: ${targetProvider}`);
-    return null;
-  }
-
   async sendEmailWithFallback(
-    tenantId: string, 
-    config: EmailProviderConfig, 
-    params: SendEmailParams,
-    emailType: string = 'notification'
+    tenantId: string,
+    config: EmailProviderConfig,
+    emailRequest: EmailRequest,
+    emailType: string
   ): Promise<EmailResult> {
-    // Try primary provider
-    const primaryService = this.createEmailService(config);
-    if (primaryService) {
-      const result = await this.sendWithLogging(tenantId, primaryService, params, emailType);
-      if (result.success) {
-        return result;
+    const primaryProvider = config.default_provider;
+    
+    console.log(`Attempting to send email via primary provider: ${primaryProvider}`);
+    
+    // Try primary provider first
+    const result = await this.sendWithProvider(primaryProvider, config, emailRequest);
+    
+    if (result.success) {
+      console.log(`Email sent successfully via ${primaryProvider}`);
+      return result;
+    }
+    
+    console.log(`Primary provider ${primaryProvider} failed: ${result.error}`);
+    
+    // Try fallback providers if enabled
+    if (config.fallback_enabled && config.fallback_provider !== primaryProvider) {
+      console.log(`Trying fallback provider: ${config.fallback_provider}`);
+      const fallbackResult = await this.sendWithProvider(config.fallback_provider, config, emailRequest);
+      
+      if (fallbackResult.success) {
+        console.log(`Email sent successfully via fallback provider: ${config.fallback_provider}`);
+        return fallbackResult;
       }
       
-      console.log(`Primary provider ${config.default_provider} failed:`, result.error);
+      console.log(`Fallback provider ${config.fallback_provider} also failed: ${fallbackResult.error}`);
     }
-
-    // Try fallback if enabled
-    if (config.fallback_enabled && config.fallback_provider !== config.default_provider) {
-      const fallbackService = this.createEmailService(config, config.fallback_provider);
-      if (fallbackService) {
-        console.log(`Attempting fallback with ${config.fallback_provider}`);
-        const result = await this.sendWithLogging(tenantId, fallbackService, params, emailType);
-        return result;
-      }
-    }
-
-    // All providers failed
-    const failureResult: EmailResult = {
+    
+    return {
       success: false,
       error: 'All email providers failed or are not configured',
       provider: 'none'
     };
-
-    await this.logEmailAttempt(tenantId, {
-      tenant_id: tenantId,
-      provider: 'fallback_failed',
-      email_type: emailType,
-      recipient_email: params.to.join(', '),
-      subject: params.subject,
-      status: 'failed',
-      error_message: failureResult.error,
-      metadata: { attempted_providers: [config.default_provider, config.fallback_provider] }
-    });
-
-    return failureResult;
   }
 
-  private async sendWithLogging(
-    tenantId: string,
-    service: EmailService,
-    params: SendEmailParams,
-    emailType: string
+  private async sendWithProvider(
+    provider: 'ses' | 'mailersend' | 'resend',
+    config: EmailProviderConfig,
+    emailRequest: EmailRequest
   ): Promise<EmailResult> {
-    const startTime = Date.now();
+    const providerConfig = config.providers[provider];
     
-    try {
-      const result = await service.sendEmail(params);
-      
-      await this.logEmailAttempt(tenantId, {
-        tenant_id: tenantId,
-        provider: service.getProviderName(),
-        email_type: emailType,
-        recipient_email: params.to.join(', '),
-        subject: params.subject,
-        status: result.success ? 'sent' : 'failed',
-        error_message: result.error,
-        sent_at: result.success ? new Date().toISOString() : undefined,
-        metadata: {
-          message_id: result.messageId,
-          duration_ms: Date.now() - startTime,
-          recipients_count: params.to.length
-        }
-      });
-
-      return result;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      
-      await this.logEmailAttempt(tenantId, {
-        tenant_id: tenantId,
-        provider: service.getProviderName(),
-        email_type: emailType,
-        recipient_email: params.to.join(', '),
-        subject: params.subject,
-        status: 'failed',
-        error_message: errorMessage,
-        metadata: {
-          duration_ms: Date.now() - startTime,
-          recipients_count: params.to.length
-        }
-      });
-
+    if (!providerConfig.enabled) {
       return {
         success: false,
-        error: errorMessage,
-        provider: service.getProviderName()
+        error: `${provider.toUpperCase()} provider is not enabled`,
+        provider
+      };
+    }
+    
+    try {
+      switch (provider) {
+        case 'resend':
+          return await this.sendWithResend(providerConfig, emailRequest);
+        case 'mailersend':
+          return await this.sendWithMailerSend(providerConfig, emailRequest);
+        case 'ses':
+          return await this.sendWithSES(providerConfig, emailRequest);
+        default:
+          return {
+            success: false,
+            error: `Unsupported provider: ${provider}`,
+            provider
+          };
+      }
+    } catch (error) {
+      console.error(`${provider} Error:`, error);
+      return {
+        success: false,
+        error: `${provider.toUpperCase()} Error: ${error instanceof Error ? error.message : String(error)}`,
+        provider,
+        details: error instanceof Error ? error.stack : error
       };
     }
   }
 
-  private async logEmailAttempt(tenantId: string, logEntry: EmailLogEntry): Promise<void> {
+  private async sendWithResend(config: any, emailRequest: EmailRequest): Promise<EmailResult> {
+    console.log('Resend: Starting email send...');
+    
+    if (!config.api_key) {
+      return {
+        success: false,
+        error: 'Resend API key is not configured',
+        provider: 'resend'
+      };
+    }
+
+    // Use the verified onboarding@resend.dev for testing
+    const fromEmail = emailRequest.from === 'noreply@example.com' ? 'onboarding@resend.dev' : emailRequest.from;
+    const fromHeader = `${emailRequest.fromName} <${fromEmail}>`;
+    
+    console.log('Resend: Using from:', fromHeader);
+
+    const payload = {
+      from: fromHeader,
+      to: emailRequest.to,
+      subject: emailRequest.subject,
+      html: emailRequest.html
+    };
+
+    console.log('Resend: Request body:', JSON.stringify(payload, null, 2));
+
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.api_key}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    console.log('Resend: Response status:', response.status);
+    
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+      console.error('Resend: Error response:', responseData);
+      throw new Error(`Resend API error (${response.status}): ${response.statusText} - ${responseData.message || 'Unknown error'}\nNote: Make sure your from email domain is verified in your Resend account.`);
+    }
+
+    console.log('Resend: Success response:', responseData);
+    
+    return {
+      success: true,
+      provider: 'resend',
+      messageId: responseData.id
+    };
+  }
+
+  private async sendWithMailerSend(config: any, emailRequest: EmailRequest): Promise<EmailResult> {
+    console.log('MailerSend: Starting email send...');
+    
+    if (!config.api_key) {
+      return {
+        success: false,
+        error: 'MailerSend API key is not configured',
+        provider: 'mailersend'
+      };
+    }
+
+    console.log('MailerSend: Using from email:', emailRequest.from);
+
+    const payload = {
+      from: {
+        email: emailRequest.from,
+        name: emailRequest.fromName
+      },
+      to: emailRequest.to.map(email => ({ email })),
+      subject: emailRequest.subject,
+      html: emailRequest.html
+    };
+
+    console.log('MailerSend: Request body:', JSON.stringify(payload, null, 2));
+
+    const response = await fetch('https://api.mailersend.com/v1/email', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.api_key}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    console.log('MailerSend: Response status:', response.status);
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('MailerSend: Error response:', errorData);
+      throw new Error(`MailerSend API error (${response.status}): ${response.statusText} - ${errorData.message || 'Unknown error'}\nNote: The from email domain must be verified in your MailerSend account.`);
+    }
+
+    const responseData = await response.json();
+    console.log('MailerSend: Success response:', responseData);
+    
+    return {
+      success: true,
+      provider: 'mailersend',
+      messageId: responseData.id || 'unknown'
+    };
+  }
+
+  private async sendWithSES(config: any, emailRequest: EmailRequest): Promise<EmailResult> {
+    console.log('SES: Starting email send process...');
+    
+    if (!config.access_key_id || !config.secret_access_key) {
+      return {
+        success: false,
+        error: 'SES credentials are not configured',
+        provider: 'ses'
+      };
+    }
+
+    const sourceEmail = `${emailRequest.fromName} <${emailRequest.from}>`;
+    console.log('SES: Using source email:', sourceEmail);
+
+    // Create the SES client and send email
+    const { SESClient, SendEmailCommand } = await import('https://esm.sh/@aws-sdk/client-ses@3.896.0');
+    
+    console.log('Creating SES service...');
+    const sesClient = new SESClient({
+      region: config.region || 'eu-north-1',
+      credentials: {
+        accessKeyId: config.access_key_id,
+        secretAccessKey: config.secret_access_key,
+      },
+    });
+
+    console.log('SES Service initialized:', {
+      region: config.region || 'eu-north-1',
+      hasAccessKey: !!config.access_key_id,
+      hasSecretKey: !!config.secret_access_key,
+      verifiedDomains: config.verified_domains?.length || 0
+    });
+
+    const command = new SendEmailCommand({
+      Source: sourceEmail,
+      Destination: {
+        ToAddresses: emailRequest.to,
+      },
+      Message: {
+        Subject: {
+          Data: emailRequest.subject,
+          Charset: 'UTF-8',
+        },
+        Body: {
+          Html: {
+            Data: emailRequest.html,
+            Charset: 'UTF-8',
+          },
+        },
+      },
+    });
+
+    console.log('SES: Making API request to:', `https://email.${config.region || 'eu-north-1'}.amazonaws.com/`);
+    
     try {
-      const { error } = await this.supabase
-        .from('email_provider_logs')
-        .insert(logEntry);
+      const result = await sesClient.send(command);
+      console.log('SES: Email sent successfully:', result.MessageId);
       
-      if (error) {
-        console.error('Failed to log email attempt:', error);
+      return {
+        success: true,
+        provider: 'ses',
+        messageId: result.MessageId
+      };
+    } catch (error: any) {
+      console.error('SES: Error response:', error.message);
+      throw new Error(`SES Error: ${error.name} - ${error.message}\nNote: Make sure your from email address is verified in AWS SES.`);
+    }
+  }
+
+  async sendWithLogging(
+    provider: string,
+    emailRequest: EmailRequest,
+    config: any
+  ): Promise<EmailResult> {
+    console.log(`Attempting to send email via ${provider}...`);
+    
+    try {
+      let result: EmailResult;
+      
+      switch (provider) {
+        case 'resend':
+          result = await this.sendWithResend(config, emailRequest);
+          break;
+        case 'mailersend':
+          result = await this.sendWithMailerSend(config, emailRequest);
+          break;
+        case 'ses':
+          result = await this.sendWithSES(config, emailRequest);
+          break;
+        default:
+          result = {
+            success: false,
+            error: `Unsupported provider: ${provider}`,
+            provider
+          };
       }
+      
+      if (result.success) {
+        console.log(`Email sent successfully via ${provider}`);
+      } else {
+        console.log(`Primary provider ${provider} failed: ${result.error}`);
+      }
+      
+      return result;
     } catch (error) {
-      console.error('Error logging email attempt:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`${provider} Error:`, error);
+      
+      return {
+        success: false,
+        error: errorMessage,
+        provider,
+        details: error instanceof Error ? error.stack : error
+      };
     }
   }
 
   async getEmailProviderConfig(tenantId: string): Promise<EmailProviderConfig | null> {
-    try {
-      // First check if tenant uses system default
-      const { data: hotelSettings, error: settingsError } = await this.supabase
-        .from('hotel_settings')
-        .select('email_settings, use_system_email, system_provider_id')
-        .eq('tenant_id', tenantId)
-        .single();
-
-      if (settingsError) {
-        console.error('Failed to get hotel settings:', settingsError);
-        return null;
-      }
-
-      // If tenant uses system email, get system provider config
-      if (hotelSettings?.use_system_email !== false) {
-        const { data: systemProvider, error: systemError } = await this.supabase
-          .rpc('get_system_default_email_provider');
-
-        if (systemError || !systemProvider || systemProvider.length === 0) {
-          console.error('Failed to get system email provider:', systemError);
-          return null;
-        }
-
-        const provider = systemProvider[0];
-        
-        // Convert system provider to EmailProviderConfig format
-        // Use environment variables for API keys when available
-        let resendApiKey = provider.config?.api_key || '';
-        if (provider.provider_type === 'resend' || resendApiKey === 'RESEND_API_KEY_SECRET') {
-          resendApiKey = Deno.env.get('RESEND_API_KEY') || '';
-        }
-        
-        const config: EmailProviderConfig = {
-          default_provider: provider.provider_type,
-          fallback_enabled: true,
-          fallback_provider: provider.provider_type === 'ses' ? 'resend' : 'ses',
-          providers: {
-            ses: {
-              enabled: provider.provider_type === 'ses',
-              region: provider.config?.region || 'us-east-1',
-              access_key_id: provider.config?.access_key_id || '',
-              secret_access_key: provider.config?.secret_access_key || '',
-              verified_domains: provider.config?.verified_domains || []
-            },
-            mailersend: {
-              enabled: provider.provider_type === 'mailersend',
-              api_key: provider.config?.api_key || '',
-              verified_domains: provider.config?.verified_domains || []
-            },
-            resend: {
-              enabled: provider.provider_type === 'resend',
-              api_key: resendApiKey,
-              verified_domains: provider.config?.verified_domains || []
-            }
-          }
-        };
-
-        return config;
-      }
-
-      // Otherwise use tenant-specific config (if any)
-      const emailProviderConfig = hotelSettings?.email_settings?.email_provider_config;
-      if (!emailProviderConfig) {
-        return null;
-      }
-
-      return emailProviderConfig as EmailProviderConfig;
-    } catch (error) {
-      console.error('Error getting email provider config:', error);
+    // For now, return a basic config using environment variables
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
+    
+    if (!resendApiKey) {
+      console.log('No RESEND_API_KEY found in environment');
       return null;
     }
+    
+    return {
+      default_provider: 'resend',
+      fallback_enabled: false,
+      fallback_provider: 'resend',
+      providers: {
+        ses: {
+          enabled: false,
+          region: 'eu-north-1',
+          access_key_id: '',
+          secret_access_key: '',
+          verified_domains: []
+        },
+        mailersend: {
+          enabled: false,
+          api_key: '',
+          verified_domains: []
+        },
+        resend: {
+          enabled: true,
+          api_key: resendApiKey,
+          verified_domains: []
+        }
+      }
+    };
   }
 }

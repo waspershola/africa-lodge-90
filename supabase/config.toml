@@ -71,3 +71,6 @@ verify_jwt = false
 
 [functions.reset-system-owner-passwords]
 verify_jwt = false
+
+[functions.test-create-user]
+verify_jwt = false

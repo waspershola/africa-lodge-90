@@ -52,25 +52,33 @@ export const useCreateGlobalUser = () => {
       generateTempPassword: boolean;
       sendEmail: boolean;
     }) => {
-      console.log('Creating global user:', userData);
+      console.log('Creating global user with data:', userData);
 
-      const { data, error } = await supabase.functions.invoke('create-global-user', {
-        body: userData
-      });
+      try {
+        const { data, error } = await supabase.functions.invoke('create-global-user', {
+          body: userData
+        });
 
-      // Handle network/function invocation errors
-      if (error) {
-        console.error('Create user network error:', error);
-        throw new Error('Network error - please try again');
+        console.log('Edge function response:', { data, error });
+
+        // Handle network/function invocation errors
+        if (error) {
+          console.error('Create user network error:', error);
+          throw new Error(`Network error: ${error.message || 'Please try again'}`);
+        }
+        
+        // Handle application errors from the function
+        if (data?.success === false) {
+          console.error('Create user application error:', data.error);
+          throw new Error(data.error || 'Failed to create global user');
+        }
+
+        console.log('Global user created successfully:', data);
+        return data;
+      } catch (err) {
+        console.error('Exception in createGlobalUser:', err);
+        throw err;
       }
-      
-      // Handle application errors from the function
-      if (data?.success === false) {
-        throw new Error(data.error || 'Failed to create global user');
-      }
-
-      console.log('Global user created successfully');
-      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['global-users'] });

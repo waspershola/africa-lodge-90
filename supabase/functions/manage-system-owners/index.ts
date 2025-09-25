@@ -71,23 +71,21 @@ Deno.serve(async (req) => {
 
     const results = [];
 
-    // Temporarily drop the trigger to allow changes
-    console.log('Temporarily dropping platform owner protection trigger');
-    await supabase.rpc('exec', {
-      sql: `DROP TRIGGER IF EXISTS prevent_platform_owner_changes ON public.users;`
-    });
+    // Use direct Supabase client operations instead of exec function
+    console.log('Managing system owners with direct database operations');
 
     // Remove platform owner status and demote users not in approved list
-    const { data: demotedUsers, error: demoteError } = await supabase.rpc('exec', {
-      sql: `
-        UPDATE public.users 
-        SET is_platform_owner = false, role = 'STAFF' 
-        WHERE email NOT IN ($1, $2, $3) 
-        AND is_platform_owner = true 
-        RETURNING email;
-      `,
-      args: [approved_emails[0], approved_emails[1] || '', approved_emails[2] || '']
+    let demoteQuery = supabase
+      .from('users')
+      .update({ is_platform_owner: false, role: 'STAFF' })
+      .eq('is_platform_owner', true);
+
+    // Add conditions for each approved email to exclude them
+    approved_emails.forEach(email => {
+      demoteQuery = demoteQuery.neq('email', email);
     });
+
+    const { data: demotedUsers, error: demoteError } = await demoteQuery.select('email');
 
     if (demoteError) {
       console.error('Error demoting users:', demoteError);
@@ -112,11 +110,11 @@ Deno.serve(async (req) => {
             console.error(`Error deleting user from auth: ${email}`, authDeleteError);
           }
 
-          // Delete from users table using raw SQL to bypass RLS
-          const { error: userDeleteError } = await supabase.rpc('exec', {
-            sql: `DELETE FROM public.users WHERE email = $1`,
-            args: [email]
-          });
+          // Delete from users table
+          const { error: userDeleteError } = await supabase
+            .from('users')
+            .delete()
+            .eq('email', email);
 
           if (userDeleteError) {
             console.error(`Error deleting user from users table: ${email}`, userDeleteError);
@@ -129,15 +127,11 @@ Deno.serve(async (req) => {
     }
 
     // Ensure approved emails are system owners with SUPER_ADMIN role
-    const { data: promotedUsers, error: promoteError } = await supabase.rpc('exec', {
-      sql: `
-        UPDATE public.users 
-        SET is_platform_owner = true, role = 'SUPER_ADMIN' 
-        WHERE email = ANY($1) 
-        RETURNING email;
-      `,
-      args: [approved_emails]
-    });
+    const { data: promotedUsers, error: promoteError } = await supabase
+      .from('users')
+      .update({ is_platform_owner: true, role: 'SUPER_ADMIN' })
+      .in('email', approved_emails)
+      .select('email');
 
     if (promoteError) {
       console.error('Error promoting users:', promoteError);
@@ -146,17 +140,8 @@ Deno.serve(async (req) => {
       console.log('Promoted users:', promotedUsers);
     }
 
-    // Recreate the protection trigger
-    console.log('Restoring platform owner protection trigger');
-    await supabase.rpc('exec', {
-      sql: `
-        CREATE TRIGGER prevent_platform_owner_changes
-        BEFORE UPDATE OR DELETE ON public.users
-        FOR EACH ROW
-        WHEN (OLD.is_platform_owner = true)
-        EXECUTE FUNCTION public.prevent_platform_owner_changes();
-      `
-    });
+    // Operations completed successfully
+    console.log('System owner management completed successfully');
 
     return new Response(
       JSON.stringify({ 

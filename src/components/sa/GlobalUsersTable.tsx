@@ -253,6 +253,14 @@ export function GlobalUsersTable() {
                             Reset Password
                           </DropdownMenuItem>
                           
+                          {/* Reset to temporary password only for non-platform owners */}
+                          {!user.is_platform_owner && isSuperAdmin && (
+                            <DropdownMenuItem onClick={() => handleResetPassword(user)}>
+                              <Clock className="mr-2 h-4 w-4" />
+                              Reset to Temporary Password
+                            </DropdownMenuItem>
+                          )}
+                          
                           {/* Suspend/Activate only for non-platform owners */}
                           {!user.is_platform_owner && isSuperAdmin && (
                             <DropdownMenuItem onClick={() => handleToggleStatus(user)}>

@@ -25,39 +25,27 @@ serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false }
     });
 
-    const { email } = await req.json();
+    const { user_id } = await req.json();
     
-    console.log('Resetting password for:', email);
+    console.log('Resetting password for user_id:', user_id);
 
-    if (!email) {
+    if (!user_id) {
       return new Response(JSON.stringify({ 
         success: false, 
-        error: 'Email is required' 
+        error: 'User ID is required' 
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // Find user by email
-    const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-    if (listError) {
-      console.error('Error listing users:', listError);
+    // Get user by ID instead of listing all users
+    const { data: { user }, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(user_id);
+    if (getUserError || !user) {
+      console.error('Error getting user:', getUserError);
       return new Response(JSON.stringify({ 
         success: false, 
-        error: 'Failed to find user' 
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    const user = users.find(u => u.email === email);
-    if (!user) {
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: 'User not found',
-        code: 'USER_NOT_FOUND'
+        error: 'User not found' 
       }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -96,7 +84,7 @@ serve(async (req) => {
       // Don't fail the entire operation for this
     }
 
-    console.log('Password reset successfully for:', email);
+    console.log('Password reset successfully for user:', user.email);
 
     return new Response(JSON.stringify({
       success: true,

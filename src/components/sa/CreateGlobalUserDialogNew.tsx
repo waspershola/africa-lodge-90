@@ -59,32 +59,27 @@ export function CreateGlobalUserDialogNew() {
   const onSubmit = async (data: CreateGlobalUserForm) => {
     try {
       const result = await createUser.mutateAsync({
-        email: data.email,
-        name: data.name,
+        fullName: data.name,
+        email: data.email, 
         role: data.role,
-        department: data.department || undefined
+        department: data.department || undefined,
+        generateTempPassword: data.generateTempPassword,
+        sendEmail: data.sendCredentials
       });
 
-      // If user wants a temporary password generated
-      if (data.generateTempPassword && result?.user_id) {
-        setCreatedUserId(result.user_id);
-        try {
-          await generateTempPassword.mutateAsync(result.user_id);
-        } catch (tempPasswordError) {
-          console.error('Failed to generate temp password:', tempPasswordError);
-          toast({
-            title: "User Created",
-            description: "User created successfully, but failed to generate temporary password. You can generate it later.",
-            variant: "default",
-          });
-        }
+      // Show temporary password if generated
+      if (result?.user?.tempPassword) {
+        toast({
+          title: "User Created Successfully",
+          description: `Temporary password: ${result.user.tempPassword}`,
+          duration: 15000,
+        });
       }
 
-      setOpen(false);
       form.reset();
-      setCreatedUserId(null);
+      setOpen(false);
     } catch (error) {
-      console.error('Form submission error:', error);
+      console.error('Failed to create user:', error);
     }
   };
 

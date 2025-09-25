@@ -45,22 +45,17 @@ export const useCreateGlobalUser = () => {
   
   return useMutation({
     mutationFn: async (userData: {
+      fullName: string;
       email: string;
-      name: string;
       role: string;
       department?: string;
+      generateTempPassword: boolean;
+      sendEmail: boolean;
     }) => {
       console.log('Creating global user:', userData);
 
-      const { data, error } = await supabase.functions.invoke('invite-user', {
-        body: {
-          email: userData.email,
-          name: userData.name,
-          role: userData.role,
-          tenant_id: null, // Global user
-          department: userData.department || null,
-          is_platform_owner: false // Prevent auto-assignment
-        }
+      const { data, error } = await supabase.functions.invoke('create-global-user', {
+        body: userData
       });
 
       // Handle network/function invocation errors

@@ -48,10 +48,12 @@ export function CreateGlobalUserDialog() {
   const onSubmit = async (data: CreateGlobalUserForm) => {
     try {
       await createUser.mutateAsync({
+        fullName: data.name,
         email: data.email,
-        name: data.name,
         role: data.role,
-        department: data.department || undefined
+        department: data.department || undefined,
+        generateTempPassword: false,
+        sendEmail: false
       });
       setOpen(false);
       form.reset();

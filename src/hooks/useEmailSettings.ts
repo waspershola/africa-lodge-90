@@ -18,10 +18,14 @@ export const useEmailSettings = () => {
   return useQuery({
     queryKey: ['email-settings'],
     queryFn: async () => {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error('Not authenticated');
+
       const { data, error } = await supabase
         .from('hotel_settings')
         .select('email_settings')
-        .single();
+        .eq('tenant_id', user.user_metadata?.tenant_id)
+        .maybeSingle();
 
       if (error) throw error;
       return (data?.email_settings as any) || null;
@@ -81,11 +85,15 @@ export const useSendTestEmail = () => {
         body: { 
           testEmail: email, 
           type: 'test',
-          templateType: type 
+          templateType: type,
+          hotelName: 'banky hotel' // Add hotel name for test
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw error;
+      }
       return data;
     },
     onSuccess: (_, variables) => {
@@ -98,7 +106,7 @@ export const useSendTestEmail = () => {
       console.error('Test email error:', error);
       toast({
         title: "Error",
-        description: "Failed to send test email",
+        description: `Failed to send test email: ${error.message}`,
         variant: "destructive"
       });
     }

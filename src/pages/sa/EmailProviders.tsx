@@ -57,21 +57,57 @@ export default function EmailProviders() {
   });
 
   const setDefaultProvider = async (providerId: string) => {
-    // First, remove default from all providers
-    await Promise.all(
-      providers?.map(p => 
-        updateProvider.mutateAsync({ 
-          id: p.id, 
-          updates: { is_default: false } 
-        })
-      ) || []
-    );
-    
-    // Then set the selected one as default
-    await updateProvider.mutateAsync({ 
-      id: providerId, 
-      updates: { is_default: true } 
-    });
+    try {
+      // First, remove default from all providers
+      await Promise.all(
+        providers?.map(p => 
+          updateProvider.mutateAsync({ 
+            id: p.id, 
+            updates: { is_default: false } 
+          })
+        ) || []
+      );
+      
+      // Then set the selected one as default
+      await updateProvider.mutateAsync({ 
+        id: providerId, 
+        updates: { is_default: true } 
+      });
+    } catch (error) {
+      console.error('Error setting default provider:', error);
+      toast({ title: "Error", description: "Failed to set default provider", variant: "destructive" });
+    }
+  };
+
+  const testProvider = async (provider: SystemEmailProvider) => {
+    const testEmail = prompt('Enter email address to send test email to:');
+    if (!testEmail || !testEmail.includes('@')) {
+      toast({ title: "Error", description: "Please enter a valid email address", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('test-email-provider', {
+        body: {
+          provider_type: provider.provider_type,
+          config: provider.config,
+          test_email: testEmail
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+      
+      if (data?.success) {
+        toast({ title: "Success", description: `Test email sent successfully to ${testEmail}` });
+      } else {
+        toast({ title: "Error", description: data?.error || "Test failed", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error('Test error:', error);
+      toast({ title: "Error", description: "Failed to test provider", variant: "destructive" });
+    }
   };
 
   const renderProviderConfig = (provider: SystemEmailProvider) => {
@@ -190,6 +226,20 @@ export default function EmailProviders() {
     return <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" />Not Configured</Badge>;
   };
 
+  const hasRequiredConfig = (provider: SystemEmailProvider) => {
+    const config = provider.config || {};
+    
+    switch (provider.provider_type) {
+      case 'ses':
+        return !!(config.access_key_id && config.secret_access_key);
+      case 'mailersend':
+      case 'resend':
+        return !!config.api_key;
+      default:
+        return false;
+    }
+  };
+
   if (isLoading) {
     return <div>Loading email providers...</div>;
   }
@@ -243,14 +293,24 @@ export default function EmailProviders() {
                     System Default Provider
                   </span>
                 </div>
-                <Button
-                  variant={provider.is_default ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setDefaultProvider(provider.id)}
-                  disabled={!provider.is_enabled}
-                >
-                  {provider.is_default ? "Current Default" : "Set as Default"}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => testProvider(provider)}
+                    disabled={!provider.is_enabled || !hasRequiredConfig(provider)}
+                  >
+                    Test Provider
+                  </Button>
+                  <Button
+                    variant={provider.is_default ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setDefaultProvider(provider.id)}
+                    disabled={!provider.is_enabled}
+                  >
+                    {provider.is_default ? "Current Default" : "Set as Default"}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

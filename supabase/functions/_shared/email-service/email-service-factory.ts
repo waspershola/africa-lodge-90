@@ -157,18 +157,66 @@ export class EmailServiceFactory {
 
   async getEmailProviderConfig(tenantId: string): Promise<EmailProviderConfig | null> {
     try {
-      const { data, error } = await this.supabase
+      // First check if tenant uses system default
+      const { data: hotelSettings, error: settingsError } = await this.supabase
         .from('hotel_settings')
-        .select('email_provider_config')
+        .select('email_settings, use_system_email, system_provider_id')
         .eq('tenant_id', tenantId)
         .single();
 
-      if (error || !data?.email_provider_config) {
-        console.error('Failed to get email provider config:', error);
+      if (settingsError) {
+        console.error('Failed to get hotel settings:', settingsError);
         return null;
       }
 
-      return data.email_provider_config as EmailProviderConfig;
+      // If tenant uses system email, get system provider config
+      if (hotelSettings?.use_system_email !== false) {
+        const { data: systemProvider, error: systemError } = await this.supabase
+          .rpc('get_system_default_email_provider');
+
+        if (systemError || !systemProvider || systemProvider.length === 0) {
+          console.error('Failed to get system email provider:', systemError);
+          return null;
+        }
+
+        const provider = systemProvider[0];
+        
+        // Convert system provider to EmailProviderConfig format
+        const config: EmailProviderConfig = {
+          default_provider: provider.provider_type,
+          fallback_enabled: true,
+          fallback_provider: provider.provider_type === 'ses' ? 'resend' : 'ses',
+          providers: {
+            ses: {
+              enabled: provider.provider_type === 'ses',
+              region: provider.config?.region || 'us-east-1',
+              access_key_id: provider.config?.access_key_id || '',
+              secret_access_key: provider.config?.secret_access_key || '',
+              verified_domains: provider.config?.verified_domains || []
+            },
+            mailersend: {
+              enabled: provider.provider_type === 'mailersend',
+              api_key: provider.config?.api_key || '',
+              verified_domains: provider.config?.verified_domains || []
+            },
+            resend: {
+              enabled: provider.provider_type === 'resend',
+              api_key: provider.config?.api_key || '',
+              verified_domains: provider.config?.verified_domains || []
+            }
+          }
+        };
+
+        return config;
+      }
+
+      // Otherwise use tenant-specific config (if any)
+      const emailProviderConfig = hotelSettings?.email_settings?.email_provider_config;
+      if (!emailProviderConfig) {
+        return null;
+      }
+
+      return emailProviderConfig as EmailProviderConfig;
     } catch (error) {
       console.error('Error getting email provider config:', error);
       return null;

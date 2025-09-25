@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.qr-staff-portal]
 verify_jwt = true
+
+[functions.test-email-provider]
+verify_jwt = true

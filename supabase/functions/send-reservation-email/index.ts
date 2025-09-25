@@ -87,15 +87,7 @@ serve(async (req) => {
       });
     }
 
-    if (false) { // Placeholder to maintain structure
-        throw new Error(`Resend API error: ${resendResponse.statusText}`);
-      }
-
-      const result = await resendResponse.json();
-      return new Response(JSON.stringify({ success: true, result }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    // For actual reservation emails, continue with the existing flow
 
     // Get reservation data with tenant isolation
     if (!reservationId) {
@@ -141,28 +133,83 @@ serve(async (req) => {
     const emailSettings = hotelSettings?.email_settings || {};
     const template = generateEmailTemplate(type, reservation, tenantInfo, emailSettings);
 
-    // Send email via Resend
-    const resendResponse = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${Deno.env.get('RESEND_API_KEY')}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: `${emailSettings.from_name || `Hotel ${tenantInfo.hotel_name}`} <onboarding@resend.dev>`,
-        to: [reservation.guest_email],
-        reply_to: emailSettings.reply_to_email || tenantInfo.email,
-        subject: template.subject,
-        html: template.html,
-      }),
-    });
+    // Use system email providers if configured to use system default
+    let result;
+    if (emailSettings.use_system_email !== false) {
+      // Get email provider configuration
+      const config = await emailFactory.getEmailProviderConfig(reservation.tenant_id);
+      if (!config) {
+        // Fall back to legacy Resend if no system config
+        console.log('No system email config found, falling back to Resend');
+        const resendResponse = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${Deno.env.get('RESEND_API_KEY')}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: `${emailSettings.from_name || `Hotel ${tenantInfo.hotel_name}`} <onboarding@resend.dev>`,
+            to: [reservation.guest_email],
+            reply_to: emailSettings.reply_to_email || tenantInfo.email,
+            subject: template.subject,
+            html: template.html,
+          }),
+        });
 
-    if (!resendResponse.ok) {
-      const errorText = await resendResponse.text();
-      throw new Error(`Resend API error: ${resendResponse.statusText} - ${errorText}`);
+        if (!resendResponse.ok) {
+          const errorText = await resendResponse.text();
+          throw new Error(`Resend API error: ${resendResponse.statusText} - ${errorText}`);
+        }
+
+        result = await resendResponse.json();
+        result = { success: true, result };
+      } else {
+        // Use system email providers with fallback
+        const emailResult = await emailFactory.sendEmailWithFallback(
+          reservation.tenant_id,
+          config,
+          {
+            to: [reservation.guest_email],
+            subject: template.subject,
+            html: template.html,
+            from: emailSettings.from_email || 'noreply@example.com',
+            fromName: emailSettings.from_name || `Hotel ${tenantInfo.hotel_name}`,
+            replyTo: emailSettings.reply_to_email || tenantInfo.email
+          },
+          type
+        );
+
+        if (!emailResult.success) {
+          throw new Error(`Email sending failed: ${emailResult.error}`);
+        }
+
+        result = { success: true, result: emailResult };
+      }
+    } else {
+      // Use custom SMTP (legacy Resend for now)
+      const resendResponse = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${Deno.env.get('RESEND_API_KEY')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: `${emailSettings.from_name || `Hotel ${tenantInfo.hotel_name}`} <onboarding@resend.dev>`,
+          to: [reservation.guest_email],
+          reply_to: emailSettings.reply_to_email || tenantInfo.email,
+          subject: template.subject,
+          html: template.html,
+        }),
+      });
+
+      if (!resendResponse.ok) {
+        const errorText = await resendResponse.text();
+        throw new Error(`Resend API error: ${resendResponse.statusText} - ${errorText}`);
+      }
+
+      const resendResult = await resendResponse.json();
+      result = { success: true, result: resendResult };
     }
-
-    const result = await resendResponse.json();
 
     // Log email activity
     await supabaseClient
@@ -173,10 +220,10 @@ serve(async (req) => {
         resource_type: 'reservation',
         resource_id: reservationId,
         description: `${type} email sent to ${reservation.guest_email}`,
-        metadata: { email_type: type, email_id: result.id }
+        metadata: { email_type: type, email_id: result.result?.id || result.result?.messageId }
       });
 
-    return new Response(JSON.stringify({ success: true, result }), {
+    return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {

@@ -4,12 +4,9 @@ export class MailerSendEmailService implements EmailService {
   private apiKey: string;
   private verifiedDomains: string[];
 
-  constructor(config: {
-    api_key: string;
-    verified_domains: string[];
-  }) {
+  constructor(config: { api_key: string; verified_domains: string[]; }) {
     this.apiKey = config.api_key;
-    this.verifiedDomains = config.verified_domains;
+    this.verifiedDomains = config.verified_domains || [];
   }
 
   getProviderName(): string {
@@ -18,47 +15,46 @@ export class MailerSendEmailService implements EmailService {
 
   async sendEmail(params: SendEmailParams): Promise<EmailResult> {
     try {
-      const { to, subject, html, text, from, fromName, replyTo } = params;
-      
-      const payload = {
-        from: {
-          email: from,
-          name: fromName || 'Hotel Notification'
-        },
-        to: to.map(email => ({ email })),
-        subject,
-        html,
-        ...(text && { text }),
-        ...(replyTo && { reply_to: [{ email: replyTo }] })
-      };
+      const fromEmail = params.from || 'noreply@example.com';
+      const fromName = params.fromName || 'Hotel Management';
 
       const response = await fetch('https://api.mailersend.com/v1/email', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest'
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          from: {
+            email: fromEmail,
+            name: fromName,
+          },
+          to: params.to.map(email => ({ email })),
+          subject: params.subject,
+          html: params.html,
+          ...(params.text && { text: params.text }),
+          ...(params.replyTo && { reply_to: { email: params.replyTo } }),
+        }),
       });
 
-      const responseData = await response.json();
-
-      if (response.ok) {
-        return {
-          success: true,
-          messageId: responseData.message_id || 'mailersend_' + Date.now(),
-          provider: 'mailersend'
-        };
-      } else {
-        throw new Error(`MailerSend API error: ${response.status} ${JSON.stringify(responseData)}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`MailerSend API error: ${response.statusText} - ${errorText}`);
       }
-    } catch (error) {
-      console.error('MailerSend send error:', error);
+
+      const result = await response.json();
+      
+      return {
+        success: true,
+        messageId: result.message_id || result.id,
+        provider: 'mailersend',
+      };
+    } catch (error: any) {
+      console.error('MailerSend Error:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : String(error),
-        provider: 'mailersend'
+        error: error.message || 'Failed to send email via MailerSend',
+        provider: 'mailersend',
       };
     }
   }
@@ -69,14 +65,14 @@ export class MailerSendEmailService implements EmailService {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name: domain })
+        body: JSON.stringify({ name: domain }),
       });
 
       return response.ok;
     } catch (error) {
-      console.error('MailerSend domain verification error:', error);
+      console.error('MailerSend Domain Verification Error:', error);
       return false;
     }
   }

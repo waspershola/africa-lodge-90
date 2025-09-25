@@ -11,16 +11,20 @@ import { Badge } from '@/components/ui/badge';
 import { Mail, Settings, Palette, Send, AlertCircle, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
+import { useTenantInfo } from '@/hooks/useTenantInfo';
+import { useEmailSettings, useUpdateEmailSettings } from '@/hooks/useEmailSettings';
 
 export default function EmailSettings() {
-  const { user, tenant } = useAuth();
-  const tenantData = tenant;
+  const { user } = useAuth();
+  const { data: tenantInfo } = useTenantInfo();
+  const { data: currentEmailSettings, isLoading } = useEmailSettings();
+  const updateEmailSettings = useUpdateEmailSettings();
   const { toast } = useToast();
   
   const [emailSettings, setEmailSettings] = useState({
-    from_name: tenantData?.hotel_name ? `Hotel ${tenantData.hotel_name}` : '',
+    from_name: tenantInfo?.hotel_name ? `Hotel ${tenantInfo.hotel_name}` : '',
     from_email: '',
-    reply_to_email: tenantData?.email || '',
+    reply_to_email: tenantInfo?.email || '',
     smtp_enabled: false,
     smtp_config: {
       host: '',
@@ -31,46 +35,45 @@ export default function EmailSettings() {
     },
     email_templates: {
       confirmation: {
-        subject: `Reservation Confirmation - ${tenantData?.hotel_name || 'Hotel'}`,
+        subject: `Reservation Confirmation - ${tenantInfo?.hotel_name || 'Hotel'}`,
         enabled: true
       },
       invoice: {
-        subject: `Invoice for Your Reservation - ${tenantData?.hotel_name || 'Hotel'}`,
+        subject: `Invoice for Your Reservation - ${tenantInfo?.hotel_name || 'Hotel'}`,
         enabled: true
       },
       reminder: {
-        subject: `Payment Reminder - ${tenantData?.hotel_name || 'Hotel'}`,
+        subject: `Payment Reminder - ${tenantInfo?.hotel_name || 'Hotel'}`,
         enabled: true
       },
       group_confirmation: {
-        subject: `Group Reservation Confirmation - ${tenantData?.hotel_name || 'Hotel'}`,
+        subject: `Group Reservation Confirmation - ${tenantInfo?.hotel_name || 'Hotel'}`,
         enabled: true
       }
     },
     branding: {
-      header_color: tenantData?.brand_colors?.primary || '#2563eb',
-      accent_color: tenantData?.brand_colors?.accent || '#f59e0b',
+      header_color: '#2563eb',
+      accent_color: '#f59e0b',
       footer_text: 'Thank you for choosing us!'
     },
     send_to_individuals: false
   });
+
+  // Load current settings when available
+  React.useEffect(() => {
+    if (currentEmailSettings) {
+      setEmailSettings(currentEmailSettings);
+    }
+  }, [currentEmailSettings]);
 
   const [testEmail, setTestEmail] = useState('');
   const [isTesting, setIsTesting] = useState(false);
 
   const handleSave = async () => {
     try {
-      // In real implementation, this would update hotel_settings.email_settings
-      toast({
-        title: "Settings Saved",
-        description: "Email settings have been updated successfully"
-      });
+      await updateEmailSettings.mutateAsync(emailSettings);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save email settings",
-        variant: "destructive"
-      });
+      console.error('Error saving email settings:', error);
     }
   };
 
@@ -355,10 +358,10 @@ export default function EmailSettings() {
                     className="w-4 h-4 rounded"
                     style={{ background: emailSettings.branding.header_color }}
                   ></div>
-                  <strong>{emailSettings.from_name || tenantData?.hotel_name}</strong>
+                  <strong>{emailSettings.from_name || tenantInfo?.hotel_name}</strong>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Subject: Reservation Confirmation - {tenantData?.hotel_name}
+                  Subject: Reservation Confirmation - {tenantInfo?.hotel_name}
                 </p>
                 <p className="text-sm mt-2">{emailSettings.branding.footer_text}</p>
               </div>

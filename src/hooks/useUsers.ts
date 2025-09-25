@@ -69,6 +69,55 @@ export function useUsers() {
 
     setLoading(true);
     try {
+      // Use the secure function for non-super-admin users
+      if (currentUser.role !== 'SUPER_ADMIN') {
+        // For managers and other staff, use the secure function that only returns safe data
+        const { data, error } = await supabase.rpc('get_tenant_staff_safe', {
+          target_tenant_id: currentUser.tenant_id
+        });
+
+        if (error) {
+          console.error('Error loading users:', error);
+          setError(error.message);
+          return;
+        }
+
+        // Map the secure data to the User interface with default values for missing fields
+        const mappedUsers: User[] = (data || []).map(user => ({
+          ...user,
+          role: user.role as User['role'], // Properly type the role
+          tenant_id: currentUser.tenant_id,
+          force_reset: false, // Not included in secure function response
+          temp_password_hash: undefined,
+          temp_expires: undefined,
+          created_at: undefined,
+          updated_at: undefined,
+          // Sensitive fields not included in secure response
+          address: undefined,
+          nin: undefined,
+          date_of_birth: undefined,
+          nationality: undefined,
+          emergency_contact_name: undefined,
+          emergency_contact_phone: undefined,
+          emergency_contact_relationship: undefined,
+          next_of_kin_name: undefined,
+          next_of_kin_phone: undefined,
+          next_of_kin_relationship: undefined,
+          bank_name: undefined,
+          account_number: undefined,
+          passport_number: undefined,
+          drivers_license: undefined,
+          shift_start: undefined,
+          shift_end: undefined,
+          phone: undefined
+        }));
+
+        setUsers(mappedUsers);
+        setError(null);
+        return;
+      }
+
+      // Super admins can see all user data
       let query = supabase
         .from('users')
         .select(`

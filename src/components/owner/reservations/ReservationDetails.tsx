@@ -15,8 +15,8 @@ interface Reservation {
   phone: string;
   room: string;
   roomType: string;
-  checkIn: Date;
-  checkOut: Date;
+  checkIn: string | Date;
+  checkOut: string | Date;
   status: 'confirmed' | 'pending' | 'checked-in' | 'checked-out' | 'cancelled';
   guests: number;
   nights: number;
@@ -53,6 +53,17 @@ export default function ReservationDetails({ reservation, open, onOpenChange }: 
   const getInitials = (name: string | undefined | null) => {
     if (!name) return '??';
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  };
+
+  const safeFormatDate = (date: string | Date | undefined | null, formatStr: string) => {
+    if (!date) return 'Invalid Date';
+    try {
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      if (isNaN(dateObj.getTime())) return 'Invalid Date';
+      return format(dateObj, formatStr);
+    } catch {
+      return 'Invalid Date';
+    }
   };
 
   const mockPaymentHistory = [
@@ -153,7 +164,7 @@ export default function ReservationDetails({ reservation, open, onOpenChange }: 
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <div className="font-medium">
-                    {format(reservation.checkIn, 'PPP')} - {format(reservation.checkOut, 'PPP')}
+                    {safeFormatDate(reservation.checkIn, 'PPP')} - {safeFormatDate(reservation.checkOut, 'PPP')}
                   </div>
                   <div className="text-sm text-muted-foreground">
                     {reservation.nights} night{reservation.nights !== 1 ? 's' : ''}
@@ -193,7 +204,7 @@ export default function ReservationDetails({ reservation, open, onOpenChange }: 
                     <div>
                       <div className="font-medium">{payment.type}</div>
                       <div className="text-sm text-muted-foreground">
-                        {format(payment.date, 'MMM dd, yyyy')} • {payment.method}
+                        {safeFormatDate(payment.date, 'MMM dd, yyyy')} • {payment.method}
                       </div>
                     </div>
                     <div className="text-right">
@@ -226,7 +237,7 @@ export default function ReservationDetails({ reservation, open, onOpenChange }: 
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium">{note.author}</span>
                       <span className="text-xs text-muted-foreground">
-                        {format(note.date, 'MMM dd, HH:mm')}
+                        {safeFormatDate(note.date, 'MMM dd, HH:mm')}
                       </span>
                     </div>
                     <p className="text-sm text-muted-foreground">{note.note}</p>

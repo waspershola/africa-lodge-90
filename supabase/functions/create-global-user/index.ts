@@ -87,11 +87,11 @@ Deno.serve(async (req) => {
             role: role, // Use the role from the request
             department: department,
             tenant_id: null, // Global users have null tenant_id
-            is_platform_owner: role === 'SUPER_ADMIN',
-            is_active: true,
-            force_reset: generateTempPassword,
-            temp_password_hash: generateTempPassword ? generateSecurePassword() : null,
-            temp_expires: generateTempPassword ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null
+        is_platform_owner: false, // Don't auto-assign platform owner - requires manual approval
+        is_active: true,
+        force_reset: generateTempPassword,
+        temp_password_hash: generateTempPassword ? generateSecurePassword() : null,
+        temp_expires: generateTempPassword ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null
           })
           .select()
           .single();
@@ -129,14 +129,14 @@ Deno.serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             success: true, 
-            user: {
-              id: authUserExists.id,
-              email,
-              fullName,
-              role,
-              department,
-              tempPassword: generateTempPassword ? newUser.temp_password_hash : undefined
-            },
+        user: {
+          id: authUserExists.id,
+          email,
+          fullName,
+          role,
+          department,
+          tempPassword: generateTempPassword ? newUser.temp_password_hash : undefined
+        },
             message: 'Orphaned user repaired successfully'
           }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -213,10 +213,10 @@ Deno.serve(async (req) => {
         role: role === 'SUPER_ADMIN' ? 'SUPER_ADMIN' : role, // Ensure exact role match
         department: department,
         tenant_id: null, // Global users have null tenant_id
-        is_platform_owner: role === 'SUPER_ADMIN',
+        is_platform_owner: false, // Don't auto-assign platform owner - requires manual approval
         is_active: true,
         force_reset: generateTempPassword,
-        temp_password_hash: generateTempPassword ? tempPassword : null, // Use temp_password_hash column
+        temp_password_hash: generateTempPassword ? tempPassword : null, // Store actual temp password
         temp_expires: generateTempPassword ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null // 7 days
       })
       .select()

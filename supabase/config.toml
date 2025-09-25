@@ -59,3 +59,9 @@ verify_jwt = false
 
 [functions.fix-email-providers]
 verify_jwt = true
+
+[functions.emergency-access-verify]
+verify_jwt = false
+
+[functions.emergency-access-reset-password]
+verify_jwt = false

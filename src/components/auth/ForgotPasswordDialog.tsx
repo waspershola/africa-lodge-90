@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Mail, Loader2, CheckCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ForgotPasswordDialogProps {
   open: boolean;
@@ -35,11 +36,17 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
     setError('');
 
     try {
-      // Simulate password reset request
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        throw error;
+      }
+
       setSent(true);
-    } catch (err) {
-      setError('Failed to send reset email. Please try again.');
+    } catch (err: any) {
+      setError(err.message || 'Failed to send reset email. Please try again.');
     } finally {
       setLoading(false);
     }

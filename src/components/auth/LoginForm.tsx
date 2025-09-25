@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, LogIn, Mail, Lock } from 'lucide-react';
+import { Loader2, LogIn, Mail, Lock, Shield } from 'lucide-react';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { ForgotPasswordDialog } from '@/components/auth/ForgotPasswordDialog';
 import { supabaseApi } from '@/lib/supabase-api';
@@ -139,7 +139,7 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
       </Button>
 
       {!compact && (
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-3">
           <Button
             type="button"
             variant="link"
@@ -150,6 +150,25 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
           >
             Forgot your password?
           </Button>
+          
+          {/* Emergency Access Portal Link */}
+          <div className="border-t pt-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => window.location.href = '/emergency-access-portal'}
+              disabled={isLoading}
+              className="text-xs gap-2 text-destructive border-destructive/20 hover:bg-destructive/5"
+            >
+              <Shield className="h-3 w-3" />
+              Platform Owner Emergency Access
+            </Button>
+            <p className="text-xs text-muted-foreground mt-1">
+              For platform owners who cannot access their accounts
+            </p>
+          </div>
+          
           <div className="text-sm text-muted-foreground">
             Don't have an account?{' '}
             <Button variant="link" className="p-0 h-auto text-xs">
@@ -175,6 +194,10 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
       </CardHeader>
       <CardContent>
         {form}
+        <ForgotPasswordDialog
+          open={showForgotPassword}
+          onOpenChange={setShowForgotPassword}
+        />
       </CardContent>
     </Card>
   );

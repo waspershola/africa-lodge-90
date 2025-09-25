@@ -7,6 +7,7 @@ import { useFontManager } from "@/hooks/useFontManager";
 import Index from "./pages/Index";
 import SignUp from "./pages/SignUp";
 import NotFound from "./pages/NotFound";
+import { EmergencyAccessPage } from "./pages/EmergencyAccessPage";
 import FrontDeskDashboard from "./components/FrontDeskDashboard";
 import OwnerDashboard from "./components/OwnerDashboard";
 import { MultiTenantAuthProvider } from "./components/auth/MultiTenantAuthProvider";
@@ -108,6 +109,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/signup" element={<SignUp />} />
+          <Route path="/emergency-access-portal" element={<EmergencyAccessPage />} />
           <Route path="/onboarding" element={
             <TenantAwareLayout>
               <OnboardingWizard />

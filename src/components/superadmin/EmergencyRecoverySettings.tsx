@@ -59,17 +59,26 @@ export function EmergencyRecoverySettings() {
     loadMasterKeyStatus();
   }, []);
 
+  // Force refresh when component mounts to ensure latest data
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadSystemOwners();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   const loadSystemOwners = async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('*')
+        .select('id, email, name, role, is_platform_owner, force_reset, security_questions, recovery_codes, last_login, created_at')
         .eq('is_platform_owner', true)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
       setSystemOwners(data || []);
+      console.log('System owners loaded:', data);
     } catch (error: any) {
       toast.error('Failed to load system owners', {
         description: error.message
@@ -330,7 +339,7 @@ export function EmergencyRecoverySettings() {
           <div className="space-y-4">
             {systemOwners.map((owner) => (
               <div key={owner.id} className="border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-4">
+                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h4 className="font-medium">{owner.name || owner.email}</h4>
                     <p className="text-sm text-muted-foreground">{owner.email}</p>
@@ -342,23 +351,26 @@ export function EmergencyRecoverySettings() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">Platform Owner</Badge>
-                    {owner.force_reset && (
+                    {owner.force_reset === true && (
                       <Badge variant="destructive">Reset Required</Badge>
                     )}
                   </div>
                 </div>
 
                 {/* Show temporary passwords for reset required users */}
-                {owner.force_reset && (owner.email === 'ceo@waspersolution.com' || owner.email === 'waspershola@gmail.com') && (
-                  <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
-                    <p className="text-sm font-medium text-amber-800">Temporary Password Required</p>
-                    <p className="text-xs text-amber-700 mt-1">
-                      Use this password for first login: <span className="font-mono font-bold">
+                {owner.force_reset === true && (owner.email === 'ceo@waspersolution.com' || owner.email === 'waspershola@gmail.com') && (
+                  <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md">
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Temporary Password Required</p>
+                    <div className="mt-2 p-2 bg-amber-100 dark:bg-amber-900 rounded border">
+                      <p className="text-xs text-amber-700 dark:text-amber-300 mb-1">
+                        First login password:
+                      </p>
+                      <p className="font-mono font-bold text-lg text-amber-900 dark:text-amber-100">
                         {owner.email === 'ceo@waspersolution.com' ? 'TempPass2024!' : 'TempPass2025!'}
-                      </span>
-                    </p>
-                    <p className="text-xs text-amber-600 mt-1">
-                      You will be required to change this password on first login
+                      </p>
+                    </div>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                      ⚠️ Must be changed on first login - this password expires in 7 days
                     </p>
                   </div>
                 )}

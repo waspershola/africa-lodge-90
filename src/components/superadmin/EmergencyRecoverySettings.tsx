@@ -26,7 +26,9 @@ interface SystemOwner {
   id: string;
   email: string;
   name: string;
+  role: string;
   is_platform_owner: boolean;
+  force_reset?: boolean;
   security_questions?: any;
   recovery_codes?: any;
   backup_email?: string;
@@ -40,6 +42,7 @@ export function EmergencyRecoverySettings() {
   const [loading, setLoading] = useState(false);
   const [newOwnerEmail, setNewOwnerEmail] = useState('');
   const [newOwnerName, setNewOwnerName] = useState('');
+  const [newOwnerTempPassword, setNewOwnerTempPassword] = useState('');
   const [masterKeyHash, setMasterKeyHash] = useState('');
   const [generatedCodes, setGeneratedCodes] = useState<string[]>([]);
   
@@ -138,7 +141,8 @@ export function EmergencyRecoverySettings() {
         body: {
           email: newOwnerEmail,
           name: newOwnerName,
-          role: 'SUPER_ADMIN'
+          role: 'Super Admin',
+          temporaryPassword: newOwnerTempPassword || undefined
         }
       });
 
@@ -165,6 +169,7 @@ export function EmergencyRecoverySettings() {
       });
       setNewOwnerEmail('');
       setNewOwnerName('');
+      setNewOwnerTempPassword('');
       loadSystemOwners();
     } catch (error: any) {
       toast.error('Failed to add system owner', {
@@ -297,6 +302,19 @@ export function EmergencyRecoverySettings() {
                   />
                 </div>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="newOwnerTempPassword">Temporary Password (Optional)</Label>
+                <Input
+                  id="newOwnerTempPassword"
+                  type="password"
+                  value={newOwnerTempPassword}
+                  onChange={(e) => setNewOwnerTempPassword(e.target.value)}
+                  placeholder="Leave empty to auto-generate"
+                />
+                <p className="text-xs text-muted-foreground">
+                  If left empty, a secure temporary password will be generated automatically
+                </p>
+              </div>
               <Button 
                 onClick={handleAddSystemOwner}
                 disabled={loading || !newOwnerEmail || !newOwnerName}
@@ -322,8 +340,28 @@ export function EmergencyRecoverySettings() {
                       </p>
                     )}
                   </div>
-                  <Badge variant="outline">Platform Owner</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">Platform Owner</Badge>
+                    {owner.force_reset && (
+                      <Badge variant="destructive">Reset Required</Badge>
+                    )}
+                  </div>
                 </div>
+
+                {/* Show temporary passwords for reset required users */}
+                {owner.force_reset && (owner.email === 'ceo@waspersolution.com' || owner.email === 'waspershola@gmail.com') && (
+                  <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                    <p className="text-sm font-medium text-amber-800">Temporary Password Required</p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      Use this password for first login: <span className="font-mono font-bold">
+                        {owner.email === 'ceo@waspersolution.com' ? 'TempPass2024!' : 'TempPass2025!'}
+                      </span>
+                    </p>
+                    <p className="text-xs text-amber-600 mt-1">
+                      You will be required to change this password on first login
+                    </p>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-3 gap-4 text-sm">
                   <div>

@@ -149,12 +149,13 @@ Deno.serve(async (req) => {
         id: authUser.user.id,
         email: email,
         name: fullName,
-        role: role,
+        role: role === 'SUPER_ADMIN' ? 'SUPER_ADMIN' : role, // Ensure exact role match
         department: department,
+        tenant_id: null, // Global users have null tenant_id
         is_platform_owner: role === 'SUPER_ADMIN',
         is_active: true,
         force_reset: generateTempPassword,
-        temp_password: generateTempPassword ? tempPassword : null,
+        temp_password_hash: generateTempPassword ? tempPassword : null, // Use temp_password_hash column
         temp_expires: generateTempPassword ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null // 7 days
       })
       .select()

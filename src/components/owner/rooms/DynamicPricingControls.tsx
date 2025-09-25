@@ -28,6 +28,7 @@ import {
   useUpdatePricingRule, 
   useUpdateDynamicPricingSettings 
 } from "@/hooks/useDynamicPricing";
+import NewPricingRuleDialog from "./NewPricingRuleDialog";
 
 interface PricingRule {
   id: string;
@@ -554,6 +555,11 @@ export default function DynamicPricingControls() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <NewPricingRuleDialog 
+        open={showNewRuleDialog} 
+        onOpenChange={setShowNewRuleDialog}
+      />
     </div>
   );
 }

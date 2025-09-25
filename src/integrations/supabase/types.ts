@@ -333,6 +333,48 @@ export type Database = {
         }
         Relationships: []
       }
+      dynamic_pricing_settings: {
+        Row: {
+          competitor_sync: boolean
+          created_at: string
+          demand_forecast: boolean
+          event_integration: boolean
+          id: string
+          is_enabled: boolean
+          max_price_decrease: number
+          max_price_increase: number
+          tenant_id: string
+          update_frequency: number
+          updated_at: string
+        }
+        Insert: {
+          competitor_sync?: boolean
+          created_at?: string
+          demand_forecast?: boolean
+          event_integration?: boolean
+          id?: string
+          is_enabled?: boolean
+          max_price_decrease?: number
+          max_price_increase?: number
+          tenant_id: string
+          update_frequency?: number
+          updated_at?: string
+        }
+        Update: {
+          competitor_sync?: boolean
+          created_at?: string
+          demand_forecast?: boolean
+          event_integration?: boolean
+          id?: string
+          is_enabled?: boolean
+          max_price_decrease?: number
+          max_price_increase?: number
+          tenant_id?: string
+          update_frequency?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       feature_flags: {
         Row: {
           config: Json | null
@@ -1552,6 +1594,63 @@ export type Database = {
         }
         Relationships: []
       }
+      pricing_rules: {
+        Row: {
+          adjustment_type: string
+          adjustment_value: number
+          created_at: string
+          id: string
+          is_active: boolean
+          max_decrease: number
+          max_increase: number
+          name: string
+          priority: number
+          room_categories: string[]
+          tenant_id: string
+          trigger_condition: string
+          trigger_operator: string
+          trigger_value: number
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          adjustment_type: string
+          adjustment_value: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_decrease?: number
+          max_increase?: number
+          name: string
+          priority?: number
+          room_categories?: string[]
+          tenant_id: string
+          trigger_condition: string
+          trigger_operator: string
+          trigger_value: number
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          adjustment_type?: string
+          adjustment_value?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_decrease?: number
+          max_increase?: number
+          name?: string
+          priority?: number
+          room_categories?: string[]
+          tenant_id?: string
+          trigger_condition?: string
+          trigger_operator?: string
+          trigger_value?: number
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       qr_analytics: {
         Row: {
           created_at: string | null
@@ -1988,6 +2087,83 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
+      rate_plans: {
+        Row: {
+          adjustment: number
+          adjustment_type: string
+          advance_booking: number | null
+          base_rate: number
+          corporate_code: string | null
+          created_at: string | null
+          description: string | null
+          end_date: string
+          final_rate: number
+          id: string
+          is_active: boolean | null
+          max_stay: number | null
+          min_stay: number | null
+          name: string
+          restrictions: string[] | null
+          room_type_id: string | null
+          start_date: string
+          tenant_id: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          adjustment?: number
+          adjustment_type: string
+          advance_booking?: number | null
+          base_rate: number
+          corporate_code?: string | null
+          created_at?: string | null
+          description?: string | null
+          end_date: string
+          final_rate: number
+          id?: string
+          is_active?: boolean | null
+          max_stay?: number | null
+          min_stay?: number | null
+          name: string
+          restrictions?: string[] | null
+          room_type_id?: string | null
+          start_date: string
+          tenant_id: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          adjustment?: number
+          adjustment_type?: string
+          advance_booking?: number | null
+          base_rate?: number
+          corporate_code?: string | null
+          created_at?: string | null
+          description?: string | null
+          end_date?: string
+          final_rate?: number
+          id?: string
+          is_active?: boolean | null
+          max_stay?: number | null
+          min_stay?: number | null
+          name?: string
+          restrictions?: string[] | null
+          room_type_id?: string | null
+          start_date?: string
+          tenant_id?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rate_plans_room_type_id_fkey"
+            columns: ["room_type_id"]
+            isOneToOne: false
+            referencedRelation: "room_types"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -3168,6 +3344,16 @@ export type Database = {
       }
     }
     Functions: {
+      apply_rate_plan_bulk: {
+        Args: {
+          p_end_date: string
+          p_rate_plan_id: string
+          p_room_type_ids: string[]
+          p_start_date: string
+          p_tenant_id: string
+        }
+        Returns: number
+      }
       can_access_tenant: {
         Args: { tenant_uuid: string }
         Returns: boolean
@@ -3232,6 +3418,23 @@ export type Database = {
           total_revenue: number
         }[]
       }
+      fn_get_availability: {
+        Args: {
+          p_check_in_date: string
+          p_check_out_date: string
+          p_room_type_id?: string
+          p_tenant_id: string
+        }
+        Returns: {
+          available_rate: number
+          base_rate: number
+          is_available: boolean
+          max_occupancy: number
+          room_id: string
+          room_number: string
+          room_type_name: string
+        }[]
+      }
       fn_revpar: {
         Args: { end_date?: string; start_date?: string; tenant_uuid: string }
         Returns: number
@@ -3278,6 +3481,26 @@ export type Database = {
           status: string
           total_charges: number
           total_payments: number
+        }[]
+      }
+      get_guest_analytics: {
+        Args: {
+          p_end_date?: string
+          p_guest_id?: string
+          p_start_date?: string
+          p_tenant_id: string
+        }
+        Returns: {
+          avg_stay_length: number
+          guest_id: string
+          guest_name: string
+          guest_tier: string
+          is_repeat_guest: boolean
+          last_stay_date: string
+          lifetime_value: number
+          preferred_room_type: string
+          total_spent: number
+          total_stays: number
         }[]
       }
       get_guest_stats: {
@@ -3347,6 +3570,26 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      gtrgm_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_decompress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_in: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_options: {
+        Args: { "": unknown }
+        Returns: undefined
+      }
+      gtrgm_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
       is_super_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -3362,6 +3605,18 @@ export type Database = {
       refresh_revenue_views: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      set_limit: {
+        Args: { "": number }
+        Returns: number
+      }
+      show_limit: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      show_trgm: {
+        Args: { "": string }
+        Returns: string[]
       }
       strict_tenant_access: {
         Args: { target_tenant_id: string }

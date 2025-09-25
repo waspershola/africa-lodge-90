@@ -80,15 +80,14 @@ export default function RatePlanManager() {
   const updateRatePlan = useUpdateRatePlan();
   const deleteRatePlan = useDeleteRatePlan();
   
-  const ratePlans = ratePlansData || [];
+  const ratePlans = (ratePlansData || []) as RatePlan[];
   const roomTypes = roomTypesData || [];
 
-  // Convert database rate plan to local format for display
   const convertToLocalFormat = (dbPlan: RatePlan): LocalRatePlan => ({
     id: dbPlan.id,
     name: dbPlan.name,
     description: dbPlan.description || '',
-    type: dbPlan.type,
+    type: dbPlan.type as "seasonal" | "corporate" | "promotional" | "package",
     roomCategory: 'Standard', // Default for now
     baseRate: dbPlan.base_rate,
     adjustmentType: dbPlan.adjustment_type,

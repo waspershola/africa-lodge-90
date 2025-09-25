@@ -35,31 +35,14 @@ export function useRatePlans() {
     queryFn: async () => {
       if (!tenantId) throw new Error("No tenant ID");
 
-      // Use mock data until types are regenerated
-      return [
-        {
-          id: "1",
-          tenant_id: tenantId,
-          room_type_id: null,
-          name: "Summer Special",
-          description: "Special summer rates",
-          type: "seasonal" as const,
-          base_rate: 150000,
-          adjustment_type: "percentage" as const,
-          adjustment: -15,
-          final_rate: 127500,
-          start_date: "2024-06-01",
-          end_date: "2024-08-31",
-          min_stay: 2,
-          max_stay: 14,
-          advance_booking: 0,
-          corporate_code: null,
-          restrictions: [],
-          is_active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }
-      ] as RatePlan[];
+      const { data, error } = await supabase
+        .from("rate_plans")
+        .select("*")
+        .eq("tenant_id", tenantId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data || [];
     },
     enabled: !!tenantId,
   });
@@ -75,16 +58,17 @@ export function useCreateRatePlan() {
     mutationFn: async (ratePlan: Omit<RatePlan, "id" | "tenant_id" | "created_at" | "updated_at">) => {
       if (!tenantId) throw new Error("No tenant ID");
 
-      // Mock creation until types are regenerated
-      const newPlan = {
-        ...ratePlan,
-        id: Math.random().toString(),
-        tenant_id: tenantId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      
-      return newPlan;
+      const { data, error } = await supabase
+        .from("rate_plans")
+        .insert({
+          ...ratePlan,
+          tenant_id: tenantId,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["rate-plans", tenantId] });
@@ -112,8 +96,15 @@ export function useUpdateRatePlan() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<RatePlan> & { id: string }) => {
-      // Mock update until types are regenerated
-      return { id, ...updates } as RatePlan;
+      const { data, error } = await supabase
+        .from("rate_plans")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["rate-plans", tenantId] });
@@ -141,7 +132,12 @@ export function useDeleteRatePlan() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // Mock deletion until types are regenerated
+      const { error } = await supabase
+        .from("rate_plans")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
       return true;
     },
     onSuccess: () => {

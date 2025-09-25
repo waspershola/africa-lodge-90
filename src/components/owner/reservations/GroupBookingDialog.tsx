@@ -121,7 +121,7 @@ export default function GroupBookingDialog({ open, onClose }: GroupBookingDialog
           guest_phone: guest.phone,
           check_in_date: formData.checkIn.toISOString().split('T')[0],
           check_out_date: formData.checkOut.toISOString().split('T')[0],
-          room_id: '', // This will be handled by the backend to find available rooms
+          room_id: null, // Will be assigned by the system to find available rooms
           adults: guest.adults,
           children: guest.children,
           room_rate: roomTypeData?.base_rate || 0,

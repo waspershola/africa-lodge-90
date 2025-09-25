@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Calendar, Plus, Search, Filter, Users, Clock, MapPin, Phone } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -21,6 +21,14 @@ export default function ReservationsPage() {
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [showGroupDialog, setShowGroupDialog] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState(null);
+
+  const handleReservationSelect = useCallback((reservation: any) => {
+    setSelectedReservation(reservation);
+  }, []);
+
+  const handleReservationClose = useCallback(() => {
+    setSelectedReservation(null);
+  }, []);
 
   const { data: reservations = [], isLoading: loading, error } = useReservations();
 
@@ -220,7 +228,7 @@ export default function ReservationsPage() {
             <TabsContent value="calendar">
           <InteractiveReservationCalendar
             currentDate={new Date()}
-            onReservationSelect={setSelectedReservation}
+            onReservationSelect={handleReservationSelect}
           />
             </TabsContent>
 
@@ -228,7 +236,7 @@ export default function ReservationsPage() {
               <ReservationList 
                 searchTerm={searchTerm}
                 statusFilter={statusFilter}
-                onReservationSelect={setSelectedReservation}
+                onReservationSelect={handleReservationSelect}
               />
             </TabsContent>
           </Tabs>
@@ -312,7 +320,7 @@ export default function ReservationsPage() {
         <ReservationDetails
           reservation={selectedReservation}
           open={!!selectedReservation}
-          onOpenChange={() => setSelectedReservation(null)}
+          onOpenChange={handleReservationClose}
         />
       )}
     </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -40,6 +40,9 @@ export default function ReservationDetails({ reservation, open, onOpenChange, on
   const updateReservation = useUpdateReservation();
   const cancelReservation = useCancelReservation();
   const { toast } = useToast();
+
+  // Memoize the reservation ID to prevent unnecessary re-renders
+  const reservationId = useMemo(() => reservation?.id, [reservation?.id]);
 
   if (!reservation) return null;
 
@@ -93,7 +96,7 @@ export default function ReservationDetails({ reservation, open, onOpenChange, on
     }
   ];
 
-  const handleCheckIn = () => {
+  const handleCheckIn = useCallback(() => {
     if (reservation.status !== 'confirmed') {
       toast({
         title: "Cannot check in",
@@ -104,12 +107,13 @@ export default function ReservationDetails({ reservation, open, onOpenChange, on
     }
     
     updateReservation.mutate({
-      id: reservation.id,
+      id: reservationId,
       status: 'checked_in'
     });
-  };
+    onOpenChange(false); // Close dialog after action
+  }, [reservation.status, reservationId, updateReservation, toast, onOpenChange]);
 
-  const handleCheckOut = () => {
+  const handleCheckOut = useCallback(() => {
     if (reservation.status !== 'checked-in') {
       toast({
         title: "Cannot check out",
@@ -120,23 +124,26 @@ export default function ReservationDetails({ reservation, open, onOpenChange, on
     }
     
     updateReservation.mutate({
-      id: reservation.id,
+      id: reservationId,
       status: 'checked_out'
     });
-  };
+    onOpenChange(false); // Close dialog after action
+  }, [reservation.status, reservationId, updateReservation, toast, onOpenChange]);
 
-  const handleConfirmReservation = () => {
+  const handleConfirmReservation = useCallback(() => {
     updateReservation.mutate({
-      id: reservation.id,
+      id: reservationId,
       status: 'confirmed'
     });
-  };
+    onOpenChange(false); // Close dialog after action
+  }, [reservationId, updateReservation, onOpenChange]);
 
-  const handleCancelReservation = () => {
+  const handleCancelReservation = useCallback(() => {
     if (window.confirm('Are you sure you want to cancel this reservation?')) {
-      cancelReservation.mutate(reservation.id);
+      cancelReservation.mutate(reservationId);
+      onOpenChange(false); // Close dialog after action
     }
-  };
+  }, [reservationId, cancelReservation, onOpenChange]);
 
   const handleSendEmail = () => {
     toast({
@@ -174,7 +181,7 @@ export default function ReservationDetails({ reservation, open, onOpenChange, on
   ];
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog key={reservationId} open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">

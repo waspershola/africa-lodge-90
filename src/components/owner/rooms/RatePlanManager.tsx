@@ -27,6 +27,7 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { useMultiTenantAuth } from "@/hooks/useMultiTenantAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useRatePlans, useCreateRatePlan, useUpdateRatePlan, useDeleteRatePlan, RatePlan } from "@/hooks/useRatePlans";
+import { useRoomTypes } from "@/hooks/useRoomTypes";
 import React from "react";
 
 interface LocalRatePlan {
@@ -74,11 +75,13 @@ export default function RatePlanManager() {
   
   // Use real database hooks
   const { data: ratePlansData, isLoading } = useRatePlans();
+  const { data: roomTypesData } = useRoomTypes();
   const createRatePlan = useCreateRatePlan();
   const updateRatePlan = useUpdateRatePlan();
   const deleteRatePlan = useDeleteRatePlan();
   
   const ratePlans = ratePlansData || [];
+  const roomTypes = roomTypesData || [];
 
   // Convert database rate plan to local format for display
   const convertToLocalFormat = (dbPlan: RatePlan): LocalRatePlan => ({
@@ -430,10 +433,11 @@ export default function RatePlanManager() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Standard">Standard Room</SelectItem>
-                      <SelectItem value="Deluxe">Deluxe Room</SelectItem>
-                      <SelectItem value="Suite">Executive Suite</SelectItem>
-                      <SelectItem value="Presidential">Presidential Suite</SelectItem>
+                      {roomTypes.map(roomType => (
+                        <SelectItem key={roomType.id} value={roomType.id}>
+                          {roomType.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

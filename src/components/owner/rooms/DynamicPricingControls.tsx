@@ -147,6 +147,7 @@ const ruleTypeLabels = {
 
 export default function DynamicPricingControls() {
   const [activeTab, setActiveTab] = useState("rules");
+  const [showNewRuleDialog, setShowNewRuleDialog] = useState(false);
   const { formatPrice } = useCurrency();
   
   // Real database hooks
@@ -302,7 +303,7 @@ export default function DynamicPricingControls() {
         <TabsContent value="rules" className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Pricing Rules</h3>
-            <Button>
+            <Button onClick={() => setShowNewRuleDialog(true)}>
               <TrendingUp className="h-4 w-4 mr-2" />
               Create New Rule
             </Button>

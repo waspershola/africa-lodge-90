@@ -13,6 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useCreateReservation } from '@/hooks/useReservations';
 import { useRooms } from '@/hooks/useRooms';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useSearchGuests } from '@/hooks/useGuests';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
 interface NewReservationDialogProps {
   open: boolean;
@@ -28,6 +30,8 @@ export default function NewReservationDialog({
   selectedRoom
 }: NewReservationDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [guestSearchOpen, setGuestSearchOpen] = useState(false);
+  const [guestSearchTerm, setGuestSearchTerm] = useState('');
   const [formData, setFormData] = useState({
     guestName: '',
     email: '',
@@ -45,10 +49,23 @@ export default function NewReservationDialog({
   const { data: roomsData } = useRooms();
   const rooms = roomsData?.rooms || [];
   const roomTypes = roomsData?.roomTypes || [];
+  const { data: searchResults = [] } = useSearchGuests(guestSearchTerm);
   
   const createReservation = useCreateReservation();
   const { toast } = useToast();
   const { formatPrice } = useCurrency();
+
+  const selectGuest = (guest: any) => {
+    setFormData({
+      ...formData,
+      guestName: `${guest.first_name} ${guest.last_name}`,
+      email: guest.email || '',
+      phone: guest.phone || '',
+      idNumber: guest.guest_id_number || ''
+    });
+    setGuestSearchOpen(false);
+    setGuestSearchTerm('');
+  };
 
   const calculateNights = () => {
     const diffTime = Math.abs(formData.checkOut.getTime() - formData.checkIn.getTime());
@@ -151,13 +168,54 @@ export default function NewReservationDialog({
               <Label htmlFor="guestName">Guest Name *</Label>
               <div className="relative">
                 <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="guestName"
-                  className="pl-10"
-                  value={formData.guestName}
-                  onChange={(e) => setFormData({ ...formData, guestName: e.target.value })}
-                  required
-                />
+                <Popover open={guestSearchOpen} onOpenChange={setGuestSearchOpen}>
+                  <PopoverTrigger asChild>
+                    <Input
+                      id="guestName"
+                      className="pl-10"
+                      value={formData.guestName}
+                      onChange={(e) => {
+                        setFormData({ ...formData, guestName: e.target.value });
+                        setGuestSearchTerm(e.target.value);
+                        if (e.target.value.length > 2) {
+                          setGuestSearchOpen(true);
+                        }
+                      }}
+                      placeholder="Type guest name or search existing..."
+                      required
+                    />
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[400px] p-0">
+                    <Command>
+                      <CommandInput 
+                        placeholder="Search guests..." 
+                        value={guestSearchTerm}
+                        onValueChange={setGuestSearchTerm}
+                      />
+                      <CommandList>
+                        <CommandEmpty>No guests found.</CommandEmpty>
+                        <CommandGroup>
+                          {searchResults.map((guest) => (
+                            <CommandItem
+                              key={guest.id}
+                              onSelect={() => selectGuest(guest)}
+                              className="cursor-pointer"
+                            >
+                              <div className="flex flex-col">
+                                <span className="font-medium">
+                                  {guest.first_name} {guest.last_name}
+                                </span>
+                                <span className="text-sm text-muted-foreground">
+                                  {guest.email} • {guest.phone} • {guest.total_stays} stays
+                                </span>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
 

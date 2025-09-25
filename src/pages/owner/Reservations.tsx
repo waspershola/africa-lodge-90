@@ -10,6 +10,7 @@ import ReservationCalendar from '@/components/owner/reservations/ReservationCale
 import InteractiveReservationCalendar from '@/components/owner/reservations/InteractiveReservationCalendar';
 import ReservationList from '@/components/owner/reservations/ReservationList';
 import NewReservationDialog from '@/components/owner/reservations/NewReservationDialog';
+import GroupBookingDialog from '@/components/owner/reservations/GroupBookingDialog';
 import ReservationDetails from '@/components/owner/reservations/ReservationDetails';
 import { useReservations } from '@/hooks/useRooms';
 
@@ -18,6 +19,7 @@ export default function ReservationsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showNewDialog, setShowNewDialog] = useState(false);
+  const [showGroupDialog, setShowGroupDialog] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState(null);
 
   const { data: reservations = [], isLoading: loading, error } = useReservations();
@@ -87,10 +89,16 @@ export default function ReservationsPage() {
           </p>
         </div>
         
-        <Button onClick={() => setShowNewDialog(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Reservation
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setShowNewDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Reservation
+          </Button>
+          <Button variant="outline" onClick={() => setShowGroupDialog(true)}>
+            <Users className="h-4 w-4 mr-2" />
+            Group Booking
+          </Button>
+        </div>
       </div>
 
       {/* Stats Overview */}
@@ -276,7 +284,7 @@ export default function ReservationsPage() {
                 <Calendar className="h-4 w-4 mr-2" />
                 Availability Calendar
               </Button>
-              <Button variant="outline" size="sm" className="w-full justify-start">
+              <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setShowGroupDialog(true)}>
                 <Users className="h-4 w-4 mr-2" />
                 Group Bookings
               </Button>
@@ -293,6 +301,11 @@ export default function ReservationsPage() {
       <NewReservationDialog
         open={showNewDialog}
         onClose={() => setShowNewDialog(false)}
+      />
+
+      <GroupBookingDialog
+        open={showGroupDialog}
+        onClose={() => setShowGroupDialog(false)}
       />
 
       {selectedReservation && (

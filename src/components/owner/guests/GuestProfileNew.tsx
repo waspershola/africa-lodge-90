@@ -62,15 +62,16 @@ export default function GuestProfile({ guestId, onClose }: GuestProfileProps) {
       date_of_birth: guest.date_of_birth || '',
       id_type: guest.id_type || '',
       id_number: guest.id_number || '',
-      vip_status: guest.vip_status,
+      vip_status: guest.vip_status as 'regular' | 'silver' | 'gold' | 'vip',
       notes: guest.notes || ''
     });
     setIsEditDialogOpen(true);
   };
 
   const handleSaveEdit = async () => {
+    if (!editFormData.id) return;
     try {
-      await updateGuest.mutateAsync(editFormData);
+      await updateGuest.mutateAsync(editFormData as UpdateGuestData);
       setIsEditDialogOpen(false);
     } catch (error) {
       // Error is handled by the mutation
@@ -350,10 +351,10 @@ export default function GuestProfile({ guestId, onClose }: GuestProfileProps) {
 
             <div className="space-y-2">
               <Label htmlFor="edit_vip_status">VIP Status</Label>
-              <Select 
-                value={editFormData.vip_status || 'regular'} 
-                onValueChange={(value) => setEditFormData(prev => ({ ...prev, vip_status: value }))}
-              >
+            <Select 
+              value={editFormData.vip_status || 'regular'} 
+              onValueChange={(value: 'regular' | 'silver' | 'gold' | 'vip') => setEditFormData(prev => ({ ...prev, vip_status: value }))}
+            >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

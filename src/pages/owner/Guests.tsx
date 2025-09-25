@@ -18,7 +18,9 @@ import GuestDirectory from '@/components/owner/guests/GuestDirectory';
 import GuestProfile from '@/components/owner/guests/GuestProfile';
 import NewGuestDialog from '@/components/owner/guests/NewGuestDialog';
 import CorporateAccounts from '@/components/owner/guests/CorporateAccounts';
-import { useGuests } from '@/hooks/useApi';
+import GuestAnalytics from '@/components/owner/guests/GuestAnalytics';
+import GuestProfileNew from '@/components/owner/guests/GuestProfileNew';
+import { useGuests } from '@/hooks/useGuests';
 
 export default function GuestsPage() {
   const [activeTab, setActiveTab] = useState('directory');
@@ -172,41 +174,22 @@ export default function GuestsPage() {
         </TabsContent>
 
         <TabsContent value="analytics">
-          <Card className="luxury-card">
-            <CardHeader>
-              <CardTitle>Guest Analytics</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <TrendingUp className="h-12 w-12 mx-auto mb-4" />
-                <div className="text-lg font-medium mb-2">Analytics Dashboard</div>
-                <div className="text-sm">
-                  Guest insights, loyalty trends, and revenue analytics coming soon
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <GuestAnalytics />
         </TabsContent>
       </Tabs>
 
       {/* Dialogs */}
       {showNewGuestDialog && (
         <NewGuestDialog
+          isOpen={showNewGuestDialog}
           onClose={() => setShowNewGuestDialog(false)}
-          onGuestCreated={(guest) => {
-            setShowNewGuestDialog(false);
-            handleGuestSelect(guest);
-          }}
         />
       )}
 
       {showGuestProfile && selectedGuest && (
-        <GuestProfile
-          guest={selectedGuest}
+        <GuestProfileNew
+          guestId={selectedGuest.id}
           onClose={() => setShowGuestProfile(false)}
-          onUpdate={(updatedGuest) => {
-            setSelectedGuest(updatedGuest);
-          }}
         />
       )}
     </div>

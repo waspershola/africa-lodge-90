@@ -50,7 +50,8 @@ export default function ReservationDetails({ reservation, open, onOpenChange }: 
     }
   };
 
-  const getInitials = (name: string) => {
+  const getInitials = (name: string | undefined | null) => {
+    if (!name) return '??';
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 

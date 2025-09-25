@@ -113,13 +113,15 @@ async function handleEmailVerification(
 
   // Get random security question
   const questions = user.security_questions || [];
-  const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
   
-  if (!randomQuestion) {
+  // Filter out questions with null or missing answer_hash
+  const validQuestions = questions.filter((q: any) => q && q.question && q.answer_hash);
+  
+  if (validQuestions.length === 0) {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: 'No security questions configured for this account' 
+        error: 'No valid security questions configured for this account. Please contact system administrator.' 
       }),
       {
         status: 400,
@@ -127,6 +129,8 @@ async function handleEmailVerification(
       }
     );
   }
+  
+  const randomQuestion = validQuestions[Math.floor(Math.random() * validQuestions.length)];
 
   // Log successful email verification
   await logEmergencyAccess(supabaseClient, user.id, 'email', true, 'Email verified successfully', clientIP, userAgent);

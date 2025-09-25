@@ -15,11 +15,10 @@ import {
   UserPlus
 } from 'lucide-react';
 import GuestDirectory from '@/components/owner/guests/GuestDirectory';
-import GuestProfile from '@/components/owner/guests/GuestProfile';
+import GuestProfileNew from '@/components/owner/guests/GuestProfileNew';
 import NewGuestDialog from '@/components/owner/guests/NewGuestDialog';
 import CorporateAccounts from '@/components/owner/guests/CorporateAccounts';
 import GuestAnalytics from '@/components/owner/guests/GuestAnalytics';
-import GuestProfileNew from '@/components/owner/guests/GuestProfileNew';
 import { useGuests } from '@/hooks/useGuests';
 
 export default function GuestsPage() {

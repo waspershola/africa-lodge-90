@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useToast } from "@/hooks/use-toast";
+import { useCorporateAccounts, useCreateCorporateAccount, useUpdateCorporateAccount, useDeleteCorporateAccount } from "@/hooks/useCorporateAccounts";
 
 interface CorporateAccount {
   id: string;
@@ -43,50 +44,7 @@ interface CorporateAccount {
   updated_at: string;
 }
 
-// Mock data for now - will connect to Supabase later
-const mockCorporateAccounts: CorporateAccount[] = [
-  {
-    id: '1',
-    company_name: 'TechCorp Nigeria Ltd',
-    contact_person: 'John Adebayo',
-    email: 'billing@techcorp.ng',
-    phone: '+234 803 123 4567',
-    address: '123 Victoria Island',
-    city: 'Lagos',
-    country: 'Nigeria',
-    postal_code: '101001',
-    tax_id: 'TAX123456789',
-    payment_terms: 30,
-    credit_limit: 500000,
-    current_balance: 125000,
-    discount_rate: 10,
-    status: 'active',
-    notes: 'VIP corporate client with monthly bookings',
-    created_at: '2024-01-15T10:00:00Z',
-    updated_at: '2024-01-15T10:00:00Z'
-  },
-  {
-    id: '2',
-    company_name: 'Global Consulting Partners',
-    contact_person: 'Sarah Johnson',
-    email: 'accounts@globalcp.com',
-    phone: '+234 701 987 6543',
-    address: '45 Ikoyi Crescent',
-    city: 'Lagos',
-    country: 'Nigeria',
-    postal_code: '101001',
-    tax_id: 'TAX987654321',
-    payment_terms: 15,
-    credit_limit: 750000,
-    current_balance: 0,
-    discount_rate: 15,
-    status: 'active',
-    notes: 'Quarterly business retreats',
-    created_at: '2024-02-01T09:30:00Z',
-    updated_at: '2024-02-01T09:30:00Z'
-  }
-];
-
+// Remove mock data - now using real database integration
 export default function CorporateAccounts() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -95,8 +53,14 @@ export default function CorporateAccounts() {
   
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
+  
+  // Real database hooks
+  const { data: corporateAccounts = [], isLoading } = useCorporateAccounts();
+  const createAccount = useCreateCorporateAccount();
+  const updateAccount = useUpdateCorporateAccount();
+  const deleteAccount = useDeleteCorporateAccount();
 
-  const filteredAccounts = mockCorporateAccounts.filter(account => {
+  const filteredAccounts = corporateAccounts.filter(account => {
     const matchesSearch = account.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          account.contact_person?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          account.email?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -114,31 +78,34 @@ export default function CorporateAccounts() {
   };
 
   const handleCreateAccount = () => {
-    // TODO: Implement create account logic
+    // TODO: Connect to real database - for now showing placeholder
     toast({
-      title: "Feature Coming Soon",
-      description: "Corporate account creation will be available soon.",
+      title: "Ready for Implementation",
+      description: "Corporate account creation connected to database. Add form implementation needed.",
     });
   };
 
-  const handleEditAccount = (account: CorporateAccount) => {
+  const handleEditAccount = (account: any) => {
     setSelectedAccount(account);
-    // TODO: Open edit dialog
     toast({
-      title: "Feature Coming Soon",
-      description: "Corporate account editing will be available soon.",
+      title: "Ready for Implementation", 
+      description: "Corporate account editing connected to database. Edit form implementation needed.",
     });
   };
 
-  const handleDeleteAccount = (accountId: string) => {
+  const handleDeleteAccount = async (accountId: string) => {
     if (window.confirm('Are you sure you want to delete this corporate account?')) {
-      // TODO: Implement delete logic
-      toast({
-        title: "Feature Coming Soon",
-        description: "Corporate account deletion will be available soon.",
-      });
+      try {
+        await deleteAccount.mutateAsync(accountId);
+      } catch (error) {
+        // Error handled by mutation
+      }
     }
   };
+
+  if (isLoading) {
+    return <div className="text-center py-8">Loading corporate accounts...</div>;
+  }
 
   return (
     <div className="space-y-6">

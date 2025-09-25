@@ -96,7 +96,22 @@ serve(async (req) => {
 
     console.log('Creating test config for provider:', provider_type);
     
-    // Create a test EmailProviderConfig with Stockholm region
+    // Get actual API keys from environment variables for security
+    let actualApiKey = '';
+    if (provider_type === 'resend') {
+      actualApiKey = Deno.env.get('RESEND_API_KEY') || config.api_key || '';
+    } else {
+      actualApiKey = config.api_key || '';
+    }
+    
+    console.log('Using API key source:', {
+      provider: provider_type,
+      hasEnvKey: provider_type === 'resend' ? !!Deno.env.get('RESEND_API_KEY') : 'N/A',
+      hasConfigKey: !!config.api_key,
+      finalKeyExists: !!actualApiKey
+    });
+    
+    // Create a test EmailProviderConfig with proper credentials
     const testConfig: EmailProviderConfig = {
       default_provider: provider_type,
       fallback_enabled: false,
@@ -104,19 +119,19 @@ serve(async (req) => {
       providers: {
         ses: {
           enabled: provider_type === 'ses',
-          region: config.region || 'eu-north-1', // Stockholm region
+          region: config.region || 'us-east-1',
           access_key_id: config.access_key_id || '',
           secret_access_key: config.secret_access_key || '',
           verified_domains: config.verified_domains || []
         },
         mailersend: {
           enabled: provider_type === 'mailersend',
-          api_key: config.api_key || '',
+          api_key: provider_type === 'mailersend' ? actualApiKey : '',
           verified_domains: config.verified_domains || []
         },
         resend: {
           enabled: provider_type === 'resend',
-          api_key: config.api_key || '',
+          api_key: provider_type === 'resend' ? actualApiKey : '',
           verified_domains: config.verified_domains || []
         }
       }

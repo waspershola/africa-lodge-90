@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Mail, Shield, CheckCircle, AlertCircle, Settings } from 'lucide-react';
+import { Mail, Shield, CheckCircle, AlertCircle, Settings, Wrench } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -55,6 +55,56 @@ export default function EmailProviders() {
       toast({ title: "Error", description: "Failed to update provider", variant: "destructive" });
     }
   });
+
+  const fixProviders = async () => {
+    try {
+      toast({ title: "Info", description: "Fixing email provider configurations..." });
+
+      const { data, error } = await supabase.functions.invoke('fix-email-providers', {
+        body: {}
+      });
+
+      console.log('Fix providers result:', { data, error });
+
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
+      
+      if (data?.success) {
+        toast({ 
+          title: "Success", 
+          description: "Email providers have been fixed and updated successfully!",
+          duration: 5000
+        });
+        queryClient.invalidateQueries({ queryKey: ['system-email-providers'] });
+      } else {
+        console.error('Provider fix failed:', data);
+        toast({ 
+          title: "Fix Failed", 
+          description: data?.error || "Unknown error occurred during fix",
+          variant: "destructive",
+          duration: 8000
+        });
+      }
+    } catch (error: any) {
+      console.error('Fix providers error:', error);
+      let errorMessage = "Failed to fix providers";
+      
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      toast({ 
+        title: "Error", 
+        description: errorMessage,
+        variant: "destructive",
+        duration: 8000
+      });
+    }
+  };
 
   const setDefaultProvider = async (providerId: string) => {
     try {
@@ -203,19 +253,26 @@ export default function EmailProviders() {
         );
       
       case 'resend':
+        const showSecretPlaceholder = config.api_key === 'RESEND_API_KEY_SECRET';
         return (
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>API Key</Label>
               <Input 
                 type="password"
-                value={config.api_key || ''} 
+                value={showSecretPlaceholder ? 'Using Environment Secret (RESEND_API_KEY)' : config.api_key || ''} 
                 onChange={(e) => updateProvider.mutate({
                   id: provider.id,
                   updates: { config: { ...config, api_key: e.target.value } }
                 })}
                 placeholder="Enter Resend API key..."
+                disabled={showSecretPlaceholder}
               />
+              {showSecretPlaceholder && (
+                <p className="text-sm text-muted-foreground">
+                  ✅ Using secure environment variable. Click "Fix Providers" to update with the actual key.
+                </p>
+              )}
             </div>
           </div>
         );
@@ -234,7 +291,10 @@ export default function EmailProviders() {
         hasRequiredConfig = !!(config.access_key_id && config.secret_access_key);
         break;
       case 'mailersend':
+        hasRequiredConfig = !!config.api_key && config.api_key !== 'RESEND_API_KEY_SECRET';
+        break;
       case 'resend':
+        // Accept both actual API key or the secret placeholder
         hasRequiredConfig = !!config.api_key;
         break;
     }
@@ -261,6 +321,7 @@ export default function EmailProviders() {
       case 'ses':
         return !!(config.access_key_id && config.secret_access_key);
       case 'mailersend':
+        return !!config.api_key && config.api_key !== 'RESEND_API_KEY_SECRET';
       case 'resend':
         return !!config.api_key;
       default:
@@ -281,6 +342,10 @@ export default function EmailProviders() {
             Configure system-wide email providers that hotels can use
           </p>
         </div>
+        <Button onClick={fixProviders} variant="outline" className="gap-2">
+          <Wrench className="h-4 w-4" />
+          Fix Providers
+        </Button>
       </div>
 
       <div className="grid gap-6">
@@ -368,6 +433,15 @@ export default function EmailProviders() {
                 enabled providers to ensure email delivery.
               </p>
             </div>
+          </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+            <h4 className="font-semibold text-blue-900 mb-2">Security & Configuration</h4>
+            <ul className="text-sm text-blue-800 space-y-1">
+              <li>• API keys are stored securely using Supabase secrets</li>
+              <li>• Use the "Fix Providers" button to update configurations</li>
+              <li>• Test each provider before setting as default</li>
+              <li>• Environment variables are preferred over database storage for sensitive data</li>
+            </ul>
           </div>
         </CardContent>
       </Card>

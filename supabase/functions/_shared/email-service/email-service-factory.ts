@@ -203,6 +203,12 @@ export class EmailServiceFactory {
         const provider = systemProvider[0];
         
         // Convert system provider to EmailProviderConfig format
+        // Use environment variables for API keys when available
+        let resendApiKey = provider.config?.api_key || '';
+        if (provider.provider_type === 'resend' || resendApiKey === 'RESEND_API_KEY_SECRET') {
+          resendApiKey = Deno.env.get('RESEND_API_KEY') || '';
+        }
+        
         const config: EmailProviderConfig = {
           default_provider: provider.provider_type,
           fallback_enabled: true,
@@ -222,7 +228,7 @@ export class EmailServiceFactory {
             },
             resend: {
               enabled: provider.provider_type === 'resend',
-              api_key: provider.config?.api_key || '',
+              api_key: resendApiKey,
               verified_domains: provider.config?.verified_domains || []
             }
           }

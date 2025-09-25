@@ -56,3 +56,6 @@ verify_jwt = true
 
 [functions.test-email-provider-simple]
 verify_jwt = false
+
+[functions.fix-email-providers]
+verify_jwt = true

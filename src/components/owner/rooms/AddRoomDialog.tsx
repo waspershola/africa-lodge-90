@@ -40,7 +40,19 @@ export function AddRoomDialog({ isOpen, onClose, onSave }: AddRoomDialogProps) {
     },
   });
 
-  const onSubmit = (data: AddRoomForm) => {
+  const onSubmit = async (data: AddRoomForm) => {
+    // Check for duplicate room numbers before creating
+    const existingRooms = roomsData?.rooms || [];
+    const isDuplicate = existingRooms.some(room => room.room_number === data.room_number);
+    
+    if (isDuplicate) {
+      form.setError('room_number', {
+        type: 'manual',
+        message: `Room ${data.room_number} already exists. Please choose a different number.`
+      });
+      return;
+    }
+    
     onSave(data);
     form.reset();
   };

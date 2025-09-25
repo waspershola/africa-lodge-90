@@ -166,8 +166,8 @@ export default function GuestDirectory({ onGuestSelect, onNewGuest }: GuestDirec
                   <div className="text-xs text-muted-foreground">Spent</div>
                 </div>
                 <div>
-                  <div className="font-bold">₦0</div>
-                  <div className="text-xs text-muted-foreground">Spent</div>
+                  <div className="font-bold">{guest.last_stay_date ? format(new Date(guest.last_stay_date), 'MMM yyyy') : 'Never'}</div>
+                  <div className="text-xs text-muted-foreground">Last Stay</div>
                 </div>
               </div>
 

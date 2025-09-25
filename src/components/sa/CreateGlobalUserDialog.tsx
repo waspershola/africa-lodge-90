@@ -276,124 +276,125 @@ export function CreateGlobalUserDialog({ onSuccess }: CreateGlobalUserDialogProp
             </div>
           </div>
         ) : (
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Full Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="John Doe" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Full Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="John Doe" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email Address</FormLabel>
-                    <FormControl>
-                      <Input type="email" placeholder="admin@company.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email Address</FormLabel>
+                <FormControl>
+                  <Input type="email" placeholder="admin@company.com" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Phone Number (Optional)</FormLabel>
-                    <FormControl>
-                      <Input type="tel" placeholder="+1 (555) 123-4567" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          <FormField
+            control={form.control}
+            name="phone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Phone Number (Optional)</FormLabel>
+                <FormControl>
+                  <Input type="tel" placeholder="+1 (555) 123-4567" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-              <FormField
-                control={form.control}
-                name="address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Address (Optional)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="123 Main St, City, Country" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          <FormField
+            control={form.control}
+            name="address"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Address (Optional)</FormLabel>
+                <FormControl>
+                  <Input placeholder="123 Main St, City, Country" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-              <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Global Role</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select global role" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {loadingGlobalRoles ? (
-                          <SelectItem value="" disabled>Loading roles...</SelectItem>
-                        ) : (
-                          globalRoles?.map((role) => (
-                            <SelectItem key={role.id} value={role.name}>
-                              {role.name}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          <FormField
+            control={form.control}
+            name="role"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Global Role</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select global role" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {loadingGlobalRoles ? (
+                      <SelectItem value="" disabled>Loading roles...</SelectItem>
+                    ) : (
+                      globalRoles?.map((role) => (
+                        <SelectItem key={role.id} value={role.name}>
+                          {role.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-              <Alert className="border-blue-200 bg-blue-50">
-                <Shield className="h-4 w-4 text-blue-600" />
-                <AlertDescription className="text-sm text-blue-800">
-                  <p className="font-medium mb-1">Global User Creation</p>
-                  <ul className="text-xs space-y-1">
-                    <li>• A temporary password will be generated</li>
-                    <li>• User will be forced to reset password on first login</li>
-                    <li>• User will have platform-wide access based on their role</li>
-                  </ul>
-                </AlertDescription>
-              </Alert>
+          <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+            <Shield className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <AlertDescription className="text-sm text-blue-800 dark:text-blue-200">
+              <p className="font-medium mb-2">Temporary Password Setup</p>
+              <ul className="text-xs space-y-1">
+                <li>• A secure temporary password will be auto-generated</li>
+                <li>• User must reset password on first login (expires in 7 days)</li>
+                <li>• User will have platform-wide access based on their role</li>
+                <li>• Temporary password will be shown after creation</li>
+              </ul>
+            </AlertDescription>
+          </Alert>
 
-              <div className="flex gap-3 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleClose}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 bg-gradient-primary shadow-luxury hover:shadow-hover"
-                >
-                  {isSubmitting ? 'Creating...' : 'Create User'}
-                </Button>
-              </div>
-            </form>
-          </Form>
+          <div className="flex gap-3 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClose}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 bg-gradient-primary shadow-luxury hover:shadow-hover"
+            >
+              {isSubmitting ? 'Creating...' : 'Create User'}
+            </Button>
+          </div>
+        </form>
+      </Form>
         )}
       </DialogContent>
     </Dialog>

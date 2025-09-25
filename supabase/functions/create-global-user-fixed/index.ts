@@ -82,19 +82,45 @@ serve(async (req) => {
     
     const userRole = roleMapping[roleData.name] || roleData.name.toUpperCase().replace(' ', '_');
 
-    // 2) Prevent duplicate users - check BOTH auth and profile tables
-    const { data: existingDbUser } = await supabaseAdmin.from('users').select('id, email').eq('email', email).maybeSingle();
-    if (existingDbUser) {
-      console.log('User already exists in profiles:', existingDbUser.email);
-      return new Response(JSON.stringify({ success: false, error: 'User with this email already exists', code: 'USER_EXISTS', existing_user: { id: existingDbUser.id, email: existingDbUser.email } }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
+    // 2) Prevent duplicate users - check BOTH auth and profile tables comprehensively
+    const [dbUserResult, authUsersResult] = await Promise.all([
+      supabaseAdmin.from('users').select('id, email').eq('email', email).maybeSingle(),
+      supabaseAdmin.auth.admin.listUsers()
+    ]);
 
-    // Check if auth user exists (in case of partial creation)
-    const { data: existingAuthUser } = await supabaseAdmin.auth.admin.listUsers();
-    const authUserExists = existingAuthUser.users?.find(u => u.email === email);
-    if (authUserExists) {
-      console.log('Auth user already exists:', email);
-      return new Response(JSON.stringify({ success: false, error: 'User with this email already exists in auth', code: 'USER_EXISTS', existing_user: { id: authUserExists.id, email: authUserExists.email } }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const existingDbUser = dbUserResult.data;
+    const authUserExists = authUsersResult.data?.users?.find(u => u.email === email);
+
+    if (existingDbUser || authUserExists) {
+      console.log('User already exists:', { 
+        inDatabase: !!existingDbUser, 
+        inAuth: !!authUserExists,
+        email
+      });
+      
+      // If auth user exists but no profile, clean up auth user
+      if (authUserExists && !existingDbUser) {
+        try {
+          await supabaseAdmin.auth.admin.deleteUser(authUserExists.id);
+          console.log('Cleaned up orphaned auth user:', authUserExists.id);
+        } catch (cleanupError) {
+          console.error('Failed to cleanup orphaned auth user:', cleanupError);
+        }
+      }
+      
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'User with this email already exists', 
+        code: 'USER_EXISTS', 
+        existing_user: { 
+          id: existingDbUser?.id || authUserExists?.id, 
+          email,
+          can_reset_password: true
+        } 
+      }), { 
+        status: 409, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
     }
 
     // 3) Generate or use provided temporary password

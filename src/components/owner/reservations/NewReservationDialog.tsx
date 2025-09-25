@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateReservation } from '@/hooks/useReservations';
 import { useRooms } from '@/hooks/useRooms';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface NewReservationDialogProps {
   open: boolean;
@@ -43,16 +44,11 @@ export default function NewReservationDialog({
 
   const { data: roomsData } = useRooms();
   const rooms = roomsData?.rooms || [];
+  const roomTypes = roomsData?.roomTypes || [];
   
   const createReservation = useCreateReservation();
   const { toast } = useToast();
-
-  const roomTypes = [
-    { value: 'standard', label: 'Standard Room', price: 85000 },
-    { value: 'deluxe', label: 'Deluxe King', price: 125000 },
-    { value: 'suite', label: 'Family Suite', price: 185000 },
-    { value: 'presidential', label: 'Presidential Suite', price: 350000 }
-  ];
+  const { formatPrice } = useCurrency();
 
   const calculateNights = () => {
     const diffTime = Math.abs(formData.checkOut.getTime() - formData.checkIn.getTime());
@@ -75,12 +71,12 @@ export default function NewReservationDialog({
 
     try {
       const nights = calculateNights();
-      const roomTypeData = roomTypes.find(r => r.value === formData.roomType);
+      const roomTypeData = roomTypes.find(rt => rt.id === formData.roomType);
       
       // Find an available room of the selected type or use first available room
       const availableRoom = rooms?.find(room => 
         room.status === 'available' && 
-        room.room_type?.name.toLowerCase().includes(formData.roomType)
+        room.room_type_id === formData.roomType
       ) || rooms?.find(room => room.status === 'available');
 
       if (!availableRoom) {
@@ -102,7 +98,7 @@ export default function NewReservationDialog({
         room_id: availableRoom.id,
         adults: formData.adults,
         children: formData.children,
-        room_rate: roomTypeData?.price || 85000,
+        room_rate: roomTypeData?.base_rate || 85000,
         status: 'confirmed' as const
       });
       
@@ -281,9 +277,9 @@ export default function NewReservationDialog({
                 <SelectValue placeholder="Select room type" />
               </SelectTrigger>
               <SelectContent>
-                {roomTypes.map(room => (
-                  <SelectItem key={room.value} value={room.value}>
-                    {room.label} - ₦{room.price.toLocaleString()}/night
+                {roomTypes.map(roomType => (
+                  <SelectItem key={roomType.id} value={roomType.id}>
+                    {roomType.name} - {formatPrice(roomType.base_rate)}/night
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -328,7 +324,7 @@ export default function NewReservationDialog({
                 <div>Duration: {calculateNights()} nights</div>
                 <div>Guests: {formData.adults} adults{formData.children > 0 && `, ${formData.children} children`}</div>
                 <div className="font-semibold">
-                  Total: ₦{(calculateNights() * (roomTypes.find(r => r.value === formData.roomType)?.price || 0)).toLocaleString()}
+                  Total: {formatPrice(calculateNights() * (roomTypes.find(rt => rt.id === formData.roomType)?.base_rate || 0))}
                 </div>
               </div>
             </div>

@@ -25,7 +25,7 @@ import {
   Coffee,
   Shirt
 } from "lucide-react";
-import { useRoomTypes, useCreateRoomType, useUpdateRoomType, useDeleteRoomType } from "@/hooks/useApi";
+import { useRoomTypes, useCreateRoomType, useUpdateRoomType, useDeleteRoomType } from "@/hooks/useRoomTypes";
 import { useMultiTenantAuth } from "@/hooks/useMultiTenantAuth";
 import { useCurrency } from "@/hooks/useCurrency";
 import { toast } from "sonner";
@@ -103,19 +103,16 @@ export default function RoomCategoryManager() {
           description: selectedCategory.description,
           base_rate: selectedCategory.baseRate,
           max_occupancy: selectedCategory.maxOccupancy,
-          amenities: selectedCategory.amenities,
-          tenant_id: tenant?.tenant_id || user?.tenant_id
+          amenities: selectedCategory.amenities
         });
       } else {
         await updateCategoryMutation.mutateAsync({ 
           id: selectedCategory.id, 
-          updates: {
-            name: selectedCategory.name,
-            description: selectedCategory.description,
-            base_rate: selectedCategory.baseRate,
-            max_occupancy: selectedCategory.maxOccupancy,
-            amenities: selectedCategory.amenities
-          }
+          name: selectedCategory.name,
+          description: selectedCategory.description,
+          base_rate: selectedCategory.baseRate,
+          max_occupancy: selectedCategory.maxOccupancy,
+          amenities: selectedCategory.amenities
         });
       }
       setIsEditDialogOpen(false);
@@ -128,7 +125,7 @@ export default function RoomCategoryManager() {
   const handleDeleteCategory = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this room category?')) {
       try {
-        await deleteCategoryMutation.mutateAsync({ id });
+        await deleteCategoryMutation.mutateAsync(id);
       } catch (error) {
         toast.error('Failed to delete room category');
       }

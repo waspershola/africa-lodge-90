@@ -20,11 +20,12 @@ export function useRecoveryManagement() {
       if (error) throw error;
 
       toast.success('Recovery codes generated successfully', {
-        description: 'Save these codes in a secure location'
+        description: 'Please save these codes in a secure location. They can only be used once.'
       });
 
       return data;
     } catch (error: any) {
+      console.error('Recovery codes generation error:', error);
       toast.error('Failed to generate recovery codes', {
         description: error.message
       });

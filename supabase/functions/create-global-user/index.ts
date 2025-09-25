@@ -95,6 +95,10 @@ serve(async (req) => {
       roleEnum = 'SUPER_ADMIN';
     } else if (roleData.name === 'Platform Admin') {
       roleEnum = 'PLATFORM_ADMIN';
+    } else if (roleData.name === 'Support Staff') {
+      roleEnum = 'SUPPORT_STAFF';
+    } else if (roleData.name === 'Sales') {
+      roleEnum = 'SUPPORT_STAFF'; // Map Sales to SUPPORT_STAFF for now
     }
 
     // Create auth user

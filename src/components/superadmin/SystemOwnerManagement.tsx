@@ -11,13 +11,13 @@ const SYSTEM_OWNERS = [
   },
   {
     email: 'ceo@waspersolution.com',  
-    name: 'CEO',
+    name: 'Wasiu',
     role: 'Super Admin',
     description: 'Chief Executive Officer with executive privileges'
   },
   {
     email: 'waspershola@gmail.com',
-    name: 'Wasper Shola',
+    name: 'Shola',
     role: 'Super Admin', 
     description: 'System owner with administrative capabilities'
   }
@@ -33,7 +33,7 @@ export function SystemOwnerManagement() {
             System Owner Management
           </CardTitle>
           <CardDescription>
-            Individual management of system owner accounts and recovery settings. Create accounts and configure recovery options for emergency access.
+            Configure recovery settings for system owners. Set backup email addresses and phone numbers for emergency access.
           </CardDescription>
         </CardHeader>
       </Card>

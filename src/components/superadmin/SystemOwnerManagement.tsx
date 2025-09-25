@@ -10,13 +10,13 @@ const SYSTEM_OWNERS = [
     description: 'Primary system administrator with full platform access'
   },
   {
-    email: 'ceo@waspersolution.com',  
+    email: 'info@waspersolution.com',  
     name: 'Wasiu',
     role: 'Super Admin',
     description: 'Chief Executive Officer with executive privileges'
   },
   {
-    email: 'waspershola@gmail.com',
+    email: 'sholawasiu@gmail.com',
     name: 'Shola',
     role: 'Super Admin', 
     description: 'System owner with administrative capabilities'

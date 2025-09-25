@@ -274,6 +274,20 @@ export function GlobalUsersTable() {
                               </DropdownMenuItem>
                             </>
                           )}
+                          
+                          {/* Show delete option for Reset Required users regardless of platform owner status */}
+                          {user.force_reset && !user.is_platform_owner && isSuperAdmin && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => handleDelete(user)}
+                                className="text-red-600 focus:text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete User
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

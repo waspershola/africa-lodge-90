@@ -261,8 +261,8 @@ export function GlobalUsersTable() {
                             </DropdownMenuItem>
                           )}
                           
-                          {/* Reset to Temporary Password - Only for non-platform owners */}
-                          {!user.is_platform_owner && isSuperAdmin && (
+                          {/* Reset to Temporary Password - For non-platform owners OR Reset Required users (including platform owners) */}
+                          {(!user.is_platform_owner || user.force_reset) && isSuperAdmin && (
                             <DropdownMenuItem onClick={() => handleGenerateTempPassword(user)}>
                               <RotateCcw className="mr-2 h-4 w-4" />
                               Reset to Temporary Password

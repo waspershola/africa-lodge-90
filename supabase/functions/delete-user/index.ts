@@ -134,13 +134,38 @@ serve(async (req) => {
 
       if (deleteUserError) {
         console.error(`[${operationId}] Failed to delete user record:`, deleteUserError);
+        
+        // Check if it's a platform owner protection error
+        if (deleteUserError.message?.includes('Platform owner cannot be deleted')) {
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'Cannot delete platform owner',
+              details: 'Platform owners cannot be deleted for security reasons'
+            }),
+            { 
+              status: 400, 
+              headers: { 
+                ...corsHeaders, 
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+        }
+        
         return new Response(
           JSON.stringify({ 
             success: false, 
-            error: 'Failed to delete user record',
-            details: deleteUserError.message 
+            error: 'Failed to delete user from database',
+            details: deleteUserError.message || 'Unknown database error'
           }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { 
+            status: 500, 
+            headers: { 
+              ...corsHeaders, 
+              'Content-Type': 'application/json'
+            }
+          }
         );
       }
 

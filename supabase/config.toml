@@ -1,7 +1,10 @@
 project_id = "dxisnnjsbuuiunjmzzqj"
 
-[functions.create-global-user-fixed]
+[functions.create-global-user]
 verify_jwt = true
+
+[functions.create-system-owners]
+verify_jwt = false
 
 [functions.create-tenant-and-owner]
 verify_jwt = true
@@ -64,4 +67,7 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.emergency-access-reset-password]
+verify_jwt = false
+
+[functions.reset-system-owner-passwords]
 verify_jwt = false

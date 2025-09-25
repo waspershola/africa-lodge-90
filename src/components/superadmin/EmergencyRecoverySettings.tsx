@@ -1,27 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { 
-  Shield, 
   Key, 
   Users, 
   RefreshCw, 
-  CheckCircle2, 
   AlertTriangle,
   Copy,
-  Download,
-  Plus
+  Download
 } from 'lucide-react';
 import { useRecoveryManagement } from '@/hooks/useRecoveryManagement';
 import { supabase } from '@/integrations/supabase/client';
-import { callEdgeFunction } from '@/lib/api-utils';
 import { toast } from 'sonner';
+import { SystemOwnerManagement } from './SystemOwnerManagement';
+import { Button } from '@/components/ui/button';
 
 interface SystemOwner {
   id: string;
@@ -41,17 +35,11 @@ interface SystemOwner {
 export function EmergencyRecoverySettings() {
   const [systemOwners, setSystemOwners] = useState<SystemOwner[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isGeneratingPassword, setIsGeneratingPassword] = useState(false);
-  const [newOwnerEmail, setNewOwnerEmail] = useState('');
-  const [newOwnerName, setNewOwnerName] = useState('');
-  const [newOwnerTempPassword, setNewOwnerTempPassword] = useState('');
   const [masterKeyHash, setMasterKeyHash] = useState('');
   const [generatedCodes, setGeneratedCodes] = useState<string[]>([]);
   
   const { 
     generateRecoveryCodes, 
-    updateSecurityQuestions, 
-    updateEmergencyContacts,
     testEmergencyAccess,
     loading: recoveryLoading 
   } = useRecoveryManagement();
@@ -59,14 +47,6 @@ export function EmergencyRecoverySettings() {
   useEffect(() => {
     loadSystemOwners();
     loadMasterKeyStatus();
-  }, []);
-
-  // Force refresh when component mounts to ensure latest data
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      loadSystemOwners();
-    }, 100);
-    return () => clearTimeout(timer);
   }, []);
 
   const loadSystemOwners = async () => {
@@ -80,7 +60,6 @@ export function EmergencyRecoverySettings() {
 
       if (error) throw error;
       setSystemOwners(data || []);
-      console.log('System owners loaded:', data);
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -89,7 +68,6 @@ export function EmergencyRecoverySettings() {
   };
 
   const loadMasterKeyStatus = async () => {
-    // Check if master key is configured by testing environment
     try {
       const { data } = await supabase.functions.invoke('emergency-access-verify', {
         body: {
@@ -109,85 +87,11 @@ export function EmergencyRecoverySettings() {
     }
   };
 
-  const removeSystemOwner = async (userId: string, email: string) => {
-    if (!confirm(`Are you sure you want to remove ${email} as a system owner?`)) {
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // Update user to remove platform owner status
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({
-          is_platform_owner: false
-        })
-        .eq('id', userId);
-
-      if (updateError) throw updateError;
-
-      toast.success("System owner removed successfully");
-      loadSystemOwners();
-    } catch (error: any) {
-      toast.error(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAddSystemOwner = async () => {
-    if (!newOwnerEmail || !newOwnerName) {
-      toast.error("Please fill in all fields");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // Use the create-global-user-fixed edge function
-      const { data, error } = await supabase.functions.invoke('create-global-user-fixed', {
-        body: {
-          email: newOwnerEmail,
-          name: newOwnerName,
-          role: 'Super Admin',
-          temporaryPassword: newOwnerTempPassword || undefined
-        }
-      });
-
-      if (error) {
-        throw new Error(error.message || 'Failed to create user');
-      }
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to create user');
-      }
-
-      // Update user to mark as platform owner
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({
-          is_platform_owner: true
-        })
-        .eq('id', data.user.id);
-
-      if (updateError) throw updateError;
-
-      toast.success(`System owner added successfully. Temporary password: ${data.tempPassword}`);
-      setNewOwnerEmail('');
-      setNewOwnerName('');
-      setNewOwnerTempPassword('');
-      loadSystemOwners();
-    } catch (error: any) {
-      toast.error(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleGenerateRecoveryCodes = async (userId: string) => {
     const codes = await generateRecoveryCodes(userId);
     if (codes) {
       setGeneratedCodes(codes);
-      loadSystemOwners(); // Refresh to show updated codes count
+      loadSystemOwners();
     }
   };
 
@@ -229,6 +133,11 @@ export function EmergencyRecoverySettings() {
         </Badge>
       </div>
 
+      {/* System Owner Management - Primary Section */}
+      <SystemOwnerManagement />
+
+      <Separator />
+
       {/* Master Key Status */}
       <Card>
         <CardHeader>
@@ -262,167 +171,6 @@ export function EmergencyRecoverySettings() {
               </AlertDescription>
             </Alert>
           )}
-        </CardContent>
-      </Card>
-
-      {/* System Owners */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            System Owners
-          </CardTitle>
-          <CardDescription>
-            Platform owners with emergency access privileges
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Add New Owner */}
-          {systemOwners.length < 3 && (
-            <div className="border rounded-lg p-4 space-y-4">
-              <h4 className="font-medium flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Add New System Owner
-              </h4>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="newOwnerName">Full Name</Label>
-                  <Input
-                    id="newOwnerName"
-                    value={newOwnerName}
-                    onChange={(e) => setNewOwnerName(e.target.value)}
-                    placeholder="Enter full name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="newOwnerEmail">Email Address</Label>
-                  <Input
-                    id="newOwnerEmail"
-                    type="email"
-                    value={newOwnerEmail}
-                    onChange={(e) => setNewOwnerEmail(e.target.value)}
-                    placeholder="Enter email address"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="newOwnerTempPassword">Temporary Password (Optional)</Label>
-                <Input
-                  id="newOwnerTempPassword"
-                  type="password"
-                  value={newOwnerTempPassword}
-                  onChange={(e) => setNewOwnerTempPassword(e.target.value)}
-                  placeholder="Leave empty to auto-generate"
-                />
-                <p className="text-xs text-muted-foreground">
-                  If left empty, a secure temporary password will be generated automatically
-                </p>
-              </div>
-              <Button 
-                onClick={handleAddSystemOwner}
-                disabled={loading || !newOwnerEmail || !newOwnerName}
-              >
-                Add System Owner
-              </Button>
-            </div>
-          )}
-
-          <Separator />
-
-          {/* Existing Owners */}
-          <div className="space-y-4">
-            {systemOwners.map((owner) => (
-              <div key={owner.id} className="border rounded-lg p-4">
-                 <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h4 className="font-medium">{owner.name || owner.email}</h4>
-                    <p className="text-sm text-muted-foreground">{owner.email}</p>
-                    {owner.last_login && (
-                      <p className="text-xs text-muted-foreground">
-                        Last login: {new Date(owner.last_login).toLocaleDateString()}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline">Platform Owner</Badge>
-                    {owner.force_reset === true && (
-                      <Badge variant="destructive">Reset Required</Badge>
-                    )}
-                  </div>
-                </div>
-
-                {/* Show temporary passwords for reset required users */}
-                {owner.force_reset === true && (owner.email === 'ceo@waspersolution.com' || owner.email === 'waspershola@gmail.com') && (
-                  <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md">
-                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Temporary Password Required</p>
-                    <div className="mt-2 p-2 bg-amber-100 dark:bg-amber-900 rounded border">
-                      <p className="text-xs text-amber-700 dark:text-amber-300 mb-1">
-                        First login password:
-                      </p>
-                      <p className="font-mono font-bold text-lg text-amber-900 dark:text-amber-100">
-                        {owner.email === 'ceo@waspersolution.com' ? 'TempPass2024!' : 'TempPass2025!'}
-                      </p>
-                    </div>
-                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
-                      ⚠️ Must be changed on first login - this password expires in 7 days
-                    </p>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <p className="font-medium">Security Questions</p>
-                    <p className="text-muted-foreground">
-                      {owner.security_questions?.length || 0} configured
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-medium">Recovery Codes</p>
-                    <p className="text-muted-foreground">
-                      {owner.recovery_codes?.length || 0} available
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-medium">Backup Contacts</p>
-                    <p className="text-muted-foreground">
-                      {(owner.backup_email || owner.backup_phone) ? 'Configured' : 'Not set'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 mt-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleGenerateRecoveryCodes(owner.id)}
-                    disabled={recoveryLoading}
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Generate Recovery Codes
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => testEmergencyAccess(owner.email)}
-                    disabled={recoveryLoading}
-                  >
-                    <Shield className="h-4 w-4 mr-2" />
-                    Test Emergency Access
-                  </Button>
-                  {owner.email.includes('backup-admin') && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => removeSystemOwner(owner.id, owner.email)}
-                      disabled={loading}
-                    >
-                      Remove
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
         </CardContent>
       </Card>
 

@@ -26,8 +26,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { sessionToken, newPassword, userAgent }: PasswordResetRequest = await req.json();
     
-    // Get client IP address
-    const clientIP = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    // Get client IP address - handle multiple IPs from proxy headers
+    const rawIP = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    const clientIP = rawIP.split(',')[0].trim(); // Take first IP if multiple
     
     console.log(`Emergency password reset attempt from IP: ${clientIP}`);
 

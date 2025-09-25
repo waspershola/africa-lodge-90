@@ -193,7 +193,7 @@ export function EmergencyRecoverySettings() {
             </Button>
           </div>
           <div className="text-sm text-muted-foreground">
-            <p>System Owners: wasperstore@gmail.com, ceo@waspersolution.com, waspershola@gmail.com</p>
+            <p>System Owners: wasperstore@gmail.com, info@waspersolution.com, sholawasiu@gmail.com</p>
             <p className="mt-1">For individual recovery settings, visit <strong>System Owner Management</strong> page.</p>
           </div>
         </CardContent>

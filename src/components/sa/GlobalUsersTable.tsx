@@ -88,8 +88,13 @@ export function GlobalUsersTable() {
   };
 
   const handleDelete = async (user: GlobalUser) => {
-    if (user.is_platform_owner || !isSuperAdmin) {
-      return; // Should never reach here due to UI guards
+    // Allow deletion of Reset Required users even if they are platform owners
+    if (!user.force_reset && user.is_platform_owner) {
+      return; // Don't allow deletion of platform owners unless they have force_reset
+    }
+    
+    if (!isSuperAdmin) {
+      return; // Only super admin can delete
     }
 
     if (confirm(`Are you sure you want to delete ${user.name || user.email}? This action cannot be undone.`)) {
@@ -248,21 +253,24 @@ export function GlobalUsersTable() {
                             Reset Password
                           </DropdownMenuItem>
                           
-                          {!user.is_platform_owner && isSuperAdmin && (
+                          {/* Show delete for non-platform owners OR Reset Required users */}
+                          {((user.force_reset || !user.is_platform_owner) && isSuperAdmin) && (
                             <>
-                              <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
-                                {user.is_active ? (
-                                  <>
-                                    <UserX className="mr-2 h-4 w-4" />
-                                    Suspend User
-                                  </>
-                                ) : (
-                                  <>
-                                    <UserCheck className="mr-2 h-4 w-4" />
-                                    Activate User
-                                  </>
-                                )}
-                              </DropdownMenuItem>
+                              {!user.is_platform_owner && (
+                                <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
+                                  {user.is_active ? (
+                                    <>
+                                      <UserX className="mr-2 h-4 w-4" />
+                                      Suspend User
+                                    </>
+                                  ) : (
+                                    <>
+                                      <UserCheck className="mr-2 h-4 w-4" />
+                                      Activate User
+                                    </>
+                                  )}
+                                </DropdownMenuItem>
+                              )}
                               
                               <DropdownMenuSeparator />
                               <DropdownMenuItem 
@@ -270,21 +278,7 @@ export function GlobalUsersTable() {
                                 className="text-red-600 focus:text-red-600"
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                Delete User
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                          
-                          {/* Show delete option for Reset Required users regardless of platform owner status */}
-                          {user.force_reset && !user.is_platform_owner && isSuperAdmin && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                onClick={() => handleDelete(user)}
-                                className="text-red-600 focus:text-red-600"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete User
+                                Delete User{user.force_reset ? ' (Reset Required)' : ''}
                               </DropdownMenuItem>
                             </>
                           )}

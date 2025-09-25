@@ -20,6 +20,7 @@ import {
   Zap,
   Target
 } from "lucide-react";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface PricingRule {
   id: string;
@@ -141,6 +142,7 @@ export default function DynamicPricingControls() {
   const [pricingRules, setPricingRules] = useState<PricingRule[]>(mockPricingRules);
   const [settings, setSettings] = useState<DynamicPricingSettings>(mockSettings);
   const [activeTab, setActiveTab] = useState("rules");
+  const { formatPrice } = useCurrency();
 
   const toggleRule = (ruleId: string) => {
     setPricingRules(rules => 
@@ -209,7 +211,7 @@ export default function DynamicPricingControls() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${currentPricing.averageRate}</div>
+            <div className="text-2xl font-bold">{formatPrice(currentPricing.averageRate)}</div>
             <div className="flex items-center text-xs">
               <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
               <span className="text-green-600">+{currentPricing.rateChange}%</span>

@@ -1,4 +1,5 @@
 import { useState, createContext, useContext, ReactNode } from "react";
+import { useConfiguration } from "@/hooks/useConfiguration";
 
 export interface CurrencyTaxSettings {
   currency: {
@@ -24,22 +25,22 @@ export interface CurrencyTaxSettings {
 
 const defaultSettings: CurrencyTaxSettings = {
   currency: {
-    code: "USD",
-    symbol: "$",
-    name: "US Dollar"
+    code: "NGN",
+    symbol: "₦",
+    name: "Nigerian Naira"
   },
   taxes: {
-    vatEnabled: false,
-    vatRate: 0,
-    serviceChargeEnabled: false,
-    serviceChargeRate: 0,
+    vatEnabled: true,
+    vatRate: 7.5,
+    serviceChargeEnabled: true,
+    serviceChargeRate: 10,
     cityTaxEnabled: false,
     cityTaxAmount: 0,
     touristTaxEnabled: false,
     touristTaxAmount: 0,
   },
   priceDisplay: {
-    showTaxInclusive: true,
+    showTaxInclusive: false,
     showTaxBreakdown: false,
   }
 };
@@ -57,18 +58,74 @@ interface CurrencyContextType {
 export const CurrencyContext = createContext<CurrencyContextType | null>(null);
 
 export function useCurrency() {
+  const { configuration } = useConfiguration();
   const context = useContext(CurrencyContext);
+  
   if (!context) {
-    // Return default implementation if not in context
+    // Get currency settings from hotel configuration
+    const currencyCode = configuration?.currency?.default_currency || "NGN";
+    const currencySymbol = configuration?.currency?.currency_symbol || "₦";
+    const vatRate = configuration?.tax?.vat_rate || 7.5;
+    const serviceChargeRate = configuration?.tax?.service_charge_rate || 10;
+    
+    const settings: CurrencyTaxSettings = {
+      currency: {
+        code: currencyCode,
+        symbol: currencySymbol,
+        name: currencyCode === 'NGN' ? 'Nigerian Naira' : currencyCode === 'USD' ? 'US Dollar' : currencyCode
+      },
+      taxes: {
+        vatEnabled: true,
+        vatRate,
+        serviceChargeEnabled: true,
+        serviceChargeRate,
+        cityTaxEnabled: false,
+        cityTaxAmount: 0,
+        touristTaxEnabled: false,
+        touristTaxAmount: 0,
+      },
+      priceDisplay: {
+        showTaxInclusive: configuration?.tax?.tax_inclusive || false,
+        showTaxBreakdown: false,
+      }
+    };
+    
     return {
-      settings: defaultSettings,
+      settings,
       updateSettings: () => {},
-      formatPrice: (amount: number, showCurrency = true) => 
-        showCurrency ? `${defaultSettings.currency.symbol}${amount.toFixed(2)}` : amount.toFixed(2),
-      calculateTotalPrice: (basePrice: number) => ({
-        totalPrice: basePrice,
-        breakdown: []
-      })
+      formatPrice: (amount: number, showCurrency = true) => {
+        const formattedAmount = amount.toLocaleString('en-NG', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+        return showCurrency ? `${currencySymbol}${formattedAmount}` : formattedAmount;
+      },
+      calculateTotalPrice: (basePrice: number) => {
+        let totalPrice = basePrice;
+        const breakdown: Array<{ type: string; amount: number; label: string }> = [];
+
+        if (settings.taxes.vatEnabled && settings.taxes.vatRate > 0) {
+          const vatAmount = (basePrice * settings.taxes.vatRate) / 100;
+          totalPrice += vatAmount;
+          breakdown.push({
+            type: "vat",
+            amount: vatAmount,
+            label: `VAT (${settings.taxes.vatRate}%)`
+          });
+        }
+
+        if (settings.taxes.serviceChargeEnabled && settings.taxes.serviceChargeRate > 0) {
+          const serviceAmount = (basePrice * settings.taxes.serviceChargeRate) / 100;
+          totalPrice += serviceAmount;
+          breakdown.push({
+            type: "service",
+            amount: serviceAmount,
+            label: `Service Charge (${settings.taxes.serviceChargeRate}%)`
+          });
+        }
+
+        return { totalPrice, breakdown };
+      }
     };
   }
   return context;

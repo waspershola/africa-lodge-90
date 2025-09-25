@@ -23,6 +23,10 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useCurrency } from "@/hooks/useCurrency";
+import { useMultiTenantAuth } from "@/hooks/useMultiTenantAuth";
+import { useToast } from "@/hooks/use-toast";
+import React from "react";
 
 interface RatePlan {
   id: string;
@@ -121,6 +125,35 @@ export default function RatePlanManager() {
   const [selectedPlan, setSelectedPlan] = useState<RatePlan | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isNewPlan, setIsNewPlan] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const { formatPrice } = useCurrency();
+  const { user, tenant } = useMultiTenantAuth();
+  const { toast } = useToast();
+
+  // Load rate plans from database
+  React.useEffect(() => {
+    loadRatePlans();
+  }, []);
+
+  const loadRatePlans = async () => {
+    if (!tenant?.tenant_id && !user?.tenant_id) return;
+    
+    try {
+      setIsLoading(true);
+      // For now using mock data until rate_plans table is properly set up
+      setRatePlans(mockRatePlans);
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error loading rate plans:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load rate plans",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+    }
+  };
 
   const handleNewPlan = () => {
     setSelectedPlan({
@@ -159,37 +192,79 @@ export default function RatePlanManager() {
     }
   };
 
-  const handleSavePlan = () => {
-    if (selectedPlan) {
+  const handleSavePlan = async () => {
+    if (!selectedPlan) return;
+
+    try {
       const finalRate = calculateFinalRate(
         selectedPlan.baseRate,
         selectedPlan.adjustmentType,
         selectedPlan.adjustment
       );
-      
+
       const updatedPlan = { ...selectedPlan, finalRate };
       
       if (isNewPlan) {
         setRatePlans([...ratePlans, updatedPlan]);
+        toast({
+          title: "Success",
+          description: "Rate plan created successfully"
+        });
       } else {
         setRatePlans(ratePlans.map(plan => 
           plan.id === selectedPlan.id ? updatedPlan : plan
         ));
+        toast({
+          title: "Success", 
+          description: "Rate plan updated successfully"
+        });
       }
+
       setIsEditDialogOpen(false);
       setSelectedPlan(null);
       setIsNewPlan(false);
+    } catch (error) {
+      console.error('Error saving rate plan:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save rate plan",
+        variant: "destructive"
+      });
     }
   };
 
-  const handleDeletePlan = (planId: string) => {
-    setRatePlans(ratePlans.filter(plan => plan.id !== planId));
+  const handleDeletePlan = async (planId: string) => {
+    if (!window.confirm('Are you sure you want to delete this rate plan?')) return;
+    
+    try {
+      setRatePlans(ratePlans.filter(plan => plan.id !== planId));
+      toast({
+        title: "Success",
+        description: "Rate plan deleted successfully"
+      });
+    } catch (error) {
+      console.error('Error deleting rate plan:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete rate plan",
+        variant: "destructive"
+      });
+    }
   };
 
-  const togglePlanStatus = (planId: string) => {
-    setRatePlans(ratePlans.map(plan =>
-      plan.id === planId ? { ...plan, isActive: !plan.isActive } : plan
-    ));
+  const togglePlanStatus = async (planId: string) => {
+    try {
+      setRatePlans(ratePlans.map(plan =>
+        plan.id === planId ? { ...plan, isActive: !plan.isActive } : plan
+      ));
+    } catch (error) {
+      console.error('Error updating plan status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update plan status",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -202,8 +277,15 @@ export default function RatePlanManager() {
         </Button>
       </div>
 
-      <div className="grid gap-4">
-        {ratePlans.map((plan) => (
+      {isLoading ? (
+        <div className="text-center py-8">Loading rate plans...</div>
+      ) : ratePlans.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground">
+          No rate plans found. Create your first rate plan to get started.
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {ratePlans.map((plan) => (
           <Card key={plan.id} className={`relative ${!plan.isActive ? 'opacity-60' : ''}`}>
             <CardHeader>
               <div className="flex items-start justify-between">
@@ -244,7 +326,7 @@ export default function RatePlanManager() {
                 
                 <div className="space-y-1">
                   <span className="text-sm text-muted-foreground">Base Rate</span>
-                  <p className="font-medium">${plan.baseRate}</p>
+                  <p className="font-medium">{formatPrice(plan.baseRate)}</p>
                 </div>
                 
                 <div className="space-y-1">
@@ -264,7 +346,7 @@ export default function RatePlanManager() {
                 
                 <div className="space-y-1">
                   <span className="text-sm text-muted-foreground">Final Rate</span>
-                  <p className="text-xl font-bold text-primary">${plan.finalRate}</p>
+                  <p className="text-xl font-bold text-primary">{formatPrice(plan.finalRate)}</p>
                 </div>
               </div>
 
@@ -327,8 +409,9 @@ export default function RatePlanManager() {
               </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Edit Rate Plan Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

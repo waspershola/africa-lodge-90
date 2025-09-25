@@ -8,7 +8,7 @@ import RoomCategoryManager from "@/components/owner/rooms/RoomCategoryManager";
 import RatePlanManager from "@/components/owner/rooms/RatePlanManager";
 import DynamicPricingControls from "@/components/owner/rooms/DynamicPricingControls";
 import RoomInventoryGrid from "@/components/owner/rooms/RoomInventoryGrid";
-import CurrencyTaxSettings from "@/components/owner/financials/CurrencyTaxSettings";
+
 import { useCurrency } from "@/hooks/useCurrency";
 import { useRooms } from "@/hooks/useRooms";
 
@@ -104,12 +104,11 @@ export default function Rooms() {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="rooms">Room Inventory</TabsTrigger>
           <TabsTrigger value="categories">Categories</TabsTrigger>
           <TabsTrigger value="rates">Rate Plans</TabsTrigger>
           <TabsTrigger value="pricing">Dynamic Pricing</TabsTrigger>
-          <TabsTrigger value="settings">Currency & Tax</TabsTrigger>
         </TabsList>
 
         <TabsContent value="rooms">
@@ -126,10 +125,6 @@ export default function Rooms() {
 
         <TabsContent value="pricing">
           <DynamicPricingControls />
-        </TabsContent>
-
-        <TabsContent value="settings">
-          <CurrencyTaxSettings onSettingsChange={updateSettings} />
         </TabsContent>
       </Tabs>
     </div>

@@ -26,6 +26,8 @@ import {
   Shirt
 } from "lucide-react";
 import { useRoomTypes, useCreateRoomType, useUpdateRoomType, useDeleteRoomType } from "@/hooks/useApi";
+import { useMultiTenantAuth } from "@/hooks/useMultiTenantAuth";
+import { useCurrency } from "@/hooks/useCurrency";
 import { toast } from "sonner";
 
 interface RoomCategory {
@@ -63,6 +65,8 @@ export default function RoomCategoryManager() {
   const createCategoryMutation = useCreateRoomType();
   const updateCategoryMutation = useUpdateRoomType();
   const deleteCategoryMutation = useDeleteRoomType();
+  const { user, tenant } = useMultiTenantAuth();
+  const { formatPrice } = useCurrency();
 
   const categories = categoriesData || [];
 
@@ -100,7 +104,7 @@ export default function RoomCategoryManager() {
           base_rate: selectedCategory.baseRate,
           max_occupancy: selectedCategory.maxOccupancy,
           amenities: selectedCategory.amenities,
-          tenant_id: 'current-tenant' // This should come from auth context
+          tenant_id: tenant?.tenant_id || user?.tenant_id
         });
       } else {
         await updateCategoryMutation.mutateAsync({ 
@@ -219,7 +223,7 @@ export default function RoomCategoryManager() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">₦{category.baseRate.toLocaleString()}</span>
+                        <span className="font-medium">{formatPrice(category.baseRate)}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Users className="h-4 w-4 text-muted-foreground" />
@@ -279,7 +283,7 @@ export default function RoomCategoryManager() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="baseRate">Base Rate (₦)</Label>
+                  <Label htmlFor="baseRate">Base Rate</Label>
                   <Input
                     id="baseRate"
                     type="number"

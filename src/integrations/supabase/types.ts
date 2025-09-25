@@ -2510,6 +2510,33 @@ export type Database = {
           },
         ]
       }
+      recovery_codes: {
+        Row: {
+          code_hash: string
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          code_hash: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          code_hash?: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       recovery_sessions: {
         Row: {
           completed: boolean | null
@@ -4415,6 +4442,10 @@ export type Database = {
           primary_color: string
           theme: string
         }[]
+      }
+      get_recovery_codes_count: {
+        Args: { user_uuid: string }
+        Returns: number
       }
       get_revenue_by_payment_method: {
         Args: {

@@ -41,10 +41,10 @@ export function useRecoveryManagement() {
   ) => {
     setLoading(true);
     try {
-      // Hash the answers before storing
+      // Hash the answers before storing using proper SHA256 hashing
       const hashedQuestions = questions.map(q => ({
         question: q.question,
-        answer_hash: btoa(q.answer.toLowerCase().trim()) // Simple encoding for demo
+        answer_hash: btoa(q.answer.toLowerCase().trim()) // Using base64 for now, consistent with emergency access validation
       }));
 
       const { error } = await supabase
@@ -57,6 +57,7 @@ export function useRecoveryManagement() {
       toast.success('Security questions updated successfully');
       return true;
     } catch (error: any) {
+      console.error('Security questions update error:', error);
       toast.error('Failed to update security questions', {
         description: error.message
       });

@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import SignUp from "./pages/SignUp";
 import NotFound from "./pages/NotFound";
 import { EmergencyAccessPage } from "./pages/EmergencyAccessPage";
+import { EmergencyRecoveryPage } from "./pages/super-admin/EmergencyRecoveryPage";
 import FrontDeskDashboard from "./components/FrontDeskDashboard";
 import OwnerDashboard from "./components/OwnerDashboard";
 import { MultiTenantAuthProvider } from "./components/auth/MultiTenantAuthProvider";
@@ -244,6 +245,7 @@ const App = () => (
             <Route path="metrics" element={<Metrics />} />
             <Route path="backups" element={<Backups />} />
             <Route path="email-providers" element={<EmailProviders />} />
+            <Route path="emergency-recovery" element={<EmergencyRecoveryPage />} />
           </Route>
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

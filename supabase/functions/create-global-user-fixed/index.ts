@@ -28,8 +28,9 @@ serve(async (req) => {
     const name = normalize(payload.name) || normalize(payload.displayName) || null;
     const phone = normalize(payload.phone) || null;
     const address = normalize(payload.address) || null;
+    const customPassword = normalize(payload.temporaryPassword) || null;
 
-    console.log('Payload received:', { email, rawRole, name, phone, address, originalPayload: payload });
+    console.log('Payload received:', { email, rawRole, name, phone, address, hasCustomPassword: !!customPassword });
 
     if (!email || !rawRole) {
       console.error('Missing required fields:', { email: !!email, rawRole: !!rawRole });
@@ -96,12 +97,18 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: false, error: 'User with this email already exists in auth', code: 'USER_EXISTS', existing_user: { id: authUserExists.id, email: authUserExists.email } }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // 3) Generate secure temporary password
-    const rand = new Uint8Array(16);
-    crypto.getRandomValues(rand);
-    // base64url
-    const tempPassword = btoa(String.fromCharCode(...rand)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    console.log('Generated temporary password for user');
+    // 3) Generate or use provided temporary password
+    let tempPassword;
+    if (customPassword) {
+      tempPassword = customPassword;
+      console.log('Using provided temporary password for user');
+    } else {
+      const rand = new Uint8Array(16);
+      crypto.getRandomValues(rand);
+      // base64url
+      tempPassword = btoa(String.fromCharCode(...rand)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      console.log('Generated temporary password for user');
+    }
 
     // 4) Create auth user
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -181,13 +188,14 @@ serve(async (req) => {
         email, 
         name: name || 'Unnamed User',
         phone,
-        role: roleData.name 
+        role: roleData.name,
+        force_reset: true
       }, 
       tempPassword,
       tempPasswordSent: true 
     };
     
-    console.log('Returning success response:', response);
+    console.log('Returning success response:', { ...response, tempPassword: '[HIDDEN]' });
     return new Response(JSON.stringify(response), { 
       status: 201, 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

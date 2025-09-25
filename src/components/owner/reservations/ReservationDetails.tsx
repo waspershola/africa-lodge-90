@@ -20,7 +20,7 @@ interface Reservation {
   status: 'confirmed' | 'pending' | 'checked-in' | 'checked-out' | 'cancelled';
   guests: number;
   nights: number;
-  amount: number;
+  total_amount: number | null | undefined;
   source: string;
 }
 
@@ -183,7 +183,7 @@ export default function ReservationDetails({ reservation, open, onOpenChange }: 
               <Separator />
 
               <div className="text-right">
-                <div className="text-2xl font-bold">₦{reservation.amount.toLocaleString()}</div>
+                <div className="text-2xl font-bold">₦{reservation.total_amount?.toLocaleString() || '0'}</div>
                 <div className="text-sm text-muted-foreground">Total Amount</div>
               </div>
             </CardContent>

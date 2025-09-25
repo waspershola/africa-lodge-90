@@ -56,13 +56,26 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Check if user already exists in auth
+    const { data: existingAuthUser } = await supabase.auth.admin.listUsers();
+    const userExists = existingAuthUser?.users?.some(user => user.email === email);
+    
+    if (userExists) {
+      return new Response(
+        JSON.stringify({ success: false, error: `User with email ${email} already exists` }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Generate temporary password
-    const tempPassword = generateTempPassword ? generateSecurePassword() : undefined;
+    const tempPassword = generateTempPassword ? generateSecurePassword() : 'TempPassword123!';
+    
+    console.log('Creating auth user with email:', email);
     
     // Create the user in Supabase Auth
     const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
       email: email,
-      password: tempPassword || 'TempPassword123!',
+      password: tempPassword,
       email_confirm: true,
       user_metadata: {
         full_name: fullName,
@@ -73,19 +86,61 @@ Deno.serve(async (req) => {
 
     if (authError) {
       console.error('Error creating auth user:', authError);
+      
+      // Handle specific error cases
+      if (authError.message.includes('already been registered')) {
+        return new Response(
+          JSON.stringify({ success: false, error: `User with email ${email} already exists` }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       return new Response(
-        JSON.stringify({ success: false, error: authError.message }),
+        JSON.stringify({ success: false, error: `Failed to create user: ${authError.message}` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Auth user created:', authUser.user?.id);
+    if (!authUser.user) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Failed to create auth user - no user returned' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Auth user created successfully:', authUser.user.id);
+
+    // Check if user already exists in our users table (handle trigger failures)
+    const { data: existingUserRecord } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', authUser.user.id)
+      .single();
+
+    if (existingUserRecord) {
+      console.log('User record already exists in users table');
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          user: {
+            id: authUser.user.id,
+            email,
+            fullName,
+            role,
+            department,
+            tempPassword: generateTempPassword ? tempPassword : undefined
+          },
+          message: 'User already exists and is ready to use'
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Create user record in our users table
-    const { error: userError } = await supabase
+    const { data: newUser, error: userError } = await supabase
       .from('users')
       .insert({
-        id: authUser.user!.id,
+        id: authUser.user.id,
         email: email,
         name: fullName,
         role: role,
@@ -93,39 +148,51 @@ Deno.serve(async (req) => {
         is_platform_owner: role === 'SUPER_ADMIN',
         is_active: true,
         force_reset: generateTempPassword,
-        temp_password: tempPassword,
+        temp_password: generateTempPassword ? tempPassword : null,
         temp_expires: generateTempPassword ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null // 7 days
-      });
+      })
+      .select()
+      .single();
 
     if (userError) {
       console.error('Error creating user record:', userError);
       
       // Clean up auth user if database insert fails
-      await supabase.auth.admin.deleteUser(authUser.user!.id);
+      try {
+        await supabase.auth.admin.deleteUser(authUser.user.id);
+        console.log('Cleaned up auth user due to database error');
+      } catch (cleanupError) {
+        console.error('Failed to clean up auth user:', cleanupError);
+      }
       
       return new Response(
-        JSON.stringify({ success: false, error: userError.message }),
+        JSON.stringify({ success: false, error: `Database error: ${userError.message}` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('User record created successfully');
+    console.log('User record created successfully:', newUser.id);
 
     // Log audit trail
-    await supabase.from('audit_log').insert({
-      action: 'CREATE_GLOBAL_USER',
-      resource_type: 'USER',
-      resource_id: authUser.user!.id,
-      actor_id: null, // System action
-      description: `Created global user: ${fullName} (${email}) with role: ${role}`,
-      metadata: {
-        email,
-        role,
-        department,
-        fullName,
-        has_temp_password: !!tempPassword
-      }
-    });
+    try {
+      await supabase.from('audit_log').insert({
+        action: 'CREATE_GLOBAL_USER',
+        resource_type: 'USER',
+        resource_id: authUser.user.id,
+        actor_id: null, // System action
+        description: `Created global user: ${fullName} (${email}) with role: ${role}`,
+        metadata: {
+          email,
+          role,
+          department,
+          fullName,
+          has_temp_password: generateTempPassword
+        }
+      });
+    } catch (auditError) {
+      console.error('Failed to create audit log:', auditError);
+      // Don't fail the whole operation for audit log issues
+    }
 
     // TODO: Send email with credentials if requested
     // This would require email service setup (Resend, etc.)
@@ -138,12 +205,12 @@ Deno.serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         user: {
-          id: authUser.user!.id,
+          id: authUser.user.id,
           email,
           fullName,
           role,
           department,
-          tempPassword: tempPassword // Only include in response for manual delivery
+          tempPassword: generateTempPassword ? tempPassword : undefined
         },
         message: 'Global user created successfully'
       }),

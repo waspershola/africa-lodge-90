@@ -25,12 +25,19 @@ serve(async (req) => {
     const payload = await req.json();
     const email = normalize(payload.email).toLowerCase();
     const rawRole = normalize(payload.role);
-    const name = normalize(payload.name) || null;
+    const name = normalize(payload.name) || normalize(payload.displayName) || null;
     const phone = normalize(payload.phone) || null;
     const address = normalize(payload.address) || null;
 
+    console.log('Payload received:', { email, rawRole, name, phone, address, originalPayload: payload });
+
     if (!email || !rawRole) {
+      console.error('Missing required fields:', { email: !!email, rawRole: !!rawRole });
       return new Response(JSON.stringify({ success: false, error: 'Email and role are required', code: 'MISSING_FIELDS' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (!name) {
+      console.warn('No name provided for user:', email);
     }
 
     console.log('Creating global user:', { email, rawRole, name, phone, address });
@@ -150,7 +157,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: false, error: 'Failed to create user profile', code: 'PROFILE_ERROR', details: userInsertError.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    console.log('Global user created successfully');
+    console.log('Global user created successfully:', { userId, email, name, role: userRole });
 
     // 6) Optionally: invoke email function to send temp password (non-blocking)
     try {
@@ -166,19 +173,25 @@ serve(async (req) => {
       console.warn('Failed to invoke send-temp-password (non-critical):', e);
     }
 
-    return new Response(JSON.stringify({ 
+    const response = { 
       success: true, 
-      message: 'Global user created', 
+      message: 'Global user created successfully', 
       user: { 
         id: userId, 
         email, 
-        name,
+        name: name || 'Unnamed User',
         phone,
         role: roleData.name 
       }, 
       tempPassword,
       tempPasswordSent: true 
-    }), { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    };
+    
+    console.log('Returning success response:', response);
+    return new Response(JSON.stringify(response), { 
+      status: 201, 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    });
 
   } catch (err) {
     console.error('Unexpected error in create-global-user-fixed:', err);

@@ -58,19 +58,20 @@ export const useCreateGlobalUser = () => {
           name: userData.name,
           role: userData.role,
           tenant_id: null, // Global user
-          department: userData.department || null
+          department: userData.department || null,
+          is_platform_owner: false // Prevent auto-assignment
         }
       });
 
+      // Handle network/function invocation errors
       if (error) {
-        console.error('Error creating global user:', error);
-        throw new Error(`Failed to create global user: ${error.message}`);
+        console.error('Create user network error:', error);
+        throw new Error('Network error - please try again');
       }
       
-      if (!data?.success) {
-        const errorMessage = data?.error || 'Failed to create global user';
-        console.error('Create global user failed:', errorMessage);
-        throw new Error(errorMessage);
+      // Handle application errors from the function
+      if (data?.success === false) {
+        throw new Error(data.error || 'Failed to create global user');
       }
 
       console.log('Global user created successfully');
@@ -98,15 +99,15 @@ export const useDeleteGlobalUser = () => {
         body: { user_id: userId }
       });
 
+      // Handle network/function invocation errors
       if (error) {
-        console.error('Error deleting user:', error);
-        throw new Error(`Failed to delete user: ${error.message}`);
+        console.error('Delete user network error:', error);
+        throw new Error('Network error - please try again');
       }
-      
-      if (!data?.success) {
-        const errorMessage = data?.error || 'Failed to delete user';
-        console.error('Delete user failed:', errorMessage);
-        throw new Error(errorMessage);
+
+      // Handle application errors from the function
+      if (data?.success === false) {
+        throw new Error(data.error || 'Failed to delete user');
       }
 
       console.log('User deleted successfully');
@@ -238,18 +239,14 @@ export const useGenerateTempPassword = () => {
         body: { user_id: userId }
       });
 
+      // Handle network/function invocation errors
       if (error) {
-        console.error('Error invoking generate-temp-password function:', error);
-        throw new Error(`EdgeFunction error: ${error.message || 'Failed to invoke function'}`);
-      }
-      
-      if (!data) {
-        console.error('No data returned from generate-temp-password function');
-        throw new Error('No response from server');
+        console.error('Generate temp password network error:', error);
+        throw new Error('Network error - please try again');
       }
 
-      if (!data.success) {
-        console.error('Generate temp password failed:', data);
+      // Handle application errors from the function
+      if (data?.success === false) {
         throw new Error(data.error || 'Failed to generate temporary password');
       }
 

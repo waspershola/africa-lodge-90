@@ -280,7 +280,7 @@ export default function ReservationsPage() {
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button variant="outline" size="sm" className="w-full justify-start">
+              <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setView('calendar')}>
                 <Calendar className="h-4 w-4 mr-2" />
                 Availability Calendar
               </Button>
@@ -288,7 +288,7 @@ export default function ReservationsPage() {
                 <Users className="h-4 w-4 mr-2" />
                 Group Bookings
               </Button>
-              <Button variant="outline" size="sm" className="w-full justify-start">
+              <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setShowNewDialog(true)}>
                 <Phone className="h-4 w-4 mr-2" />
                 Walk-in Registration
               </Button>

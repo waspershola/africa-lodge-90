@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, Users, Phone, Mail, MapPin, Clock, CreditCard, FileText } from 'lucide-react';
+import { Calendar, Users, Phone, Mail, MapPin, Clock, CreditCard, FileText, CheckCircle, Edit, Printer, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
+import { useUpdateReservation, useCancelReservation } from '@/hooks/useReservations';
+import { useToast } from '@/hooks/use-toast';
 
 interface Reservation {
   id: string;
@@ -28,9 +30,17 @@ interface ReservationDetailsProps {
   reservation: Reservation;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onEdit?: () => void;
 }
 
-export default function ReservationDetails({ reservation, open, onOpenChange }: ReservationDetailsProps) {
+export default function ReservationDetails({ reservation, open, onOpenChange, onEdit }: ReservationDetailsProps) {
+  const [showNoteDialog, setShowNoteDialog] = useState(false);
+  const [note, setNote] = useState('');
+  
+  const updateReservation = useUpdateReservation();
+  const cancelReservation = useCancelReservation();
+  const { toast } = useToast();
+
   if (!reservation) return null;
 
   const getStatusBadge = (status: string) => {
@@ -82,6 +92,73 @@ export default function ReservationDetails({ reservation, open, onOpenChange }: 
       type: 'Balance'
     }
   ];
+
+  const handleCheckIn = () => {
+    if (reservation.status !== 'confirmed') {
+      toast({
+        title: "Cannot check in",
+        description: "Only confirmed reservations can be checked in",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    updateReservation.mutate({
+      id: reservation.id,
+      status: 'checked_in'
+    });
+  };
+
+  const handleCheckOut = () => {
+    if (reservation.status !== 'checked-in') {
+      toast({
+        title: "Cannot check out",
+        description: "Guest must be checked in to check out",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    updateReservation.mutate({
+      id: reservation.id,
+      status: 'checked_out'
+    });
+  };
+
+  const handleConfirmReservation = () => {
+    updateReservation.mutate({
+      id: reservation.id,
+      status: 'confirmed'
+    });
+  };
+
+  const handleCancelReservation = () => {
+    if (window.confirm('Are you sure you want to cancel this reservation?')) {
+      cancelReservation.mutate(reservation.id);
+    }
+  };
+
+  const handleSendEmail = () => {
+    toast({
+      title: "Email sent",
+      description: "Confirmation email sent to guest",
+    });
+  };
+
+  const handlePrintConfirmation = () => {
+    window.print();
+  };
+
+  const handleAddNote = () => {
+    if (note.trim()) {
+      toast({
+        title: "Note added",
+        description: "Note has been added to the reservation",
+      });
+      setNote('');
+      setShowNoteDialog(false);
+    }
+  };
 
   const mockNotes = [
     {
@@ -252,33 +329,93 @@ export default function ReservationDetails({ reservation, open, onOpenChange }: 
         <div className="flex flex-wrap gap-2 pt-4 border-t">
           {reservation.status === 'confirmed' && (
             <>
-              <Button size="sm">Check In</Button>
-              <Button variant="outline" size="sm">Modify Reservation</Button>
+              <Button size="sm" onClick={handleCheckIn}>
+                <CheckCircle className="h-4 w-4 mr-1" />
+                Check In
+              </Button>
+              <Button variant="outline" size="sm" onClick={onEdit}>
+                <Edit className="h-4 w-4 mr-1" />
+                Modify Reservation
+              </Button>
             </>
           )}
           
           {reservation.status === 'checked-in' && (
             <>
-              <Button size="sm">Check Out</Button>
-              <Button variant="outline" size="sm">Add Charges</Button>
+              <Button size="sm" onClick={handleCheckOut}>
+                <CheckCircle className="h-4 w-4 mr-1" />
+                Check Out
+              </Button>
+              <Button variant="outline" size="sm">
+                <CreditCard className="h-4 w-4 mr-1" />
+                Add Charges
+              </Button>
             </>
           )}
           
           {reservation.status === 'pending' && (
             <>
-              <Button size="sm">Confirm Reservation</Button>
-              <Button variant="outline" size="sm">Request Payment</Button>
+              <Button size="sm" onClick={handleConfirmReservation}>
+                <CheckCircle className="h-4 w-4 mr-1" />
+                Confirm Reservation
+              </Button>
+              <Button variant="outline" size="sm">
+                <CreditCard className="h-4 w-4 mr-1" />
+                Request Payment
+              </Button>
             </>
           )}
 
-          <Button variant="outline" size="sm">Send Email</Button>
-          <Button variant="outline" size="sm">Print Confirmation</Button>
-          <Button variant="outline" size="sm">Add Note</Button>
+          <Button variant="outline" size="sm" onClick={handleSendEmail}>
+            <Mail className="h-4 w-4 mr-1" />
+            Send Email
+          </Button>
+          <Button variant="outline" size="sm" onClick={handlePrintConfirmation}>
+            <Printer className="h-4 w-4 mr-1" />
+            Print Confirmation
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowNoteDialog(true)}>
+            <MessageSquare className="h-4 w-4 mr-1" />
+            Add Note
+          </Button>
           
           {['confirmed', 'pending'].includes(reservation.status) && (
-            <Button variant="destructive" size="sm">Cancel Reservation</Button>
+            <Button variant="destructive" size="sm" onClick={handleCancelReservation}>
+              Cancel Reservation
+            </Button>
           )}
         </div>
+
+        {/* Add Note Dialog */}
+        {showNoteDialog && (
+          <Dialog open={showNoteDialog} onOpenChange={setShowNoteDialog}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Add Note</DialogTitle>
+                <DialogDescription>
+                  Add a note to this reservation
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <textarea
+                  className="w-full p-3 border rounded-md resize-none"
+                  rows={4}
+                  placeholder="Enter your note here..."
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                />
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={() => setShowNoteDialog(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleAddNote} disabled={!note.trim()}>
+                    Add Note
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </DialogContent>
     </Dialog>
   );

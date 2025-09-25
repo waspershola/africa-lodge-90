@@ -27,7 +27,7 @@ serve(async (req) => {
           hasSecretKey: !!config.secret_access_key
         });
         service = new SesEmailService({
-          region: config.region,
+          region: config.region || 'eu-north-1', // Default to Stockholm
           access_key_id: config.access_key_id,
           secret_access_key: config.secret_access_key,
           verified_domains: config.verified_domains || []

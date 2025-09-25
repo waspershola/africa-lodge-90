@@ -96,7 +96,7 @@ serve(async (req) => {
 
     console.log('Creating test config for provider:', provider_type);
     
-    // Create a test EmailProviderConfig
+    // Create a test EmailProviderConfig with Stockholm region
     const testConfig: EmailProviderConfig = {
       default_provider: provider_type,
       fallback_enabled: false,
@@ -104,7 +104,7 @@ serve(async (req) => {
       providers: {
         ses: {
           enabled: provider_type === 'ses',
-          region: config.region || 'us-east-1',
+          region: config.region || 'eu-north-1', // Stockholm region
           access_key_id: config.access_key_id || '',
           secret_access_key: config.secret_access_key || '',
           verified_domains: config.verified_domains || []

@@ -15,6 +15,7 @@ export class MailerSendEmailService implements EmailService {
 
   async sendEmail(params: SendEmailParams): Promise<EmailResult> {
     try {
+      console.log('MailerSend: Starting email send...');
       const fromEmail = params.from || 'noreply@example.com';
       const fromName = params.fromName || 'Hotel Management';
 
@@ -24,28 +25,39 @@ export class MailerSendEmailService implements EmailService {
         ? `noreply@${this.verifiedDomains[0]}` 
         : fromEmail;
 
+      console.log('MailerSend: Using from email:', verifiedFromEmail);
+
+      const requestBody = {
+        from: {
+          email: verifiedFromEmail,
+          name: fromName,
+        },
+        to: params.to.map(email => ({ email })),
+        subject: params.subject,
+        html: params.html,
+        ...(params.text && { text: params.text }),
+        ...(params.replyTo && { reply_to: { email: params.replyTo } }),
+      };
+
+      console.log('MailerSend: Request body:', JSON.stringify(requestBody, null, 2));
+
       const response = await fetch('https://api.mailersend.com/v1/email', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
         },
-        body: JSON.stringify({
-          from: {
-            email: verifiedFromEmail,
-            name: fromName,
-          },
-          to: params.to.map(email => ({ email })),
-          subject: params.subject,
-          html: params.html,
-          ...(params.text && { text: params.text }),
-          ...(params.replyTo && { reply_to: { email: params.replyTo } }),
-        }),
+        body: JSON.stringify(requestBody),
       });
+
+      console.log('MailerSend: Response status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
-        let errorMessage = `MailerSend API error: ${response.statusText}`;
+        console.error('MailerSend: Error response:', errorText);
+        
+        let errorMessage = `MailerSend API error (${response.status}): ${response.statusText}`;
         
         try {
           const errorData = JSON.parse(errorText);
@@ -69,6 +81,7 @@ export class MailerSendEmailService implements EmailService {
       }
 
       const result = await response.json();
+      console.log('MailerSend: Success response:', result);
       
       return {
         success: true,

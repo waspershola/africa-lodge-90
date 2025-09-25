@@ -15,6 +15,7 @@ export class ResendEmailService implements EmailService {
 
   async sendEmail(params: SendEmailParams): Promise<EmailResult> {
     try {
+      console.log('Resend: Starting email send...');
       const fromEmail = params.from || 'onboarding@resend.dev';
       const fromName = params.fromName || 'Hotel Management';
       
@@ -25,25 +26,35 @@ export class ResendEmailService implements EmailService {
       
       const from = fromName ? `${fromName} <${verifiedFromEmail}>` : verifiedFromEmail;
 
+      console.log('Resend: Using from:', from);
+
+      const requestBody = {
+        from,
+        to: params.to,
+        subject: params.subject,
+        html: params.html,
+        ...(params.text && { text: params.text }),
+        ...(params.replyTo && { reply_to: params.replyTo }),
+      };
+
+      console.log('Resend: Request body:', JSON.stringify(requestBody, null, 2));
+
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          from,
-          to: params.to,
-          subject: params.subject,
-          html: params.html,
-          ...(params.text && { text: params.text }),
-          ...(params.replyTo && { reply_to: params.replyTo }),
-        }),
+        body: JSON.stringify(requestBody),
       });
+
+      console.log('Resend: Response status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
-        let errorMessage = `Resend API error: ${response.statusText}`;
+        console.error('Resend: Error response:', errorText);
+        
+        let errorMessage = `Resend API error (${response.status}): ${response.statusText}`;
         
         try {
           const errorData = JSON.parse(errorText);
@@ -62,6 +73,7 @@ export class ResendEmailService implements EmailService {
       }
 
       const result = await response.json();
+      console.log('Resend: Success response:', result);
       
       return {
         success: true,

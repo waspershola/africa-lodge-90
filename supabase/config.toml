@@ -74,3 +74,6 @@ verify_jwt = false
 
 [functions.test-create-user]
 verify_jwt = false
+
+[functions.simple-test]
+verify_jwt = false

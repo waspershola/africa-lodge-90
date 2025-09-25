@@ -1,6 +1,7 @@
 import { GlobalUsersTable } from "@/components/sa/GlobalUsersTable";
 import { CreateGlobalUserDialog } from '@/components/sa/CreateGlobalUserDialog';
 import { TestCreateUserButton } from '@/components/sa/TestCreateUserButton';
+import { TestCreateGlobalUserButton } from '@/components/sa/TestCreateGlobalUserButton';
 
 export default function GlobalUsers() {
   console.log('GlobalUsers component rendered at:', new Date().toISOString());
@@ -14,6 +15,7 @@ export default function GlobalUsers() {
         </div>
         <div className="flex items-center gap-2">
           <TestCreateUserButton />
+          <TestCreateGlobalUserButton />
           <CreateGlobalUserDialog />
         </div>
       </div>

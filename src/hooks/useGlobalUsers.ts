@@ -64,7 +64,24 @@ export const useCreateGlobalUser = () => {
         // Handle network/function invocation errors
         if (error) {
           console.error('Create user network error:', error);
-          throw new Error(`Network error: ${error.message || 'Please try again'}`);
+          console.error('Error details:', error.context, error.message);
+          
+          // Try to get more error details
+          let errorMessage = 'Network error';
+          if (error.message) {
+            errorMessage += `: ${error.message}`;
+          }
+          if (error.context?.response) {
+            try {
+              const errorText = await error.context.response.text();
+              console.error('Error response body:', errorText);
+              errorMessage += ` - ${errorText}`;
+            } catch (e) {
+              console.error('Could not read error response:', e);
+            }
+          }
+          
+          throw new Error(errorMessage);
         }
         
         // Handle application errors from the function

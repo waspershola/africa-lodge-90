@@ -9,17 +9,35 @@ export function TestCreateUserButton() {
   const testFunction = async () => {
     setTesting(true);
     try {
-      console.log('Testing edge function...');
+      console.log('Testing simple edge function...');
       
+      // Test simple function first
+      const { data: simpleData, error: simpleError } = await supabase.functions.invoke('simple-test', {
+        body: { test: 'simple' }
+      });
+
+      console.log('Simple test result:', { data: simpleData, error: simpleError });
+
+      if (simpleError) {
+        toast({
+          title: 'Simple Test Failed',
+          description: `Network error: ${simpleError.message}`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // If simple test works, try the complex one
+      console.log('Testing complex edge function...');
       const { data, error } = await supabase.functions.invoke('test-create-user', {
         body: { test: 'data', timestamp: new Date().toISOString() }
       });
 
-      console.log('Test function result:', { data, error });
+      console.log('Complex test result:', { data, error });
 
       if (error) {
         toast({
-          title: 'Test Failed',
+          title: 'Complex Test Failed',
           description: `Network error: ${error.message}`,
           variant: 'destructive',
         });
@@ -28,8 +46,8 @@ export function TestCreateUserButton() {
 
       if (data?.success) {
         toast({
-          title: 'Test Successful',
-          description: 'Edge function is working correctly',
+          title: 'All Tests Successful',
+          description: 'Both edge functions are working correctly',
         });
       } else {
         toast({

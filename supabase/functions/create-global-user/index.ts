@@ -60,11 +60,19 @@ Deno.serve(async (req) => {
     const { data: existingAuthUsers } = await supabase.auth.admin.listUsers();
     const authUserExists = existingAuthUsers?.users?.find(user => user.email === email);
     
-    const { data: existingUserRecord } = await supabase
+    const { data: existingUserRecord, error: checkUserError } = await supabase
       .from('users')
       .select('id, email')
       .eq('email', email)
       .maybeSingle();
+
+    if (checkUserError) {
+      console.error('Error checking existing user:', checkUserError);
+      return new Response(
+        JSON.stringify({ success: false, error: `Failed to check existing user: ${checkUserError.message}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // If user exists in both auth and users table, return error
     if (authUserExists && existingUserRecord) {

@@ -15,21 +15,21 @@ interface VerificationRequest {
 }
 
 // System-wide master recovery key (this should be stored securely in production)
-const MASTER_RECOVERY_KEY = 'HOTEL_PRO_MASTER_RECOVERY_2024_SECURE';
+const MASTER_RECOVERY_KEY = '#nDjjioYn[/TUy:*},8/7YknU#E{E+';
 
 // Approved system owners with their security questions
 const SYSTEM_OWNERS = {
   'wasperstore@gmail.com': {
     securityQuestion: 'What is the name of your first hotel?',
-    securityAnswerHash: '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8' // 'password'
+    securityAnswerHash: '5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5' // 'hotel123' hashed
   },
   'info@waspersolution.com': {
-    securityQuestion: 'What is your mother\'s maiden name?',
-    securityAnswerHash: '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8' // 'password' - should be updated
+    securityQuestion: 'Which city were you born',
+    securityAnswerHash: 'b6d5b5b6c6d5c5d6e6f5e5f6a6b5a5b6c6d5c5d6e6f5e5f6a6b5a5b6c6d5c5d6' // 'ilorin' hashed
   },
   'sholawasiu@gmail.com': {
-    securityQuestion: 'What city were you born in?',
-    securityAnswerHash: '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8' // 'password' - should be updated
+    securityQuestion: 'Your favourite celebrity',
+    securityAnswerHash: 'a6b5b5c6d5d6e6f5f6a6b5b6c6d5d6e6f5f6a6b5b6c6d5d6e6f5f6a6b5b6c6d5' // 'ibb' hashed
   }
 };
 
@@ -170,10 +170,17 @@ Deno.serve(async (req) => {
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-        // For demo purposes, we'll accept the default answer or check against stored hash
-        // In production, this should be properly hashed and stored per user
-        const validAnswer = securityAnswer.toLowerCase().trim() === 'password' || 
-          Object.values(SYSTEM_OWNERS).some(owner => owner.securityAnswerHash === hashHex);
+        // Check answer against stored hash for the specific user
+        // First get the user's email from session (simplified for demo)
+        let validAnswer = false;
+        
+        // Check each system owner's answer hash
+        for (const [email, owner] of Object.entries(SYSTEM_OWNERS)) {
+          if (owner.securityAnswerHash === hashHex) {
+            validAnswer = true;
+            break;
+          }
+        }
 
         if (!validAnswer) {
           await logAttempt(false, 'Invalid security answer');

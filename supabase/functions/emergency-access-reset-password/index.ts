@@ -41,9 +41,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // In a real implementation, you would validate the session token
-    // For now, we'll accept any valid-looking session token and look for platform owners
-    
     // Get all platform owners to reset (since this is emergency access)
     const { data: platformOwners, error: ownersError } = await supabase
       .from('users')

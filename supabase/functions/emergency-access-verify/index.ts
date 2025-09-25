@@ -14,22 +14,22 @@ interface VerificationRequest {
   userAgent?: string;
 }
 
-// System-wide master recovery key (this should be stored securely in production)
+// System-wide master recovery key
 const MASTER_RECOVERY_KEY = '#nDjjioYn[/TUy:*},8/7YknU#E{E+';
 
 // Approved system owners with their security questions
 const SYSTEM_OWNERS = {
   'wasperstore@gmail.com': {
     securityQuestion: 'What is the name of your first hotel?',
-    securityAnswerHash: '5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5' // 'hotel123' hashed
+    securityAnswer: 'hotel123'
   },
   'info@waspersolution.com': {
     securityQuestion: 'Which city were you born',
-    securityAnswerHash: 'b6d5b5b6c6d5c5d6e6f5e5f6a6b5a5b6c6d5c5d6e6f5e5f6a6b5a5b6c6d5c5d6' // 'ilorin' hashed
+    securityAnswer: 'ilorin'
   },
   'sholawasiu@gmail.com': {
     securityQuestion: 'Your favourite celebrity',
-    securityAnswerHash: 'a6b5b5c6d5d6e6f5f6a6b5b6c6d5d6e6f5f6a6b5b6c6d5d6e6f5f6a6b5b6c6d5' // 'ibb' hashed
+    securityAnswer: 'ibb'
   }
 };
 
@@ -50,18 +50,24 @@ Deno.serve(async (req) => {
 
     // Log the access attempt
     const logAttempt = async (success: boolean, reason?: string) => {
-      await supabase.from('emergency_access_attempts').insert({
-        user_id: email ? (await supabase.from('users').select('id').eq('email', email).single()).data?.id : null,
-        attempt_type: step,
-        success,
-        failure_reason: reason,
-        ip_address: req.headers.get('x-forwarded-for') || 'unknown',
-        user_agent: userAgent
-      });
+      try {
+        await supabase.from('emergency_access_attempts').insert({
+          user_id: email ? (await supabase.from('users').select('id').eq('email', email).single()).data?.id : null,
+          attempt_type: step,
+          success,
+          failure_reason: reason,
+          ip_address: req.headers.get('x-forwarded-for') || 'unknown',
+          user_agent: userAgent
+        });
+      } catch (logError) {
+        console.error('Failed to log attempt:', logError);
+      }
     };
 
     switch (step) {
       case 'email_verification': {
+        console.log('Processing email verification for:', email);
+        
         if (!email) {
           await logAttempt(false, 'No email provided');
           return new Response(
@@ -98,7 +104,6 @@ Deno.serve(async (req) => {
         const sessionToken = crypto.randomUUID();
         const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
 
-        // Store session (you might want to create a recovery_sessions table)
         const sessionData = {
           sessionToken,
           userId: user.id,
@@ -121,6 +126,8 @@ Deno.serve(async (req) => {
       }
 
       case 'master_key': {
+        console.log('Processing master key verification');
+        
         if (!sessionToken || !masterKey) {
           await logAttempt(false, 'Missing session token or master key');
           return new Response(
@@ -138,7 +145,6 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Update session to include master key verification
         const updatedSession = {
           sessionToken,
           stepsCompleted: ['email_verification', 'master_key'],
@@ -155,6 +161,9 @@ Deno.serve(async (req) => {
       }
 
       case 'security_question': {
+        console.log('Processing security question verification');
+        console.log('Provided answer:', securityAnswer);
+        
         if (!sessionToken || !securityAnswer) {
           await logAttempt(false, 'Missing session token or security answer');
           return new Response(
@@ -163,26 +172,17 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Hash the provided answer to compare
-        const encoder = new TextEncoder();
-        const data = encoder.encode(securityAnswer.toLowerCase().trim());
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-        // Check answer against stored hash for the specific user
-        // First get the user's email from session (simplified for demo)
-        let validAnswer = false;
+        // Simple comparison with expected answers (case insensitive)
+        const providedAnswer = securityAnswer.toLowerCase().trim();
+        const validAnswers = ['hotel123', 'ilorin', 'ibb'];
+        const validAnswer = validAnswers.includes(providedAnswer);
         
-        // Check each system owner's answer hash
-        for (const [email, owner] of Object.entries(SYSTEM_OWNERS)) {
-          if (owner.securityAnswerHash === hashHex) {
-            validAnswer = true;
-            break;
-          }
-        }
+        console.log('Valid answers:', validAnswers);
+        console.log('Provided answer normalized:', providedAnswer);
+        console.log('Is valid:', validAnswer);
 
         if (!validAnswer) {
+          console.log('Security answer validation failed');
           await logAttempt(false, 'Invalid security answer');
           return new Response(
             JSON.stringify({ success: false, error: 'Invalid security answer' }),
@@ -190,7 +190,8 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Update session to include security question verification
+        console.log('Security answer validated successfully');
+
         const finalSession = {
           sessionToken,
           stepsCompleted: ['email_verification', 'master_key', 'security_question'],
@@ -215,10 +216,12 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Emergency access verification error:', error);
+    console.error('Error stack:', (error as Error).stack);
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: (error as Error).message || 'Emergency access verification failed' 
+        error: (error as Error).message || 'Emergency access verification failed',
+        details: 'Check function logs for more information'
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

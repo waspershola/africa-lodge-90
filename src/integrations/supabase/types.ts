@@ -460,6 +460,60 @@ export type Database = {
         }
         Relationships: []
       }
+      emergency_access_attempts: {
+        Row: {
+          attempt_type: string
+          created_at: string | null
+          device_fingerprint: Json | null
+          failure_reason: string | null
+          id: string
+          ip_address: unknown | null
+          success: boolean
+          user_agent: string | null
+          user_id: string | null
+          verification_data: Json | null
+        }
+        Insert: {
+          attempt_type: string
+          created_at?: string | null
+          device_fingerprint?: Json | null
+          failure_reason?: string | null
+          id?: string
+          ip_address?: unknown | null
+          success?: boolean
+          user_agent?: string | null
+          user_id?: string | null
+          verification_data?: Json | null
+        }
+        Update: {
+          attempt_type?: string
+          created_at?: string | null
+          device_fingerprint?: Json | null
+          failure_reason?: string | null
+          id?: string
+          ip_address?: unknown | null
+          success?: boolean
+          user_agent?: string | null
+          user_id?: string | null
+          verification_data?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emergency_access_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emergency_access_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users_basic"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feature_flags: {
         Row: {
           config: Json | null
@@ -2456,6 +2510,60 @@ export type Database = {
           },
         ]
       }
+      recovery_sessions: {
+        Row: {
+          completed: boolean | null
+          created_at: string | null
+          expires_at: string
+          id: string
+          ip_address: unknown | null
+          required_steps: Json
+          session_token: string
+          steps_completed: Json | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          completed?: boolean | null
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          ip_address?: unknown | null
+          required_steps?: Json
+          session_token: string
+          steps_completed?: Json | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          completed?: boolean | null
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          ip_address?: unknown | null
+          required_steps?: Json
+          session_token?: string
+          steps_completed?: Json | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recovery_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recovery_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users_basic"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reservation_communications: {
         Row: {
           communication_type: string
@@ -3401,6 +3509,63 @@ export type Database = {
         }
         Relationships: []
       }
+      system_owner_contacts: {
+        Row: {
+          backup_email: string | null
+          created_at: string | null
+          emergency_phone: string | null
+          id: string
+          phone_number: string | null
+          primary_email: string
+          recovery_contact_email: string | null
+          recovery_contact_name: string | null
+          recovery_contact_phone: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          backup_email?: string | null
+          created_at?: string | null
+          emergency_phone?: string | null
+          id?: string
+          phone_number?: string | null
+          primary_email: string
+          recovery_contact_email?: string | null
+          recovery_contact_name?: string | null
+          recovery_contact_phone?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          backup_email?: string | null
+          created_at?: string | null
+          emergency_phone?: string | null
+          id?: string
+          phone_number?: string | null
+          primary_email?: string
+          recovery_contact_email?: string | null
+          recovery_contact_name?: string | null
+          recovery_contact_phone?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_owner_contacts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_owner_contacts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users_basic"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           address: string | null
@@ -3491,6 +3656,8 @@ export type Database = {
         Row: {
           account_number: string | null
           address: string | null
+          backup_email: string | null
+          backup_phone: string | null
           bank_name: string | null
           certifications: Json | null
           created_at: string | null
@@ -3498,6 +3665,7 @@ export type Database = {
           department: string | null
           drivers_license: string | null
           email: string
+          emergency_contact_info: Json | null
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
           emergency_contact_relationship: string | null
@@ -3512,6 +3680,7 @@ export type Database = {
           is_active: boolean | null
           is_platform_owner: boolean | null
           last_login: string | null
+          last_password_change: string | null
           medical_conditions: string | null
           name: string | null
           nationality: string | null
@@ -3520,22 +3689,29 @@ export type Database = {
           next_of_kin_relationship: string | null
           nin: string | null
           passport_number: string | null
+          password_reset_required: boolean | null
           phone: string | null
           profile_picture_url: string | null
+          recovery_codes: string[] | null
           role: string
           role_id: string | null
           salary_range: string | null
+          security_questions: Json | null
           shift_end: string | null
           shift_start: string | null
           skills: Json | null
           temp_expires: string | null
           temp_password_hash: string | null
           tenant_id: string | null
+          totp_secret: string | null
+          two_factor_enabled: boolean | null
           updated_at: string | null
         }
         Insert: {
           account_number?: string | null
           address?: string | null
+          backup_email?: string | null
+          backup_phone?: string | null
           bank_name?: string | null
           certifications?: Json | null
           created_at?: string | null
@@ -3543,6 +3719,7 @@ export type Database = {
           department?: string | null
           drivers_license?: string | null
           email: string
+          emergency_contact_info?: Json | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           emergency_contact_relationship?: string | null
@@ -3557,6 +3734,7 @@ export type Database = {
           is_active?: boolean | null
           is_platform_owner?: boolean | null
           last_login?: string | null
+          last_password_change?: string | null
           medical_conditions?: string | null
           name?: string | null
           nationality?: string | null
@@ -3565,22 +3743,29 @@ export type Database = {
           next_of_kin_relationship?: string | null
           nin?: string | null
           passport_number?: string | null
+          password_reset_required?: boolean | null
           phone?: string | null
           profile_picture_url?: string | null
+          recovery_codes?: string[] | null
           role: string
           role_id?: string | null
           salary_range?: string | null
+          security_questions?: Json | null
           shift_end?: string | null
           shift_start?: string | null
           skills?: Json | null
           temp_expires?: string | null
           temp_password_hash?: string | null
           tenant_id?: string | null
+          totp_secret?: string | null
+          two_factor_enabled?: boolean | null
           updated_at?: string | null
         }
         Update: {
           account_number?: string | null
           address?: string | null
+          backup_email?: string | null
+          backup_phone?: string | null
           bank_name?: string | null
           certifications?: Json | null
           created_at?: string | null
@@ -3588,6 +3773,7 @@ export type Database = {
           department?: string | null
           drivers_license?: string | null
           email?: string
+          emergency_contact_info?: Json | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           emergency_contact_relationship?: string | null
@@ -3602,6 +3788,7 @@ export type Database = {
           is_active?: boolean | null
           is_platform_owner?: boolean | null
           last_login?: string | null
+          last_password_change?: string | null
           medical_conditions?: string | null
           name?: string | null
           nationality?: string | null
@@ -3610,17 +3797,22 @@ export type Database = {
           next_of_kin_relationship?: string | null
           nin?: string | null
           passport_number?: string | null
+          password_reset_required?: boolean | null
           phone?: string | null
           profile_picture_url?: string | null
+          recovery_codes?: string[] | null
           role?: string
           role_id?: string | null
           salary_range?: string | null
+          security_questions?: Json | null
           shift_end?: string | null
           shift_start?: string | null
           skills?: Json | null
           temp_expires?: string | null
           temp_password_hash?: string | null
           tenant_id?: string | null
+          totp_secret?: string | null
+          two_factor_enabled?: boolean | null
           updated_at?: string | null
         }
         Relationships: [
@@ -4121,6 +4313,10 @@ export type Database = {
         Args: { end_date?: string; start_date?: string; tenant_uuid: string }
         Returns: number
       }
+      generate_recovery_codes: {
+        Args: { user_uuid: string }
+        Returns: string[]
+      }
       get_available_rooms: {
         Args: {
           p_check_in_date: string
@@ -4303,6 +4499,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      is_system_owner: {
+        Args: { user_uuid?: string }
+        Returns: boolean
+      }
       refresh_reporting_views: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -4349,6 +4549,14 @@ export type Database = {
           services: string[]
           tenant_id: string
         }[]
+      }
+      validate_recovery_code: {
+        Args: { input_code: string; user_uuid: string }
+        Returns: boolean
+      }
+      validate_security_answer: {
+        Args: { answer_text: string; question_text: string; user_uuid: string }
+        Returns: boolean
       }
     }
     Enums: {

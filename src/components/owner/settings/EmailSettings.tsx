@@ -12,13 +12,14 @@ import { Mail, Settings, Palette, Send, AlertCircle, CheckCircle } from 'lucide-
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useTenantInfo } from '@/hooks/useTenantInfo';
-import { useEmailSettings, useUpdateEmailSettings } from '@/hooks/useEmailSettings';
+import { useEmailSettings, useUpdateEmailSettings, useSendTestEmail } from '@/hooks/useEmailSettings';
 
 export default function EmailSettings() {
   const { user } = useAuth();
   const { data: tenantInfo } = useTenantInfo();
   const { data: currentEmailSettings, isLoading } = useEmailSettings();
   const updateEmailSettings = useUpdateEmailSettings();
+  const sendTestEmail = useSendTestEmail();
   const { toast } = useToast();
   
   const [emailSettings, setEmailSettings] = useState({
@@ -89,17 +90,12 @@ export default function EmailSettings() {
 
     setIsTesting(true);
     try {
-      // In real implementation, this would call the email function
-      toast({
-        title: "Test Email Sent",
-        description: `Test email sent to ${testEmail}`
+      await sendTestEmail.mutateAsync({ 
+        email: testEmail, 
+        type: 'confirmation' 
       });
     } catch (error) {
-      toast({
-        title: "Test Failed",
-        description: "Failed to send test email",
-        variant: "destructive"
-      });
+      console.error('Test email error:', error);
     } finally {
       setIsTesting(false);
     }
@@ -441,9 +437,9 @@ export default function EmailSettings() {
                     value={testEmail}
                     onChange={(e) => setTestEmail(e.target.value)}
                   />
-                  <Button onClick={handleTestEmail} disabled={isTesting}>
+                  <Button onClick={handleTestEmail} disabled={isTesting || sendTestEmail.isPending}>
                     <Send className="h-4 w-4 mr-2" />
-                    {isTesting ? 'Sending...' : 'Send Test'}
+                    {isTesting || sendTestEmail.isPending ? 'Sending...' : 'Send Test'}
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">

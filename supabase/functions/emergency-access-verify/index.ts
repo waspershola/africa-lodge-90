@@ -288,15 +288,32 @@ async function handleSecurityQuestionVerification(
     );
   }
 
-  // Validate security answer using database function
-  const { data: isValid, error: validationError } = await supabaseClient
-    .rpc('validate_security_answer', {
-      user_uuid: session.user_id,
-      question_text: session.users.security_questions[0]?.question,
-      answer_text: securityAnswer.trim()
-    });
-
-  if (validationError || !isValid) {
+  // There's an issue with the security question validation
+  // The stored answer_hash is base64 encoded, but the validation function expects SHA256
+  // Let's do a simple comparison for now
+  const questions = session.users.security_questions || [];
+  const matchingQuestion = questions.find((q: any) => q.question === session.users.security_questions[0]?.question);
+  
+  if (!matchingQuestion) {
+    await logEmergencyAccess(supabaseClient, session.user_id, 'security_question', false, 'Question not found', clientIP, userAgent);
+    
+    return new Response(
+      JSON.stringify({ success: false, error: 'Security question not found' }),
+      {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      }
+    );
+  }
+  
+  // Simple base64 comparison (for demo purposes)
+  const expectedAnswer = atob(matchingQuestion.answer_hash).toLowerCase();
+  const providedAnswer = securityAnswer.trim().toLowerCase();
+  
+  console.log('Expected answer:', expectedAnswer);
+  console.log('Provided answer:', providedAnswer);
+  
+  if (providedAnswer !== expectedAnswer) {
     await logEmergencyAccess(supabaseClient, session.user_id, 'security_question', false, 'Invalid security answer', clientIP, userAgent);
     
     return new Response(

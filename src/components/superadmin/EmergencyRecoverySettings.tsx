@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { useRecoveryManagement } from '@/hooks/useRecoveryManagement';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { callEdgeFunction } from '@/lib/api-utils';
 
 interface SystemOwner {
   id: string;
@@ -40,6 +40,7 @@ interface SystemOwner {
 export function EmergencyRecoverySettings() {
   const [systemOwners, setSystemOwners] = useState<SystemOwner[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isGeneratingPassword, setIsGeneratingPassword] = useState(false);
   const [newOwnerEmail, setNewOwnerEmail] = useState('');
   const [newOwnerName, setNewOwnerName] = useState('');
   const [newOwnerTempPassword, setNewOwnerTempPassword] = useState('');

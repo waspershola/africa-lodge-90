@@ -43,10 +43,12 @@ export const useUpdateEmailSettings = () => {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) throw new Error('Not authenticated');
 
+      // Update both email settings and system email preference
       const { data, error } = await supabase
         .from('hotel_settings')
         .update({ 
           email_settings: emailSettings as any,
+          use_system_email: !emailSettings.smtp_enabled,
           updated_at: new Date().toISOString()
         })
         .eq('tenant_id', user.user_metadata?.tenant_id)

@@ -368,21 +368,40 @@ export default function EmailSettings() {
         <TabsContent value="delivery" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Email Delivery</CardTitle>
+              <CardTitle>Email Delivery Method</CardTitle>
               <CardDescription>
-                Test email delivery and configure SMTP (optional)
+                Choose between system default email service or custom SMTP server
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="smtp_enabled"
-                  checked={emailSettings.smtp_enabled}
-                  onCheckedChange={(checked) => 
-                    setEmailSettings(prev => ({ ...prev, smtp_enabled: checked }))
-                  }
-                />
-                <Label htmlFor="smtp_enabled">Use Custom SMTP Server</Label>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="system_email"
+                    name="email_method"
+                    checked={!emailSettings.smtp_enabled}
+                    onChange={() => setEmailSettings(prev => ({ ...prev, smtp_enabled: false }))}
+                  />
+                  <Label htmlFor="system_email">Use System Default Email Service</Label>
+                </div>
+                <p className="text-sm text-muted-foreground ml-6">
+                  Use the email service configured by the system administrator. This is the recommended option.
+                </p>
+                
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="custom_smtp"
+                    name="email_method"
+                    checked={emailSettings.smtp_enabled}
+                    onChange={() => setEmailSettings(prev => ({ ...prev, smtp_enabled: true }))}
+                  />
+                  <Label htmlFor="custom_smtp">Use Custom SMTP Server</Label>
+                </div>
+                <p className="text-sm text-muted-foreground ml-6">
+                  Configure your own SMTP server for complete control over email delivery.
+                </p>
               </div>
               
               {emailSettings.smtp_enabled && (

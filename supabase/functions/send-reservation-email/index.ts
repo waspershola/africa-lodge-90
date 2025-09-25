@@ -179,8 +179,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ success: true, result }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
-
-    } catch (error) {
+  } catch (error) {
       console.error('Email function error:', error);
       return new Response(
         JSON.stringify({ 

@@ -1020,10 +1020,12 @@ export type Database = {
           id: string
           late_checkout_fee: number | null
           service_charge_rate: number | null
+          system_provider_id: string | null
           tax_rate: number | null
           tenant_id: string
           timezone: string | null
           updated_at: string | null
+          use_system_email: boolean | null
         }
         Insert: {
           amenities?: Json | null
@@ -1040,10 +1042,12 @@ export type Database = {
           id?: string
           late_checkout_fee?: number | null
           service_charge_rate?: number | null
+          system_provider_id?: string | null
           tax_rate?: number | null
           tenant_id: string
           timezone?: string | null
           updated_at?: string | null
+          use_system_email?: boolean | null
         }
         Update: {
           amenities?: Json | null
@@ -1060,12 +1064,22 @@ export type Database = {
           id?: string
           late_checkout_fee?: number | null
           service_charge_rate?: number | null
+          system_provider_id?: string | null
           tax_rate?: number | null
           tenant_id?: string
           timezone?: string | null
           updated_at?: string | null
+          use_system_email?: boolean | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "hotel_settings_system_provider_id_fkey"
+            columns: ["system_provider_id"]
+            isOneToOne: false
+            referencedRelation: "system_email_providers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       housekeeping_tasks: {
         Row: {
@@ -3193,6 +3207,39 @@ export type Database = {
           },
         ]
       }
+      system_email_providers: {
+        Row: {
+          config: Json
+          created_at: string | null
+          id: string
+          is_default: boolean | null
+          is_enabled: boolean | null
+          provider_name: string
+          provider_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          config: Json
+          created_at?: string | null
+          id?: string
+          is_default?: boolean | null
+          is_enabled?: boolean | null
+          provider_name: string
+          provider_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          config?: Json
+          created_at?: string | null
+          id?: string
+          is_default?: boolean | null
+          is_enabled?: boolean | null
+          provider_name?: string
+          provider_type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       tenants: {
         Row: {
           address: string | null
@@ -3886,6 +3933,13 @@ export type Database = {
           payment_method: string
           total_amount: number
           transaction_count: number
+        }[]
+      }
+      get_system_default_email_provider: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          config: Json
+          provider_type: string
         }[]
       }
       get_user_id: {

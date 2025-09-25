@@ -13,7 +13,8 @@ import {
   Wand2,
   Flag,
   Database,
-  Video
+  Video,
+  Mail
 } from 'lucide-react';
 import UnifiedDashboardLayout from './UnifiedDashboardLayout';
 
@@ -29,6 +30,7 @@ const navigation = [
   { name: 'Support', href: '/sa/support', icon: Headphones },
   { name: 'Backups', href: '/sa/backups', icon: Database },
   { name: 'Wizard', href: '/sa/wizard', icon: Wand2 },
+  { name: 'Email Providers', href: '/sa/email-providers', icon: Mail },
   { name: 'Advanced', href: '/sa/advanced', icon: Settings },
   { name: 'Audit Logs', href: '/sa/audit', icon: Activity },
   { name: 'Realtime Monitor', href: '/sa/realtime-monitoring', icon: Activity },

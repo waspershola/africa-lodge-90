@@ -87,6 +87,7 @@ import AuditLogs from "./pages/sa/AuditLogs";
 import Metrics from "./pages/sa/Metrics";
 import Backups from "./pages/sa/Backups";
 import RealtimeMonitoring from "./pages/sa/RealtimeMonitoring";
+import EmailProviders from "./pages/sa/EmailProviders";
 
 const queryClient = new QueryClient();
 
@@ -240,6 +241,7 @@ const App = () => (
             <Route path="realtime-monitoring" element={<RealtimeMonitoring />} />
             <Route path="metrics" element={<Metrics />} />
             <Route path="backups" element={<Backups />} />
+            <Route path="email-providers" element={<EmailProviders />} />
           </Route>
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

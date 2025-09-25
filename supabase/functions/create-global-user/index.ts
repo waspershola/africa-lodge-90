@@ -89,13 +89,21 @@ serve(async (req) => {
     const tempPassword = 'TempPass' + Math.random().toString(36).substring(2, 10) + '!';
     console.log('Generated temporary password');
 
+    // Determine the role enum value based on the actual role name
+    let roleEnum = 'SUPPORT_STAFF'; // default
+    if (roleData.name === 'Super Admin') {
+      roleEnum = 'SUPER_ADMIN';
+    } else if (roleData.name === 'Platform Admin') {
+      roleEnum = 'PLATFORM_ADMIN';
+    }
+
     // Create auth user
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password: tempPassword,
       email_confirm: true,
       user_metadata: {
-        role: role === 'Super Admin' ? 'SUPER_ADMIN' : 'SUPPORT_STAFF',
+        role: roleEnum,
         role_id: roleData.id,
         scope: 'global',
         tenant_id: null
@@ -130,11 +138,12 @@ serve(async (req) => {
       name,
       phone,
       address,
-      role: role === 'Super Admin' ? 'SUPER_ADMIN' : 'SUPPORT_STAFF',
+      role: roleEnum,
       role_id: roleData.id,
       tenant_id: null,
       force_reset: true,
       is_active: true,
+      is_platform_owner: roleData.name === 'Super Admin', // Mark super admins as platform owners
       updated_at: new Date().toISOString()
     }, {
       onConflict: 'id'

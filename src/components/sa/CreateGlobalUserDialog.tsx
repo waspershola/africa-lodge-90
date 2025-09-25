@@ -17,6 +17,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { UserPlus, Copy, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useGlobalRoles } from '@/hooks/useGlobalRoles';
 
 const createGlobalUserSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -48,6 +49,8 @@ export function CreateGlobalUserDialog({ onSuccess }: CreateGlobalUserDialogProp
       role: string;
     };
   } | null>(null);
+
+  const { data: globalRoles, isLoading: rolesLoading } = useGlobalRoles();
 
   const form = useForm<CreateGlobalUserForm>({
     resolver: zodResolver(createGlobalUserSchema),
@@ -286,8 +289,17 @@ export function CreateGlobalUserDialog({ onSuccess }: CreateGlobalUserDialogProp
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="Super Admin">Super Admin</SelectItem>
-                        <SelectItem value="Support Staff">Support Staff</SelectItem>
+                        {rolesLoading ? (
+                          <SelectItem value="" disabled>Loading roles...</SelectItem>
+                        ) : globalRoles && globalRoles.length > 0 ? (
+                          globalRoles.map((role) => (
+                            <SelectItem key={role.id} value={role.name}>
+                              {role.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="" disabled>No roles available</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage />

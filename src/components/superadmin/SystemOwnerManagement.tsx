@@ -1,4 +1,4 @@
-import { IndividualSystemOwnerCard } from './IndividualSystemOwnerCard';
+import { SystemOwnerRecoveryCard } from './SystemOwnerRecoveryCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Shield, Users } from 'lucide-react';
 
@@ -33,14 +33,14 @@ export function SystemOwnerManagement() {
             System Owner Management
           </CardTitle>
           <CardDescription>
-            Individual management of system owner accounts. Create or reset passwords for each owner separately.
+            Individual management of system owner accounts and recovery settings. Create accounts and configure recovery options for emergency access.
           </CardDescription>
         </CardHeader>
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {SYSTEM_OWNERS.map((owner) => (
-          <IndividualSystemOwnerCard
+          <SystemOwnerRecoveryCard
             key={owner.email}
             owner={owner}
           />

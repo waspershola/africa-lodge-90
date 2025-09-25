@@ -150,6 +150,30 @@ export function EmergencyRecoverySettings() {
             <Button 
               onClick={async () => {
                 try {
+                  const { data, error } = await supabase.functions.invoke('create-system-owners');
+                  if (error) throw error;
+                  if (data?.success) {
+                    toast.success(data.message);
+                    const createdOwners = data.results?.filter((r: any) => r.status === 'created');
+                    if (createdOwners?.length > 0) {
+                      console.log('System owners created:', createdOwners);
+                    }
+                  } else {
+                    toast.error('Failed to create system owners');
+                  }
+                } catch (error: any) {
+                  toast.error(`Failed to create system owners: ${error.message}`);
+                }
+              }}
+              variant="default"
+              className="flex items-center gap-2"
+            >
+              <Users className="h-4 w-4" />
+              Create System Owners
+            </Button>
+            <Button 
+              onClick={async () => {
+                try {
                   const { data, error } = await supabase.functions.invoke('reset-system-owner-passwords');
                   if (error) throw error;
                   if (data?.success) {
@@ -165,11 +189,12 @@ export function EmergencyRecoverySettings() {
               className="flex items-center gap-2"
             >
               <RefreshCw className="h-4 w-4" />
-              Reset All System Owner Passwords
+              Reset All Passwords
             </Button>
           </div>
           <div className="text-sm text-muted-foreground">
             <p>System Owners: wasperstore@gmail.com, ceo@waspersolution.com, waspershola@gmail.com</p>
+            <p className="mt-1">For individual recovery settings, visit <strong>System Owner Management</strong> page.</p>
           </div>
         </CardContent>
       </Card>

@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
       .from('users')
       .select('id, email')
       .eq('email', email)
-      .single();
+      .maybeSingle();
 
     // If user exists in both auth and users table, return error
     if (authUserExists && existingUserRecord) {
@@ -78,20 +78,22 @@ Deno.serve(async (req) => {
     if (authUserExists && !existingUserRecord) {
       console.log('Found orphaned auth user, creating missing users record:', email);
       try {
+        const tempPassword = generateTempPassword ? generateSecurePassword() : null;
+        
         const { data: newUser, error: userError } = await supabase
           .from('users')
           .insert({
             id: authUserExists.id,
             email: email,
             name: fullName,
-            role: role, // Use the role from the request
+            role: role,
             department: department,
             tenant_id: null, // Global users have null tenant_id
-        is_platform_owner: false, // Don't auto-assign platform owner - requires manual approval
-        is_active: true,
-        force_reset: generateTempPassword,
-        temp_password_hash: generateTempPassword ? generateSecurePassword() : null,
-        temp_expires: generateTempPassword ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null
+            is_platform_owner: false, // Never auto-assign platform owner - requires manual approval
+            is_active: true,
+            force_reset: generateTempPassword,
+            temp_password_hash: tempPassword,
+            temp_expires: generateTempPassword ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null
           })
           .select()
           .single();
@@ -129,14 +131,14 @@ Deno.serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             success: true, 
-        user: {
-          id: authUserExists.id,
-          email,
-          fullName,
-          role,
-          department,
-          tempPassword: generateTempPassword ? newUser.temp_password_hash : undefined
-        },
+            user: {
+              id: authUserExists.id,
+              email,
+              fullName,
+              role,
+              department,
+              tempPassword: tempPassword
+            },
             message: 'Orphaned user repaired successfully'
           }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -210,14 +212,14 @@ Deno.serve(async (req) => {
         id: authUser.user.id,
         email: email,
         name: fullName,
-        role: role === 'SUPER_ADMIN' ? 'SUPER_ADMIN' : role, // Ensure exact role match
+        role: role,
         department: department,
         tenant_id: null, // Global users have null tenant_id
-        is_platform_owner: false, // Don't auto-assign platform owner - requires manual approval
+        is_platform_owner: false, // Never auto-assign platform owner - requires manual approval
         is_active: true,
         force_reset: generateTempPassword,
-        temp_password_hash: generateTempPassword ? tempPassword : null, // Store actual temp password
-        temp_expires: generateTempPassword ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null // 7 days
+        temp_password_hash: generateTempPassword ? tempPassword : null,
+        temp_expires: generateTempPassword ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null
       })
       .select()
       .single();

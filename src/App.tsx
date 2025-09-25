@@ -7,7 +7,7 @@ import { useFontManager } from "@/hooks/useFontManager";
 import Index from "./pages/Index";
 import SignUp from "./pages/SignUp";
 import NotFound from "./pages/NotFound";
-import { EmergencyAccessPage } from "./pages/EmergencyAccessPage";
+import EmergencyAccessPage from "./pages/EmergencyAccessPage";
 import { EmergencyRecoveryPage } from "./pages/super-admin/EmergencyRecoveryPage";
 import FrontDeskDashboard from "./components/FrontDeskDashboard";
 import OwnerDashboard from "./components/OwnerDashboard";

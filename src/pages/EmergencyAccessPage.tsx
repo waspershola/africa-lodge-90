@@ -1,5 +1,5 @@
 import { EmergencyAccessPortal } from '@/components/auth/EmergencyAccessPortal';
 
-export function EmergencyAccessPage() {
+export default function EmergencyAccessPage() {
   return <EmergencyAccessPortal />;
 }

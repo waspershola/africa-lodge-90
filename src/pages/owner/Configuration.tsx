@@ -1,4 +1,4 @@
-import { ConfigurationCenter } from "@/components/owner/config/ConfigurationCenter";
+import { ConfigurationCenter } from "@/components/ConfigurationCenter";
 
 export default function Configuration() {
   return <ConfigurationCenter />;

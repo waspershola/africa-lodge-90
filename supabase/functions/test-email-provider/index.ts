@@ -20,6 +20,8 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Starting test email provider function...');
+    
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -28,6 +30,7 @@ serve(async (req) => {
     // Verify user is authenticated and is super admin
     const authHeader = req.headers.get('authorization');
     if (!authHeader) {
+      console.log('No authorization header found');
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'Authentication required' 
@@ -41,6 +44,7 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
     
     if (authError || !user) {
+      console.log('Authentication error:', authError);
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'Invalid authentication' 
@@ -58,6 +62,7 @@ serve(async (req) => {
       .single();
 
     if (userError || userData?.role !== 'SUPER_ADMIN') {
+      console.log('Permission error:', userError, userData?.role);
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'Insufficient permissions' 
@@ -68,8 +73,10 @@ serve(async (req) => {
     }
 
     const { provider_type, config, test_email }: TestEmailRequest = await req.json();
+    console.log('Test email request:', { provider_type, test_email, hasConfig: !!config });
 
     if (!provider_type || !config || !test_email) {
+      console.log('Missing required parameters');
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'Missing required parameters' 
@@ -79,6 +86,8 @@ serve(async (req) => {
       });
     }
 
+    console.log('Creating test config for provider:', provider_type);
+    
     // Create a test EmailProviderConfig
     const testConfig: EmailProviderConfig = {
       default_provider: provider_type,
@@ -105,8 +114,10 @@ serve(async (req) => {
       }
     };
 
+    console.log('Creating email factory...');
     const emailFactory = new EmailServiceFactory();
     
+    console.log('Sending test email...');
     const result = await emailFactory.sendEmailWithFallback(
       crypto.randomUUID(), // Generate a valid UUID for testing
       testConfig,
@@ -120,17 +131,23 @@ serve(async (req) => {
       'provider_test'
     );
 
+    console.log('Test email result:', result);
+
     return new Response(JSON.stringify(result), {
       status: result.success ? 200 : 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Test email provider error:', error);
+    if (error instanceof Error) {
+      console.error('Error stack:', error.stack);
+    }
     return new Response(
       JSON.stringify({ 
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        details: error instanceof Error ? error.stack : undefined
       }),
       {
         status: 500,

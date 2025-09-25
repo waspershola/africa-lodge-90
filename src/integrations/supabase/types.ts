@@ -652,6 +652,75 @@ export type Database = {
         }
         Relationships: []
       }
+      group_reservations: {
+        Row: {
+          balance_due: number | null
+          check_in_date: string
+          check_out_date: string
+          created_at: string
+          created_by: string | null
+          deposit_amount: number | null
+          group_code: string | null
+          group_name: string
+          id: string
+          organizer_email: string | null
+          organizer_name: string
+          organizer_phone: string | null
+          payment_mode: string
+          special_requests: string | null
+          status: string
+          tenant_id: string
+          total_amount: number
+          total_guests: number
+          total_rooms: number
+          updated_at: string
+        }
+        Insert: {
+          balance_due?: number | null
+          check_in_date: string
+          check_out_date: string
+          created_at?: string
+          created_by?: string | null
+          deposit_amount?: number | null
+          group_code?: string | null
+          group_name: string
+          id?: string
+          organizer_email?: string | null
+          organizer_name: string
+          organizer_phone?: string | null
+          payment_mode?: string
+          special_requests?: string | null
+          status?: string
+          tenant_id: string
+          total_amount?: number
+          total_guests?: number
+          total_rooms?: number
+          updated_at?: string
+        }
+        Update: {
+          balance_due?: number | null
+          check_in_date?: string
+          check_out_date?: string
+          created_at?: string
+          created_by?: string | null
+          deposit_amount?: number | null
+          group_code?: string | null
+          group_name?: string
+          id?: string
+          organizer_email?: string | null
+          organizer_name?: string
+          organizer_phone?: string | null
+          payment_mode?: string
+          special_requests?: string | null
+          status?: string
+          tenant_id?: string
+          total_amount?: number
+          total_guests?: number
+          total_rooms?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       guest_messages: {
         Row: {
           created_at: string
@@ -1230,6 +1299,51 @@ export type Database = {
             referencedColumns: ["tenant_id"]
           },
         ]
+      }
+      payment_policies: {
+        Row: {
+          auto_cancel_hours: number | null
+          created_at: string
+          deposit_percentage: number
+          id: string
+          is_default: boolean
+          late_payment_fee: number | null
+          payment_methods_accepted: Json
+          payment_timing: string
+          policy_name: string
+          requires_deposit: boolean
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          auto_cancel_hours?: number | null
+          created_at?: string
+          deposit_percentage?: number
+          id?: string
+          is_default?: boolean
+          late_payment_fee?: number | null
+          payment_methods_accepted?: Json
+          payment_timing?: string
+          policy_name?: string
+          requires_deposit?: boolean
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          auto_cancel_hours?: number | null
+          created_at?: string
+          deposit_percentage?: number
+          id?: string
+          is_default?: boolean
+          late_payment_fee?: number | null
+          payment_methods_accepted?: Json
+          payment_timing?: string
+          policy_name?: string
+          requires_deposit?: boolean
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       payments: {
         Row: {
@@ -2167,9 +2281,121 @@ export type Database = {
           },
         ]
       }
+      reservation_communications: {
+        Row: {
+          communication_type: string
+          content: string | null
+          created_at: string
+          created_by: string | null
+          delivered_at: string | null
+          group_reservation_id: string | null
+          id: string
+          recipient_email: string
+          reservation_id: string | null
+          sent_at: string | null
+          status: string
+          subject: string
+          tenant_id: string
+        }
+        Insert: {
+          communication_type: string
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivered_at?: string | null
+          group_reservation_id?: string | null
+          id?: string
+          recipient_email: string
+          reservation_id?: string | null
+          sent_at?: string | null
+          status?: string
+          subject: string
+          tenant_id: string
+        }
+        Update: {
+          communication_type?: string
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivered_at?: string | null
+          group_reservation_id?: string | null
+          id?: string
+          recipient_email?: string
+          reservation_id?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          tenant_id?: string
+        }
+        Relationships: []
+      }
+      reservation_invoices: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          due_date: string | null
+          id: string
+          invoice_number: string
+          invoice_type: string
+          paid_at: string | null
+          payment_instructions: string | null
+          reservation_id: string
+          sent_at: string | null
+          sent_to_email: string | null
+          service_charge: number | null
+          status: string
+          tax_amount: number | null
+          tenant_id: string
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_number: string
+          invoice_type?: string
+          paid_at?: string | null
+          payment_instructions?: string | null
+          reservation_id: string
+          sent_at?: string | null
+          sent_to_email?: string | null
+          service_charge?: number | null
+          status?: string
+          tax_amount?: number | null
+          tenant_id: string
+          total_amount: number
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_number?: string
+          invoice_type?: string
+          paid_at?: string | null
+          payment_instructions?: string | null
+          reservation_id?: string
+          sent_at?: string | null
+          sent_to_email?: string | null
+          service_charge?: number | null
+          status?: string
+          tax_amount?: number | null
+          tenant_id?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reservations: {
         Row: {
           adults: number | null
+          balance_due: number | null
           check_in_date: string
           check_out_date: string
           checked_in_at: string | null
@@ -2177,14 +2403,21 @@ export type Database = {
           checked_out_at: string | null
           checked_out_by: string | null
           children: number | null
+          confirmation_sent_at: string | null
           created_at: string | null
           created_by: string | null
+          deposit_amount: number | null
+          group_reservation_id: string | null
           guest_email: string | null
           guest_id: string | null
           guest_id_number: string | null
           guest_name: string
           guest_phone: string | null
           id: string
+          invoice_number: string | null
+          payment_due_date: string | null
+          payment_policy_id: string | null
+          payment_status: string
           reservation_number: string
           room_id: string
           room_rate: number
@@ -2196,6 +2429,7 @@ export type Database = {
         }
         Insert: {
           adults?: number | null
+          balance_due?: number | null
           check_in_date: string
           check_out_date: string
           checked_in_at?: string | null
@@ -2203,14 +2437,21 @@ export type Database = {
           checked_out_at?: string | null
           checked_out_by?: string | null
           children?: number | null
+          confirmation_sent_at?: string | null
           created_at?: string | null
           created_by?: string | null
+          deposit_amount?: number | null
+          group_reservation_id?: string | null
           guest_email?: string | null
           guest_id?: string | null
           guest_id_number?: string | null
           guest_name: string
           guest_phone?: string | null
           id?: string
+          invoice_number?: string | null
+          payment_due_date?: string | null
+          payment_policy_id?: string | null
+          payment_status?: string
           reservation_number: string
           room_id: string
           room_rate: number
@@ -2222,6 +2463,7 @@ export type Database = {
         }
         Update: {
           adults?: number | null
+          balance_due?: number | null
           check_in_date?: string
           check_out_date?: string
           checked_in_at?: string | null
@@ -2229,14 +2471,21 @@ export type Database = {
           checked_out_at?: string | null
           checked_out_by?: string | null
           children?: number | null
+          confirmation_sent_at?: string | null
           created_at?: string | null
           created_by?: string | null
+          deposit_amount?: number | null
+          group_reservation_id?: string | null
           guest_email?: string | null
           guest_id?: string | null
           guest_id_number?: string | null
           guest_name?: string
           guest_phone?: string | null
           id?: string
+          invoice_number?: string | null
+          payment_due_date?: string | null
+          payment_policy_id?: string | null
+          payment_status?: string
           reservation_number?: string
           room_id?: string
           room_rate?: number

@@ -7,14 +7,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, User, Phone, Mail } from 'lucide-react';
+import { CalendarIcon, User, Phone, Mail, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { useCreateReservation } from '@/hooks/useReservations';
+import { useCreateEnhancedReservation } from '@/hooks/useEnhancedReservations';
 import { useRooms } from '@/hooks/useRooms';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useSearchGuests } from '@/hooks/useGuests';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import PaymentOptionsDialog from './PaymentOptionsDialog';
 
 interface NewReservationDialogProps {
   open: boolean;
@@ -32,6 +33,8 @@ export default function NewReservationDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [guestSearchOpen, setGuestSearchOpen] = useState(false);
   const [guestSearchTerm, setGuestSearchTerm] = useState('');
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [pendingReservation, setPendingReservation] = useState<any>(null);
   const [formData, setFormData] = useState({
     guestName: '',
     email: '',
@@ -51,7 +54,7 @@ export default function NewReservationDialog({
   const roomTypes = roomsData?.roomTypes || [];
   const { data: searchResults = [] } = useSearchGuests(guestSearchTerm);
   
-  const createReservation = useCreateReservation();
+  const createReservation = useCreateEnhancedReservation();
   const { toast } = useToast();
   const { formatPrice } = useCurrency();
 
@@ -72,56 +75,73 @@ export default function NewReservationDialog({
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
+  const calculateTotal = () => {
+    const nights = calculateNights();
+    const roomTypeData = roomTypes.find(rt => rt.id === formData.roomType);
+    return nights * (roomTypeData?.base_rate || 0);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.guestName || !formData.checkIn || !formData.checkOut) {
+    if (!formData.guestName || !formData.checkIn || !formData.checkOut || !formData.roomType) {
       toast({
         title: "Validation Error",
-        description: "Please fill in all required fields",
+        description: "Please fill in all required fields including room type",
         variant: "destructive",
       });
       return;
     }
 
-    setIsLoading(true);
+    // Find an available room of the selected type
+    const availableRoom = rooms?.find(room => 
+      room.status === 'available' && 
+      room.room_type_id === formData.roomType
+    );
 
-    try {
-      const nights = calculateNights();
-      const roomTypeData = roomTypes.find(rt => rt.id === formData.roomType);
-      
-      // Find an available room of the selected type or use first available room
-      const availableRoom = rooms?.find(room => 
-        room.status === 'available' && 
-        room.room_type_id === formData.roomType
-      ) || rooms?.find(room => room.status === 'available');
-
-      if (!availableRoom) {
-        toast({
-          title: "No Rooms Available",
-          description: "No rooms are available for the selected dates",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      await createReservation.mutateAsync({
-        guest_name: formData.guestName,
-        guest_email: formData.email,
-        guest_phone: formData.phone,
-        guest_id_number: formData.idNumber,
-        check_in_date: formData.checkIn.toISOString().split('T')[0],
-        check_out_date: formData.checkOut.toISOString().split('T')[0],
-        room_id: availableRoom.id,
-        adults: formData.adults,
-        children: formData.children,
-        room_rate: roomTypeData?.base_rate || 85000,
-        status: 'confirmed' as const
-      });
-      
+    if (!availableRoom) {
       toast({
-        title: "Success",
-        description: "Reservation created successfully",
+        title: "No Rooms Available",
+        description: "No rooms are available for the selected room type and dates",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Prepare reservation data and show payment options
+    const roomTypeData = roomTypes.find(rt => rt.id === formData.roomType);
+    setPendingReservation({
+      ...formData,
+      room_id: availableRoom.id,
+      room_rate: roomTypeData?.base_rate || 0
+    });
+    setShowPaymentDialog(true);
+  };
+
+  const handlePaymentConfirm = async (
+    paymentOption: 'full' | 'deposit' | 'none',
+    policyId: string,
+    methods: string[]
+  ) => {
+    if (!pendingReservation) return;
+
+    setIsLoading(true);
+    try {
+      await createReservation.mutateAsync({
+        guest_name: pendingReservation.guestName,
+        guest_email: pendingReservation.email,
+        guest_phone: pendingReservation.phone,
+        guest_id_number: pendingReservation.idNumber,
+        check_in_date: pendingReservation.checkIn.toISOString().split('T')[0],
+        check_out_date: pendingReservation.checkOut.toISOString().split('T')[0],
+        room_id: pendingReservation.room_id,
+        adults: pendingReservation.adults,
+        children: pendingReservation.children,
+        room_rate: pendingReservation.room_rate,
+        status: 'confirmed' as const,
+        special_requests: pendingReservation.specialRequests,
+        payment_policy_id: policyId,
+        payment_option: paymentOption
       });
       
       // Reset form
@@ -138,7 +158,7 @@ export default function NewReservationDialog({
         specialRequests: '',
         source: 'direct'
       });
-      
+      setPendingReservation(null);
       onClose();
     } catch (error) {
       toast({
@@ -409,7 +429,7 @@ export default function NewReservationDialog({
                 <div>Duration: {calculateNights()} nights</div>
                 <div>Guests: {formData.adults} adults{formData.children > 0 && `, ${formData.children} children`}</div>
                 <div className="font-semibold">
-                  Total: {formatPrice(calculateNights() * (roomTypes.find(rt => rt.id === formData.roomType)?.base_rate || 0))}
+                  Total: {formatPrice(calculateTotal())}
                 </div>
               </div>
             </div>
@@ -420,11 +440,25 @@ export default function NewReservationDialog({
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Creating..." : "Create Reservation"}
+            <Button type="submit" disabled={isLoading || !formData.roomType}>
+              <CreditCard className="h-4 w-4 mr-2" />
+              {isLoading ? "Creating..." : "Continue to Payment"}
             </Button>
           </div>
         </form>
+
+        {/* Payment Options Dialog */}
+        <PaymentOptionsDialog
+          open={showPaymentDialog}
+          onClose={() => {
+            setShowPaymentDialog(false);
+            setPendingReservation(null);
+          }}
+          onConfirm={handlePaymentConfirm}
+          totalAmount={calculateTotal()}
+          guestName={formData.guestName}
+          nights={calculateNights()}
+        />
       </DialogContent>
     </Dialog>
   );

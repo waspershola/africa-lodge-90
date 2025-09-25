@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CalendarIcon, Plus, Trash2, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { useCreateReservation } from '@/hooks/useReservations';
+import { useCreateGroupReservation } from '@/hooks/useEnhancedReservations';
 import { useRooms } from '@/hooks/useRooms';
 import { useCurrency } from '@/hooks/useCurrency';
 
@@ -28,6 +28,7 @@ interface GroupGuest {
   roomType: string;
   adults: number;
   children: number;
+  individualPayment?: boolean;
 }
 
 export default function GroupBookingDialog({ open, onClose }: GroupBookingDialogProps) {
@@ -40,7 +41,7 @@ export default function GroupBookingDialog({ open, onClose }: GroupBookingDialog
     checkIn: new Date(),
     checkOut: new Date(Date.now() + 24 * 60 * 60 * 1000),
     specialRequests: '',
-    source: 'direct'
+    paymentMode: 'organizer_pays' as 'organizer_pays' | 'split_individual' | 'hybrid'
   });
   
   const [guests, setGuests] = useState<GroupGuest[]>([
@@ -51,13 +52,14 @@ export default function GroupBookingDialog({ open, onClose }: GroupBookingDialog
       phone: '',
       roomType: '',
       adults: 1,
-      children: 0
+      children: 0,
+      individualPayment: false
     }
   ]);
 
   const { data: roomsData } = useRooms();
   const roomTypes = roomsData?.roomTypes || [];
-  const createReservation = useCreateReservation();
+  const createGroupReservation = useCreateGroupReservation();
   const { toast } = useToast();
   const { formatPrice } = useCurrency();
 
@@ -69,7 +71,8 @@ export default function GroupBookingDialog({ open, onClose }: GroupBookingDialog
       phone: '',
       roomType: '',
       adults: 1,
-      children: 0
+      children: 0,
+      individualPayment: false
     }]);
   };
 
@@ -111,33 +114,25 @@ export default function GroupBookingDialog({ open, onClose }: GroupBookingDialog
     setIsLoading(true);
 
     try {
-      // Create reservations for each guest
-      for (const guest of guests) {
-        const roomTypeData = roomTypes.find(rt => rt.id === guest.roomType);
-        
-        // Find an available room of the selected type
-        const availableRooms = roomsData?.rooms?.filter(room => 
-          room.room_type_id === guest.roomType && room.status === 'available'
-        ) || [];
-        
-        if (availableRooms.length === 0) {
-          throw new Error(`No available rooms of type ${roomTypeData?.name || 'selected'}`);
-        }
-        
-        await createReservation.mutateAsync({
-          guest_name: guest.name,
-          guest_email: guest.email,
-          guest_phone: guest.phone,
-          check_in_date: formData.checkIn.toISOString().split('T')[0],
-          check_out_date: formData.checkOut.toISOString().split('T')[0],
-          room_id: availableRooms[0].id, // Use first available room
+      await createGroupReservation.mutateAsync({
+        group_name: formData.groupName,
+        organizer_name: formData.contactPerson,
+        organizer_email: formData.contactEmail,
+        organizer_phone: formData.contactPhone,
+        check_in_date: formData.checkIn.toISOString().split('T')[0],
+        check_out_date: formData.checkOut.toISOString().split('T')[0],
+        payment_mode: formData.paymentMode,
+        special_requests: formData.specialRequests,
+        guests: guests.map(guest => ({
+          name: guest.name,
+          email: guest.email,
+          phone: guest.phone,
+          room_type_id: guest.roomType,
           adults: guest.adults,
           children: guest.children,
-          room_rate: roomTypeData?.base_rate || 0,
-          status: 'confirmed' as const,
-          special_requests: formData.specialRequests
-        });
-      }
+          individual_payment: guest.individualPayment
+        }))
+      });
       
       toast({
         title: "Success",
@@ -251,6 +246,29 @@ export default function GroupBookingDialog({ open, onClose }: GroupBookingDialog
                     </PopoverContent>
                   </Popover>
                 </div>
+              </div>
+
+              {/* Payment Mode Selection */}
+              <div className="space-y-2">
+                <Label>Payment Mode</Label>
+                <Select 
+                  value={formData.paymentMode} 
+                  onValueChange={(value: 'organizer_pays' | 'split_individual' | 'hybrid') => 
+                    setFormData({ ...formData, paymentMode: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="organizer_pays">Organizer Pays All</SelectItem>
+                    <SelectItem value="split_individual">Individual Payments</SelectItem>
+                    <SelectItem value="hybrid">Hybrid (Organizer deposit + Individual balance)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Choose how payment will be handled for this group booking
+                </p>
               </div>
             </CardContent>
           </Card>

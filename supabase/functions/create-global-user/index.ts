@@ -74,18 +74,79 @@ Deno.serve(async (req) => {
       );
     }
 
-    // If user exists only in auth but not in users table, we need to either:
-    // 1. Delete from auth and recreate, or 2. Create the missing users record
+    // If user exists only in auth but not in users table, create the missing users record
     if (authUserExists && !existingUserRecord) {
-      console.log('Found orphaned auth user, cleaning up:', email);
+      console.log('Found orphaned auth user, creating missing users record:', email);
       try {
-        await supabase.auth.admin.deleteUser(authUserExists.id);
-        console.log('Cleaned up orphaned auth user');
-      } catch (cleanupError) {
-        console.error('Failed to cleanup orphaned auth user:', cleanupError);
+        const { data: newUser, error: userError } = await supabase
+          .from('users')
+          .insert({
+            id: authUserExists.id,
+            email: email,
+            name: fullName,
+            role: role, // Use the role from the request
+            department: department,
+            tenant_id: null, // Global users have null tenant_id
+            is_platform_owner: role === 'SUPER_ADMIN',
+            is_active: true,
+            force_reset: generateTempPassword,
+            temp_password_hash: generateTempPassword ? generateSecurePassword() : null,
+            temp_expires: generateTempPassword ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null
+          })
+          .select()
+          .single();
+
+        if (userError) {
+          console.error('Error creating missing users record:', userError);
+          return new Response(
+            JSON.stringify({ success: false, error: `Failed to create user record: ${userError.message}` }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log('Created missing users record successfully');
+        
+        // Log audit trail
+        try {
+          await supabase.from('audit_log').insert({
+            action: 'REPAIR_ORPHANED_USER',
+            resource_type: 'USER',
+            resource_id: authUserExists.id,
+            actor_id: null,
+            description: `Repaired orphaned auth user: ${fullName} (${email}) with role: ${role}`,
+            metadata: {
+              email,
+              role,
+              department,
+              fullName,
+              was_orphaned: true
+            }
+          });
+        } catch (auditError) {
+          console.error('Failed to create audit log:', auditError);
+        }
+
         return new Response(
-          JSON.stringify({ success: false, error: 'User exists but is in inconsistent state. Please contact admin.' }),
-          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ 
+            success: true, 
+            user: {
+              id: authUserExists.id,
+              email,
+              fullName,
+              role,
+              department,
+              tempPassword: generateTempPassword ? newUser.temp_password_hash : undefined
+            },
+            message: 'Orphaned user repaired successfully'
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+
+      } catch (repairError) {
+        console.error('Failed to repair orphaned user:', repairError);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to repair orphaned user. Please contact admin.' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
     }

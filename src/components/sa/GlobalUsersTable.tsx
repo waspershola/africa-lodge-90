@@ -253,25 +253,26 @@ export function GlobalUsersTable() {
                             Reset Password
                           </DropdownMenuItem>
                           
-                          {/* Show delete for non-platform owners OR Reset Required users */}
-                          {((user.force_reset || !user.is_platform_owner) && isSuperAdmin) && (
-                            <>
-                              {!user.is_platform_owner && (
-                                <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
-                                  {user.is_active ? (
-                                    <>
-                                      <UserX className="mr-2 h-4 w-4" />
-                                      Suspend User
-                                    </>
-                                  ) : (
-                                    <>
-                                      <UserCheck className="mr-2 h-4 w-4" />
-                                      Activate User
-                                    </>
-                                  )}
-                                </DropdownMenuItem>
+                          {/* Suspend/Activate only for non-platform owners */}
+                          {!user.is_platform_owner && isSuperAdmin && (
+                            <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
+                              {user.is_active ? (
+                                <>
+                                  <UserX className="mr-2 h-4 w-4" />
+                                  Suspend User
+                                </>
+                              ) : (
+                                <>
+                                  <UserCheck className="mr-2 h-4 w-4" />
+                                  Activate User
+                                </>
                               )}
-                              
+                            </DropdownMenuItem>
+                          )}
+                          
+                          {/* Delete for Reset Required users OR non-platform owners */}
+                          {(user.force_reset || !user.is_platform_owner) && isSuperAdmin && (
+                            <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem 
                                 onClick={() => handleDelete(user)}

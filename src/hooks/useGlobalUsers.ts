@@ -19,6 +19,8 @@ export const useGlobalUsers = () => {
   return useQuery({
     queryKey: ['global-users'],
     queryFn: async (): Promise<GlobalUser[]> => {
+      console.log('Fetching global users...');
+      
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -30,6 +32,7 @@ export const useGlobalUsers = () => {
         throw error;
       }
 
+      console.log(`Fetched ${data?.length || 0} global users`);
       return data || [];
     },
     retry: 2,
@@ -47,6 +50,8 @@ export const useCreateGlobalUser = () => {
       role: string;
       department?: string;
     }) => {
+      console.log('Creating global user:', userData);
+
       const { data, error } = await supabase.functions.invoke('invite-user', {
         body: {
           email: userData.email,
@@ -58,18 +63,17 @@ export const useCreateGlobalUser = () => {
       });
 
       if (error) {
-        console.error('Invite user error:', error);
-        // Try to extract more specific error information  
-        const errorMessage = error.message || 'Edge Function returned a non-2xx status code';
-        throw new Error(`Failed to invite user: ${errorMessage}`);
+        console.error('Error creating global user:', error);
+        throw new Error(`Failed to create global user: ${error.message}`);
       }
       
       if (!data?.success) {
         const errorMessage = data?.error || 'Failed to create global user';
-        console.error('Invite user failed:', errorMessage);
+        console.error('Create global user failed:', errorMessage);
         throw new Error(errorMessage);
       }
 
+      console.log('Global user created successfully');
       return data;
     },
     onSuccess: () => {
@@ -78,20 +82,43 @@ export const useCreateGlobalUser = () => {
     },
     onError: (error: any) => {
       console.error('Failed to create global user:', error);
-      
-      // Show more specific error messages
-      let errorMessage = 'Failed to create global user';
-      if (error.message?.includes('already exists')) {
-        errorMessage = 'A user with this email already exists';
-      } else if (error.message?.includes('not found')) {
-        errorMessage = 'The selected role is not available';
-      } else if (error.message?.includes('permission')) {
-        errorMessage = 'You do not have permission to perform this action';
-      } else if (error.message) {
-        errorMessage = error.message;
+      toast.error(error.message || 'Failed to create global user');
+    },
+  });
+};
+
+export const useDeleteGlobalUser = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      console.log('Deleting global user:', userId);
+
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { user_id: userId }
+      });
+
+      if (error) {
+        console.error('Error deleting user:', error);
+        throw new Error(`Failed to delete user: ${error.message}`);
       }
       
-      toast.error(errorMessage);
+      if (!data?.success) {
+        const errorMessage = data?.error || 'Failed to delete user';
+        console.error('Delete user failed:', errorMessage);
+        throw new Error(errorMessage);
+      }
+
+      console.log('User deleted successfully');
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['global-users'] });
+      toast.success('User deleted successfully');
+    },
+    onError: (error: any) => {
+      console.error('Failed to delete user:', error);
+      toast.error(error.message || 'Failed to delete user');
     },
   });
 };
@@ -107,24 +134,26 @@ export const useUpdateGlobalUser = () => {
       userId: string; 
       updates: Partial<Pick<GlobalUser, 'name' | 'role' | 'department' | 'is_active'>>; 
     }) => {
+      console.log('Updating global user:', userId, updates);
+
       // Use the suspend-user edge function for is_active changes
       if ('is_active' in updates) {
         const { data, error } = await supabase.functions.invoke('suspend-user', {
           body: { 
             user_id: userId,
-            suspend: !updates.is_active,
+            action: updates.is_active ? 'unsuspend' : 'suspend',
             reason: updates.is_active ? 'Account reactivated by admin' : 'Account suspended by admin'
           }
         });
 
         if (error) {
-          console.error('Suspend user error:', error);
-          throw new Error(`Failed to update user status: ${error.message || 'Edge Function error'}`);
+          console.error('Error updating user status:', error);
+          throw new Error(`Failed to update user status: ${error.message}`);
         }
         
         if (!data?.success) {
           const errorMessage = data?.error || 'Failed to update user status';
-          console.error('Suspend user failed:', errorMessage);
+          console.error('Update user status failed:', errorMessage);
           throw new Error(errorMessage);
         }
         
@@ -140,7 +169,12 @@ export const useUpdateGlobalUser = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating user:', error);
+        throw error;
+      }
+
+      console.log('User updated successfully');
       return data;
     },
     onSuccess: () => {
@@ -149,77 +183,17 @@ export const useUpdateGlobalUser = () => {
     },
     onError: (error: any) => {
       console.error('Failed to update user:', error);
-      
-      // Show more specific error messages
-      let errorMessage = 'Failed to update user';
-      if (error.message?.includes('platform owner')) {
-        errorMessage = 'Cannot modify platform owner';
-      } else if (error.message?.includes('not found')) {
-        errorMessage = 'User not found';
-      } else if (error.message?.includes('permission')) {
-        errorMessage = 'You do not have permission to perform this action';
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      toast.error(errorMessage);
+      toast.error(error.message || 'Failed to update user');
     },
   });
 };
 
-export const useDeleteGlobalUser = () => {
-  const queryClient = useQueryClient();
-  
+export const useResetPassword = () => {
   return useMutation({
     mutationFn: async (userId: string) => {
-      const { data, error } = await supabase.functions.invoke('delete-user', {
-        body: { user_id: userId }
-      });
+      console.log('Resetting password for user:', userId);
 
-      if (error) {
-        console.error('Delete user error details:', error);
-        throw new Error(`Failed to delete user: ${error.message || 'Edge Function returned a non-2xx status code'}`);
-      }
-      
-      if (!data?.success) {
-        const errorMessage = data?.error || 'Failed to delete user';
-        console.error('Delete user failed:', errorMessage);
-        throw new Error(errorMessage);
-      }
-
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['global-users'] });
-      toast.success('User deleted successfully');
-    },
-    onError: (error: any) => {
-      console.error('Failed to delete user:', error);
-      
-      // Show more specific error messages
-      let errorMessage = 'Failed to delete user';
-      if (error.message?.includes('platform owner')) {
-        errorMessage = 'Cannot delete platform owner';
-      } else if (error.message?.includes('not found')) {
-        errorMessage = 'User not found';
-      } else if (error.message?.includes('permission')) {
-        errorMessage = 'You do not have permission to perform this action';
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      toast.error(errorMessage);
-    },
-  });
-};
-
-// Regular password reset - sends reset email link
-export const useResetGlobalUserPassword = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async (userId: string) => {
-      // Get user email first, then send reset email
+      // Get user email first
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('email')
@@ -227,6 +201,7 @@ export const useResetGlobalUserPassword = () => {
         .single();
         
       if (userError || !userData) {
+        console.error('User not found for password reset:', userError);
         throw new Error('User not found');
       }
       
@@ -235,13 +210,14 @@ export const useResetGlobalUserPassword = () => {
       });
 
       if (error) {
+        console.error('Error sending password reset email:', error);
         throw new Error(error.message || 'Failed to send reset email');
       }
 
+      console.log('Password reset email sent successfully');
       return { success: true };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['global-users'] });
       toast.success('Password reset email sent');
     },
     onError: (error: any) => {
@@ -251,34 +227,36 @@ export const useResetGlobalUserPassword = () => {
   });
 };
 
-// Temporary password reset - generates temp password and shows it
-export const useResetToTempPassword = () => {
+export const useGenerateTempPassword = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async (userId: string) => {
-      const { data, error } = await supabase.functions.invoke('send-temp-password', {
+      console.log('Generating temporary password for user:', userId);
+
+      const { data, error } = await supabase.functions.invoke('generate-temp-password', {
         body: { user_id: userId }
       });
 
       if (error) {
-        console.error('Edge function error:', error);
-        throw new Error(error.message || 'Failed to invoke temp password function');
+        console.error('Error generating temporary password:', error);
+        throw new Error(error.message || 'Failed to generate temporary password');
       }
       
       if (!data?.success) {
-        console.error('Function returned error:', data);
+        console.error('Generate temp password failed:', data);
         throw new Error(data?.error || 'Failed to generate temporary password');
       }
 
+      console.log('Temporary password generated successfully');
       return data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['global-users'] });
       if (data?.tempPassword) {
-        toast.success(`Temporary password generated: ${data.tempPassword}`, {
+        toast.success(`Temporary password: ${data.tempPassword}`, {
           duration: 10000,
-          description: 'Please share this with the user securely. They will be required to change it on next login.'
+          description: 'User must change password on next login'
         });
       } else {
         toast.success('Temporary password generated successfully');
@@ -286,19 +264,7 @@ export const useResetToTempPassword = () => {
     },
     onError: (error: any) => {
       console.error('Failed to generate temporary password:', error);
-      
-      let errorMessage = 'Failed to generate temporary password';
-      if (error.message?.includes('platform owner')) {
-        errorMessage = 'Cannot reset platform owner password';
-      } else if (error.message?.includes('not found')) {
-        errorMessage = 'User not found';
-      } else if (error.message?.includes('permission')) {
-        errorMessage = 'You do not have permission to perform this action';
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      toast.error(errorMessage);
+      toast.error(error.message || 'Failed to generate temporary password');
     },
   });
 };

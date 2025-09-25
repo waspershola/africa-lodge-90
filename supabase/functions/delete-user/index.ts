@@ -10,52 +10,57 @@ interface DeleteUserRequest {
   user_id: string;
 }
 
-const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
+serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const operationId = crypto.randomUUID().substring(0, 8);
+  console.log(`[${operationId}] Delete user function started`);
+
   try {
-    const supabaseClient = createClient(
+    const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
     );
 
     // Get the authorization header
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error(`[${operationId}] No authorization header`);
       return new Response(
-        JSON.stringify({ success: false, error: 'Authorization header missing' }),
+        JSON.stringify({ success: false, error: 'Authorization required' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Extract the JWT token and verify with service role key
+    // Verify the user making the request
     const token = authHeader.replace('Bearer ', '');
-    
-    // Use service role key to verify the token and get user  
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
-    
-    console.log('Delete user auth check:', { hasUser: !!user, error: authError?.message });
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     
     if (authError || !user) {
-      console.error('Authentication error:', authError);
+      console.error(`[${operationId}] Authentication failed:`, authError);
       return new Response(
-        JSON.stringify({ success: false, error: 'Invalid authentication token' }),
+        JSON.stringify({ success: false, error: 'Invalid authentication' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Check if the user is authorized (super admin or owner/manager in same tenant)
-    const { data: userData, error: userError } = await supabaseClient
+    // Check if the user is authorized
+    const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('role, tenant_id, is_platform_owner')
       .eq('id', user.id)
       .single();
 
     if (userError) {
-      console.error('Authorization error:', userError);
+      console.error(`[${operationId}] User lookup failed:`, userError);
       return new Response(
         JSON.stringify({ success: false, error: 'User not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -63,12 +68,11 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const isSuperAdmin = userData?.role === 'SUPER_ADMIN';
-    const isOwnerOrManager = userData?.role === 'OWNER' || userData?.role === 'MANAGER';
-
-    if (!isSuperAdmin && !isOwnerOrManager) {
-      console.error('Authorization error: insufficient permissions');
+    
+    if (!isSuperAdmin) {
+      console.error(`[${operationId}] Insufficient permissions`);
       return new Response(
-        JSON.stringify({ success: false, error: 'Only owners, managers, or super admins can delete users' }),
+        JSON.stringify({ success: false, error: 'Only super admins can delete users' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -76,56 +80,35 @@ const handler = async (req: Request): Promise<Response> => {
     const { user_id }: DeleteUserRequest = await req.json();
 
     if (!user_id) {
-      console.error('Missing user_id in request');
+      console.error(`[${operationId}] Missing user_id`);
       return new Response(
         JSON.stringify({ success: false, error: 'User ID is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Attempting to delete user: ${user_id}`);
+    console.log(`[${operationId}] Attempting to delete user: ${user_id}`);
 
-    // Check if target user is platform owner or in same tenant
-    const { data: targetUser, error: targetUserError } = await supabaseClient
+    // Get target user info
+    const { data: targetUser, error: targetUserError } = await supabaseAdmin
       .from('users')
-      .select('is_platform_owner, email, role, tenant_id')
+      .select('is_platform_owner, email, role, tenant_id, force_reset')
       .eq('id', user_id)
       .single();
 
     if (targetUserError) {
-      console.error('Error fetching target user:', targetUserError);
+      console.error(`[${operationId}] Target user not found:`, targetUserError);
       return new Response(
-        JSON.stringify({ success: false, error: 'User not found in system' }),
+        JSON.stringify({ success: false, error: 'User not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Target user found: ${targetUser.email} (role: ${targetUser.role})`);
+    console.log(`[${operationId}] Target user: ${targetUser.email} (role: ${targetUser.role})`);
 
-    // Super admins can delete anyone except platform owners
-    // Owners/Managers can only delete users in their tenant
-    if (!isSuperAdmin) {
-      if (!targetUser.tenant_id || targetUser.tenant_id !== userData.tenant_id) {
-        console.error('Authorization error: cannot delete user from different tenant');
-        return new Response(
-          JSON.stringify({ success: false, error: 'Cannot delete user from different tenant' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      // Owners can delete anyone in their tenant except other owners
-      // Managers can only delete staff (not owners or other managers)
-      if (userData.role === 'MANAGER' && (targetUser.role === 'OWNER' || targetUser.role === 'MANAGER')) {
-        console.error('Authorization error: managers cannot delete owners or other managers');
-        return new Response(
-          JSON.stringify({ success: false, error: 'Managers cannot delete owners or other managers' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    }
-
-    if (targetUser.is_platform_owner) {
-      console.error('Attempted to delete platform owner');
+    // Protect platform owners (unless they have force_reset)
+    if (targetUser.is_platform_owner && !targetUser.force_reset) {
+      console.error(`[${operationId}] Cannot delete active platform owner`);
       return new Response(
         JSON.stringify({ success: false, error: 'Cannot delete platform owner' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -134,7 +117,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Prevent self-deletion
     if (user_id === user.id) {
-      console.error('User attempted to delete themselves');
+      console.error(`[${operationId}] Self-deletion attempt`);
       return new Response(
         JSON.stringify({ success: false, error: 'Cannot delete your own account' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -142,118 +125,82 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     try {
-      // First, nullify audit log references to prevent foreign key constraint violations
-      console.log('Nullifying audit log references...');
-      const { error: auditUpdateError } = await supabaseClient
-        .from('audit_log')
-        .update({ actor_id: null })
-        .eq('actor_id', user_id);
-
-      if (auditUpdateError) {
-        console.warn('Failed to update audit log references:', auditUpdateError);
-        // Continue anyway - this is not critical
-      }
-
-      // Then, try to delete from users table (this cleans up our records)
-      console.log('Deleting user record from database...');
-      const { error: deleteUserError } = await supabaseClient
+      // Delete from users table first
+      console.log(`[${operationId}] Deleting user record from database...`);
+      const { error: deleteUserError } = await supabaseAdmin
         .from('users')
         .delete()
         .eq('id', user_id);
 
       if (deleteUserError) {
-        console.error('Failed to delete user record:', deleteUserError);
+        console.error(`[${operationId}] Failed to delete user record:`, deleteUserError);
         return new Response(
           JSON.stringify({ 
             success: false, 
-            error: 'Failed to delete user record from database', 
+            error: 'Failed to delete user record',
             details: deleteUserError.message 
           }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      console.log('User record deleted successfully');
+      // Then delete from Supabase Auth
+      console.log(`[${operationId}] Deleting user from auth...`);
+      const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(user_id);
 
-      // Then try to delete from Supabase Auth (this might fail if user already deleted)
-      console.log('Deleting user from Supabase Auth...');
-      const { error: deleteAuthError } = await supabaseClient.auth.admin.deleteUser(user_id);
-
-      if (deleteAuthError) {
-        // This is OK if user was already deleted from auth
-        if (deleteAuthError.message?.includes('User not found')) {
-          console.log('User was already deleted from auth (this is OK)');
-        } else {
-          console.error('Failed to delete auth user:', deleteAuthError);
-          return new Response(
-            JSON.stringify({ 
-              success: false, 
-              error: 'Failed to delete user from authentication system', 
-              details: deleteAuthError.message 
-            }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-      } else {
-        console.log('Auth user deleted successfully');
+      if (deleteAuthError && !deleteAuthError.message?.includes('User not found')) {
+        console.error(`[${operationId}] Failed to delete auth user:`, deleteAuthError);
+        // Don't fail the entire operation for this
       }
+
+      // Log audit event
+      try {
+        await supabaseAdmin
+          .from('audit_log')
+          .insert({
+            actor_id: user.id,
+            action: 'user_deleted',
+            resource_type: 'user',
+            resource_id: user_id,
+            tenant_id: targetUser.tenant_id,
+            description: `User ${targetUser.email} deleted`,
+            metadata: {
+              target_email: targetUser.email,
+              target_role: targetUser.role,
+              deleted_by: user.email
+            }
+          });
+      } catch (auditError) {
+        console.warn(`[${operationId}] Failed to log audit event:`, auditError);
+      }
+
+      console.log(`[${operationId}] User deleted successfully`);
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'User deleted successfully'
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+
     } catch (error) {
-      console.error('Unexpected error during user deletion:', error);
+      console.error(`[${operationId}] Unexpected error during deletion:`, error);
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Unexpected error during deletion',
+          error: 'Failed to delete user',
           details: error instanceof Error ? error.message : 'Unknown error'
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-      // Log audit event
-    try {
-      await supabaseClient
-        .from('audit_log')
-        .insert({
-          actor_id: user.id,
-          action: 'user_deleted',
-          resource_type: 'user',
-          resource_id: user_id,
-          tenant_id: targetUser.tenant_id || userData.tenant_id,
-          description: `User ${targetUser.email} deleted by ${userData.role.toLowerCase()} ${user.email}`,
-          metadata: {
-            target_email: targetUser.email,
-            target_role: targetUser.role,
-            deleted_by: user.email
-          }
-        });
-    } catch (auditError) {
-      console.warn('Failed to log audit event:', auditError);
-    }
-
-    console.log(`User ${targetUser.email} deleted successfully by ${userData.role.toLowerCase()} ${user.email}`);
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: 'User deleted successfully',
-        deleted_user: {
-          email: targetUser.email,
-          role: targetUser.role
-        }
-      }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
-
   } catch (error: any) {
-    console.error('Error in delete-user function:', error);
+    console.error(`[${operationId}] Error in delete-user function:`, error);
     return new Response(
-      JSON.stringify({ success: false, error: error.message || 'Internal server error' }),
+      JSON.stringify({ success: false, error: 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-};
-
-serve(handler);
+});

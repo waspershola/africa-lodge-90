@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Search, MoreHorizontal, UserPlus, Shield, ShieldAlert, Clock, Trash2, Key, UserCheck, UserX } from 'lucide-react';
+import { Search, MoreHorizontal, Shield, ShieldAlert, Clock, Trash2, Key, UserCheck, UserX, RotateCcw } from 'lucide-react';
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
-  TableHeader,  
+  TableHeader,
   TableRow,
 } from '@/components/ui/table';
 import {
@@ -25,8 +25,8 @@ import {
   useGlobalUsers, 
   useUpdateGlobalUser, 
   useDeleteGlobalUser, 
-  useResetGlobalUserPassword,
-  useResetToTempPassword,
+  useResetPassword,
+  useGenerateTempPassword,
   type GlobalUser 
 } from '@/hooks/useGlobalUsers';
 import { format } from 'date-fns';
@@ -40,8 +40,8 @@ export function GlobalUsersTable() {
   const { data: users = [], isLoading, error, refetch } = useGlobalUsers();
   const updateUser = useUpdateGlobalUser();
   const deleteUser = useDeleteGlobalUser();
-  const resetPassword = useResetGlobalUserPassword();
-  const resetToTempPassword = useResetToTempPassword();
+  const resetPassword = useResetPassword();
+  const generateTempPassword = useGenerateTempPassword();
 
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
 
@@ -80,7 +80,7 @@ export function GlobalUsersTable() {
 
   const handleToggleStatus = async (user: GlobalUser) => {
     if (user.is_platform_owner || !isSuperAdmin) {
-      return; // Prevent any changes to platform owner or non-super admin users
+      return;
     }
 
     await updateUser.mutateAsync({
@@ -90,13 +90,12 @@ export function GlobalUsersTable() {
   };
 
   const handleDelete = async (user: GlobalUser) => {
-    // Allow deletion of Reset Required users even if they are platform owners
     if (!user.force_reset && user.is_platform_owner) {
-      return; // Don't allow deletion of platform owners unless they have force_reset
+      return;
     }
     
     if (!isSuperAdmin) {
-      return; // Only super admin can delete
+      return;
     }
 
     if (confirm(`Are you sure you want to delete ${user.name || user.email}? This action cannot be undone.`)) {
@@ -108,8 +107,8 @@ export function GlobalUsersTable() {
     await resetPassword.mutateAsync(user.id);
   };
 
-  const handleResetToTempPassword = async (user: GlobalUser) => {
-    await resetToTempPassword.mutateAsync(user.id);
+  const handleGenerateTempPassword = async (user: GlobalUser) => {
+    await generateTempPassword.mutateAsync(user.id);
   };
 
   if (error) {
@@ -259,32 +258,29 @@ export function GlobalUsersTable() {
                             Reset Password
                           </DropdownMenuItem>
                           
-                          {/* Reset to temporary password only for non-platform owners */}
                           {!user.is_platform_owner && isSuperAdmin && (
-                            <DropdownMenuItem onClick={() => handleResetToTempPassword(user)}>
-                              <Clock className="mr-2 h-4 w-4" />
-                              Reset to Temporary Password
-                            </DropdownMenuItem>
+                            <>
+                              <DropdownMenuItem onClick={() => handleGenerateTempPassword(user)}>
+                                <RotateCcw className="mr-2 h-4 w-4" />
+                                Generate Temp Password
+                              </DropdownMenuItem>
+                              
+                              <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
+                                {user.is_active ? (
+                                  <>
+                                    <UserX className="mr-2 h-4 w-4" />
+                                    Suspend User
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserCheck className="mr-2 h-4 w-4" />
+                                    Activate User
+                                  </>
+                                )}
+                              </DropdownMenuItem>
+                            </>
                           )}
                           
-                          {/* Suspend/Activate only for non-platform owners */}
-                          {!user.is_platform_owner && isSuperAdmin && (
-                            <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
-                              {user.is_active ? (
-                                <>
-                                  <UserX className="mr-2 h-4 w-4" />
-                                  Suspend User
-                                </>
-                              ) : (
-                                <>
-                                  <UserCheck className="mr-2 h-4 w-4" />
-                                  Activate User
-                                </>
-                              )}
-                            </DropdownMenuItem>
-                          )}
-                          
-                          {/* Delete for Reset Required users OR non-platform owners */}
                           {(user.force_reset || !user.is_platform_owner) && isSuperAdmin && (
                             <>
                               <DropdownMenuSeparator />
@@ -293,7 +289,7 @@ export function GlobalUsersTable() {
                                 className="text-red-600 focus:text-red-600"
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                Delete User{user.force_reset ? ' (Reset Required)' : ''}
+                                Delete User
                               </DropdownMenuItem>
                             </>
                           )}

@@ -21,7 +21,7 @@ import {
 import { useRecoveryManagement } from '@/hooks/useRecoveryManagement';
 import { supabase } from '@/integrations/supabase/client';
 import { callEdgeFunction } from '@/lib/api-utils';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 interface SystemOwner {
   id: string;
@@ -82,11 +82,7 @@ export function EmergencyRecoverySettings() {
       setSystemOwners(data || []);
       console.log('System owners loaded:', data);
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
@@ -130,17 +126,10 @@ export function EmergencyRecoverySettings() {
 
       if (updateError) throw updateError;
 
-      toast({
-        title: "Success",
-        description: "System owner removed successfully"
-      });
+      toast.success("System owner removed successfully");
       loadSystemOwners();
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
@@ -148,11 +137,7 @@ export function EmergencyRecoverySettings() {
 
   const handleAddSystemOwner = async () => {
     if (!newOwnerEmail || !newOwnerName) {
-      toast({
-        title: "Error",
-        description: "Please fill in all fields",
-        variant: "destructive"
-      });
+      toast.error("Please fill in all fields");
       return;
     }
 
@@ -186,20 +171,13 @@ export function EmergencyRecoverySettings() {
 
       if (updateError) throw updateError;
 
-      toast({
-        title: "Success",
-        description: `System owner added successfully. Temporary password: ${data.tempPassword}`
-      });
+      toast.success(`System owner added successfully. Temporary password: ${data.tempPassword}`);
       setNewOwnerEmail('');
       setNewOwnerName('');
       setNewOwnerTempPassword('');
       loadSystemOwners();
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
@@ -215,10 +193,7 @@ export function EmergencyRecoverySettings() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast({
-      title: "Success",
-      description: "Copied to clipboard"
-    });
+    toast.success("Copied to clipboard");
   };
 
   const downloadCodes = () => {

@@ -30,6 +30,7 @@ serve(async (req) => {
 
     // Define the users and their temporary passwords
     const systemOwners = [
+      { email: 'wasperstore@gmail.com', tempPassword: 'TempPassword123!' },
       { email: 'ceo@waspersolution.com', tempPassword: 'TempPass2024!' },
       { email: 'waspershola@gmail.com', tempPassword: 'TempPass2025!' }
     ];

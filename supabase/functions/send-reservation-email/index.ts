@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { EmailServiceFactory } from '../_shared/email-service/email-service-factory.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -31,23 +32,62 @@ serve(async (req) => {
 
     const { reservationId, testEmail, type, templateType }: EmailRequest = await req.json();
 
+    const emailFactory = new EmailServiceFactory();
+
     // For test emails
     if (type === 'test' && testEmail) {
-      const resendResponse = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${Deno.env.get('RESEND_API_KEY')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: 'Hotel Reservations <onboarding@resend.dev>',
+      // Get tenant ID from auth
+      const authHeader = req.headers.get('authorization');
+      let tenantId: string | null = null;
+      
+      if (authHeader) {
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user } } = await supabaseClient.auth.getUser(token);
+        tenantId = user?.user_metadata?.tenant_id;
+      }
+
+      if (!tenantId) {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: 'Authentication required' 
+        }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Get email provider configuration
+      const config = await emailFactory.getEmailProviderConfig(tenantId);
+      if (!config) {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: 'Email provider not configured' 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      const result = await emailFactory.sendEmailWithFallback(
+        tenantId,
+        config,
+        {
           to: [testEmail],
           subject: 'Test Email - Hotel Management System',
           html: generateTestEmailHTML(),
-        }),
-      });
+          from: 'noreply@example.com',
+          fromName: 'Hotel Management'
+        },
+        'test'
+      );
 
-      if (!resendResponse.ok) {
+      return new Response(JSON.stringify(result), {
+        status: result.success ? 200 : 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (false) { // Placeholder to maintain structure
         throw new Error(`Resend API error: ${resendResponse.statusText}`);
       }
 

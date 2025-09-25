@@ -375,6 +375,48 @@ export type Database = {
         }
         Relationships: []
       }
+      email_provider_logs: {
+        Row: {
+          created_at: string
+          email_type: string
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          provider: string
+          recipient_email: string
+          sent_at: string | null
+          status: string
+          subject: string | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_type: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          provider: string
+          recipient_email: string
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          email_type?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          provider?: string
+          recipient_email?: string
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          tenant_id?: string
+        }
+        Relationships: []
+      }
       email_templates: {
         Row: {
           created_at: string | null
@@ -972,6 +1014,7 @@ export type Database = {
           created_at: string | null
           default_currency: string | null
           early_checkin_fee: number | null
+          email_provider_config: Json | null
           email_settings: Json | null
           house_rules: Json | null
           id: string
@@ -991,6 +1034,7 @@ export type Database = {
           created_at?: string | null
           default_currency?: string | null
           early_checkin_fee?: number | null
+          email_provider_config?: Json | null
           email_settings?: Json | null
           house_rules?: Json | null
           id?: string
@@ -1010,6 +1054,7 @@ export type Database = {
           created_at?: string | null
           default_currency?: string | null
           early_checkin_fee?: number | null
+          email_provider_config?: Json | null
           email_settings?: Json | null
           house_rules?: Json | null
           id?: string

@@ -10,7 +10,7 @@ import { format } from 'date-fns';
 
 interface Reservation {
   id: string;
-  guestName: string;
+  guest_name: string;
   email: string;
   phone: string;
   room: string;
@@ -91,11 +91,11 @@ export default function ReservationDetails({ reservation, open, onOpenChange }: 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
-              <AvatarFallback>{getInitials(reservation.guestName)}</AvatarFallback>
+              <AvatarFallback>{getInitials(reservation.guest_name)}</AvatarFallback>
             </Avatar>
             <div>
               <div className="flex items-center gap-2">
-                {reservation.guestName}
+                {reservation.guest_name}
                 {getStatusBadge(reservation.status)}
               </div>
               <div className="text-sm text-muted-foreground font-normal">

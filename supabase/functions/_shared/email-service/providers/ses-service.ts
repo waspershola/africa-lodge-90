@@ -12,6 +12,10 @@ export class SesEmailService implements EmailService {
         accessKeyId: config.access_key_id,
         secretAccessKey: config.secret_access_key,
       },
+      // Explicitly disable loading config from files in Deno environment
+      useFipsEndpoint: false,
+      useDualstackEndpoint: false,
+      maxAttempts: 3,
     });
     this.verifiedDomains = config.verified_domains || [];
   }

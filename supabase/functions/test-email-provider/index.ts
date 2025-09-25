@@ -108,7 +108,7 @@ serve(async (req) => {
     const emailFactory = new EmailServiceFactory();
     
     const result = await emailFactory.sendEmailWithFallback(
-      'test-tenant', // Using a test tenant ID
+      crypto.randomUUID(), // Generate a valid UUID for testing
       testConfig,
       {
         to: [test_email],

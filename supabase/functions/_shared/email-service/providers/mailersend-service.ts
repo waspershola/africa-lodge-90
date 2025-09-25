@@ -18,6 +18,12 @@ export class MailerSendEmailService implements EmailService {
       const fromEmail = params.from || 'noreply@example.com';
       const fromName = params.fromName || 'Hotel Management';
 
+      // For MailerSend, we need to use a verified domain for the from address
+      // If using trial account, it must be from a verified domain
+      const verifiedFromEmail = this.verifiedDomains.length > 0 
+        ? `noreply@${this.verifiedDomains[0]}` 
+        : fromEmail;
+
       const response = await fetch('https://api.mailersend.com/v1/email', {
         method: 'POST',
         headers: {
@@ -26,7 +32,7 @@ export class MailerSendEmailService implements EmailService {
         },
         body: JSON.stringify({
           from: {
-            email: fromEmail,
+            email: verifiedFromEmail,
             name: fromName,
           },
           to: params.to.map(email => ({ email })),
@@ -39,7 +45,27 @@ export class MailerSendEmailService implements EmailService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`MailerSend API error: ${response.statusText} - ${errorText}`);
+        let errorMessage = `MailerSend API error: ${response.statusText}`;
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          if (errorData.message) {
+            errorMessage += ` - ${errorData.message}`;
+          }
+          // Add helpful context for common errors
+          if (errorData.errors) {
+            if (errorData.errors.to && errorData.errors.to.some((e: string) => e.includes('trial account'))) {
+              errorMessage += '\nNote: Trial accounts can only send emails to verified email addresses.';
+            }
+            if (errorData.errors['from.email'] && errorData.errors['from.email'].some((e: string) => e.includes('verified'))) {
+              errorMessage += '\nNote: The from email domain must be verified in your MailerSend account.';
+            }
+          }
+        } catch (parseError) {
+          errorMessage += ` - ${errorText}`;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();

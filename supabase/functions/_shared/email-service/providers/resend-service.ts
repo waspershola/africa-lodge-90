@@ -17,7 +17,13 @@ export class ResendEmailService implements EmailService {
     try {
       const fromEmail = params.from || 'onboarding@resend.dev';
       const fromName = params.fromName || 'Hotel Management';
-      const from = fromName ? `${fromName} <${fromEmail}>` : fromEmail;
+      
+      // For Resend, we need to use a verified domain for the from address
+      const verifiedFromEmail = this.verifiedDomains.length > 0 
+        ? `noreply@${this.verifiedDomains[0]}` 
+        : fromEmail;
+      
+      const from = fromName ? `${fromName} <${verifiedFromEmail}>` : verifiedFromEmail;
 
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
@@ -37,7 +43,22 @@ export class ResendEmailService implements EmailService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Resend API error: ${response.statusText} - ${errorText}`);
+        let errorMessage = `Resend API error: ${response.statusText}`;
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          if (errorData.message) {
+            errorMessage += ` - ${errorData.message}`;
+          }
+          // Add helpful context for common errors
+          if (errorData.message && errorData.message.includes('domain')) {
+            errorMessage += '\nNote: Make sure your from email domain is verified in your Resend account.';
+          }
+        } catch (parseError) {
+          errorMessage += ` - ${errorText}`;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();

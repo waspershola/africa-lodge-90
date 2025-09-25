@@ -193,7 +193,20 @@ export default function NewReservationDialog({
                         onValueChange={setGuestSearchTerm}
                       />
                       <CommandList>
-                        <CommandEmpty>No guests found.</CommandEmpty>
+                        <CommandEmpty>
+                          <div className="flex flex-col items-center gap-2 p-4">
+                            <span>No existing guests found.</span>
+                            <CommandItem
+                              onSelect={() => {
+                                setGuestSearchOpen(false);
+                                setGuestSearchTerm('');
+                              }}
+                              className="cursor-pointer w-full justify-center"
+                            >
+                              Continue with "{guestSearchTerm}" as new guest
+                            </CommandItem>
+                          </div>
+                        </CommandEmpty>
                         <CommandGroup>
                           {searchResults.map((guest) => (
                             <CommandItem
@@ -206,11 +219,25 @@ export default function NewReservationDialog({
                                   {guest.first_name} {guest.last_name}
                                 </span>
                                 <span className="text-sm text-muted-foreground">
-                                  {guest.email} • {guest.phone} • {guest.total_stays} stays
+                                  {guest.email} • {guest.phone} • {guest.total_stays || 0} stays
                                 </span>
                               </div>
                             </CommandItem>
                           ))}
+                          {searchResults.length > 0 && guestSearchTerm.length > 0 && (
+                            <CommandItem
+                              onSelect={() => {
+                                setGuestSearchOpen(false);
+                                setGuestSearchTerm('');
+                              }}
+                              className="cursor-pointer border-t"
+                            >
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4" />
+                                <span>Create new guest "{guestSearchTerm}"</span>
+                              </div>
+                            </CommandItem>
+                          )}
                         </CommandGroup>
                       </CommandList>
                     </Command>

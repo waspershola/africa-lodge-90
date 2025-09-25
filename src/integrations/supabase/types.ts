@@ -2188,6 +2188,7 @@ export type Database = {
           reservation_number: string
           room_id: string
           room_rate: number
+          special_requests: string | null
           status: string
           tenant_id: string
           total_amount: number | null
@@ -2213,6 +2214,7 @@ export type Database = {
           reservation_number: string
           room_id: string
           room_rate: number
+          special_requests?: string | null
           status?: string
           tenant_id: string
           total_amount?: number | null
@@ -2238,6 +2240,7 @@ export type Database = {
           reservation_number?: string
           room_id?: string
           room_rate?: number
+          special_requests?: string | null
           status?: string
           tenant_id?: string
           total_amount?: number | null

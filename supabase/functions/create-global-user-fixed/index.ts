@@ -64,6 +64,16 @@ serve(async (req) => {
 
     const roleData = roleCandidates[0];
 
+    // Map role names from roles table to users table format
+    const roleMapping: Record<string, string> = {
+      'Super Admin': 'SUPER_ADMIN',
+      'Platform Admin': 'PLATFORM_ADMIN',
+      'Support Staff': 'SUPPORT_STAFF',
+      'Sales': 'SALES'
+    };
+    
+    const userRole = roleMapping[roleData.name] || roleData.name.toUpperCase().replace(' ', '_');
+
     // 2) Prevent duplicate users
     const { data: existingDbUser } = await supabaseAdmin.from('users').select('id, email').eq('email', email).maybeSingle();
     if (existingDbUser) {
@@ -84,7 +94,7 @@ serve(async (req) => {
       password: tempPassword,
       email_confirm: true,
       user_metadata: {
-        role: roleData.name,
+        role: userRole,
         role_id: roleData.id,
         scope: 'global',
         tenant_id: null
@@ -111,7 +121,7 @@ serve(async (req) => {
       name,
       phone,
       address,
-      role: roleData.name,
+      role: userRole,
       role_id: roleData.id,
       tenant_id: null,
       force_reset: true,

@@ -115,17 +115,27 @@ export default function GroupBookingDialog({ open, onClose }: GroupBookingDialog
       for (const guest of guests) {
         const roomTypeData = roomTypes.find(rt => rt.id === guest.roomType);
         
+        // Find an available room of the selected type
+        const availableRooms = roomsData?.rooms?.filter(room => 
+          room.room_type_id === guest.roomType && room.status === 'available'
+        ) || [];
+        
+        if (availableRooms.length === 0) {
+          throw new Error(`No available rooms of type ${roomTypeData?.name || 'selected'}`);
+        }
+        
         await createReservation.mutateAsync({
           guest_name: guest.name,
           guest_email: guest.email,
           guest_phone: guest.phone,
           check_in_date: formData.checkIn.toISOString().split('T')[0],
           check_out_date: formData.checkOut.toISOString().split('T')[0],
-          room_id: null, // Will be assigned by the system to find available rooms
+          room_id: availableRooms[0].id, // Use first available room
           adults: guest.adults,
           children: guest.children,
           room_rate: roomTypeData?.base_rate || 0,
-          status: 'confirmed' as const
+          status: 'confirmed' as const,
+          special_requests: formData.specialRequests
         });
       }
       

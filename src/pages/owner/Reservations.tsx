@@ -11,7 +11,7 @@ import InteractiveReservationCalendar from '@/components/owner/reservations/Inte
 import ReservationList from '@/components/owner/reservations/ReservationList';
 import NewReservationDialog from '@/components/owner/reservations/NewReservationDialog';
 import GroupBookingDialog from '@/components/owner/reservations/GroupBookingDialog';
-import ReservationDetails from '@/components/owner/reservations/ReservationDetails';
+import EnhancedReservationDetails from '@/components/owner/reservations/EnhancedReservationDetails';
 import { useReservations } from '@/hooks/useRooms';
 
 export default function ReservationsPage() {
@@ -317,7 +317,7 @@ export default function ReservationsPage() {
       />
 
       {selectedReservation && (
-        <ReservationDetails
+        <EnhancedReservationDetails
           reservation={selectedReservation}
           open={!!selectedReservation}
           onOpenChange={handleReservationClose}

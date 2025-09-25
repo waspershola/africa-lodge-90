@@ -1,91 +1,63 @@
-import { useState, useEffect } from 'react';
+import React from 'react';
+import { CreditCard, Banknote, Smartphone, Building2 } from 'lucide-react';
 
 export interface PaymentMethod {
   id: string;
   name: string;
-  type: 'pos' | 'digital' | 'transfer' | 'cash' | 'credit';
   icon: string;
   enabled: boolean;
-  fees?: {
-    percentage: number;
-    fixed: number;
-  };
+  config?: Record<string, any>;
 }
 
-// This would normally come from backend/context
-const defaultPaymentMethods: PaymentMethod[] = [
-  {
-    id: 'cash',
-    name: 'Cash',
-    type: 'cash',
-    icon: 'Banknote',
-    enabled: true
-  },
-  {
-    id: 'moniepoint-pos',
-    name: 'Moniepoint POS',
-    type: 'pos',
-    icon: 'CreditCard',
-    enabled: true,
-    fees: { percentage: 0.75, fixed: 0 }
-  },
-  {
-    id: 'opay-pos',
-    name: 'Opay POS',
-    type: 'pos',
-    icon: 'CreditCard',
-    enabled: false,
-    fees: { percentage: 0.5, fixed: 0 }
-  },
-  {
-    id: 'bank-transfer',
-    name: 'Bank Transfer',
-    type: 'transfer',
-    icon: 'Bank',
-    enabled: true,
-    fees: { percentage: 0, fixed: 50 }
-  },
-  {
-    id: 'paystack',
-    name: 'Paystack Online',
-    type: 'digital',
-    icon: 'Smartphone',
-    enabled: false,
-    fees: { percentage: 1.5, fixed: 100 }
-  },
-  {
-    id: 'pay-later',
-    name: 'Pay Later',
-    type: 'credit',
-    icon: 'Clock',
-    enabled: true
-  },
-  {
-    id: 'debtor',
-    name: 'Debtor Account',
-    type: 'credit',
-    icon: 'UserX',
-    enabled: true
-  }
-];
-
 export const usePaymentMethods = () => {
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(defaultPaymentMethods);
+  // In a real implementation, this would come from hotel settings
+  const paymentMethods: PaymentMethod[] = [
+    {
+      id: 'cash',
+      name: 'Cash',
+      icon: 'banknote',
+      enabled: true,
+    },
+    {
+      id: 'card',
+      name: 'Credit/Debit Card',
+      icon: 'credit-card',
+      enabled: true,
+    },
+    {
+      id: 'bank_transfer',
+      name: 'Bank Transfer',
+      icon: 'building',
+      enabled: true,
+    },
+    {
+      id: 'mobile_money',
+      name: 'Mobile Money',
+      icon: 'smartphone',
+      enabled: true,
+    },
+  ];
 
-  // Get only enabled payment methods for selection
-  const getEnabledMethods = () => {
-    return paymentMethods.filter(method => method.enabled);
-  };
+  const enabledMethods = paymentMethods.filter(method => method.enabled);
 
-  // Get payment method by ID
-  const getMethodById = (id: string) => {
-    return paymentMethods.find(method => method.id === id);
+  const getMethodIcon = (iconName: string) => {
+    switch (iconName) {
+      case 'banknote':
+        return React.createElement(Banknote, { className: "h-4 w-4" });
+      case 'credit-card':
+        return React.createElement(CreditCard, { className: "h-4 w-4" });
+      case 'building':
+        return React.createElement(Building2, { className: "h-4 w-4" });
+      case 'smartphone':
+        return React.createElement(Smartphone, { className: "h-4 w-4" });
+      default:
+        return React.createElement(CreditCard, { className: "h-4 w-4" });
+    }
   };
 
   return {
     paymentMethods,
-    enabledMethods: getEnabledMethods(),
-    getMethodById,
-    setPaymentMethods
+    enabledMethods,
+    getMethodIcon,
   };
 };

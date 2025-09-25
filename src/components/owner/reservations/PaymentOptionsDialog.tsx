@@ -31,7 +31,7 @@ export default function PaymentOptionsDialog({
   const [selectedMethods, setSelectedMethods] = useState<string[]>(['cash']);
 
   const { data: policies = [] } = usePaymentPolicies();
-  const { enabledMethods } = usePaymentMethods();
+  const { enabledMethods, getMethodIcon } = usePaymentMethods();
   const { calculatePayment } = usePaymentCalculator();
   const { formatPrice } = useCurrency();
 
@@ -232,13 +232,10 @@ export default function PaymentOptionsDialog({
                           }
                         }}
                       />
-                      <span>{method.name}</span>
-                      {method.fees && (
-                        <Badge variant="outline" className="text-xs">
-                          {method.fees.percentage > 0 && `${method.fees.percentage}%`}
-                          {method.fees.fixed > 0 && `+${formatPrice(method.fees.fixed)}`}
-                        </Badge>
-                      )}
+                       <span>{method.name}</span>
+                       <Badge variant="outline" className="text-xs">
+                         Free
+                       </Badge>
                     </label>
                   ))}
               </div>

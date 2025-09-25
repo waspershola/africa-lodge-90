@@ -50,6 +50,7 @@ export default function EnhancedReservationDetails({
   onOpenChange, 
   onEdit 
 }: EnhancedReservationDetailsProps) {
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showNoteDialog, setShowNoteDialog] = useState(false);
   const [note, setNote] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -428,10 +429,10 @@ export default function EnhancedReservationDetails({
                 <CheckCircle className="h-4 w-4 mr-1" />
                 Confirm Reservation
               </Button>
-              <Button variant="outline" size="sm">
-                <CreditCard className="h-4 w-4 mr-1" />
-                Request Payment
-              </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowPaymentDialog(true)}>
+            <CreditCard className="h-4 w-4 mr-1" />
+            Manage Payment
+          </Button>
             </>
           )}
 
@@ -471,7 +472,20 @@ export default function EnhancedReservationDetails({
           )}
         </div>
 
-        {/* Add Note Dialog */}
+        {/* Payment Management - simplified for now */}
+        {showPaymentDialog && (
+          <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Payment Management</DialogTitle>
+              </DialogHeader>
+              <div className="p-4">
+                <p>Payment management interface coming soon...</p>
+                <Button onClick={() => setShowPaymentDialog(false)}>Close</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
         {showNoteDialog && (
           <Dialog open={showNoteDialog} onOpenChange={setShowNoteDialog}>
             <DialogContent className="max-w-md">

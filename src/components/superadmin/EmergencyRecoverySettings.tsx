@@ -97,6 +97,34 @@ export function EmergencyRecoverySettings() {
     }
   };
 
+  const removeSystemOwner = async (userId: string, email: string) => {
+    if (!confirm(`Are you sure you want to remove ${email} as a system owner?`)) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Update user to remove platform owner status
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({
+          is_platform_owner: false
+        })
+        .eq('id', userId);
+
+      if (updateError) throw updateError;
+
+      toast.success('System owner removed successfully');
+      loadSystemOwners();
+    } catch (error: any) {
+      toast.error('Failed to remove system owner', {
+        description: error.message
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAddSystemOwner = async () => {
     if (!newOwnerEmail || !newOwnerName) {
       toast.error('Please fill in all fields');
@@ -105,31 +133,36 @@ export function EmergencyRecoverySettings() {
 
     setLoading(true);
     try {
-      // Create new user with platform owner privileges
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: newOwnerEmail,
-        email_confirm: true,
-        user_metadata: {
-          role: 'SUPER_ADMIN',
-          name: newOwnerName
+      // Use the create-global-user-fixed edge function
+      const { data, error } = await supabase.functions.invoke('create-global-user-fixed', {
+        body: {
+          email: newOwnerEmail,
+          name: newOwnerName,
+          role: 'SUPER_ADMIN'
         }
       });
 
-      if (authError) throw authError;
+      if (error) {
+        throw new Error(error.message || 'Failed to create user');
+      }
 
-      // Update user record to mark as platform owner
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to create user');
+      }
+
+      // Update user to mark as platform owner
       const { error: updateError } = await supabase
         .from('users')
         .update({
-          name: newOwnerName,
-          is_platform_owner: true,
-          role: 'SUPER_ADMIN'
+          is_platform_owner: true
         })
-        .eq('id', authData.user.id);
+        .eq('id', data.user.id);
 
       if (updateError) throw updateError;
 
-      toast.success('System owner added successfully');
+      toast.success('System owner added successfully', {
+        description: `Temporary password: ${data.tempPassword}`
+      });
       setNewOwnerEmail('');
       setNewOwnerName('');
       loadSystemOwners();
@@ -332,6 +365,16 @@ export function EmergencyRecoverySettings() {
                     <Shield className="h-4 w-4 mr-2" />
                     Test Emergency Access
                   </Button>
+                  {owner.email.includes('backup-admin') && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => removeSystemOwner(owner.id, owner.email)}
+                      disabled={loading}
+                    >
+                      Remove
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}

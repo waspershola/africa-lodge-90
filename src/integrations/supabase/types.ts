@@ -4699,6 +4699,14 @@ export type Database = {
         Args: { answer_text: string; question_text: string; user_uuid: string }
         Returns: boolean
       }
+      validate_security_definer_functions: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          function_name: string
+          is_secure: boolean
+          purpose: string
+        }[]
+      }
     }
     Enums: {
       role_scope: "global" | "tenant"

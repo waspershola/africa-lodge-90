@@ -4549,6 +4549,25 @@ export type Database = {
           total_payments: number
         }[]
       }
+      get_folio_balances_secure: {
+        Args: { p_status?: string; p_tenant_id: string }
+        Returns: {
+          balance: number
+          balance_status: string
+          created_at: string
+          days_old: number
+          folio_id: string
+          folio_number: string
+          folio_status: string
+          guest_name: string
+          reservation_id: string
+          reservation_status: string
+          room_number: string
+          total_charges: number
+          total_payments: number
+          updated_at: string
+        }[]
+      }
       get_guest_analytics: {
         Args: {
           p_end_date?: string

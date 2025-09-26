@@ -75,13 +75,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "audit_log_actor_id_fkey"
-            columns: ["actor_id"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "audit_log_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -505,13 +498,6 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "emergency_access_attempts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
-            referencedColumns: ["id"]
-          },
         ]
       }
       feature_flags: {
@@ -661,13 +647,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "folio_charges_posted_by_fkey"
-            columns: ["posted_by"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "folio_charges_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -732,13 +711,6 @@ export type Database = {
             columns: ["closed_by"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "folios_closed_by_fkey"
-            columns: ["closed_by"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
             referencedColumns: ["id"]
           },
           {
@@ -1293,24 +1265,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "housekeeping_tasks_assigned_to_fkey"
-            columns: ["assigned_to"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "housekeeping_tasks_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "housekeeping_tasks_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
             referencedColumns: ["id"]
           },
           {
@@ -1701,13 +1659,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "payments_processed_by_fkey"
-            columns: ["processed_by"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "payments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -1947,13 +1898,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "pos_orders_prepared_by_fkey"
-            columns: ["prepared_by"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "pos_orders_room_id_fkey"
             columns: ["room_id"]
             isOneToOne: false
@@ -1968,24 +1912,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "pos_orders_served_by_fkey"
-            columns: ["served_by"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "pos_orders_taken_by_fkey"
             columns: ["taken_by"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pos_orders_taken_by_fkey"
-            columns: ["taken_by"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
             referencedColumns: ["id"]
           },
           {
@@ -2304,24 +2234,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "qr_orders_assigned_to_fkey"
-            columns: ["assigned_to"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "qr_orders_completed_by_fkey"
             columns: ["completed_by"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "qr_orders_completed_by_fkey"
-            columns: ["completed_by"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
             referencedColumns: ["id"]
           },
           {
@@ -2705,13 +2621,6 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "recovery_sessions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
-            referencedColumns: ["id"]
-          },
         ]
       }
       reservation_communications: {
@@ -2937,29 +2846,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "reservations_checked_in_by_fkey"
-            columns: ["checked_in_by"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "reservations_checked_out_by_fkey"
             columns: ["checked_out_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reservations_checked_out_by_fkey"
-            columns: ["checked_out_by"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reservations_created_by_fkey"
-            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -2968,7 +2856,7 @@ export type Database = {
             foreignKeyName: "reservations_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
-            referencedRelation: "users_basic"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -3264,29 +3152,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "salary_payments_approved_by_fkey"
-            columns: ["approved_by"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "salary_payments_paid_by_fkey"
             columns: ["paid_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "salary_payments_paid_by_fkey"
-            columns: ["paid_by"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "salary_payments_user_id_fkey"
-            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -3295,7 +3162,7 @@ export type Database = {
             foreignKeyName: "salary_payments_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "users_basic"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -3373,24 +3240,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "staff_financials_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "staff_financials_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "staff_financials_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
             referencedColumns: ["id"]
           },
         ]
@@ -3447,29 +3300,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "staff_salary_audit_approved_by_fkey"
-            columns: ["approved_by"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "staff_salary_audit_created_by_fkey"
             columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "staff_salary_audit_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "staff_salary_audit_user_id_fkey"
-            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -3478,7 +3310,7 @@ export type Database = {
             foreignKeyName: "staff_salary_audit_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "users_basic"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -3617,13 +3449,6 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "supply_usage_used_by_fkey"
-            columns: ["used_by"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
-            referencedColumns: ["id"]
-          },
         ]
       }
       system_email_providers: {
@@ -3705,13 +3530,6 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: true
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "system_owner_contacts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "users_basic"
             referencedColumns: ["id"]
           },
         ]
@@ -3974,13 +3792,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_users_invited_by"
-            columns: ["invited_by"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "users_role_id_fkey"
             columns: ["role_id"]
             isOneToOne: false
@@ -4130,24 +3941,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "work_orders_assigned_to_fkey"
-            columns: ["assigned_to"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "work_orders_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "work_orders_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
             referencedColumns: ["id"]
           },
           {
@@ -4290,123 +4087,6 @@ export type Database = {
           week_start: string | null
         }
         Relationships: []
-      }
-      users_basic: {
-        Row: {
-          created_at: string | null
-          department: string | null
-          email: string | null
-          employee_id: string | null
-          employment_type: string | null
-          force_reset: boolean | null
-          hire_date: string | null
-          id: string | null
-          invitation_status: string | null
-          invited_at: string | null
-          invited_by: string | null
-          is_active: boolean | null
-          is_platform_owner: boolean | null
-          last_login: string | null
-          name: string | null
-          profile_picture_url: string | null
-          role: string | null
-          role_id: string | null
-          shift_end: string | null
-          shift_start: string | null
-          temp_expires: string | null
-          temp_password_hash: string | null
-          tenant_id: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          department?: string | null
-          email?: string | null
-          employee_id?: string | null
-          employment_type?: string | null
-          force_reset?: boolean | null
-          hire_date?: string | null
-          id?: string | null
-          invitation_status?: string | null
-          invited_at?: string | null
-          invited_by?: string | null
-          is_active?: boolean | null
-          is_platform_owner?: boolean | null
-          last_login?: string | null
-          name?: string | null
-          profile_picture_url?: string | null
-          role?: string | null
-          role_id?: string | null
-          shift_end?: string | null
-          shift_start?: string | null
-          temp_expires?: string | null
-          temp_password_hash?: string | null
-          tenant_id?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          department?: string | null
-          email?: string | null
-          employee_id?: string | null
-          employment_type?: string | null
-          force_reset?: boolean | null
-          hire_date?: string | null
-          id?: string | null
-          invitation_status?: string | null
-          invited_at?: string | null
-          invited_by?: string | null
-          is_active?: boolean | null
-          is_platform_owner?: boolean | null
-          last_login?: string | null
-          name?: string | null
-          profile_picture_url?: string | null
-          role?: string | null
-          role_id?: string | null
-          shift_end?: string | null
-          shift_start?: string | null
-          temp_expires?: string | null
-          temp_password_hash?: string | null
-          tenant_id?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_users_invited_by"
-            columns: ["invited_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_users_invited_by"
-            columns: ["invited_by"]
-            isOneToOne: false
-            referencedRelation: "users_basic"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "users_role_id_fkey"
-            columns: ["role_id"]
-            isOneToOne: false
-            referencedRelation: "roles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "users_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "users_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["tenant_id"]
-          },
-        ]
       }
     }
     Functions: {
@@ -4675,6 +4355,22 @@ export type Database = {
         }[]
       }
       get_tenant_staff_safe: {
+        Args: { target_tenant_id: string }
+        Returns: {
+          department: string
+          email: string
+          employee_id: string
+          employment_type: string
+          hire_date: string
+          id: string
+          invitation_status: string
+          is_active: boolean
+          last_login: string
+          name: string
+          role: string
+        }[]
+      }
+      get_tenant_users_safe: {
         Args: { target_tenant_id: string }
         Returns: {
           department: string

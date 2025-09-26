@@ -643,6 +643,13 @@ export type Database = {
             foreignKeyName: "folio_charges_folio_id_fkey"
             columns: ["folio_id"]
             isOneToOne: false
+            referencedRelation: "folio_balances"
+            referencedColumns: ["folio_id"]
+          },
+          {
+            foreignKeyName: "folio_charges_folio_id_fkey"
+            columns: ["folio_id"]
+            isOneToOne: false
             referencedRelation: "folios"
             referencedColumns: ["id"]
           },
@@ -1676,6 +1683,13 @@ export type Database = {
             foreignKeyName: "payments_folio_id_fkey"
             columns: ["folio_id"]
             isOneToOne: false
+            referencedRelation: "folio_balances"
+            referencedColumns: ["folio_id"]
+          },
+          {
+            foreignKeyName: "payments_folio_id_fkey"
+            columns: ["folio_id"]
+            isOneToOne: false
             referencedRelation: "folios"
             referencedColumns: ["id"]
           },
@@ -1911,6 +1925,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "pos_orders_folio_id_fkey"
+            columns: ["folio_id"]
+            isOneToOne: false
+            referencedRelation: "folio_balances"
+            referencedColumns: ["folio_id"]
+          },
           {
             foreignKeyName: "pos_orders_folio_id_fkey"
             columns: ["folio_id"]
@@ -4161,6 +4182,48 @@ export type Database = {
       }
     }
     Views: {
+      folio_balances: {
+        Row: {
+          balance: number | null
+          balance_status: string | null
+          created_at: string | null
+          days_old: number | null
+          folio_id: string | null
+          folio_number: string | null
+          folio_status: string | null
+          guest_name: string | null
+          reservation_id: string | null
+          reservation_status: string | null
+          room_number: string | null
+          tenant_id: string | null
+          total_charges: number | null
+          total_payments: number | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folios_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folios_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "occupancy_stats"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "folios_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
       guest_stats_monthly: {
         Row: {
           avg_reservation_value: number | null

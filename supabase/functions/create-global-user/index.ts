@@ -226,8 +226,8 @@ Deno.serve(async (req) => {
       is_platform_owner: false, // Never auto-assign platform owner - requires manual approval
       is_active: true,
       force_reset: generateTempPassword,
-      temp_password_hash: generateTempPassword ? tempPassword : null,
-      temp_expires: generateTempPassword ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null
+      temp_password_hash: generateTempPassword ? tempPassword : null, // Store plain temp password for now
+      temp_expires: generateTempPassword ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : null // 24 hours
     }, {
       onConflict: 'id'
     })

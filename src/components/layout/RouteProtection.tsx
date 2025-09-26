@@ -54,8 +54,13 @@ function getUserDashboardPath(role: string): string {
   switch (role) {
     case 'SUPER_ADMIN':
       return '/sa/dashboard';
+    case 'PLATFORM_ADMIN':
+    case 'SUPPORT_ADMIN':
     case 'Support Admin':
       return '/support-admin/dashboard';
+    case 'SUPPORT_STAFF':
+    case 'Support Staff':
+      return '/support-staff/dashboard';
     case 'OWNER':
       return '/owner-dashboard';
     case 'MANAGER':

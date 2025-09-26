@@ -91,13 +91,26 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
     console.log('Checking password reset required:', { 
       force_reset: user.force_reset, 
       has_temp_password: !!user.temp_password_hash,
+      temp_expires: user.temp_expires,
       user_email: user.email 
     });
     
-    // Force reset if explicitly marked OR if user has temp password
+    // Force reset if explicitly marked
     if (user.force_reset) {
       console.log('Password reset required - force_reset flag is true');
       return true;
+    }
+    
+    // Force reset if user has temp password that hasn't expired
+    if (user.temp_password_hash && user.temp_expires) {
+      const expiresAt = new Date(user.temp_expires);
+      const now = new Date();
+      if (now < expiresAt) {
+        console.log('Password reset required - temp password active and not expired');
+        return true;
+      } else {
+        console.log('Temp password has expired');
+      }
     }
     
     return false;
@@ -163,7 +176,7 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
       console.log('Secure user profile loaded:', userProfile);
 
       // Build user data with database as source of truth for security
-      const validRoles: User['role'][] = ['SUPER_ADMIN', 'OWNER', 'MANAGER', 'STAFF', 'FRONT_DESK', 'HOUSEKEEPING', 'MAINTENANCE', 'POS'];
+      const validRoles: User['role'][] = ['SUPER_ADMIN', 'PLATFORM_ADMIN', 'SUPPORT_ADMIN', 'SUPPORT_STAFF', 'OWNER', 'MANAGER', 'STAFF', 'FRONT_DESK', 'HOUSEKEEPING', 'MAINTENANCE', 'POS'];
       const userRole = validRoles.includes(userProfile.role as User['role']) ? userProfile.role as User['role'] : 'STAFF';
       
       const userData: User = {

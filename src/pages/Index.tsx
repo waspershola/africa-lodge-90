@@ -52,6 +52,8 @@ const Index = () => {
     switch (role) {
       case 'SUPER_ADMIN': return '/sa/dashboard';
       case 'Support Admin': return '/support-admin/dashboard';
+      case 'SUPPORT_STAFF': return '/support-admin/dashboard';
+      case 'Support Staff': return '/support-admin/dashboard';
       case 'OWNER': return '/owner-dashboard'; 
       case 'MANAGER': return '/manager-dashboard';
       case 'FRONT_DESK': return '/front-desk';

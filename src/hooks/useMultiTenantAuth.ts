@@ -6,7 +6,7 @@ export interface User {
   id: string;
   email: string;
   name?: string;
-  role: 'SUPER_ADMIN' | 'OWNER' | 'MANAGER' | 'STAFF' | 'FRONT_DESK' | 'HOUSEKEEPING' | 'MAINTENANCE' | 'POS';
+  role: 'SUPER_ADMIN' | 'PLATFORM_ADMIN' | 'SUPPORT_ADMIN' | 'SUPPORT_STAFF' | 'OWNER' | 'MANAGER' | 'STAFF' | 'FRONT_DESK' | 'HOUSEKEEPING' | 'MAINTENANCE' | 'POS';
   tenant_id?: string;
   force_reset?: boolean;
   temp_password_hash?: string;

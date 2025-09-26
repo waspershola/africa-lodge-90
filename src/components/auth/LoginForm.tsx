@@ -11,6 +11,7 @@ import { useAuditLog } from '@/hooks/useAuditLog';
 import { AuthAlert, InlineError } from '@/components/ui/auth-alert';
 import { AuthErrorHandler } from '@/lib/errorHandler';
 import { AuthError, FormErrors } from '@/types/auth-errors';
+import { useAuthSecurity } from '@/hooks/useAuthSecurity';
 import { cn } from '@/lib/utils';
 
 interface LoginFormProps {
@@ -27,33 +28,14 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [attemptCount, setAttemptCount] = useState(0);
-  const [lastAttemptTime, setLastAttemptTime] = useState<number | null>(null);
-  const [isRateLimited, setIsRateLimited] = useState(false);
 
   const { login } = useAuth();
   const { logEvent } = useAuditLog();
-
-  // Rate limiting logic
-  useEffect(() => {
-    if (lastAttemptTime && attemptCount >= 5) {
-      const timeSinceLastAttempt = Date.now() - lastAttemptTime;
-      const cooldownPeriod = 60000; // 1 minute
-      
-      if (timeSinceLastAttempt < cooldownPeriod) {
-        setIsRateLimited(true);
-        const timeoutId = setTimeout(() => {
-          setIsRateLimited(false);
-          setAttemptCount(0);
-        }, cooldownPeriod - timeSinceLastAttempt);
-        
-        return () => clearTimeout(timeoutId);
-      } else {
-        setAttemptCount(0);
-        setIsRateLimited(false);
-      }
-    }
-  }, [attemptCount, lastAttemptTime]);
+  const security = useAuthSecurity({
+    maxFailedAttempts: 5,
+    lockoutDuration: 15, // 15 minutes
+    rateLimitWindow: 5,
+  });
 
   const validateForm = (): boolean => {
     const errors: FormErrors = {};
@@ -74,8 +56,14 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (isRateLimited) {
-      setAuthError(AuthErrorHandler.createError('RATE_LIMITED'));
+    // Check for account lockout
+    if (security.isAccountLocked()) {
+      const timeRemaining = security.formatTimeRemaining();
+      setAuthError({
+        code: 'RATE_LIMITED',
+        message: `Account temporarily locked. Try again in ${timeRemaining}.`,
+        retryAfter: security.getTimeUntilUnlock(),
+      });
       return;
     }
     
@@ -88,20 +76,25 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
     setFormErrors({});
 
     try {
+      // Detect suspicious activity
+      const suspiciousCheck = security.detectSuspiciousActivity(email);
+      if (suspiciousCheck.suspicious) {
+        console.warn('Suspicious login activity detected:', suspiciousCheck.reasons);
+      }
+
       await login(email, password);
       
-      // Reset attempt count on success
-      setAttemptCount(0);
-      setLastAttemptTime(null);
+      // Record successful login
+      await security.recordSuccessfulLogin(email);
       
       AuthErrorHandler.showSuccessToast('Welcome back!', '✅ Login Successful');
       onSuccess?.();
       
     } catch (err: any) {
       console.error('Login error:', err);
-      // Increment attempt count on failure
-      setAttemptCount(prev => prev + 1);
-      setLastAttemptTime(Date.now());
+      
+      // Record failed attempt with security tracking
+      await security.recordFailedAttempt(email, err.message || 'Unknown error');
       
       const authError = AuthErrorHandler.parseSupabaseError(err);
       setAuthError(authError);
@@ -131,18 +124,16 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
 
   const form = (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <AuthAlert 
-        error={authError} 
-        onRetry={() => {
-          setAuthError(null);
-          setAttemptCount(0);
-          setIsRateLimited(false);
-        }}
-        onContactSupport={() => {
-          // Could open support modal or redirect
-          window.location.href = '/support';
-        }}
-      />
+        <AuthAlert 
+          error={authError} 
+          onRetry={() => {
+            setAuthError(null);
+            security.resetSecurityMetrics();
+          }}
+          onContactSupport={() => {
+            window.location.href = '/support';
+          }}
+        />
       
       <div className="space-y-2">
         <Label htmlFor="email" className="text-sm font-medium">
@@ -162,12 +153,12 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
             }}
             placeholder="Enter your email"
             required
-            disabled={isLoading || isRateLimited}
-            className={cn(
-              "pl-9",
-              formErrors.email && 'border-destructive focus-visible:ring-destructive',
-              authError?.code === 'INVALID_CREDENTIALS' && 'animate-pulse'
-            )}
+              disabled={isLoading || security.isAccountLocked()}
+              className={cn(
+                "pl-9",
+                formErrors.email && 'border-destructive focus-visible:ring-destructive',
+                authError?.code === 'INVALID_CREDENTIALS' && 'animate-pulse'
+              )}
             autoComplete="email"
           />
         </div>
@@ -192,7 +183,7 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
             }}
             placeholder="Enter your password"
             required
-            disabled={isLoading || isRateLimited}
+            disabled={isLoading || security.isAccountLocked()}
             className={cn(
               "pl-9 pr-10",
               formErrors.password && 'border-destructive focus-visible:ring-destructive',
@@ -235,17 +226,23 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
           Forgot your password?
         </Button>
         
-        {attemptCount > 0 && attemptCount < 5 && (
-          <span className="text-xs text-muted-foreground">
-            {5 - attemptCount} attempts remaining
-          </span>
-        )}
+            {security.metrics.failedAttempts > 0 && security.metrics.failedAttempts < 5 && (
+              <span className="text-xs text-muted-foreground">
+                {5 - security.metrics.failedAttempts} attempts remaining
+              </span>
+            )}
+            
+            {security.isAccountLocked() && (
+              <span className="text-xs text-destructive font-medium">
+                Account locked for {security.formatTimeRemaining()}
+              </span>
+            )}
       </div>
 
       <Button 
         type="submit" 
         className="w-full font-semibold" 
-        disabled={isLoading || isRateLimited || Object.keys(formErrors).length > 0}
+        disabled={isLoading || security.isAccountLocked() || Object.keys(formErrors).length > 0}
         size={compact ? "sm" : "default"}
       >
         {isLoading ? (
@@ -253,8 +250,8 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Signing in...
           </>
-        ) : isRateLimited ? (
-          'Please Wait...'
+        ) : security.isAccountLocked() ? (
+          `Locked (${security.formatTimeRemaining()})`
         ) : (
           <>
             <LogIn className="mr-2 h-4 w-4" />

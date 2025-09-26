@@ -9,9 +9,12 @@ import {
   DialogHeader, 
   DialogTitle 
 } from '@/components/ui/dialog';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Mail, Loader2, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { AuthAlert, InlineError } from '@/components/ui/auth-alert';
+import { AuthErrorHandler } from '@/lib/errorHandler';
+import { AuthError, FormErrors } from '@/types/auth-errors';
+import { cn } from '@/lib/utils';
 
 interface ForgotPasswordDialogProps {
   open: boolean;
@@ -22,18 +25,31 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
-  const [error, setError] = useState('');
+  const [authError, setAuthError] = useState<AuthError | null>(null);
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
+
+  const validateForm = (): boolean => {
+    const errors: FormErrors = {};
+    
+    const emailError = AuthErrorHandler.validateEmail(email);
+    if (emailError) {
+      errors[emailError.field] = emailError.message;
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email) {
-      setError('Please enter your email address');
+    if (!validateForm()) {
       return;
     }
 
     setLoading(true);
-    setError('');
+    setAuthError(null);
+    setFormErrors({});
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -45,8 +61,15 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
       }
 
       setSent(true);
+      AuthErrorHandler.showSuccessToast(
+        'Password reset instructions have been sent to your email.',
+        '📧 Reset Link Sent'
+      );
     } catch (err: any) {
-      setError(err.message || 'Failed to send reset email. Please try again.');
+      console.error('Password reset error:', err);
+      const authError = AuthErrorHandler.parseSupabaseError(err);
+      setAuthError(authError);
+      AuthErrorHandler.showErrorToast(authError);
     } finally {
       setLoading(false);
     }
@@ -54,7 +77,8 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
 
   const handleClose = () => {
     setEmail('');
-    setError('');
+    setAuthError(null);
+    setFormErrors({});
     setSent(false);
     onOpenChange(false);
   };
@@ -94,11 +118,13 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+            <AuthAlert 
+              error={authError}
+              onRetry={() => {
+                setAuthError(null);
+                setFormErrors({});
+              }}
+            />
 
             <div className="space-y-2">
               <Label htmlFor="reset-email">Email Address</Label>
@@ -109,11 +135,24 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
                   type="email"
                   placeholder="Enter your email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (formErrors.email) {
+                      setFormErrors(prev => ({ ...prev, email: '' }));
+                    }
+                  }}
+                  className={cn(
+                    "pl-10",
+                    formErrors.email && 'border-destructive focus-visible:ring-destructive'
+                  )}
                   disabled={loading}
+                  autoComplete="email"
                 />
               </div>
+              <InlineError error={formErrors.email} />
+              <p className="text-xs text-muted-foreground">
+                We'll send you a secure link to reset your password
+              </p>
             </div>
 
             <div className="flex gap-3">
@@ -129,7 +168,7 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
               <Button 
                 type="submit" 
                 className="flex-1"
-                disabled={loading || !email}
+                disabled={loading || !email || Object.keys(formErrors).length > 0}
               >
                 {loading ? (
                   <>
@@ -137,7 +176,10 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
                     Sending...
                   </>
                 ) : (
-                  'Send Reset Link'
+                  <>
+                    <Mail className="mr-2 h-4 w-4" />
+                    Send Reset Link
+                  </>
                 )}
               </Button>
             </div>

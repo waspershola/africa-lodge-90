@@ -51,7 +51,7 @@ export function AuthAlert({
       <Alert
         className={cn(
           'border-success/20 bg-success/10 text-success mb-4 transition-all duration-300',
-          showAnimation && 'animate-in fade-in-0 slide-in-from-top-1',
+          showAnimation && 'animate-fade-in',
           className
         )}
       >
@@ -74,8 +74,7 @@ export function AuthAlert({
         'mb-4 transition-all duration-300 border-l-4',
         config.bgColor,
         config.textColor,
-        showAnimation && 'animate-in fade-in-0 slide-in-from-top-1',
-        showAnimation && error.code === 'INVALID_CREDENTIALS' && 'animate-pulse',
+        showAnimation && 'animate-fade-in',
         className
       )}
       variant={config.variant}
@@ -162,7 +161,7 @@ export function InlineError({ error, className, showIcon = true }: InlineErrorPr
   return (
     <div
       className={cn(
-        'flex items-center gap-2 text-sm text-destructive mt-1 animate-in fade-in-0 slide-in-from-top-1',
+        'flex items-center gap-2 text-sm text-destructive mt-1 animate-fade-in',
         className
       )}
     >
@@ -183,7 +182,7 @@ export function SuccessMessage({ message, className }: SuccessMessageProps) {
   return (
     <div
       className={cn(
-        'flex items-center gap-2 text-sm text-success mt-1 animate-in fade-in-0 slide-in-from-top-1',
+        'flex items-center gap-2 text-sm text-success mt-1 animate-fade-in',
         className
       )}
     >

@@ -193,6 +193,8 @@ serve(async (req) => {
         );
       }
 
+      console.log(`[${operationId}] User record deleted successfully from database`);
+
       // Then delete from Supabase Auth
       console.log(`[${operationId}] Deleting user from auth...`);
       const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(user_id);

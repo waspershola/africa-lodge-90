@@ -49,7 +49,7 @@ async function sendWithResend(config: any, testEmail: string) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'Hotel System <onboarding@resend.dev>',
+      from: 'LuxuryHotel Pro <noreply@luxuryhotelpro.com>',
       to: [testEmail],
       subject: 'Test Email - Resend Provider',
       html: generateTestEmailHTML('resend')
@@ -76,7 +76,7 @@ async function sendWithMailerSend(config: any, testEmail: string) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: { email: 'noreply@example.com', name: 'Hotel System' },
+      from: { email: 'noreply@luxuryhotelpro.com', name: 'LuxuryHotel Pro' },
       to: [{ email: testEmail }],
       subject: 'Test Email - MailerSend Provider',
       html: generateTestEmailHTML('mailersend')
@@ -108,7 +108,7 @@ async function sendWithSES(config: any, testEmail: string) {
     });
 
     const command = new SendEmailCommand({
-      Source: 'Hotel System <noreply@example.com>',
+      Source: 'LuxuryHotel Pro <noreply@luxuryhotelpro.com>',
       Destination: { ToAddresses: [testEmail] },
       Message: {
         Subject: { Data: 'Test Email - SES Provider', Charset: 'UTF-8' },

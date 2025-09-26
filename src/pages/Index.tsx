@@ -35,6 +35,9 @@ import { LoginForm } from "@/components/auth/LoginForm";
 import { TrialSignupFlow } from "@/components/auth/TrialSignupFlow";
 import { PricingSection } from "@/components/pricing/PricingSection";
 import { DemoVideoSection } from "@/components/demo/DemoVideoSection";
+import { AuthAlert } from '@/components/ui/auth-alert';
+import { AuthErrorHandler } from '@/lib/errorHandler';
+import { AuthError } from '@/types/auth-errors';
 import heroHotelBg from "@/assets/hero-hotel-bg.jpg";
 import sunsetHotelBg from "@/assets/sunset-hotel-bg.jpg";
 import diningHotelBg from "@/assets/dining-hotel-bg.jpg";
@@ -44,6 +47,7 @@ const Index = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState<AuthError | null>(null);
   
   const { user, login, needsPasswordReset } = useAuth();
   const navigate = useNavigate();
@@ -161,14 +165,19 @@ const Index = () => {
     if (!email || !password) return;
     
     setLoginLoading(true);
+    setLoginError(null);
+    
     try {
       console.log('Quick login attempt for:', email);
       await login(email, password);
       console.log('Quick login successful');
+      AuthErrorHandler.showSuccessToast('Welcome back!', '✅ Login Successful');
       // Navigation will be handled by the useEffect above
-    } catch (error) {
+    } catch (error: any) {
       console.error('Quick login failed:', error);
-      // The error is already handled by the login function
+      const authError = AuthErrorHandler.parseSupabaseError(error);
+      setLoginError(authError);
+      AuthErrorHandler.showErrorToast(authError);
     } finally {
       setLoginLoading(false);
     }
@@ -278,6 +287,13 @@ const Index = () => {
                 <h3 className="text-lg font-semibold text-white text-center mb-4">
                   Sign In to Your Dashboard
                 </h3>
+                
+                <AuthAlert 
+                  error={loginError} 
+                  onRetry={() => setLoginError(null)}
+                  className="mb-4"
+                />
+                
                 <form onSubmit={handleQuickLogin} className="space-y-4">
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-white/60" />

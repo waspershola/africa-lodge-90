@@ -52,11 +52,12 @@ serve(async (req) => {
     console.log(`[${operationId}] Received request data:`, { 
       email, 
       name, 
-      temp_password: temp_password ? '***masked***' : null, 
+      temp_password: temp_password ? '***masked***' : 'null/undefined', 
       tenant_id, 
       from_name, 
       hotel_name,
-      email_type: emailType
+      email_type: emailType,
+      generateTempPassword_inferred: !isInvitationEmail
     });
 
     if (!email || !name) {

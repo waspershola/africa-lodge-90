@@ -214,21 +214,28 @@ Deno.serve(async (req) => {
     await new Promise(resolve => setTimeout(resolve, 100));
 
   // Create user record in our users table
+  const userRecord = {
+    id: authUser.user.id,
+    email: email,
+    name: fullName,
+    role: role,
+    department: department,
+    tenant_id: null, // Global users have null tenant_id
+    is_platform_owner: false, // Never auto-assign platform owner - requires manual approval
+    is_active: true,
+    force_reset: generateTempPassword,
+    temp_password_hash: generateTempPassword ? password : null, // Store temp password only if it's temporary
+    temp_expires: generateTempPassword ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : null // 24 hours
+  };
+  
+  console.log('Upserting user record with data:', {
+    ...userRecord,
+    temp_password_hash: userRecord.temp_password_hash ? '***masked***' : null
+  });
+  
   const { data: newUser, error: userError } = await supabase
     .from('users')
-    .upsert({
-      id: authUser.user.id,
-      email: email,
-      name: fullName,
-      role: role,
-      department: department,
-      tenant_id: null, // Global users have null tenant_id
-      is_platform_owner: false, // Never auto-assign platform owner - requires manual approval
-      is_active: true,
-      force_reset: generateTempPassword,
-      temp_password_hash: generateTempPassword ? password : null, // Store temp password only if it's temporary
-      temp_expires: generateTempPassword ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : null // 24 hours
-    }, {
+    .upsert(userRecord, {
       onConflict: 'id'
     })
     .select()
@@ -236,6 +243,10 @@ Deno.serve(async (req) => {
 
   if (userError) {
     console.error('Error upserting user record:', userError);
+    console.error('User record that failed:', {
+      ...userRecord,
+      temp_password_hash: userRecord.temp_password_hash ? '***masked***' : null
+    });
     
     // Clean up auth user if database insert fails
     try {
@@ -252,6 +263,13 @@ Deno.serve(async (req) => {
   }
 
     console.log('User record created successfully:', newUser.id);
+    console.log('Final user record in database:', {
+      id: newUser.id,
+      email: newUser.email,
+      force_reset: newUser.force_reset,
+      temp_password_hash: newUser.temp_password_hash ? '***masked***' : null,
+      temp_expires: newUser.temp_expires
+    });
 
     // Log audit trail
     try {

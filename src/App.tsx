@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useFontManager } from "@/hooks/useFontManager";
 import Index from "./pages/Index";
 import SignUp from "./pages/SignUp";
@@ -93,7 +93,9 @@ import RealtimeMonitoring from "./pages/sa/RealtimeMonitoring";
 import EmailProviders from "./pages/sa/EmailProviders";
 
 import SupportAdminLayout from "./components/layout/SupportAdminLayout";
+import SupportStaffLayout from "./components/layout/SupportStaffLayout";
 import SupportAdminDashboard from "./pages/support-admin/Dashboard";
+import SupportStaffDashboard from "./pages/support-staff/Dashboard";
 
 const queryClient = new QueryClient();
 
@@ -225,12 +227,32 @@ const App = () => (
           
           {/* Support Admin Routes */}
           <Route path="/support-admin" element={
-            <TenantAwareLayout allowedRoles={['SUPPORT_ADMIN', 'SUPPORT_STAFF', 'PLATFORM_ADMIN', 'Support Admin', 'Support Staff', 'Platform Admin']}>
+            <TenantAwareLayout allowedRoles={['SUPER_ADMIN', 'SUPPORT_ADMIN', 'PLATFORM_ADMIN', 'Support Admin', 'Platform Admin']}>
               <SupportAdminLayout />
             </TenantAwareLayout>
           }>
             <Route index element={<SupportAdminDashboard />} />
             <Route path="dashboard" element={<SupportAdminDashboard />} />
+            <Route path="tenants" element={<div>Tenants Management</div>} />
+            <Route path="tickets" element={<div>Support Tickets</div>} />
+            <Route path="impersonation" element={<div>Impersonation</div>} />
+            <Route path="billing" element={<div>Plans & Billing</div>} />
+            <Route path="addons" element={<div>Add-ons Catalog</div>} />
+            <Route path="reports" element={<div>Reports</div>} />
+            <Route path="settings" element={<div>Settings</div>} />
+          </Route>
+
+          {/* Support Staff Routes */}
+          <Route path="/support-staff" element={
+            <TenantAwareLayout allowedRoles={['SUPER_ADMIN', 'SUPPORT_STAFF', 'SUPPORT_ADMIN', 'PLATFORM_ADMIN', 'Support Staff', 'Support Admin', 'Platform Admin']}>
+              <SupportStaffLayout />
+            </TenantAwareLayout>
+          }>
+            <Route index element={<Navigate to="/support-staff/dashboard" replace />} />
+            <Route path="dashboard" element={<SupportStaffDashboard />} />
+            <Route path="tenants" element={<div>Tenants Overview (Read-Only)</div>} />
+            <Route path="tickets" element={<div>Support Tickets (Read-Only)</div>} />
+            <Route path="reports" element={<div>Reports (Read-Only)</div>} />
           </Route>
           
           {/* Super Admin Routes */}

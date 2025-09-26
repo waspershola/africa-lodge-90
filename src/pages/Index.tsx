@@ -53,11 +53,11 @@ const Index = () => {
       case 'SUPER_ADMIN': return '/sa/dashboard';
       case 'PLATFORM_ADMIN': return '/support-admin/dashboard';
       case 'SUPPORT_ADMIN': return '/support-admin/dashboard';
-      case 'SUPPORT_STAFF': return '/support-admin/dashboard';
+      case 'SUPPORT_STAFF': return '/support-staff/dashboard';
       // Legacy role names for backward compatibility
       case 'Platform Admin': return '/support-admin/dashboard';
       case 'Support Admin': return '/support-admin/dashboard';
-      case 'Support Staff': return '/support-admin/dashboard';
+      case 'Support Staff': return '/support-staff/dashboard';
       case 'OWNER': return '/owner-dashboard'; 
       case 'MANAGER': return '/manager-dashboard';
       case 'FRONT_DESK': return '/front-desk';

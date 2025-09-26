@@ -51,6 +51,7 @@ const Index = () => {
   const getUserDashboardPath = (role: string) => {
     switch (role) {
       case 'SUPER_ADMIN': return '/sa/dashboard';
+      case 'Support Admin': return '/support-admin/dashboard';
       case 'OWNER': return '/owner-dashboard'; 
       case 'MANAGER': return '/manager-dashboard';
       case 'FRONT_DESK': return '/front-desk';

@@ -4601,7 +4601,33 @@ export type Database = {
           unique_guests: number
         }[]
       }
+      get_guest_stats_secure: {
+        Args: { p_months_back?: number; p_tenant_id: string }
+        Returns: {
+          avg_reservation_value: number
+          avg_stay_length: number
+          month_year: string
+          repeat_guests: number
+          retention_rate: number
+          total_reservations: number
+          total_revenue: number
+          unique_guests: number
+        }[]
+      }
       get_occupancy_stats: {
+        Args: {
+          p_end_date?: string
+          p_start_date?: string
+          p_tenant_id: string
+        }
+        Returns: {
+          occupancy_rate: number
+          occupied_rooms: number
+          stat_date: string
+          total_rooms: number
+        }[]
+      }
+      get_occupancy_stats_secure: {
         Args: {
           p_end_date?: string
           p_start_date?: string

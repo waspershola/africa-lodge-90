@@ -73,6 +73,7 @@ serve(async (req) => {
         tenant_id: validation.tenant_id,
         room_id: validation.room_id,
         room_number: roomNumber,
+        label: validation.label,
         hotel_name: validation.hotel_name,
         services: validation.services,
         is_active: true

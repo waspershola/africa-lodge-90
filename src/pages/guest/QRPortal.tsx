@@ -123,7 +123,7 @@ export default function QRPortal() {
           hotel_name: qrData.hotel_name || qrSettings?.hotel_name || 'Hotel',
           services: qrData.services || [],
           is_active: qrData.is_valid,
-          label: null, // Not available from validation function
+          label: qrData.label, // Now available from validation function
           tenant_id: qrData.tenant_id,
           hotel_logo: qrSettings?.show_logo_on_qr ? qrSettings?.hotel_logo_url : undefined,
           front_desk_phone: qrSettings?.front_desk_phone || '+2347065937769',
@@ -234,7 +234,7 @@ export default function QRPortal() {
                   <h1 className="text-xl font-serif text-white mb-1">{qrInfo.hotel_name}</h1>
                   <p className="text-amber-200/80 text-sm flex items-center gap-2">
                     <Home className="h-4 w-4" />
-                    {qrInfo.room_number ? `Room ${qrInfo.room_number}` : qrInfo.label}
+                    {qrInfo.room_number ? `Room ${qrInfo.room_number}` : qrInfo.label || 'Hotel Services'}
                   </p>
                 </div>
               </div>
@@ -321,7 +321,7 @@ export default function QRPortal() {
               ) : (
                 <>
                   <User className="h-5 w-5" />
-                  <span className="text-lg font-medium">{qrInfo.label || 'Welcome'}</span>
+                  <span className="text-lg font-medium">{qrInfo.label || 'Guest Services'}</span>
                 </>
               )}
               <Sparkles className="h-5 w-5" />

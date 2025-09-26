@@ -224,17 +224,23 @@ export default function QRPortal() {
                     <img 
                       src={qrInfo.hotel_logo} 
                       alt="Hotel Logo" 
-                      className="w-full h-full object-contain rounded-full"
+                      className="w-10 h-10 object-cover rounded-full"
+                      onError={(e) => {
+                        console.log('Header logo failed to load:', qrInfo.hotel_logo);
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.nextElementSibling?.setAttribute('style', 'display: block');
+                      }}
                     />
-                  ) : (
-                    <Crown className="h-6 w-6 text-amber-200" />
-                  )}
+                  ) : null}
+                  <Crown className={`h-6 w-6 text-amber-200 ${qrInfo.hotel_logo ? 'hidden' : 'block'}`} />
                 </div>
                 <div>
                   <h1 className="text-xl font-serif text-white mb-1">{qrInfo.hotel_name}</h1>
-                  <p className="text-amber-200/80 text-sm flex items-center gap-2">
-                    <Home className="h-4 w-4" />
-                    {qrInfo.room_number ? `Room ${qrInfo.room_number}` : qrInfo.label || 'Hotel Services'}
+                  <p className="text-amber-100 text-lg font-bold flex items-center gap-3">
+                    <Home className="h-5 w-5" />
+                    <span className="text-xl font-serif tracking-wide">
+                      {qrInfo.room_number ? `Room ${qrInfo.room_number}` : qrInfo.label || 'Hotel Services'}
+                    </span>
                   </p>
                 </div>
               </div>
@@ -302,29 +308,37 @@ export default function QRPortal() {
                 <img 
                   src={qrInfo.hotel_logo} 
                   alt="Hotel Logo" 
-                  className="w-full h-full object-contain rounded-full"
+                  className="w-20 h-20 object-cover rounded-full border-2 border-white/20"
+                  onError={(e) => {
+                    console.log('Logo failed to load:', qrInfo.hotel_logo);
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.nextElementSibling?.setAttribute('style', 'display: block');
+                  }}
                 />
-              ) : (
-                <Crown className="h-12 w-12" />
-              )}
+              ) : null}
+              <Crown className={`h-12 w-12 ${qrInfo.hotel_logo ? 'hidden' : 'block'}`} />
             </div>
             <h1 className="text-4xl font-serif mb-3 tracking-wide">
               {qrInfo.hotel_name}
             </h1>
-            <div className="flex items-center justify-center gap-3 qr-muted mb-2">
-              <Sparkles className="h-5 w-5" />
+            <div className="flex items-center justify-center gap-4 qr-muted mb-4">
+              <Sparkles className="h-6 w-6" />
               {qrInfo.room_number ? (
                 <>
-                  <Home className="h-5 w-5" />
-                  <span className="text-lg font-medium">Room {qrInfo.room_number}</span>
+                  <Home className="h-6 w-6" />
+                  <span className="text-2xl font-bold font-serif tracking-wider bg-gradient-to-r from-amber-600 to-amber-800 bg-clip-text text-transparent">
+                    Room {qrInfo.room_number}
+                  </span>
                 </>
               ) : (
                 <>
-                  <User className="h-5 w-5" />
-                  <span className="text-lg font-medium">{qrInfo.label || 'Guest Services'}</span>
+                  <User className="h-6 w-6" />
+                  <span className="text-2xl font-bold font-serif tracking-wider bg-gradient-to-r from-amber-600 to-amber-800 bg-clip-text text-transparent">
+                    {qrInfo.label || 'Guest Services'}
+                  </span>
                 </>
               )}
-              <Sparkles className="h-5 w-5" />
+              <Sparkles className="h-6 w-6" />
             </div>
             <p className="qr-muted opacity-80 text-lg font-light">
               Luxury Guest Services

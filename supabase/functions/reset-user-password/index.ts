@@ -167,13 +167,40 @@ const handler = async (req: Request): Promise<Response> => {
     let emailSent = false;
     if (send_email) {
       try {
+        // Get hotel name from tenant data
+        let hotel_name = 'Hotel Management System';
+        let from_name = 'Hotel Management System';
+        
+        if (targetUser.tenant_id) {
+          const { data: tenantData } = await supabaseClient
+            .from('tenants')
+            .select('hotel_name')
+            .eq('tenant_id', targetUser.tenant_id)
+            .single();
+          
+          if (tenantData?.hotel_name) {
+            hotel_name = tenantData.hotel_name;
+            from_name = tenantData.hotel_name;
+          }
+        }
+
+        console.log('Calling send-temp-password with:', { 
+          email: targetUser.email, 
+          name: targetUser.name, 
+          temp_password: tempPassword, 
+          tenant_id: targetUser.tenant_id, 
+          hotel_name,
+          from_name 
+        });
+
         const emailResponse = await supabaseClient.functions.invoke('send-temp-password', {
           body: {
             email: targetUser.email,
             name: targetUser.name || 'User',
-            tempPassword: tempPassword,
-            role: targetUser.role,
-            hotel_name: 'Your Hotel'
+            temp_password: tempPassword, // Fixed: was tempPassword, should be temp_password
+            tenant_id: targetUser.tenant_id, // Added: was missing
+            hotel_name, // Improved: now gets actual hotel name
+            from_name // Added: for better email branding
           }
         });
 

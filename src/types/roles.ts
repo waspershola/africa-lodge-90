@@ -35,6 +35,7 @@ export interface RolePermission {
 export type GlobalRoleType = 
   | 'Super Admin'
   | 'Platform Admin'
+  | 'Support Admin'
   | 'Support Staff';
 
 // Tenant Roles (Per Hotel)
@@ -122,6 +123,12 @@ export const GLOBAL_PERMISSIONS = {
   PLATFORM_ADMIN: [
     'tenants.read', 'tenants.write',
     'system.manage', 'dashboard.read', 'reports.read', 'reports.export'
+  ],
+  SUPPORT_ADMIN: [
+    'tenants.read', 'tenants.write', 'users.read', 'users.write',
+    'support.read', 'support.write', 'support.manage',
+    'billing.read', 'billing.write', 'plans.read', 'plans.write',
+    'reports.read', 'reports.export', 'dashboard.read'
   ],
   SUPPORT_STAFF: [
     'tenants.read', 'dashboard.read', 'reservations.read', 

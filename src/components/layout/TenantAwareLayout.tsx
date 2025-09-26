@@ -7,9 +7,10 @@ import { AlertTriangle, Lock, Building2 } from 'lucide-react';
 interface TenantAwareLayoutProps {
   children: ReactNode;
   requiredRole?: 'SUPER_ADMIN' | 'OWNER' | 'MANAGER' | 'STAFF' | 'FRONT_DESK' | 'HOUSEKEEPING' | 'MAINTENANCE' | 'POS';
+  allowedRoles?: string[];
 }
 
-export default function TenantAwareLayout({ children, requiredRole }: TenantAwareLayoutProps) {
+export default function TenantAwareLayout({ children, requiredRole, allowedRoles }: TenantAwareLayoutProps) {
   const { 
     user, 
     tenant, 
@@ -92,14 +93,19 @@ export default function TenantAwareLayout({ children, requiredRole }: TenantAwar
   }
 
   // Show access denied
-  if (requiredRole && !hasAccess(requiredRole)) {
+  const hasRequiredAccess = requiredRole ? hasAccess(requiredRole) : true;
+  const hasAllowedAccess = allowedRoles ? allowedRoles.some(role => hasAccess(role)) : true;
+  
+  if ((requiredRole || allowedRoles) && !hasRequiredAccess && !hasAllowedAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center max-w-md">
           <Lock className="h-16 w-16 text-danger mx-auto mb-4" />
           <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
           <p className="text-muted-foreground mb-4">
-            You don't have permission to access this area. Required role: {requiredRole}
+            You don't have permission to access this area. 
+            {requiredRole && ` Required role: ${requiredRole}`}
+            {allowedRoles && ` Allowed roles: ${allowedRoles.join(', ')}`}
           </p>
           <div className="space-y-2">
             <Button onClick={() => window.history.back()}>

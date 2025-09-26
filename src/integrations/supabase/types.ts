@@ -805,6 +805,63 @@ export type Database = {
         }
         Relationships: []
       }
+      global_tickets: {
+        Row: {
+          assigned_to: string | null
+          category: string
+          closed_at: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          metadata: Json | null
+          priority: string
+          resolved_at: string | null
+          status: string
+          submitter_id: string | null
+          tags: string[] | null
+          tenant_id: string | null
+          ticket_number: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          category?: string
+          closed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          priority?: string
+          resolved_at?: string | null
+          status?: string
+          submitter_id?: string | null
+          tags?: string[] | null
+          tenant_id?: string | null
+          ticket_number: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          category?: string
+          closed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          priority?: string
+          resolved_at?: string | null
+          status?: string
+          submitter_id?: string | null
+          tags?: string[] | null
+          tenant_id?: string | null
+          ticket_number?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       group_reservations: {
         Row: {
           balance_due: number | null
@@ -1278,6 +1335,51 @@ export type Database = {
             referencedColumns: ["tenant_id"]
           },
         ]
+      }
+      impersonation_logs: {
+        Row: {
+          actions_performed: Json | null
+          created_at: string | null
+          ended_at: string | null
+          id: string
+          impersonator_id: string
+          ip_address: unknown | null
+          reason: string | null
+          session_token: string
+          started_at: string
+          target_tenant_id: string | null
+          target_user_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          actions_performed?: Json | null
+          created_at?: string | null
+          ended_at?: string | null
+          id?: string
+          impersonator_id: string
+          ip_address?: unknown | null
+          reason?: string | null
+          session_token: string
+          started_at?: string
+          target_tenant_id?: string | null
+          target_user_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          actions_performed?: Json | null
+          created_at?: string | null
+          ended_at?: string | null
+          id?: string
+          impersonator_id?: string
+          ip_address?: unknown | null
+          reason?: string | null
+          session_token?: string
+          started_at?: string
+          target_tenant_id?: string | null
+          target_user_id?: string
+          user_agent?: string | null
+        }
+        Relationships: []
       }
       impersonations: {
         Row: {

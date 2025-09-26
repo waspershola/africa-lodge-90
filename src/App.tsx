@@ -92,6 +92,9 @@ import Backups from "./pages/sa/Backups";
 import RealtimeMonitoring from "./pages/sa/RealtimeMonitoring";
 import EmailProviders from "./pages/sa/EmailProviders";
 
+import SupportAdminLayout from "./components/layout/SupportAdminLayout";
+import SupportAdminDashboard from "./pages/support-admin/Dashboard";
+
 const queryClient = new QueryClient();
 
 // Font manager component to apply global font styles
@@ -219,6 +222,16 @@ const App = () => (
 
           {/* Hotel Dashboard Routes */}
           <Route path="/hotel/:tenantId/dashboard" element={<HotelDashboard />} />
+          
+          {/* Support Admin Routes */}
+          <Route path="/support-admin" element={
+            <TenantAwareLayout allowedRoles={['Support Admin']}>
+              <SupportAdminLayout />
+            </TenantAwareLayout>
+          }>
+            <Route index element={<SupportAdminDashboard />} />
+            <Route path="dashboard" element={<SupportAdminDashboard />} />
+          </Route>
           
           {/* Super Admin Routes */}
           <Route path="/sa" element={

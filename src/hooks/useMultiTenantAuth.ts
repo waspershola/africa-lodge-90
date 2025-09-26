@@ -163,11 +163,14 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
       console.log('Secure user profile loaded:', userProfile);
 
       // Build user data with database as source of truth for security
+      const validRoles: User['role'][] = ['SUPER_ADMIN', 'OWNER', 'MANAGER', 'STAFF', 'FRONT_DESK', 'HOUSEKEEPING', 'MAINTENANCE', 'POS'];
+      const userRole = validRoles.includes(userProfile.role as User['role']) ? userProfile.role as User['role'] : 'STAFF';
+      
       const userData: User = {
         id: authUser.id,
         email: authUser.email || '',
         name: userProfile.name || authUser.user_metadata?.name || 'Unknown User',
-        role: userProfile.role || 'STAFF',
+        role: userRole,
         tenant_id: userProfile.tenant_id,
         force_reset: userProfile.force_reset || false,
         temp_password_hash: userProfile.temp_password_hash,

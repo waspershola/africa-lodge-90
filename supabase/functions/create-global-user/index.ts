@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
             is_active: true,
             force_reset: generateTempPassword,
             temp_password_hash: tempPassword,
-            temp_expires: generateTempPassword ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null
+            temp_expires: generateTempPassword ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : null
           })
           .select()
           .single();
@@ -167,15 +167,15 @@ Deno.serve(async (req) => {
       await supabase.from('users').delete().eq('id', existingUserRecord.id);
     }
 
-    // Generate temporary password
-    const tempPassword = generateTempPassword ? generateSecurePassword() : 'TempPassword123!';
+    // Generate password - always generate a secure one, but only make it temporary if requested
+    const password = generateSecurePassword();
     
     console.log('Creating auth user with email:', email);
     
     // Create the user in Supabase Auth
     const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
       email: email,
-      password: tempPassword,
+      password: password,
       email_confirm: true,
       user_metadata: {
         full_name: fullName,
@@ -226,7 +226,7 @@ Deno.serve(async (req) => {
       is_platform_owner: false, // Never auto-assign platform owner - requires manual approval
       is_active: true,
       force_reset: generateTempPassword,
-      temp_password_hash: generateTempPassword ? tempPassword : null, // Store plain temp password for now
+      temp_password_hash: generateTempPassword ? password : null, // Store temp password only if it's temporary
       temp_expires: generateTempPassword ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : null // 24 hours
     }, {
       onConflict: 'id'
@@ -274,17 +274,21 @@ Deno.serve(async (req) => {
       // Don't fail the whole operation for audit log issues
     }
 
-    // Send email with credentials if requested
+    // Send email if requested
     let emailSent = false;
-    if (sendEmail && tempPassword) {
+    if (sendEmail) {
       try {
-        console.log('Sending temporary password email to:', email);
+        if (generateTempPassword) {
+          console.log('Sending temporary password email to:', email);
+        } else {
+          console.log('Sending invitation email to:', email);
+        }
         
         const { data: emailResponse, error: emailError } = await supabase.functions.invoke('send-temp-password', {
           body: {
             email: email,
             name: fullName,
-            temp_password: tempPassword, // Fixed: ensure correct field name
+            temp_password: generateTempPassword ? password : null, // Only send password if it's temporary
             tenant_id: null, // Global users don't have a tenant
             from_name: 'Platform Administration',
             hotel_name: 'Platform Administration System'
@@ -317,10 +321,12 @@ Deno.serve(async (req) => {
           fullName,
           role,
           department,
-          tempPassword: (generateTempPassword && (!sendEmail || !emailSent)) ? tempPassword : undefined
+          tempPassword: (generateTempPassword && (!sendEmail || !emailSent)) ? password : undefined
         },
         emailSent: emailSent,
-        message: emailSent ? 'Global user created and invitation email sent successfully' : 'Global user created successfully'
+        message: emailSent 
+          ? (generateTempPassword ? 'Global user created and temporary password email sent successfully' : 'Global user created and invitation email sent successfully')
+          : 'Global user created successfully'
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

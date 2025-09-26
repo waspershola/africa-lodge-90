@@ -81,7 +81,7 @@ serve(async (req) => {
     const emailConfig = await emailService.getEmailProviderConfig(tenant_id || 'system');
     
     if (!emailConfig) {
-      console.error(`[${operationId}] No email provider configured`);
+      console.error(`[${operationId}] No email provider configured for tenant:`, tenant_id || 'system');
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -92,7 +92,7 @@ serve(async (req) => {
     }
 
     // Create email content
-    const emailSubject = `Your ${hotel_name} Account - Temporary Password`;
+    const emailSubject = `Your ${hotel_name} Account - Access Credentials`;
     const emailHtml = `
       <!DOCTYPE html>
       <html>
@@ -145,7 +145,7 @@ serve(async (req) => {
                 <div class="important-title">🔒 Important Security Information:</div>
                 <ul>
                   <li><strong>Change your password immediately</strong> after logging in for the first time</li>
-                  <li>This temporary password will expire in 7 days</li>
+                  <li>This temporary password will expire in 24 hours</li>
                   <li>Never share your login credentials with anyone</li>
                   <li>If you didn't request this account, please contact your administrator</li>
                 </ul>
@@ -155,7 +155,7 @@ serve(async (req) => {
             </div>
             
             <div class="footer">
-              <p>This email was sent from ${hotel_name} Hotel Management System.</p>
+              <p>This email was sent from ${hotel_name}.</p>
               <p>Please do not reply to this email as it's automatically generated.</p>
             </div>
           </div>

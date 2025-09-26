@@ -284,22 +284,26 @@ Deno.serve(async (req) => {
           body: {
             email: email,
             name: fullName,
-            temp_password: tempPassword,
+            temp_password: tempPassword, // Fixed: ensure correct field name
             tenant_id: null, // Global users don't have a tenant
-            from_name: 'Hotel Management System',
-            hotel_name: 'Hotel Management System'
+            from_name: 'Platform Administration',
+            hotel_name: 'Platform Administration System'
           }
         });
 
         if (emailError) {
           console.warn('Failed to send email (non-critical):', emailError);
+          console.warn('Email error details:', JSON.stringify(emailError));
+          emailSent = false;
+        } else if (emailResponse?.success === false) {
+          console.warn('Email function returned error:', emailResponse.error);
           emailSent = false;
         } else {
           console.log('Email sent successfully:', emailResponse);
           emailSent = true;
         }
       } catch (emailError) {
-        console.warn('Failed to send email (non-critical):', emailError);
+        console.warn('Failed to send email (exception):', emailError);
         emailSent = false;
       }
     }

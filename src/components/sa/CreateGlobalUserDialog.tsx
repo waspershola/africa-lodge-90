@@ -87,11 +87,27 @@ export function CreateGlobalUserDialog() {
       // Store generated password to display
       if (result?.user?.tempPassword) {
         setGeneratedPassword(result.user.tempPassword);
+        
+        const emailMessage = result.emailSent 
+          ? 'Temporary password has been sent to their email.' 
+          : 'Email could not be sent - please share the password manually.';
+        
         toast({
           title: "User Created Successfully",
-          description: `${data.name} has been created. Temporary password generated.`,
+          description: `${data.name} has been created. ${emailMessage}`,
           duration: 10000,
         });
+      } else if (result?.emailSent) {
+        toast({
+          title: "User Created Successfully",
+          description: `${data.name} has been created and login credentials have been sent via email.`,
+        });
+        // Close dialog if no password to show and email was sent
+        setTimeout(() => {
+          setOpen(false);
+          form.reset();
+          setGeneratedPassword(null);
+        }, 1000);
       } else {
         toast({
           title: "User Created Successfully",
@@ -138,6 +154,11 @@ export function CreateGlobalUserDialog() {
               <h3 className="font-medium text-green-800 mb-2">User Created Successfully!</h3>
               <p className="text-sm text-green-700 mb-4">
                 {form.getValues('name')} has been created with the role {form.getValues('role')}.
+                {form.getValues('sendCredentials') && (
+                  <span className="block mt-1">
+                    📧 Login credentials have been sent to {form.getValues('email')}
+                  </span>
+                )}
               </p>
               
               <div className="bg-white border border-green-200 rounded p-3">

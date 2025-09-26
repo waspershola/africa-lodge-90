@@ -135,32 +135,16 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
     };
   };
 
-  // Load user profile from JWT claims and database
+  // Load user profile from database (secure server-side validation)
   const loadUserProfile = async (authUser: SupabaseUser) => {
     try {
       console.log('Loading user profile for:', authUser.email);
       
-      // Extract role and tenant_id from JWT claims for security
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        console.error('No access token found in session');
-        setError('Authentication failed - no access token');
-        return;
-      }
-      
-      const claims = JSON.parse(atob(session.access_token.split('.')[1]));
-      console.log('JWT claims:', claims);
-      
-      const roleFromJWT = claims.user_metadata?.role as User['role'];
-      const tenantIdFromJWT = claims.user_metadata?.tenant_id ? claims.user_metadata.tenant_id : null;
-
-      console.log('Role from JWT:', roleFromJWT, 'Tenant ID:', tenantIdFromJWT);
-
-      // Load additional user profile data from database
-      console.log('Fetching user profile from database...');
+      // SECURITY: Load user data directly from database, not JWT claims
+      console.log('Fetching secure user profile from database...');
       const { data: userProfile, error: userError } = await supabase
         .from('users')
-        .select('name, force_reset, temp_password_hash, temp_expires')
+        .select('name, role, tenant_id, force_reset, temp_password_hash, temp_expires')
         .eq('id', authUser.id)
         .maybeSingle();
 
@@ -170,18 +154,24 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
         return;
       }
 
-      console.log('User profile loaded:', userProfile);
+      if (!userProfile) {
+        console.error('No user profile found in database');
+        setError('User profile not found. Please contact support.');
+        return;
+      }
 
-      // Build user data with JWT claims as source of truth for security
+      console.log('Secure user profile loaded:', userProfile);
+
+      // Build user data with database as source of truth for security
       const userData: User = {
         id: authUser.id,
         email: authUser.email || '',
-        name: userProfile?.name || authUser.user_metadata?.name || 'Unknown User',
-        role: roleFromJWT || 'STAFF',
-        tenant_id: tenantIdFromJWT,
-        force_reset: userProfile?.force_reset || false,
-        temp_password_hash: userProfile?.temp_password_hash,
-        temp_expires: userProfile?.temp_expires,
+        name: userProfile.name || authUser.user_metadata?.name || 'Unknown User',
+        role: userProfile.role || 'STAFF',
+        tenant_id: userProfile.tenant_id,
+        force_reset: userProfile.force_reset || false,
+        temp_password_hash: userProfile.temp_password_hash,
+        temp_expires: userProfile.temp_expires,
       };
 
       console.log('Setting user:', userData);
@@ -196,13 +186,13 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
         return; // Don't proceed with tenant loading or onboarding if reset is required
       }
 
-      // Load tenant data if user has tenant_id from JWT
-      if (tenantIdFromJWT) {
+      // Load tenant data if user has tenant_id from database
+      if (userData.tenant_id) {
         console.log('Loading tenant data...');
         const { data: tenantData, error: tenantError } = await supabase
           .from('tenants')
           .select('tenant_id, hotel_name, plan_id, subscription_status, trial_start, trial_end, setup_completed, onboarding_step, created_at, updated_at')
-          .eq('tenant_id', tenantIdFromJWT)
+          .eq('tenant_id', userData.tenant_id)
           .maybeSingle();
 
         if (tenantError && tenantError.code !== 'PGRST116') {

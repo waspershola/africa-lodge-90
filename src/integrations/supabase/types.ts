@@ -4392,10 +4392,6 @@ export type Database = {
         }
         Returns: Json
       }
-      custom_access_token_hook: {
-        Args: { event: Json }
-        Returns: Json
-      }
       debug_auth_context: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -4600,7 +4596,15 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_user_role_secure: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_user_tenant_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_user_tenant_id_secure: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
@@ -4635,6 +4639,10 @@ export type Database = {
       is_system_owner: {
         Args: { user_uuid?: string }
         Returns: boolean
+      }
+      log_security_event: {
+        Args: { event_description: string; event_type: string; metadata?: Json }
+        Returns: undefined
       }
       refresh_reporting_views: {
         Args: Record<PropertyKey, never>

@@ -17,6 +17,7 @@ serve(async (req) => {
 
   const operationId = crypto.randomUUID().substring(0, 8);
   console.log(`[${operationId}] Delete user function started`);
+  console.log(`[${operationId}] Request method: ${req.method}`);
 
   try {
     const supabaseAdmin = createClient(
@@ -68,14 +69,7 @@ serve(async (req) => {
     }
 
     const isSuperAdmin = userData?.role === 'SUPER_ADMIN';
-    
-    if (!isSuperAdmin) {
-      console.error(`[${operationId}] Insufficient permissions`);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Only super admins can delete users' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const isOwnerOrManager = userData?.role === 'OWNER' || userData?.role === 'MANAGER';
 
     const { user_id }: DeleteUserRequest = await req.json();
 
@@ -105,6 +99,36 @@ serve(async (req) => {
     }
 
     console.log(`[${operationId}] Target user: ${targetUser.email} (role: ${targetUser.role})`);
+
+    // Authorization checks
+    if (!isSuperAdmin) {
+      // Non-super admin users need additional authorization
+      if (!isOwnerOrManager) {
+        console.error(`[${operationId}] Insufficient permissions - user role: ${userData.role}`);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Only owners, managers, and super admins can delete users' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Owners and managers can only delete users in their own tenant
+      if (userData.tenant_id !== targetUser.tenant_id) {
+        console.error(`[${operationId}] Cross-tenant deletion attempt`);
+        return new Response(
+          JSON.stringify({ success: false, error: 'You can only delete users within your own organization' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Owners and managers cannot delete other owners
+      if (targetUser.role === 'OWNER' && userData.role === 'MANAGER') {
+        console.error(`[${operationId}] Manager attempting to delete owner`);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Managers cannot delete owners' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
 
     // Protect platform owners (unless they have force_reset)
     if (targetUser.is_platform_owner && !targetUser.force_reset) {

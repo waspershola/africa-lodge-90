@@ -213,41 +213,43 @@ Deno.serve(async (req) => {
     // Wait a moment for any database triggers to complete
     await new Promise(resolve => setTimeout(resolve, 100));
 
-    // Create user record in our users table
-    const { data: newUser, error: userError } = await supabase
-      .from('users')
-      .insert({
-        id: authUser.user.id,
-        email: email,
-        name: fullName,
-        role: role,
-        department: department,
-        tenant_id: null, // Global users have null tenant_id
-        is_platform_owner: false, // Never auto-assign platform owner - requires manual approval
-        is_active: true,
-        force_reset: generateTempPassword,
-        temp_password_hash: generateTempPassword ? tempPassword : null,
-        temp_expires: generateTempPassword ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null
-      })
-      .select()
-      .single();
+  // Create user record in our users table
+  const { data: newUser, error: userError } = await supabase
+    .from('users')
+    .upsert({
+      id: authUser.user.id,
+      email: email,
+      name: fullName,
+      role: role,
+      department: department,
+      tenant_id: null, // Global users have null tenant_id
+      is_platform_owner: false, // Never auto-assign platform owner - requires manual approval
+      is_active: true,
+      force_reset: generateTempPassword,
+      temp_password_hash: generateTempPassword ? tempPassword : null,
+      temp_expires: generateTempPassword ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null
+    }, {
+      onConflict: 'id'
+    })
+    .select()
+    .single();
 
-    if (userError) {
-      console.error('Error creating user record:', userError);
-      
-      // Clean up auth user if database insert fails
-      try {
-        await supabase.auth.admin.deleteUser(authUser.user.id);
-        console.log('Cleaned up auth user due to database error');
-      } catch (cleanupError) {
-        console.error('Failed to clean up auth user:', cleanupError);
-      }
-      
-      return new Response(
-        JSON.stringify({ success: false, error: `Database error: ${userError.message}` }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+  if (userError) {
+    console.error('Error upserting user record:', userError);
+    
+    // Clean up auth user if database insert fails
+    try {
+      await supabase.auth.admin.deleteUser(authUser.user.id);
+      console.log('Cleaned up auth user due to database error');
+    } catch (cleanupError) {
+      console.error('Failed to clean up auth user:', cleanupError);
     }
+    
+    return new Response(
+      JSON.stringify({ success: false, error: `Database error: ${userError.message}` }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
 
     console.log('User record created successfully:', newUser.id);
 

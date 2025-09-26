@@ -74,6 +74,10 @@ function getUserDashboardPath(role: string): string {
     case 'POS':
       return '/pos';
     default:
+      // For unknown roles, check if it's a global role
+      if (['PLATFORM_ADMIN', 'SUPPORT_ADMIN', 'SUPPORT_STAFF', 'Support Admin', 'Platform Admin', 'Support Staff'].includes(role)) {
+        return '/support-admin/dashboard'; // Default global role dashboard
+      }
       return '/owner-dashboard';
   }
 }

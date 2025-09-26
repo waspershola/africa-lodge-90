@@ -491,8 +491,10 @@ export const useGuests = () => {
       const claims = JSON.parse(atob(session.access_token.split('.')[1]));
       const tenantId = claims.user_metadata?.tenant_id;
       
+      // For global users (no tenant), return empty data instead of erroring
       if (!tenantId) {
-        throw new Error('No tenant associated with user');
+        console.log('Global user detected, returning empty guest data');
+        return [];
       }
 
       const { data, error } = await supabase
@@ -579,8 +581,19 @@ export const useOwnerOverview = () => {
       const claims = JSON.parse(atob(session.access_token.split('.')[1]));
       const tenantId = claims.user_metadata?.tenant_id;
       
+      // For global users (no tenant), return empty data instead of erroring
       if (!tenantId) {
-        throw new Error('No tenant associated with user');
+        console.log('Global user detected, returning empty overview data');
+        return {
+          totalRooms: 0,
+          occupiedRooms: 0,
+          availableRooms: 0,
+          revenue: 0,
+          reservations: 0,
+          occupancyRate: 0,
+          bookingsPipeline: [],
+          revenueTrend: []
+        };
       }
 
       // Fetch rooms data

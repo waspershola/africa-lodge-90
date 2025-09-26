@@ -95,8 +95,18 @@ export class EmailServiceFactory {
       };
     }
 
-    // Use the verified onboarding@resend.dev for testing
-    const fromEmail = emailRequest.from === 'noreply@example.com' ? 'onboarding@resend.dev' : emailRequest.from;
+    // Use luxuryhotelpro.com domain for from address if it's configured
+    let fromEmail = emailRequest.from;
+    if (config.verified_domains && config.verified_domains.includes('luxuryhotelpro.com')) {
+      // Use luxuryhotelpro.com domain
+      if (emailRequest.from === 'noreply@example.com' || !emailRequest.from.includes('@')) {
+        fromEmail = 'noreply@luxuryhotelpro.com';
+      }
+    } else {
+      // Fallback to resend's verified domain for testing
+      fromEmail = emailRequest.from === 'noreply@example.com' ? 'onboarding@resend.dev' : emailRequest.from;
+    }
+    
     const fromHeader = `${emailRequest.fromName} <${fromEmail}>`;
     
     console.log('Resend: Using from:', fromHeader);
@@ -307,37 +317,113 @@ export class EmailServiceFactory {
   }
 
   async getEmailProviderConfig(tenantId: string): Promise<EmailProviderConfig | null> {
-    // For now, return a basic config using environment variables
-    const resendApiKey = Deno.env.get('RESEND_API_KEY');
-    
-    if (!resendApiKey) {
-      console.log('No RESEND_API_KEY found in environment');
-      return null;
-    }
-    
-    return {
-      default_provider: 'resend',
-      fallback_enabled: false,
-      fallback_provider: 'resend',
-      providers: {
-        ses: {
-          enabled: false,
-          region: 'eu-north-1',
-          access_key_id: '',
-          secret_access_key: '',
-          verified_domains: []
-        },
-        mailersend: {
-          enabled: false,
-          api_key: '',
-          verified_domains: []
-        },
-        resend: {
-          enabled: true,
-          api_key: resendApiKey,
-          verified_domains: []
+    try {
+      // First try to get system-wide provider configuration from database
+      const supabaseUrl = Deno.env.get('SUPABASE_URL');
+      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      
+      if (supabaseUrl && supabaseKey) {
+        const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.57.4');
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        const { data: systemProviders } = await supabase
+          .from('system_email_providers')
+          .select('*')
+          .eq('is_enabled', true)
+          .order('is_default', { ascending: false });
+
+        if (systemProviders && systemProviders.length > 0) {
+          const defaultProvider = systemProviders.find(p => p.is_default) || systemProviders[0];
+          const fallbackProvider = systemProviders.find(p => !p.is_default && p.provider_type !== defaultProvider.provider_type);
+
+          // Build configuration from system providers
+          const config: EmailProviderConfig = {
+            default_provider: defaultProvider.provider_type as 'resend' | 'ses' | 'mailersend',
+            fallback_enabled: !!fallbackProvider,
+            fallback_provider: fallbackProvider?.provider_type as 'resend' | 'ses' | 'mailersend' || 'mailersend',
+            providers: {
+              resend: {
+                enabled: false,
+                api_key: '',
+                verified_domains: []
+              },
+              mailersend: {
+                enabled: false,
+                api_key: '',
+                verified_domains: []
+              },
+              ses: {
+                enabled: false,
+                region: 'eu-north-1',
+                access_key_id: '',
+                secret_access_key: '',
+                verified_domains: []
+              }
+            }
+          };
+
+          // Configure each provider based on system settings
+          systemProviders.forEach(provider => {
+            if (provider.provider_type === 'resend') {
+              config.providers.resend = {
+                enabled: provider.is_enabled,
+                api_key: provider.config.api_key || '',
+                verified_domains: provider.config.verified_domains || ['luxuryhotelpro.com']
+              };
+            } else if (provider.provider_type === 'mailersend') {
+              config.providers.mailersend = {
+                enabled: provider.is_enabled,
+                api_key: provider.config.api_key || '',
+                verified_domains: provider.config.verified_domains || ['luxuryhotelpro.com']
+              };
+            } else if (provider.provider_type === 'ses') {
+              config.providers.ses = {
+                enabled: provider.is_enabled,
+                region: provider.config.region || 'eu-north-1',
+                access_key_id: provider.config.access_key_id || '',
+                secret_access_key: provider.config.secret_access_key || '',
+                verified_domains: provider.config.verified_domains || ['luxuryhotelpro.com']
+              };
+            }
+          });
+
+          return config;
         }
       }
-    };
+    } catch (error) {
+      console.log('Failed to fetch system providers, falling back to environment:', error);
+    }
+
+    // Fallback: Try to get from environment (for backwards compatibility)
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
+    if (resendApiKey) {
+      return {
+        default_provider: 'resend' as const,
+        fallback_enabled: true,
+        fallback_provider: 'mailersend' as const,
+        providers: {
+          resend: {
+            enabled: true,
+            api_key: resendApiKey,
+            verified_domains: ['luxuryhotelpro.com']
+          },
+          mailersend: {
+            enabled: false,
+            api_key: '',
+            verified_domains: []
+          },
+          ses: {
+            enabled: false,
+            region: 'eu-north-1',
+            access_key_id: '',
+            secret_access_key: '',
+            verified_domains: []
+          }
+        }
+      };
+    }
+
+    console.log('No email providers configured');
+    return null;
   }
 }

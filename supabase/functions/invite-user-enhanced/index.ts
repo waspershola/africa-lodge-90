@@ -434,26 +434,53 @@ serve(async (req) => {
 
     if (send_email) {
       try {
+        // Get hotel name from tenant data
+        let hotel_name = 'Hotel Management System';
+        let from_name = 'Hotel Management System';
+        
+        if (tenant_id) {
+          const { data: tenantData } = await supabaseAdmin
+            .from('tenants')
+            .select('hotel_name')
+            .eq('id', tenant_id)
+            .single();
+          
+          if (tenantData?.hotel_name) {
+            hotel_name = tenantData.hotel_name;
+            from_name = tenantData.hotel_name;
+          }
+        }
+
+        console.log('Calling send-temp-password with:', { 
+          email, 
+          name, 
+          temp_password: tempPassword, 
+          tenant_id, 
+          hotel_name,
+          from_name 
+        });
+
         const emailResponse = await supabaseAdmin.functions.invoke('send-temp-password', {
           body: {
             email,
             name,
-            tempPassword,
-            role,
-            hotel_name: tenant_id ? 'Your Hotel' : 'Platform'
+            temp_password: tempPassword, // Fixed: was tempPassword, should be temp_password
+            tenant_id, // Added: was missing
+            hotel_name, // Improved: now gets actual hotel name
+            from_name // Added: for better email branding
           }
         });
 
         if (emailResponse.error) {
           console.error('Email sending failed:', emailResponse.error);
-          emailError = emailResponse.error.message;
+          emailError = typeof emailResponse.error === 'string' ? emailResponse.error : emailResponse.error.message || 'Unknown email error';
         } else {
           emailSent = true;
           console.log('Invitation email sent successfully');
         }
       } catch (error) {
         console.error('Email service error:', error);
-        emailError = 'Email service unavailable';
+        emailError = error instanceof Error ? error.message : 'Email service unavailable';
       }
     }
 

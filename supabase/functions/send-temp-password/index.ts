@@ -36,6 +36,7 @@ serve(async (req) => {
       }
     );
 
+    const requestData = await req.json();
     const { 
       email, 
       name, 
@@ -43,12 +44,30 @@ serve(async (req) => {
       tenant_id = null,
       from_name = "Hotel Management System",
       hotel_name = "Hotel"
-    }: SendTempPasswordRequest = await req.json();
+    }: SendTempPasswordRequest = requestData;
+
+    console.log(`[${operationId}] Received request data:`, { 
+      email, 
+      name, 
+      temp_password: temp_password ? '***masked***' : 'missing', 
+      tenant_id, 
+      from_name, 
+      hotel_name 
+    });
 
     if (!email || !name || !temp_password) {
-      console.error(`[${operationId}] Missing required fields`);
+      const missingFields = [];
+      if (!email) missingFields.push('email');
+      if (!name) missingFields.push('name');
+      if (!temp_password) missingFields.push('temp_password');
+      
+      console.error(`[${operationId}] Missing required fields: ${missingFields.join(', ')}`);
       return new Response(
-        JSON.stringify({ success: false, error: 'Email, name, and temp_password are required' }),
+        JSON.stringify({ 
+          success: false, 
+          error: `Missing required fields: ${missingFields.join(', ')}`,
+          received_fields: Object.keys(requestData)
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

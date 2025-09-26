@@ -512,6 +512,7 @@ export function StaffManagementDashboard() {
           userId={selectedStaff.id}
           userEmail={selectedStaff.email}
           userRole={selectedStaff.role}
+          userName={selectedStaff.name}
         />
       )}
 

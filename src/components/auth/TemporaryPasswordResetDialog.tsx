@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Dialog, 
   DialogContent, 
@@ -10,8 +11,9 @@ import {
   DialogTitle 
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Shield, Loader2, Eye, EyeOff, Copy, CheckCircle } from 'lucide-react';
+import { Shield, Loader2, Eye, EyeOff, Copy, CheckCircle, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useStaffInvites } from '@/hooks/useStaffInvites';
 
 interface TemporaryPasswordResetDialogProps {
   open: boolean;
@@ -19,6 +21,7 @@ interface TemporaryPasswordResetDialogProps {
   userId: string;
   userEmail: string;
   userRole: string;
+  userName?: string;
 }
 
 export function TemporaryPasswordResetDialog({ 
@@ -26,7 +29,8 @@ export function TemporaryPasswordResetDialog({
   onOpenChange, 
   userId, 
   userEmail, 
-  userRole 
+  userRole,
+  userName = userEmail
 }: TemporaryPasswordResetDialogProps) {
   const [loading, setLoading] = useState(false);
   const [tempPassword, setTempPassword] = useState('');
@@ -34,7 +38,10 @@ export function TemporaryPasswordResetDialog({
   const [expiryHours, setExpiryHours] = useState('24');
   const [reason, setReason] = useState('');
   const [generated, setGenerated] = useState(false);
+  const [sendViaEmail, setSendViaEmail] = useState(true);
+  const [emailSent, setEmailSent] = useState(false);
   const { toast } = useToast();
+  const { resetUserPassword, isLoading } = useStaffInvites();
 
   const generateTempPassword = () => {
     const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
@@ -56,22 +63,40 @@ export function TemporaryPasswordResetDialog({
     }
 
     setLoading(true);
+    setEmailSent(false);
+    
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const newTempPassword = generateTempPassword();
-      setTempPassword(newTempPassword);
-      setGenerated(true);
-      
-      toast({
-        title: "Temporary password generated",
-        description: "The user will be required to reset on next login"
-      });
-    } catch (error) {
+      if (sendViaEmail) {
+        // Use the backend to generate and send password via email
+        const response = await resetUserPassword(userId);
+        
+        if (response.success && response.temp_password) {
+          setTempPassword(response.temp_password);
+          setEmailSent(true);
+          setGenerated(true);
+          
+          toast({
+            title: "Password reset successful",
+            description: `Temporary password sent to ${userEmail}`
+          });
+        } else {
+          throw new Error(response.error || 'Failed to reset password');
+        }
+      } else {
+        // Generate password locally without sending email
+        const newTempPassword = generateTempPassword();
+        setTempPassword(newTempPassword);
+        setGenerated(true);
+        
+        toast({
+          title: "Temporary password generated",
+          description: "The user will be required to reset on next login"
+        });
+      }
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to generate temporary password",
+        description: error.message || "Failed to generate temporary password",
         variant: "destructive"
       });
     } finally {
@@ -92,6 +117,8 @@ export function TemporaryPasswordResetDialog({
     setGenerated(false);
     setReason('');
     setExpiryHours('24');
+    setSendViaEmail(true);
+    setEmailSent(false);
     onOpenChange(false);
   };
 
@@ -131,18 +158,34 @@ export function TemporaryPasswordResetDialog({
                     max="168"
                     value={expiryHours}
                     onChange={(e) => setExpiryHours(e.target.value)}
+                    disabled={sendViaEmail}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Password will expire in {expiryHours} hours
+                    {sendViaEmail ? 'Email service uses 24-hour expiry' : `Password will expire in ${expiryHours} hours`}
                   </p>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="send-email"
+                    checked={sendViaEmail}
+                    onCheckedChange={(checked) => setSendViaEmail(checked === true)}
+                  />
+                  <Label htmlFor="send-email" className="flex items-center gap-2 cursor-pointer">
+                    <Mail className="h-4 w-4" />
+                    Send temporary password via email
+                  </Label>
                 </div>
               </div>
 
               <Alert>
                 <Shield className="h-4 w-4" />
                 <AlertDescription>
-                  The user will receive an email with the temporary password and will be 
-                  required to reset it upon next login.
+                  {sendViaEmail ? (
+                    <>The user will receive an email with the temporary password and will be required to reset it upon next login.</>
+                  ) : (
+                    <>You will need to manually share the generated password with the user. They will be required to reset it upon next login.</>
+                  )}
                 </AlertDescription>
               </Alert>
 
@@ -159,15 +202,18 @@ export function TemporaryPasswordResetDialog({
                 <Button 
                   onClick={handleGenerate}
                   className="flex-1"
-                  disabled={loading || !reason.trim()}
+                  disabled={(loading || isLoading) || !reason.trim()}
                 >
-                  {loading ? (
+                  {(loading || isLoading) ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating...
+                      {sendViaEmail ? 'Sending...' : 'Generating...'}
                     </>
                   ) : (
-                    'Generate Password'
+                    <>
+                      {sendViaEmail && <Mail className="mr-2 h-4 w-4" />}
+                      {sendViaEmail ? 'Generate & Send Email' : 'Generate Password'}
+                    </>
                   )}
                 </Button>
               </div>
@@ -212,7 +258,12 @@ export function TemporaryPasswordResetDialog({
 
                 <Alert>
                   <AlertDescription>
-                    <strong>Important:</strong> This password expires in {expiryHours} hours. 
+                    <strong>Important:</strong> This password expires in {sendViaEmail ? '24' : expiryHours} hours. 
+                    {emailSent ? (
+                      <>An email has been sent to {userEmail} with the password details. </>
+                    ) : (
+                      <>Please share this password with {userName}. </>
+                    )}
                     The user must reset it on their next login.
                   </AlertDescription>
                 </Alert>

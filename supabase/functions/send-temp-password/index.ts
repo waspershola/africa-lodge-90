@@ -10,7 +10,7 @@ const corsHeaders = {
 interface SendTempPasswordRequest {
   email: string;
   name: string;
-  temp_password: string;
+  temp_password?: string | null; // Optional for invitation emails
   tenant_id?: string | null;
   from_name?: string;
   hotel_name?: string;
@@ -46,20 +46,23 @@ serve(async (req) => {
       hotel_name = "Hotel"
     }: SendTempPasswordRequest = requestData;
 
+    const isInvitationEmail = !temp_password;
+    const emailType = isInvitationEmail ? 'invitation' : 'temp_password';
+    
     console.log(`[${operationId}] Received request data:`, { 
       email, 
       name, 
-      temp_password: temp_password ? '***masked***' : 'missing', 
+      temp_password: temp_password ? '***masked***' : null, 
       tenant_id, 
       from_name, 
-      hotel_name 
+      hotel_name,
+      email_type: emailType
     });
 
-    if (!email || !name || !temp_password) {
+    if (!email || !name) {
       const missingFields = [];
       if (!email) missingFields.push('email');
       if (!name) missingFields.push('name');
-      if (!temp_password) missingFields.push('temp_password');
       
       console.error(`[${operationId}] Missing required fields: ${missingFields.join(', ')}`);
       return new Response(
@@ -72,7 +75,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[${operationId}] Sending temp password email to: ${email}`);
+    console.log(`[${operationId}] Sending ${emailType} email to: ${email}`);
 
     // Initialize email service
     const emailService = new EmailServiceFactory();
@@ -91,9 +94,74 @@ serve(async (req) => {
       );
     }
 
-    // Create email content
-    const emailSubject = `Your ${hotel_name} Account - Access Credentials`;
-    const emailHtml = `
+    // Create email content based on type
+    const emailSubject = isInvitationEmail 
+      ? `Welcome to ${hotel_name} - Account Created` 
+      : `Your ${hotel_name} Account - Access Credentials`;
+    const emailHtml = isInvitationEmail ? `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Welcome to ${hotel_name}</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .header { text-align: center; padding: 20px 0; border-bottom: 2px solid #e1e1e1; }
+            .header h1 { color: #2563eb; margin: 0; font-size: 28px; }
+            .content { padding: 20px 0; }
+            .welcome { font-size: 18px; color: #333; margin-bottom: 20px; }
+            .info-box { background-color: #f8f9fa; padding: 20px; border-radius: 6px; border-left: 4px solid #2563eb; margin: 20px 0; }
+            .info-item { margin: 10px 0; }
+            .info-label { font-weight: bold; color: #555; }
+            .info-value { font-family: 'Courier New', monospace; background-color: #e9ecef; padding: 8px 12px; border-radius: 4px; display: inline-block; margin-left: 10px; }
+            .next-steps { background-color: #e7f3ff; border: 1px solid #b3d9ff; border-radius: 4px; padding: 15px; margin: 20px 0; }
+            .next-steps-title { font-weight: bold; color: #0066cc; margin-bottom: 8px; }
+            .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e1e1e1; text-align: center; color: #6c757d; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>${hotel_name}</h1>
+            </div>
+            
+            <div class="content">
+              <div class="welcome">
+                Hello ${name},
+              </div>
+              
+              <p>Welcome to ${hotel_name}! Your account has been created successfully.</p>
+              
+              <div class="info-box">
+                <div class="info-item">
+                  <span class="info-label">Your Email:</span>
+                  <span class="info-value">${email}</span>
+                </div>
+              </div>
+              
+              <div class="next-steps">
+                <div class="next-steps-title">📋 Next Steps:</div>
+                <ul>
+                  <li>You will receive a separate email with your login credentials</li>
+                  <li>Please check your email for login instructions</li>
+                  <li>If you don't receive the credentials email, please contact your administrator</li>
+                  <li>For security, please change your password after your first login</li>
+                </ul>
+              </div>
+              
+              <p>If you have any questions or need assistance, please don't hesitate to contact your system administrator.</p>
+            </div>
+            
+            <div class="footer">
+              <p>This email was sent from ${hotel_name}.</p>
+              <p>Please do not reply to this email as it's automatically generated.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    ` : `
       <!DOCTYPE html>
       <html>
         <head>
@@ -114,7 +182,6 @@ serve(async (req) => {
             .important { background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 15px; margin: 20px 0; }
             .important-title { font-weight: bold; color: #856404; margin-bottom: 8px; }
             .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e1e1e1; text-align: center; color: #6c757d; font-size: 14px; }
-            .btn { display: inline-block; padding: 12px 24px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 6px; margin: 10px 0; }
           </style>
         </head>
         <body>
@@ -178,7 +245,7 @@ serve(async (req) => {
       tenant_id || 'system',
       emailConfig,
       emailRequest,
-      'temp_password'
+      emailType
     );
 
     if (!emailResult.success) {
@@ -202,12 +269,12 @@ serve(async (req) => {
         .insert({
           action: 'EMAIL_SENT',
           resource_type: 'AUTH',
-          description: `Temporary password email sent to ${email}`,
+          description: `${isInvitationEmail ? 'Invitation' : 'Temporary password'} email sent to ${email}`,
           tenant_id: tenant_id,
           metadata: {
             email: email,
             recipient_name: name,
-            email_type: 'temp_password',
+            email_type: emailType,
             provider: emailResult.provider,
             message_id: emailResult.messageId
           }
@@ -220,7 +287,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Temporary password email sent successfully',
+        message: `${isInvitationEmail ? 'Invitation' : 'Temporary password'} email sent successfully`,
+        email_type: emailType,
         provider: emailResult.provider,
         messageId: emailResult.messageId
       }),

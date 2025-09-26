@@ -324,8 +324,25 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
   const hasAccess = (requiredRole: string): boolean => {
     if (!user) return false;
 
+    // Handle both new standardized role names and legacy names
+    const normalizeRole = (role: string) => {
+      const roleMapping = {
+        'Support Admin': 'SUPPORT_ADMIN',
+        'Support Staff': 'SUPPORT_STAFF', 
+        'Platform Admin': 'PLATFORM_ADMIN',
+        'Super Admin': 'SUPER_ADMIN'
+      };
+      return roleMapping[role] || role;
+    };
+
+    const normalizedUserRole = normalizeRole(user.role);
+    const normalizedRequiredRole = normalizeRole(requiredRole);
+
     const roleHierarchy = {
-      'SUPER_ADMIN': ['SUPER_ADMIN'],
+      'SUPER_ADMIN': ['SUPER_ADMIN', 'PLATFORM_ADMIN', 'SUPPORT_ADMIN', 'SUPPORT_STAFF'],
+      'PLATFORM_ADMIN': ['PLATFORM_ADMIN', 'SUPPORT_ADMIN', 'SUPPORT_STAFF'],
+      'SUPPORT_ADMIN': ['SUPPORT_ADMIN', 'SUPPORT_STAFF'],
+      'SUPPORT_STAFF': ['SUPPORT_STAFF'],
       'OWNER': ['OWNER', 'MANAGER', 'STAFF', 'FRONT_DESK', 'HOUSEKEEPING', 'MAINTENANCE', 'POS'],
       'MANAGER': ['MANAGER', 'STAFF', 'FRONT_DESK', 'HOUSEKEEPING', 'MAINTENANCE', 'POS'],
       'STAFF': ['STAFF'],
@@ -335,8 +352,8 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
       'POS': ['POS']
     };
 
-    const userRoles = roleHierarchy[user.role] || [user.role];
-    return userRoles.includes(requiredRole);
+    const userRoles = roleHierarchy[normalizedUserRole] || [normalizedUserRole];
+    return userRoles.includes(normalizedRequiredRole);
   };
 
   // Check if user has specific permission (for backward compatibility)

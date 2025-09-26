@@ -225,7 +225,7 @@ const App = () => (
           
           {/* Support Admin Routes */}
           <Route path="/support-admin" element={
-            <TenantAwareLayout allowedRoles={['Support Admin']}>
+            <TenantAwareLayout allowedRoles={['SUPPORT_ADMIN', 'SUPPORT_STAFF', 'PLATFORM_ADMIN', 'Support Admin', 'Support Staff', 'Platform Admin']}>
               <SupportAdminLayout />
             </TenantAwareLayout>
           }>

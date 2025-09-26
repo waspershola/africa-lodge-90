@@ -28,7 +28,7 @@ import { toast } from '@/hooks/use-toast';
 const createGlobalUserSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email address'),
-  role: z.enum(['SUPER_ADMIN', 'PLATFORM_ADMIN', 'SUPPORT_STAFF']),
+  role: z.enum(['SUPER_ADMIN', 'PLATFORM_ADMIN', 'SUPPORT_ADMIN', 'SUPPORT_STAFF']),
   department: z.string().optional(),
   generateTempPassword: z.boolean().default(true),
   sendCredentials: z.boolean().default(true),
@@ -218,6 +218,7 @@ export function CreateGlobalUserDialog() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="SUPPORT_STAFF">Support Staff</SelectItem>
+                    <SelectItem value="SUPPORT_ADMIN">Support Admin</SelectItem>
                     <SelectItem value="PLATFORM_ADMIN">Platform Admin</SelectItem>
                     <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
                   </SelectContent>

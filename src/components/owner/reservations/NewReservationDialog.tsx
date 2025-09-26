@@ -35,6 +35,7 @@ export default function NewReservationDialog({
   const [guestSearchTerm, setGuestSearchTerm] = useState('');
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [pendingReservation, setPendingReservation] = useState<any>(null);
+  const [isTyping, setIsTyping] = useState(false);
   const [formData, setFormData] = useState({
     guestName: '',
     email: '',
@@ -195,9 +196,21 @@ export default function NewReservationDialog({
                       className="pl-10"
                       value={formData.guestName}
                       onChange={(e) => {
-                        setFormData({ ...formData, guestName: e.target.value });
-                        setGuestSearchTerm(e.target.value);
-                        if (e.target.value.length > 2) {
+                        const value = e.target.value;
+                        setFormData({ ...formData, guestName: value });
+                        setGuestSearchTerm(value);
+                        setIsTyping(true);
+                        
+                        // Open search dropdown when typing
+                        if (value.length > 1 && !guestSearchOpen) {
+                          setGuestSearchOpen(true);
+                        } else if (value.length <= 1 && guestSearchOpen) {
+                          setGuestSearchOpen(false);
+                        }
+                      }}
+                      onFocus={() => {
+                        if (formData.guestName.length > 1) {
+                          setGuestSearchTerm(formData.guestName);
                           setGuestSearchOpen(true);
                         }
                       }}
@@ -206,59 +219,57 @@ export default function NewReservationDialog({
                     />
                   </PopoverTrigger>
                   <PopoverContent className="w-[400px] p-0">
-                    <Command>
-                      <CommandInput 
-                        placeholder="Search guests..." 
-                        value={guestSearchTerm}
-                        onValueChange={setGuestSearchTerm}
-                      />
+                    <Command shouldFilter={false}>
                       <CommandList>
-                        <CommandEmpty>
-                          <div className="flex flex-col items-center gap-2 p-4">
-                            <span>No existing guests found.</span>
-                            <CommandItem
-                              onSelect={() => {
-                                setGuestSearchOpen(false);
-                                setGuestSearchTerm('');
-                              }}
-                              className="cursor-pointer w-full justify-center"
-                            >
-                              Continue with "{guestSearchTerm}" as new guest
-                            </CommandItem>
-                          </div>
-                        </CommandEmpty>
-                        <CommandGroup>
-                          {searchResults.map((guest) => (
-                            <CommandItem
-                              key={guest.id}
-                              onSelect={() => selectGuest(guest)}
-                              className="cursor-pointer"
-                            >
-                              <div className="flex flex-col">
-                                <span className="font-medium">
-                                  {guest.first_name} {guest.last_name}
-                                </span>
-                                <span className="text-sm text-muted-foreground">
-                                  {guest.email} • {guest.phone} • {guest.total_stays || 0} stays
-                                </span>
-                              </div>
-                            </CommandItem>
-                          ))}
-                          {searchResults.length > 0 && guestSearchTerm.length > 0 && (
-                            <CommandItem
-                              onSelect={() => {
-                                setGuestSearchOpen(false);
-                                setGuestSearchTerm('');
-                              }}
-                              className="cursor-pointer border-t"
-                            >
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4" />
-                                <span>Create new guest "{guestSearchTerm}"</span>
-                              </div>
-                            </CommandItem>
-                          )}
-                        </CommandGroup>
+                        {searchResults.length === 0 && guestSearchTerm.length > 1 ? (
+                          <CommandEmpty>
+                            <div className="flex flex-col items-center gap-2 p-4">
+                              <span>No existing guests found.</span>
+                              <CommandItem
+                                onSelect={() => {
+                                  setGuestSearchOpen(false);
+                                  setIsTyping(false);
+                                }}
+                                className="cursor-pointer w-full justify-center"
+                              >
+                                Continue with "{guestSearchTerm}" as new guest
+                              </CommandItem>
+                            </div>
+                          </CommandEmpty>
+                        ) : (
+                          <CommandGroup>
+                            {searchResults.map((guest) => (
+                              <CommandItem
+                                key={guest.id}
+                                onSelect={() => selectGuest(guest)}
+                                className="cursor-pointer"
+                              >
+                                <div className="flex flex-col">
+                                  <span className="font-medium">
+                                    {guest.first_name} {guest.last_name}
+                                  </span>
+                                  <span className="text-sm text-muted-foreground">
+                                    {guest.email} • {guest.phone} • {guest.total_stays || 0} stays
+                                  </span>
+                                </div>
+                              </CommandItem>
+                            ))}
+                            {searchResults.length > 0 && guestSearchTerm.length > 0 && (
+                              <CommandItem
+                                onSelect={() => {
+                                  setGuestSearchOpen(false);
+                                  setIsTyping(false);
+                                }}
+                                className="cursor-pointer border-t"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <User className="h-4 w-4" />
+                                  <span>Create new guest "{guestSearchTerm}"</span>
+                                </div>
+                              </CommandItem>
+                            )}
+                          </CommandGroup>
+                        )}
                       </CommandList>
                     </Command>
                   </PopoverContent>

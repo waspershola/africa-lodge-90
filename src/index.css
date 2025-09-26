@@ -125,6 +125,12 @@
     
     --destructive: 0 75% 55%;
     --destructive-foreground: 210 20% 95%;
+    
+    /* Dark mode semantic colors */
+    --success: 134 61% 51%;
+    --success-foreground: 210 20% 95%;
+    --warning: 43 96% 66%;
+    --warning-foreground: 234 25% 10%;
   }
 }
 

@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, LogIn, Mail, Lock, Shield } from 'lucide-react';
-import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
-import { ForgotPasswordDialog } from '@/components/auth/ForgotPasswordDialog';
+import { Loader2, Eye, EyeOff, LogIn, Mail, Lock, Shield } from 'lucide-react';
+import { useAuth } from '@/hooks/useMultiTenantAuth';
+import { ForgotPasswordDialog } from './ForgotPasswordDialog';
 import { supabaseApi } from '@/lib/supabase-api';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import { AuthAlert, InlineError } from '@/components/ui/auth-alert';
+import { AuthErrorHandler } from '@/lib/errorHandler';
+import { AuthError, FormErrors } from '@/types/auth-errors';
+import { cn } from '@/lib/utils';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -20,38 +23,89 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [authError, setAuthError] = useState<AuthError | null>(null);
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [attemptCount, setAttemptCount] = useState(0);
+  const [lastAttemptTime, setLastAttemptTime] = useState<number | null>(null);
+  const [isRateLimited, setIsRateLimited] = useState(false);
 
   const { login } = useAuth();
-  const auditLog = useAuditLog();
+  const { logEvent } = useAuditLog();
+
+  // Rate limiting logic
+  useEffect(() => {
+    if (lastAttemptTime && attemptCount >= 5) {
+      const timeSinceLastAttempt = Date.now() - lastAttemptTime;
+      const cooldownPeriod = 60000; // 1 minute
+      
+      if (timeSinceLastAttempt < cooldownPeriod) {
+        setIsRateLimited(true);
+        const timeoutId = setTimeout(() => {
+          setIsRateLimited(false);
+          setAttemptCount(0);
+        }, cooldownPeriod - timeSinceLastAttempt);
+        
+        return () => clearTimeout(timeoutId);
+      } else {
+        setAttemptCount(0);
+        setIsRateLimited(false);
+      }
+    }
+  }, [attemptCount, lastAttemptTime]);
+
+  const validateForm = (): boolean => {
+    const errors: FormErrors = {};
+    
+    const emailError = AuthErrorHandler.validateEmail(email);
+    if (emailError) {
+      errors[emailError.field] = emailError.message;
+    }
+    
+    if (!password) {
+      errors.password = 'Password is required';
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError('Please enter both email and password');
+    
+    if (isRateLimited) {
+      setAuthError(AuthErrorHandler.createError('RATE_LIMITED'));
+      return;
+    }
+    
+    if (!validateForm()) {
       return;
     }
 
     setIsLoading(true);
-    setError('');
+    setAuthError(null);
+    setFormErrors({});
 
     try {
-      // Use the enhanced login function from auth provider (includes audit logging)
       await login(email, password);
       
-      // Clear form
-      setEmail('');
-      setPassword('');
+      // Reset attempt count on success
+      setAttemptCount(0);
+      setLastAttemptTime(null);
       
-      // Call success callback
+      AuthErrorHandler.showSuccessToast('Welcome back!', '✅ Login Successful');
       onSuccess?.();
       
     } catch (err: any) {
       console.error('Login error:', err);
-      setError(err.message || 'Failed to sign in. Please check your credentials.');
+      // Increment attempt count on failure
+      setAttemptCount(prev => prev + 1);
+      setLastAttemptTime(Date.now());
       
-      // Log failed attempt is handled in MultiTenantAuthProvider
+      const authError = AuthErrorHandler.parseSupabaseError(err);
+      setAuthError(authError);
+      AuthErrorHandler.showErrorToast(authError);
     } finally {
       setIsLoading(false);
     }
@@ -60,7 +114,11 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
   const handleForgotPassword = async (email: string) => {
     try {
       await supabaseApi.auth.resetPassword(email);
-      await auditLog.logPasswordReset(email);
+      await logEvent({ 
+        action: 'PASSWORD_RESET_REQUESTED',
+        resource_type: 'AUTH',
+        metadata: { email }
+      });
       return { success: true };
     } catch (error: any) {
       console.error('Password reset error:', error);
@@ -73,11 +131,18 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
 
   const form = (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+      <AuthAlert 
+        error={authError} 
+        onRetry={() => {
+          setAuthError(null);
+          setAttemptCount(0);
+          setIsRateLimited(false);
+        }}
+        onContactSupport={() => {
+          // Could open support modal or redirect
+          window.location.href = '/support';
+        }}
+      />
       
       <div className="space-y-2">
         <Label htmlFor="email" className="text-sm font-medium">
@@ -89,14 +154,24 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
             id="email"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (formErrors.email) {
+                setFormErrors(prev => ({ ...prev, email: '' }));
+              }
+            }}
             placeholder="Enter your email"
             required
-            disabled={isLoading}
-            className="pl-9"
+            disabled={isLoading || isRateLimited}
+            className={cn(
+              "pl-9",
+              formErrors.email && 'border-destructive focus-visible:ring-destructive',
+              authError?.code === 'INVALID_CREDENTIALS' && 'animate-pulse'
+            )}
             autoComplete="email"
           />
         </div>
+        <InlineError error={formErrors.email} />
       </div>
 
       <div className="space-y-2">
@@ -107,22 +182,70 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
           <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
             id="password"
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              if (formErrors.password) {
+                setFormErrors(prev => ({ ...prev, password: '' }));
+              }
+            }}
             placeholder="Enter your password"
             required
-            disabled={isLoading}
-            className="pl-9"
+            disabled={isLoading || isRateLimited}
+            className={cn(
+              "pl-9 pr-10",
+              formErrors.password && 'border-destructive focus-visible:ring-destructive',
+              authError?.code === 'INVALID_CREDENTIALS' && 'animate-pulse'
+            )}
             autoComplete="current-password"
           />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+            onClick={() => setShowPassword(!showPassword)}
+            disabled={isLoading}
+          >
+            {showPassword ? (
+              <EyeOff className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <Eye className="h-4 w-4 text-muted-foreground" />
+            )}
+            <span className="sr-only">
+              {showPassword ? 'Hide password' : 'Show password'}
+            </span>
+          </Button>
         </div>
+        <InlineError error={formErrors.password} />
+      </div>
+
+      <div className="flex items-center justify-between mb-4">
+        <Button
+          type="button"
+          variant="link"
+          className={cn(
+            "px-0 font-normal text-sm transition-colors",
+            (authError?.code === 'INVALID_CREDENTIALS' || authError?.code === 'USER_NOT_FOUND') && 
+            'text-primary font-medium animate-pulse'
+          )}
+          onClick={() => setShowForgotPassword(true)}
+        >
+          Forgot your password?
+        </Button>
+        
+        {attemptCount > 0 && attemptCount < 5 && (
+          <span className="text-xs text-muted-foreground">
+            {5 - attemptCount} attempts remaining
+          </span>
+        )}
       </div>
 
       <Button 
         type="submit" 
-        className="w-full" 
-        disabled={isLoading}
+        className="w-full font-semibold" 
+        disabled={isLoading || isRateLimited || Object.keys(formErrors).length > 0}
         size={compact ? "sm" : "default"}
       >
         {isLoading ? (
@@ -130,6 +253,8 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Signing in...
           </>
+        ) : isRateLimited ? (
+          'Please Wait...'
         ) : (
           <>
             <LogIn className="mr-2 h-4 w-4" />
@@ -139,18 +264,7 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
       </Button>
 
       {!compact && (
-        <div className="text-center space-y-3">
-          <Button
-            type="button"
-            variant="link"
-            size="sm"
-            onClick={() => setShowForgotPassword(true)}
-            disabled={isLoading}
-            className="text-xs"
-          >
-            Forgot your password?
-          </Button>
-          
+        <div className="text-center space-y-3 mt-6">
           {/* Emergency Access Portal Link */}
           <div className="border-t pt-3">
             <Button
@@ -187,10 +301,10 @@ export function LoginForm({ onSuccess, showCard = true, compact = false }: Login
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl text-center">Welcome Back</CardTitle>
-        <p className="text-sm text-muted-foreground text-center">
+        <CardTitle className="text-2xl text-center font-serif">Welcome Back</CardTitle>
+        <CardDescription className="text-center">
           Sign in to your account to continue
-        </p>
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {form}

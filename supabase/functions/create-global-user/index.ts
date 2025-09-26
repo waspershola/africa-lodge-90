@@ -274,11 +274,34 @@ Deno.serve(async (req) => {
       // Don't fail the whole operation for audit log issues
     }
 
-    // TODO: Send email with credentials if requested
-    // This would require email service setup (Resend, etc.)
+    // Send email with credentials if requested
+    let emailSent = false;
     if (sendEmail && tempPassword) {
-      console.log('Email sending not implemented yet, but would send to:', email);
-      console.log('Temporary password:', tempPassword);
+      try {
+        console.log('Sending temporary password email to:', email);
+        
+        const { data: emailResponse, error: emailError } = await supabase.functions.invoke('send-temp-password', {
+          body: {
+            email: email,
+            name: fullName,
+            temp_password: tempPassword,
+            tenant_id: null, // Global users don't have a tenant
+            from_name: 'Hotel Management System',
+            hotel_name: 'Hotel Management System'
+          }
+        });
+
+        if (emailError) {
+          console.warn('Failed to send email (non-critical):', emailError);
+          emailSent = false;
+        } else {
+          console.log('Email sent successfully:', emailResponse);
+          emailSent = true;
+        }
+      } catch (emailError) {
+        console.warn('Failed to send email (non-critical):', emailError);
+        emailSent = false;
+      }
     }
 
     return new Response(
@@ -290,9 +313,10 @@ Deno.serve(async (req) => {
           fullName,
           role,
           department,
-          tempPassword: generateTempPassword ? tempPassword : undefined
+          tempPassword: (generateTempPassword && (!sendEmail || !emailSent)) ? tempPassword : undefined
         },
-        message: 'Global user created successfully'
+        emailSent: emailSent,
+        message: emailSent ? 'Global user created and invitation email sent successfully' : 'Global user created successfully'
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

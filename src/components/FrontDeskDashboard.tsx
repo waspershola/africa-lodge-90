@@ -38,7 +38,9 @@ import { BillingOverviewFD } from "./frontdesk/BillingOverviewFD";
 import { HandoverPanel } from "./frontdesk/HandoverPanel";
 import { CheckoutDialog } from "./frontdesk/CheckoutDialog";
 import { QRRequestsPanel } from "./frontdesk/QRRequestsPanel";
-import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
+import { ExpressOperationsBar } from "./frontdesk/ExpressOperationsBar";
+import { AudioControlPanel } from "./frontdesk/AudioControlPanel";
+import { useEnhancedRealtime } from '@/hooks/useEnhancedRealtime';
 import DashboardNotificationBar from '@/components/layout/DashboardNotificationBar';
 import type { Room } from "./frontdesk/RoomGrid";
 import { useTenantInfo } from "@/hooks/useTenantInfo";
@@ -102,8 +104,8 @@ const FrontDeskDashboard = () => {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [activePanel, setActivePanel] = useState<'overview' | 'qr-requests' | 'staff-ops' | 'billing' | 'handover' | 'qr-manager'>('overview');
 
-  // Set up real-time updates for live dashboard experience
-  useRealtimeUpdates();
+  // Set up enhanced real-time updates for live dashboard experience
+  const realtimeStatus = useEnhancedRealtime();
 
   // Simulate online/offline status
   useEffect(() => {
@@ -409,7 +411,16 @@ const FrontDeskDashboard = () => {
           </div>
         </div>
 
-        {/* Action Bar - Under Quick KPIs */}
+        {/* Express Operations Bar - Critical new feature */}
+        <ExpressOperationsBar 
+          onAction={handleAction}
+          connectionStatus={{
+            isOnline: !isOffline,
+            syncInProgress: false
+          }}
+        />
+
+        {/* Action Bar - Under Express Operations */}
         <ActionBar 
           onAction={handleAction}
           showKeyboardHelp={showKeyboardHelp}

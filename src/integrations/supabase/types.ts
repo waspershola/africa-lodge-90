@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      addons: {
+        Row: {
+          addon_type: string
+          billing_interval: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          is_recurring: boolean | null
+          metadata: Json | null
+          name: string
+          price: number
+          sms_credits_bonus: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          addon_type: string
+          billing_interval?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_recurring?: boolean | null
+          metadata?: Json | null
+          name: string
+          price: number
+          sms_credits_bonus?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          addon_type?: string
+          billing_interval?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_recurring?: boolean | null
+          metadata?: Json | null
+          name?: string
+          price?: number
+          sms_credits_bonus?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           action: string
@@ -1742,11 +1787,13 @@ export type Database = {
           created_at: string | null
           features: Json
           id: string
+          included_sms_credits: number | null
           max_rooms: number
           max_staff: number
           name: string
           price_annual: number | null
           price_monthly: number
+          sms_rate_per_credit: number | null
           trial_days: number | null
           updated_at: string | null
         }
@@ -1754,11 +1801,13 @@ export type Database = {
           created_at?: string | null
           features?: Json
           id?: string
+          included_sms_credits?: number | null
           max_rooms: number
           max_staff: number
           name: string
           price_annual?: number | null
           price_monthly: number
+          sms_rate_per_credit?: number | null
           trial_days?: number | null
           updated_at?: string | null
         }
@@ -1766,11 +1815,13 @@ export type Database = {
           created_at?: string | null
           features?: Json
           id?: string
+          included_sms_credits?: number | null
           max_rooms?: number
           max_staff?: number
           name?: string
           price_annual?: number | null
           price_monthly?: number
+          sms_rate_per_credit?: number | null
           trial_days?: number | null
           updated_at?: string | null
         }
@@ -3203,6 +3254,111 @@ export type Database = {
           },
         ]
       }
+      sms_credits: {
+        Row: {
+          balance: number | null
+          created_at: string | null
+          id: string
+          last_topup_at: string | null
+          tenant_id: string
+          total_purchased: number | null
+          total_used: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          balance?: number | null
+          created_at?: string | null
+          id?: string
+          last_topup_at?: string | null
+          tenant_id: string
+          total_purchased?: number | null
+          total_used?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          balance?: number | null
+          created_at?: string | null
+          id?: string
+          last_topup_at?: string | null
+          tenant_id?: string
+          total_purchased?: number | null
+          total_used?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_credits_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "occupancy_stats"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "sms_credits_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
+      sms_logs: {
+        Row: {
+          cost_per_credit: number | null
+          created_at: string | null
+          credits_used: number
+          id: string
+          message_preview: string | null
+          purpose: string | null
+          recipient_phone: string | null
+          source_id: string | null
+          source_type: string
+          status: string | null
+          tenant_id: string
+        }
+        Insert: {
+          cost_per_credit?: number | null
+          created_at?: string | null
+          credits_used: number
+          id?: string
+          message_preview?: string | null
+          purpose?: string | null
+          recipient_phone?: string | null
+          source_id?: string | null
+          source_type: string
+          status?: string | null
+          tenant_id: string
+        }
+        Update: {
+          cost_per_credit?: number | null
+          created_at?: string | null
+          credits_used?: number
+          id?: string
+          message_preview?: string | null
+          purpose?: string | null
+          recipient_phone?: string | null
+          source_id?: string | null
+          source_type?: string
+          status?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "occupancy_stats"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "sms_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
       staff_financials: {
         Row: {
           account_name: string | null
@@ -3567,6 +3723,64 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "users"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_addons: {
+        Row: {
+          addon_id: string
+          auto_renew: boolean | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          metadata: Json | null
+          purchased_at: string | null
+          quantity: number | null
+          tenant_id: string
+        }
+        Insert: {
+          addon_id: string
+          auto_renew?: boolean | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          metadata?: Json | null
+          purchased_at?: string | null
+          quantity?: number | null
+          tenant_id: string
+        }
+        Update: {
+          addon_id?: string
+          auto_renew?: boolean | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          metadata?: Json | null
+          purchased_at?: string | null
+          quantity?: number | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_addons_addon_id_fkey"
+            columns: ["addon_id"]
+            isOneToOne: false
+            referencedRelation: "addons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_addons_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "occupancy_stats"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "tenant_addons_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["tenant_id"]
           },
         ]
       }
@@ -4150,6 +4364,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      consume_sms_credits: {
+        Args: {
+          p_credits: number
+          p_message_preview?: string
+          p_purpose?: string
+          p_recipient_phone?: string
+          p_tenant_id: string
+        }
+        Returns: boolean
+      }
       create_default_tenant_roles: {
         Args: { tenant_uuid: string }
         Returns: undefined
@@ -4383,6 +4607,10 @@ export type Database = {
           transaction_count: number
         }[]
       }
+      get_sms_credits_balance: {
+        Args: { p_tenant_id: string }
+        Returns: number
+      }
       get_system_default_email_provider: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -4482,6 +4710,16 @@ export type Database = {
       }
       log_security_event: {
         Args: { event_description: string; event_type: string; metadata?: Json }
+        Returns: undefined
+      }
+      provision_sms_credits: {
+        Args: {
+          p_credits: number
+          p_purpose?: string
+          p_source_id?: string
+          p_source_type: string
+          p_tenant_id: string
+        }
         Returns: undefined
       }
       refresh_reporting_views: {

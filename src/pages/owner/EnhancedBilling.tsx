@@ -1,4 +1,6 @@
 import { EnhancedBillingInterface } from '@/components/owner/EnhancedBillingInterface';
+import { AddonMarketplace } from '@/components/owner/billing/AddonMarketplace';
+import { SMSCreditsManager } from '@/components/owner/billing/SMSCreditsManager';
 
 export default function EnhancedBilling() {
   return (
@@ -11,6 +13,16 @@ export default function EnhancedBilling() {
       </div>
       
       <EnhancedBillingInterface />
+
+      {/* Add-on Marketplace */}
+      <div className="mt-8">
+        <AddonMarketplace />
+      </div>
+
+      {/* SMS Credits Manager */}
+      <div className="mt-8">
+        <SMSCreditsManager />
+      </div>
     </div>
   );
 }

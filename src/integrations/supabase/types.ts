@@ -135,6 +135,102 @@ export type Database = {
           },
         ]
       }
+      auto_cancel_policies: {
+        Row: {
+          applies_to: string[] | null
+          created_at: string | null
+          deposit_percentage: number | null
+          id: string
+          is_active: boolean | null
+          no_show_grace_hours: number | null
+          policy_name: string
+          requires_deposit: boolean | null
+          room_type_id: string | null
+          tenant_id: string
+          unpaid_cancel_hours: number | null
+          unverified_cancel_hours: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          applies_to?: string[] | null
+          created_at?: string | null
+          deposit_percentage?: number | null
+          id?: string
+          is_active?: boolean | null
+          no_show_grace_hours?: number | null
+          policy_name: string
+          requires_deposit?: boolean | null
+          room_type_id?: string | null
+          tenant_id: string
+          unpaid_cancel_hours?: number | null
+          unverified_cancel_hours?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          applies_to?: string[] | null
+          created_at?: string | null
+          deposit_percentage?: number | null
+          id?: string
+          is_active?: boolean | null
+          no_show_grace_hours?: number | null
+          policy_name?: string
+          requires_deposit?: boolean | null
+          room_type_id?: string | null
+          tenant_id?: string
+          unpaid_cancel_hours?: number | null
+          unverified_cancel_hours?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      booking_verification: {
+        Row: {
+          attempts_count: number | null
+          created_at: string | null
+          expires_at: string
+          guest_id: string
+          id: string
+          metadata: Json | null
+          reservation_id: string
+          tenant_id: string
+          updated_at: string | null
+          verification_code: string | null
+          verification_status: string | null
+          verification_type: string
+          verified_at: string | null
+        }
+        Insert: {
+          attempts_count?: number | null
+          created_at?: string | null
+          expires_at: string
+          guest_id: string
+          id?: string
+          metadata?: Json | null
+          reservation_id: string
+          tenant_id: string
+          updated_at?: string | null
+          verification_code?: string | null
+          verification_status?: string | null
+          verification_type: string
+          verified_at?: string | null
+        }
+        Update: {
+          attempts_count?: number | null
+          created_at?: string | null
+          expires_at?: string
+          guest_id?: string
+          id?: string
+          metadata?: Json | null
+          reservation_id?: string
+          tenant_id?: string
+          updated_at?: string | null
+          verification_code?: string | null
+          verification_status?: string | null
+          verification_type?: string
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       branding_assets: {
         Row: {
           asset_name: string
@@ -1121,6 +1217,7 @@ export type Database = {
       guests: {
         Row: {
           address: string | null
+          blacklist_reason: string | null
           city: string | null
           country: string | null
           created_at: string | null
@@ -1131,13 +1228,19 @@ export type Database = {
           id: string
           id_number: string | null
           id_type: string | null
+          is_blacklisted: boolean | null
           last_name: string
           last_stay_date: string | null
+          late_arrival_count: number | null
           nationality: string | null
+          no_show_count: number | null
           notes: string | null
           phone: string | null
           postal_code: string | null
           preferences: Json | null
+          reliability_score: number | null
+          requires_verification: boolean | null
+          successful_stays: number | null
           tenant_id: string
           total_spent: number | null
           total_stays: number | null
@@ -1146,6 +1249,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          blacklist_reason?: string | null
           city?: string | null
           country?: string | null
           created_at?: string | null
@@ -1156,13 +1260,19 @@ export type Database = {
           id?: string
           id_number?: string | null
           id_type?: string | null
+          is_blacklisted?: boolean | null
           last_name: string
           last_stay_date?: string | null
+          late_arrival_count?: number | null
           nationality?: string | null
+          no_show_count?: number | null
           notes?: string | null
           phone?: string | null
           postal_code?: string | null
           preferences?: Json | null
+          reliability_score?: number | null
+          requires_verification?: boolean | null
+          successful_stays?: number | null
           tenant_id: string
           total_spent?: number | null
           total_stays?: number | null
@@ -1171,6 +1281,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          blacklist_reason?: string | null
           city?: string | null
           country?: string | null
           created_at?: string | null
@@ -1181,13 +1292,19 @@ export type Database = {
           id?: string
           id_number?: string | null
           id_type?: string | null
+          is_blacklisted?: boolean | null
           last_name?: string
           last_stay_date?: string | null
+          late_arrival_count?: number | null
           nationality?: string | null
+          no_show_count?: number | null
           notes?: string | null
           phone?: string | null
           postal_code?: string | null
           preferences?: Json | null
+          reliability_score?: number | null
+          requires_verification?: boolean | null
+          successful_stays?: number | null
           tenant_id?: string
           total_spent?: number | null
           total_stays?: number | null
@@ -2869,10 +2986,47 @@ export type Database = {
         }
         Relationships: []
       }
+      reservation_status_log: {
+        Row: {
+          change_reason: string | null
+          changed_by: string | null
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          new_status: string
+          old_status: string | null
+          reservation_id: string
+          tenant_id: string
+        }
+        Insert: {
+          change_reason?: string | null
+          changed_by?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          new_status: string
+          old_status?: string | null
+          reservation_id: string
+          tenant_id: string
+        }
+        Update: {
+          change_reason?: string | null
+          changed_by?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          new_status?: string
+          old_status?: string | null
+          reservation_id?: string
+          tenant_id?: string
+        }
+        Relationships: []
+      }
       reservations: {
         Row: {
           adults: number | null
           balance_due: number | null
+          booking_source: string | null
           check_in_date: string
           check_out_date: string
           checked_in_at: string | null
@@ -2884,6 +3038,8 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           deposit_amount: number | null
+          expires_at: string | null
+          grace_period_hours: number | null
           group_reservation_id: string | null
           guest_email: string | null
           guest_id: string | null
@@ -2892,21 +3048,28 @@ export type Database = {
           guest_phone: string | null
           id: string
           invoice_number: string | null
+          is_soft_hold: boolean | null
+          payment_deadline: string | null
           payment_due_date: string | null
           payment_policy_id: string | null
           payment_status: string
+          requires_verification: boolean | null
           reservation_number: string
+          room_assignment_at: string | null
           room_id: string
           room_rate: number
+          room_type_id: string | null
           special_requests: string | null
           status: string
           tenant_id: string
           total_amount: number | null
           updated_at: string | null
+          verification_deadline: string | null
         }
         Insert: {
           adults?: number | null
           balance_due?: number | null
+          booking_source?: string | null
           check_in_date: string
           check_out_date: string
           checked_in_at?: string | null
@@ -2918,6 +3081,8 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           deposit_amount?: number | null
+          expires_at?: string | null
+          grace_period_hours?: number | null
           group_reservation_id?: string | null
           guest_email?: string | null
           guest_id?: string | null
@@ -2926,21 +3091,28 @@ export type Database = {
           guest_phone?: string | null
           id?: string
           invoice_number?: string | null
+          is_soft_hold?: boolean | null
+          payment_deadline?: string | null
           payment_due_date?: string | null
           payment_policy_id?: string | null
           payment_status?: string
+          requires_verification?: boolean | null
           reservation_number: string
+          room_assignment_at?: string | null
           room_id: string
           room_rate: number
+          room_type_id?: string | null
           special_requests?: string | null
           status?: string
           tenant_id: string
           total_amount?: number | null
           updated_at?: string | null
+          verification_deadline?: string | null
         }
         Update: {
           adults?: number | null
           balance_due?: number | null
+          booking_source?: string | null
           check_in_date?: string
           check_out_date?: string
           checked_in_at?: string | null
@@ -2952,6 +3124,8 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           deposit_amount?: number | null
+          expires_at?: string | null
+          grace_period_hours?: number | null
           group_reservation_id?: string | null
           guest_email?: string | null
           guest_id?: string | null
@@ -2960,17 +3134,23 @@ export type Database = {
           guest_phone?: string | null
           id?: string
           invoice_number?: string | null
+          is_soft_hold?: boolean | null
+          payment_deadline?: string | null
           payment_due_date?: string | null
           payment_policy_id?: string | null
           payment_status?: string
+          requires_verification?: boolean | null
           reservation_number?: string
+          room_assignment_at?: string | null
           room_id?: string
           room_rate?: number
+          room_type_id?: string | null
           special_requests?: string | null
           status?: string
           tenant_id?: string
           total_amount?: number | null
           updated_at?: string | null
+          verification_deadline?: string | null
         }
         Relationships: [
           {
@@ -3108,36 +3288,87 @@ export type Database = {
           },
         ]
       }
+      room_type_availability: {
+        Row: {
+          availability_date: string
+          available_count: number
+          blocked_count: number
+          created_at: string | null
+          id: string
+          reserved_count: number
+          room_type_id: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          availability_date: string
+          available_count?: number
+          blocked_count?: number
+          created_at?: string | null
+          id?: string
+          reserved_count?: number
+          room_type_id: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          availability_date?: string
+          available_count?: number
+          blocked_count?: number
+          created_at?: string | null
+          id?: string
+          reserved_count?: number
+          room_type_id?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       room_types: {
         Row: {
           amenities: string[] | null
+          auto_assign_hours: number | null
+          available_count: number | null
           base_rate: number
           created_at: string | null
           description: string | null
+          grace_period_hours: number | null
           id: string
           max_occupancy: number | null
           name: string
+          reserved_count: number | null
           tenant_id: string
+          total_count: number | null
         }
         Insert: {
           amenities?: string[] | null
+          auto_assign_hours?: number | null
+          available_count?: number | null
           base_rate: number
           created_at?: string | null
           description?: string | null
+          grace_period_hours?: number | null
           id?: string
           max_occupancy?: number | null
           name: string
+          reserved_count?: number | null
           tenant_id: string
+          total_count?: number | null
         }
         Update: {
           amenities?: string[] | null
+          auto_assign_hours?: number | null
+          available_count?: number | null
           base_rate?: number
           created_at?: string | null
           description?: string | null
+          grace_period_hours?: number | null
           id?: string
           max_occupancy?: number | null
           name?: string
+          reserved_count?: number | null
           tenant_id?: string
+          total_count?: number | null
         }
         Relationships: [
           {
@@ -4398,6 +4629,10 @@ export type Database = {
         }
         Returns: number
       }
+      auto_expire_reservations: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       can_access_tenant: {
         Args: { tenant_uuid: string }
         Returns: boolean
@@ -4408,6 +4643,16 @@ export type Database = {
           p_check_out_date: string
           p_exclude_reservation_id?: string
           p_room_id: string
+          p_tenant_id: string
+        }
+        Returns: boolean
+      }
+      check_room_type_availability: {
+        Args: {
+          p_check_in_date: string
+          p_check_out_date: string
+          p_exclude_reservation_id?: string
+          p_room_type_id: string
           p_tenant_id: string
         }
         Returns: boolean
@@ -4793,6 +5038,10 @@ export type Database = {
       strict_tenant_access: {
         Args: { target_tenant_id: string }
         Returns: boolean
+      }
+      update_room_type_counts: {
+        Args: { p_room_type_id: string; p_tenant_id: string }
+        Returns: undefined
       }
       validate_guest_session: {
         Args: { p_increment_count?: boolean; p_session_id: string }

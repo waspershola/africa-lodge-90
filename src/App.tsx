@@ -20,6 +20,7 @@ import OwnerDashboardPage from "./pages/owner/Dashboard";
 import Configuration from "./pages/owner/Configuration";
 import StaffRoles from "./pages/owner/StaffRoles";
 import ShiftTerminal from "./pages/staff/ShiftTerminal";
+import { ShiftIntegrationDashboard } from "./components/shift/ShiftIntegrationDashboard";
 import Financials from "./pages/owner/Financials";
 import Billing from "./pages/owner/Billing";
 import EnhancedBilling from "./pages/owner/EnhancedBilling";
@@ -139,6 +140,15 @@ const App = () => (
           <Route path="/shift-terminal" element={
             <TenantAwareLayout allowedRoles={["FRONT_DESK", "MANAGER", "OWNER"]}>
               <ShiftTerminal />
+            </TenantAwareLayout>
+          } />
+          <Route path="/shift-integration-status" element={
+            <TenantAwareLayout allowedRoles={["FRONT_DESK", "MANAGER", "OWNER"]}>
+              <div className="min-h-screen bg-background p-6">
+                <div className="max-w-4xl mx-auto">
+                  <ShiftIntegrationDashboard />
+                </div>
+              </div>
             </TenantAwareLayout>
           } />
           <Route path="/reports" element={<ReportsInterface />} />

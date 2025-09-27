@@ -357,6 +357,28 @@ export default function ShiftTerminal() {
           {/* Security Check Tab */}
           <TabsContent value="security" className="space-y-6">
             <ShiftSecurityValidator />
+            
+            {/* Integration Status */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  Implementation Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-4">
+                  <p className="text-muted-foreground mb-4">
+                    View detailed integration status and system validation
+                  </p>
+                  <Button variant="outline" asChild>
+                    <a href="/shift-integration-status" target="_blank">
+                      View Integration Dashboard
+                    </a>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

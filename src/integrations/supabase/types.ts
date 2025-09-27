@@ -3995,8 +3995,10 @@ export type Database = {
       sms_templates: {
         Row: {
           allow_tenant_override: boolean
+          character_count_warning: boolean | null
           created_at: string
           created_by: string | null
+          estimated_sms_count: number | null
           event_type: string
           id: string
           is_active: boolean
@@ -4009,8 +4011,10 @@ export type Database = {
         }
         Insert: {
           allow_tenant_override?: boolean
+          character_count_warning?: boolean | null
           created_at?: string
           created_by?: string | null
+          estimated_sms_count?: number | null
           event_type: string
           id?: string
           is_active?: boolean
@@ -4023,8 +4027,10 @@ export type Database = {
         }
         Update: {
           allow_tenant_override?: boolean
+          character_count_warning?: boolean | null
           created_at?: string
           created_by?: string | null
+          estimated_sms_count?: number | null
           event_type?: string
           id?: string
           is_active?: boolean

@@ -3,13 +3,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { MessageSquare, Edit, Trash2, Plus } from "lucide-react";
+import { MessageSquare, Edit, Trash2, Plus, AlertTriangle } from "lucide-react";
+import { SMSTemplateForm } from "@/components/ui/sms-template-form";
+import { extractPlaceholders, validateSMSTemplate } from "@/lib/sms-validation";
 
 interface SMSTemplate {
   id: string;
@@ -19,6 +20,8 @@ interface SMSTemplate {
   variables: any; // Changed from string[] to any to handle Json type
   is_active: boolean;
   created_at: string;
+  estimated_sms_count?: number;
+  character_count_warning?: boolean;
 }
 
 const eventTypes = [
@@ -37,6 +40,7 @@ export function HotelSMSTemplates() {
   const [loading, setLoading] = useState(true);
   const [editingTemplate, setEditingTemplate] = useState<SMSTemplate | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [messageTemplate, setMessageTemplate] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -89,13 +93,19 @@ export function HotelSMSTemplates() {
 
       if (!userData?.tenant_id) return;
 
+      const messageTemplateValue = formData.get('message_template') as string;
+      const validation = validateSMSTemplate(messageTemplateValue);
+      const variables = extractPlaceholders(messageTemplateValue);
+
       const templateData = {
         tenant_id: userData.tenant_id,
         template_name: formData.get('template_name') as string,
         event_type: formData.get('event_type') as string,
-        message_template: formData.get('message_template') as string,
-        variables: (formData.get('variables') as string).split(',').map(v => v.trim()).filter(v => v),
-        is_active: true
+        message_template: messageTemplateValue,
+        variables: variables,
+        is_active: true,
+        estimated_sms_count: validation.estimatedSmsCount,
+        character_count_warning: validation.hasWarning
       };
 
       if (editingTemplate?.id) {
@@ -117,6 +127,7 @@ export function HotelSMSTemplates() {
 
       setDialogOpen(false);
       setEditingTemplate(null);
+      setMessageTemplate('');
       fetchTemplates();
     } catch (error) {
       console.error('Error saving template:', error);
@@ -182,14 +193,22 @@ export function HotelSMSTemplates() {
           <h2 className="text-2xl font-bold">SMS Templates</h2>
           <p className="text-muted-foreground">Manage your hotel's SMS templates</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={dialogOpen} onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (open) {
+            setMessageTemplate(editingTemplate?.message_template || '');
+          } else {
+            setEditingTemplate(null);
+            setMessageTemplate('');
+          }
+        }}>
           <DialogTrigger asChild>
             <Button onClick={() => setEditingTemplate(null)}>
               <Plus className="mr-2 h-4 w-4" />
               New Template
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingTemplate ? 'Edit Template' : 'Create Template'}
@@ -201,6 +220,7 @@ export function HotelSMSTemplates() {
             <form onSubmit={(e) => {
               e.preventDefault();
               const formData = new FormData(e.target as HTMLFormElement);
+              formData.set('message_template', messageTemplate);
               handleSaveTemplate(formData);
             }} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -229,29 +249,14 @@ export function HotelSMSTemplates() {
                   </Select>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="message_template">Message Template</Label>
-                <Textarea
-                  id="message_template"
-                  name="message_template"
-                  placeholder="Enter your SMS template with variables like {guest_name}, {room_number}, {check_in_date}"
-                  defaultValue={editingTemplate?.message_template || ''}
-                  rows={4}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="variables">Variables (comma-separated)</Label>
-                <Input
-                  id="variables"
-                  name="variables"
-                  placeholder="guest_name, room_number, check_in_date"
-                  defaultValue={Array.isArray(editingTemplate?.variables) 
-                    ? editingTemplate.variables.join(', ') 
-                    : ''
-                  }
-                />
-              </div>
+              
+              {/* Enhanced SMS Template Form with Real-time Validation */}
+              <SMSTemplateForm
+                value={messageTemplate}
+                onChange={setMessageTemplate}
+                placeholder="Enter your SMS template with variables like {guest}, {hotel}, {room}"
+              />
+              
               <div className="flex justify-end space-x-2">
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancel
@@ -291,6 +296,12 @@ export function HotelSMSTemplates() {
                       <Badge variant={template.is_active ? 'default' : 'secondary'}>
                         {template.is_active ? 'Active' : 'Inactive'}
                       </Badge>
+                      {template.character_count_warning && (
+                        <Badge variant="destructive" className="flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          {template.estimated_sms_count || 2} SMS
+                        </Badge>
+                      )}
                     </CardTitle>
                     <CardDescription>
                       {eventTypes.find(t => t.value === template.event_type)?.label || template.event_type}
@@ -309,6 +320,7 @@ export function HotelSMSTemplates() {
                       size="sm"
                       onClick={() => {
                         setEditingTemplate(template);
+                        setMessageTemplate(template.message_template);
                         setDialogOpen(true);
                       }}
                     >

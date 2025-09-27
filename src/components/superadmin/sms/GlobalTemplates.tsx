@@ -3,14 +3,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit, Eye } from "lucide-react";
+import { Plus, Edit, Eye, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { SMSTemplateForm } from "@/components/ui/sms-template-form";
+import { extractPlaceholders, validateSMSTemplate } from "@/lib/sms-validation";
 
 interface SMSTemplate {
   id: string;
@@ -23,6 +24,8 @@ interface SMSTemplate {
   variables: string[];
   created_at: string;
   updated_at: string;
+  estimated_sms_count?: number;
+  character_count_warning?: boolean;
 }
 
 export function GlobalTemplates() {
@@ -64,11 +67,21 @@ export function GlobalTemplates() {
 
   const handleSaveTemplate = async (template: Partial<SMSTemplate>) => {
     try {
+      const validation = validateSMSTemplate(template.message_template || '');
+      const variables = extractPlaceholders(template.message_template || '');
+
+      const templateData = {
+        ...template,
+        variables,
+        estimated_sms_count: validation.estimatedSmsCount,
+        character_count_warning: validation.hasWarning
+      };
+
       if (editingTemplate?.id) {
         // Update existing template
         const { error } = await supabase
           .from('sms_templates')
-          .update(template)
+          .update(templateData)
           .eq('id', editingTemplate.id);
 
         if (error) throw error;
@@ -78,13 +91,15 @@ export function GlobalTemplates() {
         const { error } = await supabase
           .from('sms_templates')
           .insert({
-            template_name: template.template_name || '',
-            event_type: template.event_type || '',
-            message_template: template.message_template || '',
-            allow_tenant_override: template.allow_tenant_override,
-            variables: template.variables,
-            is_active: template.is_active,
-            is_global: true
+            template_name: templateData.template_name || '',
+            event_type: templateData.event_type || '',
+            message_template: templateData.message_template || '',
+            allow_tenant_override: templateData.allow_tenant_override,
+            variables: templateData.variables,
+            is_active: templateData.is_active,
+            is_global: true,
+            estimated_sms_count: templateData.estimated_sms_count,
+            character_count_warning: templateData.character_count_warning
           });
 
         if (error) throw error;
@@ -200,6 +215,7 @@ export function GlobalTemplates() {
                 <TableHead>Template Name</TableHead>
                 <TableHead>Event Type</TableHead>
                 <TableHead>Message Preview</TableHead>
+                <TableHead>SMS Cost</TableHead>
                 <TableHead>Editable by Hotels</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Last Updated</TableHead>
@@ -210,7 +226,12 @@ export function GlobalTemplates() {
               {templates.map((template) => (
                 <TableRow key={template.id}>
                   <TableCell className="font-medium">
-                    {template.template_name}
+                    <div className="flex items-center gap-2">
+                      {template.template_name}
+                      {template.character_count_warning && (
+                        <AlertTriangle className="h-4 w-4 text-destructive" />
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">{template.event_type}</Badge>
@@ -219,6 +240,11 @@ export function GlobalTemplates() {
                     <div className="truncate text-sm">
                       {template.message_template.substring(0, 50)}...
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={template.character_count_warning ? 'destructive' : 'default'}>
+                      {template.estimated_sms_count || 1} SMS
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     {template.allow_tenant_override ? (
@@ -335,20 +361,10 @@ function TemplateForm({
     is_active: template?.is_active ?? true
   });
 
-  const extractVariables = (text: string) => {
-    const matches = text.match(/\{([^}]+)\}/g);
-    if (matches) {
-      return matches.map(match => match.slice(1, -1));
-    }
-    return [];
-  };
-
   const handleMessageChange = (message: string) => {
-    const variables = extractVariables(message);
     setFormData({
       ...formData,
-      message_template: message,
-      variables
+      message_template: message
     });
   };
 
@@ -374,32 +390,12 @@ function TemplateForm({
         />
       </div>
 
-      <div className="grid w-full items-center gap-1.5">
-        <Label htmlFor="message_template">Message Template</Label>
-        <Textarea
-          id="message_template"
-          rows={4}
-          value={formData.message_template}
-          onChange={(e) => handleMessageChange(e.target.value)}
-          placeholder="Hi {guest_name}, your booking at {hotel_name} is confirmed..."
-        />
-        <p className="text-xs text-muted-foreground">
-          Use {"{variable_name}"} for dynamic content. Variables will be extracted automatically.
-        </p>
-      </div>
-
-      {formData.variables.length > 0 && (
-        <div>
-          <Label>Detected Variables</Label>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {formData.variables.map((variable) => (
-              <Badge key={variable} variant="outline">
-                {variable}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Enhanced SMS Template Form with Real-time Validation */}
+      <SMSTemplateForm
+        value={formData.message_template}
+        onChange={handleMessageChange}
+        placeholder="Hi {guest}, your booking at {hotel} is confirmed..."
+      />
 
       <div className="flex items-center space-x-2">
         <Switch

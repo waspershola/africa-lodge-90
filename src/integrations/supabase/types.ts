@@ -1325,9 +1325,11 @@ export type Database = {
           early_checkin_fee: number | null
           email_provider_config: Json | null
           email_settings: Json | null
+          front_desk_phone: string | null
           house_rules: Json | null
           id: string
           late_checkout_fee: number | null
+          notification_preferences: Json | null
           service_charge_rate: number | null
           system_provider_id: string | null
           tax_rate: number | null
@@ -1347,9 +1349,11 @@ export type Database = {
           early_checkin_fee?: number | null
           email_provider_config?: Json | null
           email_settings?: Json | null
+          front_desk_phone?: string | null
           house_rules?: Json | null
           id?: string
           late_checkout_fee?: number | null
+          notification_preferences?: Json | null
           service_charge_rate?: number | null
           system_provider_id?: string | null
           tax_rate?: number | null
@@ -1369,9 +1373,11 @@ export type Database = {
           early_checkin_fee?: number | null
           email_provider_config?: Json | null
           email_settings?: Json | null
+          front_desk_phone?: string | null
           house_rules?: Json | null
           id?: string
           late_checkout_fee?: number | null
+          notification_preferences?: Json | null
           service_charge_rate?: number | null
           system_provider_id?: string | null
           tax_rate?: number | null
@@ -1691,6 +1697,147 @@ export type Database = {
             referencedColumns: ["tenant_id"]
           },
         ]
+      }
+      notification_channels: {
+        Row: {
+          channel_type: string
+          config: Json | null
+          created_at: string | null
+          error_count: number | null
+          id: string
+          is_enabled: boolean | null
+          last_test_at: string | null
+          status: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          channel_type: string
+          config?: Json | null
+          created_at?: string | null
+          error_count?: number | null
+          id?: string
+          is_enabled?: boolean | null
+          last_test_at?: string | null
+          status?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          channel_type?: string
+          config?: Json | null
+          created_at?: string | null
+          error_count?: number | null
+          id?: string
+          is_enabled?: boolean | null
+          last_test_at?: string | null
+          status?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      notification_events: {
+        Row: {
+          channels: string[]
+          created_at: string | null
+          delivery_results: Json | null
+          event_source: string
+          event_type: string
+          id: string
+          max_retries: number | null
+          metadata: Json | null
+          priority: string
+          processed_at: string | null
+          recipients: Json
+          retry_count: number | null
+          scheduled_at: string
+          source_id: string | null
+          status: string
+          template_data: Json
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          channels?: string[]
+          created_at?: string | null
+          delivery_results?: Json | null
+          event_source: string
+          event_type: string
+          id?: string
+          max_retries?: number | null
+          metadata?: Json | null
+          priority?: string
+          processed_at?: string | null
+          recipients?: Json
+          retry_count?: number | null
+          scheduled_at?: string
+          source_id?: string | null
+          status?: string
+          template_data?: Json
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          channels?: string[]
+          created_at?: string | null
+          delivery_results?: Json | null
+          event_source?: string
+          event_type?: string
+          id?: string
+          max_retries?: number | null
+          metadata?: Json | null
+          priority?: string
+          processed_at?: string | null
+          recipients?: Json
+          retry_count?: number | null
+          scheduled_at?: string
+          source_id?: string | null
+          status?: string
+          template_data?: Json
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      notification_rules: {
+        Row: {
+          conditions: Json | null
+          created_at: string | null
+          event_type: string
+          id: string
+          is_active: boolean | null
+          priority: number | null
+          routing_config: Json
+          rule_name: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          conditions?: Json | null
+          created_at?: string | null
+          event_type: string
+          id?: string
+          is_active?: boolean | null
+          priority?: number | null
+          routing_config: Json
+          rule_name: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          conditions?: Json | null
+          created_at?: string | null
+          event_type?: string
+          id?: string
+          is_active?: boolean | null
+          priority?: number | null
+          routing_config?: Json
+          rule_name?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       offline_actions: {
         Row: {
@@ -3889,6 +4036,164 @@ export type Database = {
           variables?: Json | null
         }
         Relationships: []
+      }
+      staff_alert_configs: {
+        Row: {
+          alert_name: string
+          alert_type: string
+          channels: string[]
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          priority: string
+          tenant_id: string
+          trigger_conditions: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          alert_name: string
+          alert_type: string
+          channels?: string[]
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          priority?: string
+          tenant_id: string
+          trigger_conditions?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          alert_name?: string
+          alert_type?: string
+          channels?: string[]
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          priority?: string
+          tenant_id?: string
+          trigger_conditions?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      staff_alert_subscriptions: {
+        Row: {
+          alert_type: string
+          channels: string[]
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          preferences: Json | null
+          tenant_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          alert_type: string
+          channels?: string[]
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          preferences?: Json | null
+          tenant_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          alert_type?: string
+          channels?: string[]
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          preferences?: Json | null
+          tenant_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      staff_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_type: string
+          channels: string[]
+          config_id: string | null
+          created_at: string | null
+          delivery_status: Json | null
+          id: string
+          message: string
+          metadata: Json | null
+          priority: string
+          resolved_at: string | null
+          resolved_by: string | null
+          source_id: string | null
+          source_type: string | null
+          status: string
+          tenant_id: string
+          title: string
+          triggered_by: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type: string
+          channels?: string[]
+          config_id?: string | null
+          created_at?: string | null
+          delivery_status?: Json | null
+          id?: string
+          message: string
+          metadata?: Json | null
+          priority?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          source_id?: string | null
+          source_type?: string | null
+          status?: string
+          tenant_id: string
+          title: string
+          triggered_by?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type?: string
+          channels?: string[]
+          config_id?: string | null
+          created_at?: string | null
+          delivery_status?: Json | null
+          id?: string
+          message?: string
+          metadata?: Json | null
+          priority?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          source_id?: string | null
+          source_type?: string | null
+          status?: string
+          tenant_id?: string
+          title?: string
+          triggered_by?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_alerts_config_id_fkey"
+            columns: ["config_id"]
+            isOneToOne: false
+            referencedRelation: "staff_alert_configs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       staff_financials: {
         Row: {

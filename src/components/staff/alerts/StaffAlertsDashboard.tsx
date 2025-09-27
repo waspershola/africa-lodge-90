@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Bell, AlertTriangle, CheckCircle, Clock, Users, MessageSquare } from "lucide-react";
 
@@ -13,19 +14,94 @@ interface AlertStats {
 }
 
 export function StaffAlertsDashboard() {
-  const [stats] = useState<AlertStats>({
+  const [stats, setStats] = useState<AlertStats>({
     totalAlerts: 0,
     activeAlerts: 0,
     pendingAlerts: 0,
     subscribedChannels: 0
   });
-  const [recentAlerts] = useState<any[]>([]);
-  const [loading] = useState(false);
+  const [recentAlerts, setRecentAlerts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
+  useEffect(() => {
+    fetchRecentAlerts();
+  }, []);
+
+  const fetchRecentAlerts = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: userData } = await supabase
+        .from('users')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!userData?.tenant_id) return;
+
+      const { data, error } = await supabase
+        .from('staff_alerts')
+        .select('*')
+        .eq('tenant_id', userData.tenant_id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (error) throw error;
+
+      // Get channel count
+      const { data: channels } = await supabase
+        .from('notification_channels')
+        .select('*')
+        .eq('tenant_id', userData.tenant_id)
+        .eq('is_enabled', true);
+
+      const activeCount = data?.filter((alert: any) => alert.status === 'pending').length || 0;
+      const resolvedCount = data?.filter((alert: any) => alert.status === 'resolved').length || 0;
+
+      setStats({
+        totalAlerts: data?.length || 0,
+        activeAlerts: activeCount,
+        pendingAlerts: activeCount,
+        subscribedChannels: channels?.length || 0
+      });
+      
+      setRecentAlerts(data || []);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load dashboard data",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const acknowledgeAlert = async (alertId: string) => {
-    // TODO: Enable after migration is approved
-    toast({ title: "Info", description: "Database migration pending approval" });
+    try {
+      const { error } = await supabase
+        .from('staff_alerts')
+        .update({ 
+          status: 'acknowledged',
+          acknowledged_at: new Date().toISOString(),
+          acknowledged_by: (await supabase.auth.getUser()).data.user?.id
+        })
+        .eq('id', alertId);
+
+      if (error) throw error;
+      toast({ title: "Success", description: "Alert acknowledged" });
+      fetchRecentAlerts();
+    } catch (error) {
+      console.error('Error acknowledging alert:', error);
+      toast({
+        title: "Error",
+        description: "Failed to acknowledge alert",
+        variant: "destructive",
+      });
+    }
   };
 
   if (loading) {
@@ -98,7 +174,7 @@ export function StaffAlertsDashboard() {
                 <Bell className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium mb-2">No recent alerts</h3>
                 <p className="text-muted-foreground">
-                  Database migration is pending approval. Alerts will appear here once the system is active.
+                  No staff alerts have been generated yet. Configure alert rules to start receiving notifications.
                 </p>
               </div>
             ) : (
@@ -106,17 +182,38 @@ export function StaffAlertsDashboard() {
                 <div key={index} className="flex items-center justify-between border-b pb-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline">{alert.priority}</Badge>
-                      <Badge variant="secondary">{alert.alert_type}</Badge>
+                      <Badge 
+                        variant={
+                          alert.priority === 'high' ? 'destructive' : 
+                          alert.priority === 'medium' ? 'default' : 
+                          'secondary'
+                        }
+                      >
+                        {alert.priority || 'medium'}
+                      </Badge>
+                      <Badge variant="outline">
+                        {alert.alert_type || 'system'}
+                      </Badge>
                     </div>
-                    <p className="text-sm font-medium">{alert.title}</p>
-                    <p className="text-sm text-muted-foreground">{alert.message}</p>
+                    <p className="text-sm font-medium">{alert.title || 'Staff Alert'}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {alert.message?.substring(0, 100)}
+                      {alert.message?.length > 100 ? '...' : ''}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(alert.created_at).toLocaleString()}
                     </p>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Badge variant="outline">{alert.status}</Badge>
+                    <Badge 
+                      variant={
+                        alert.status === 'resolved' ? 'default' : 
+                        alert.status === 'acknowledged' ? 'secondary' : 
+                        'destructive'
+                      }
+                    >
+                      {alert.status || 'pending'}
+                    </Badge>
                     {alert.status === 'pending' && (
                       <Button
                         size="sm"

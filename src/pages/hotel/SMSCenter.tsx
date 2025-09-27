@@ -1,5 +1,5 @@
-import { HotelSMSCenter } from "@/components/hotel/sms/HotelSMSCenter";
+import { HotelSMSManagement } from "@/components/hotel/sms/HotelSMSManagement";
 
 export default function SMSCenter() {
-  return <HotelSMSCenter />;
+  return <HotelSMSManagement />;
 }

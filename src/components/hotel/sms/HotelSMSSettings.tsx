@@ -1,66 +1,36 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { Settings, MessageSquare, Bell, Shield } from "lucide-react";
+import { toast } from "sonner";
+import { Settings, MessageSquare, Clock, Phone, Shield } from "lucide-react";
 
-interface NotificationSetting {
-  id: string;
-  event_type: string;
-  is_enabled: boolean;
+interface NotificationPreferences {
+  service_request: { staff_sms: boolean; guest_email: boolean };
+  payment_received: { guest_sms: boolean };
+  payment_reminder: { guest_sms: boolean };
+  booking_confirmed: { guest_sms: boolean; manager_email: boolean };
+  checkout_reminder: { guest_email: boolean };
+  outstanding_payment: { guest_sms: boolean };
+  reservation_created: { guest_sms: boolean; front_desk_sms: boolean };
+  housekeeping_request: { staff_sms: boolean };
+  pre_arrival_reminder: { guest_email: boolean };
+  subscription_renewal: { admin_sms_email: boolean };
 }
 
-const eventTypes = [
-  { 
-    value: 'booking_confirmation', 
-    label: 'Booking Confirmation',
-    description: 'Send SMS when a booking is confirmed'
-  },
-  { 
-    value: 'check_in_reminder', 
-    label: 'Check-in Reminder',
-    description: 'Remind guests about their check-in time'
-  },
-  { 
-    value: 'check_out_reminder', 
-    label: 'Check-out Reminder',
-    description: 'Remind guests about their check-out time'
-  },
-  { 
-    value: 'payment_reminder', 
-    label: 'Payment Reminder',
-    description: 'Send payment reminders to guests'
-  },
-  { 
-    value: 'booking_cancelled', 
-    label: 'Booking Cancelled',
-    description: 'Notify guests when booking is cancelled'
-  },
-  { 
-    value: 'qr_order_confirmation', 
-    label: 'QR Order Confirmation',
-    description: 'Confirm QR code orders via SMS'
-  },
-  { 
-    value: 'qr_order_ready', 
-    label: 'QR Order Ready',
-    description: 'Notify when QR order is ready'
-  },
-  { 
-    value: 'maintenance_alert', 
-    label: 'Maintenance Alert',
-    description: 'Send maintenance notifications to staff'
-  }
-];
-
 export function HotelSMSSettings() {
-  const [settings, setSettings] = useState<NotificationSetting[]>([]);
+  const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
+  const [frontDeskPhone, setFrontDeskPhone] = useState('');
+  const [customFooter, setCustomFooter] = useState('');
+  const [timezone, setTimezone] = useState('Africa/Lagos');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     fetchSettings();
@@ -79,39 +49,48 @@ export function HotelSMSSettings() {
 
       if (!userData?.tenant_id) return;
 
-      const { data, error } = await supabase
-        .from('sms_notifications_settings')
-        .select('*')
-        .eq('tenant_id', userData.tenant_id);
+      const { data: settings, error } = await supabase
+        .from('hotel_settings')
+        .select('notification_preferences, front_desk_phone, timezone')
+        .eq('tenant_id', userData.tenant_id)
+        .single();
 
-      if (error) throw error;
+      if (error && error.code !== 'PGRST116') throw error;
 
-      // Create settings for all event types, defaulting to enabled
-      const allSettings = eventTypes.map(eventType => {
-        const existing = data?.find(s => s.event_type === eventType.value);
-        return {
-          id: existing?.id || '',
-          event_type: eventType.value,
-          is_enabled: existing?.is_enabled ?? true
-        };
-      });
-
-      setSettings(allSettings);
+      if (settings) {
+        try {
+          setPreferences((settings.notification_preferences as unknown) as NotificationPreferences || null);
+        } catch {
+          setPreferences(null);
+        }
+        setFrontDeskPhone(settings.front_desk_phone || '');
+        setTimezone(settings.timezone || 'Africa/Lagos');
+      } else {
+        // Set default preferences if no settings exist
+        setPreferences({
+          service_request: { staff_sms: true, guest_email: true },
+          payment_received: { guest_sms: true },
+          payment_reminder: { guest_sms: true },
+          booking_confirmed: { guest_sms: true, manager_email: true },
+          checkout_reminder: { guest_email: true },
+          outstanding_payment: { guest_sms: true },
+          reservation_created: { guest_sms: true, front_desk_sms: true },
+          housekeeping_request: { staff_sms: true },
+          pre_arrival_reminder: { guest_email: true },
+          subscription_renewal: { admin_sms_email: true }
+        });
+      }
     } catch (error) {
       console.error('Error fetching SMS settings:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load SMS settings",
-        variant: "destructive",
-      });
+      toast.error("Failed to load SMS settings");
     } finally {
       setLoading(false);
     }
   };
 
-  const updateSetting = async (eventType: string, isEnabled: boolean) => {
-    setSaving(true);
+  const saveSettings = async () => {
     try {
+      setSaving(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
@@ -123,50 +102,38 @@ export function HotelSMSSettings() {
 
       if (!userData?.tenant_id) return;
 
-      const existingSetting = settings.find(s => s.event_type === eventType);
+      const { error } = await supabase
+        .from('hotel_settings')
+        .upsert({
+          tenant_id: userData.tenant_id,
+          notification_preferences: preferences as any,
+          front_desk_phone: frontDeskPhone,
+          timezone: timezone
+        }, {
+          onConflict: 'tenant_id'
+        });
 
-      if (existingSetting?.id) {
-        // Update existing setting
-        const { error } = await supabase
-          .from('sms_notifications_settings')
-          .update({ is_enabled: isEnabled })
-          .eq('id', existingSetting.id);
+      if (error) throw error;
 
-        if (error) throw error;
-      } else {
-        // Create new setting
-        const { error } = await supabase
-          .from('sms_notifications_settings')
-          .insert([{
-            tenant_id: userData.tenant_id,
-            event_type: eventType,
-            is_enabled: isEnabled
-          }]);
-
-        if (error) throw error;
-      }
-
-      // Update local state
-      setSettings(prev => prev.map(setting => 
-        setting.event_type === eventType 
-          ? { ...setting, is_enabled: isEnabled }
-          : setting
-      ));
-
-      toast({
-        title: "Success",
-        description: "SMS notification setting updated",
-      });
+      toast.success("SMS settings saved successfully");
     } catch (error) {
-      console.error('Error updating SMS setting:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update SMS setting",
-        variant: "destructive",
-      });
+      console.error('Error saving SMS settings:', error);
+      toast.error("Failed to save SMS settings");
     } finally {
       setSaving(false);
     }
+  };
+
+  const updatePreference = (eventType: keyof NotificationPreferences, channel: string, enabled: boolean) => {
+    if (!preferences) return;
+
+    setPreferences({
+      ...preferences,
+      [eventType]: {
+        ...preferences[eventType],
+        [channel]: enabled
+      }
+    });
   };
 
   if (loading) {
@@ -175,121 +142,204 @@ export function HotelSMSSettings() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">SMS Settings</h2>
-        <p className="text-muted-foreground">Configure SMS notification preferences for your hotel</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold">SMS Settings</h2>
+          <p className="text-muted-foreground">
+            Configure SMS notifications and communication preferences
+          </p>
+        </div>
+        <Button onClick={saveSettings} disabled={saving}>
+          {saving ? 'Saving...' : 'Save Settings'}
+        </Button>
       </div>
 
-      {/* Notification Settings */}
+      {/* Basic Settings */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            SMS Notifications
+            <Settings className="w-4 h-4" />
+            Basic Configuration
           </CardTitle>
           <CardDescription>
-            Choose which events should trigger SMS notifications to guests and staff
+            Configure basic SMS communication settings
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="frontDeskPhone">Front Desk Phone</Label>
+              <Input
+                id="frontDeskPhone"
+                type="tel"
+                placeholder="+234 xxx xxx xxxx"
+                value={frontDeskPhone}
+                onChange={(e) => setFrontDeskPhone(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Phone number for staff notifications and two-way messaging
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="timezone">Timezone</Label>
+              <Select value={timezone} onValueChange={setTimezone}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Africa/Lagos">Nigeria (WAT)</SelectItem>
+                  <SelectItem value="UTC">UTC</SelectItem>
+                  <SelectItem value="Europe/London">London (GMT/BST)</SelectItem>
+                  <SelectItem value="America/New_York">New York (EST/EDT)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Used for scheduling SMS notifications
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Notification Preferences */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageSquare className="w-4 h-4" />
+            Notification Preferences
+          </CardTitle>
+          <CardDescription>
+            Control when and how SMS notifications are sent
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            {eventTypes.map((eventType) => {
-              const setting = settings.find(s => s.event_type === eventType.value);
-              return (
-                <div key={eventType.value} className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label className="text-base font-medium">
-                      {eventType.label}
-                    </Label>
-                    <div className="text-sm text-muted-foreground">
-                      {eventType.description}
-                    </div>
+            {preferences && Object.entries(preferences).map(([eventType, channels]) => (
+              <div key={eventType} className="border rounded-lg p-4">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h4 className="font-medium capitalize">
+                      {eventType.replace(/_/g, ' ')}
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      {getEventDescription(eventType as keyof NotificationPreferences)}
+                    </p>
                   </div>
-                  <Switch
-                    checked={setting?.is_enabled ?? true}
-                    onCheckedChange={(checked) => updateSetting(eventType.value, checked)}
-                    disabled={saving}
-                  />
+                  <Badge variant="outline">
+                    {Object.values(channels).filter(Boolean).length} / {Object.keys(channels).length} active
+                  </Badge>
                 </div>
-              );
-            })}
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {Object.entries(channels).map(([channel, enabled]) => (
+                    <div key={channel} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        {getChannelIcon(channel)}
+                        <Label htmlFor={`${eventType}_${channel}`} className="text-sm">
+                          {formatChannelName(channel)}
+                        </Label>
+                      </div>
+                      <Switch
+                        id={`${eventType}_${channel}`}
+                        checked={enabled as boolean}
+                        onCheckedChange={(checked) => 
+                          updatePreference(eventType as keyof NotificationPreferences, channel, checked)
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
 
-      {/* General Settings */}
+      {/* Message Customization */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            General Settings
+            <MessageSquare className="w-4 h-4" />
+            Message Customization
           </CardTitle>
           <CardDescription>
-            Additional SMS configuration options
+            Customize SMS message appearance and branding
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-              <div className="flex items-center">
-                <MessageSquare className="h-5 w-5 text-blue-600 mr-2" />
-                <div>
-                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                    SMS Template Management
-                  </p>
-                  <p className="text-sm text-blue-700 dark:text-blue-300">
-                    Customize SMS templates in the Templates tab to personalize your messages.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-              <div className="flex items-center">
-                <Shield className="h-5 w-5 text-green-600 mr-2" />
-                <div>
-                  <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                    Data Privacy
-                  </p>
-                  <p className="text-sm text-green-700 dark:text-green-300">
-                    All SMS communications comply with data protection regulations. Guest phone numbers are securely handled.
-                  </p>
-                </div>
-              </div>
-            </div>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="customFooter">Custom Message Footer</Label>
+            <Textarea
+              id="customFooter"
+              placeholder="e.g., 'Thank you for choosing Hotel Name. Reply STOP to opt out.'"
+              value={customFooter}
+              onChange={(e) => setCustomFooter(e.target.value)}
+              maxLength={160}
+            />
+            <p className="text-xs text-muted-foreground">
+              Added to the end of all SMS messages. Keep it short to avoid extra charges.
+            </p>
           </div>
         </CardContent>
       </Card>
 
-      {/* Information Card */}
+      {/* Security & Compliance */}
       <Card>
         <CardHeader>
-          <CardTitle>Important Information</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="w-4 h-4" />
+            Security & Compliance
+          </CardTitle>
+          <CardDescription>
+            SMS security and regulatory compliance settings
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4 text-sm">
-            <div>
-              <h4 className="font-medium">SMS Credits</h4>
-              <p className="text-muted-foreground">
-                Each SMS sent consumes credits from your hotel's credit pool. Monitor usage in the Credits tab.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-medium">Message Templates</h4>
-              <p className="text-muted-foreground">
-                SMS messages use templates that can include variables like guest name, room number, and dates. 
-                Customize these in the Templates section.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-medium">Delivery Status</h4>
-              <p className="text-muted-foreground">
-                All SMS delivery attempts are logged and can be viewed in the History tab for troubleshooting.
-              </p>
-            </div>
+        <CardContent className="space-y-4">
+          <div className="bg-muted p-4 rounded-lg">
+            <h4 className="font-medium mb-2">Compliance Information</h4>
+            <ul className="text-sm text-muted-foreground space-y-1">
+              <li>• SMS notifications comply with Nigeria Communications Commission (NCC) regulations</li>
+              <li>• Guest phone numbers are stored securely and used only for hotel communications</li>
+              <li>• Guests can opt out by replying "STOP" to any message</li>
+              <li>• International SMS may incur additional charges</li>
+            </ul>
           </div>
         </CardContent>
       </Card>
     </div>
   );
+}
+
+function getEventDescription(eventType: keyof NotificationPreferences): string {
+  const descriptions = {
+    service_request: "When guests submit service requests via QR codes",
+    payment_received: "When payments are successfully processed",
+    payment_reminder: "Automated reminders for outstanding payments",
+    booking_confirmed: "When new reservations are confirmed",
+    checkout_reminder: "Reminders sent before checkout time",
+    outstanding_payment: "Notifications about unpaid balances",
+    reservation_created: "When new reservations are made",
+    housekeeping_request: "When housekeeping tasks are assigned",
+    pre_arrival_reminder: "Day-before-arrival notifications",
+    subscription_renewal: "System subscription renewals"
+  };
+  return descriptions[eventType] || "";
+}
+
+function getChannelIcon(channel: string) {
+  switch (true) {
+    case channel.includes('sms'):
+      return <MessageSquare className="w-4 h-4" />;
+    case channel.includes('email'):
+      return <MessageSquare className="w-4 h-4" />;
+    default:
+      return <MessageSquare className="w-4 h-4" />;
+  }
+}
+
+function formatChannelName(channel: string): string {
+  return channel
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, l => l.toUpperCase());
 }

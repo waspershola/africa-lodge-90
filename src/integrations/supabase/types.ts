@@ -5316,6 +5316,15 @@ export type Database = {
           room_type_name: string
         }[]
       }
+      get_credit_usage_forecast: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          current_balance: number
+          daily_usage_avg: number
+          estimated_days_remaining: number
+          recommended_topup: number
+        }[]
+      }
       get_daily_revenue: {
         Args: {
           p_end_date?: string
@@ -5408,6 +5417,16 @@ export type Database = {
           total_reservations: number
           total_revenue: number
           unique_guests: number
+        }[]
+      }
+      get_hotel_sms_stats: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          credit_balance: number
+          success_rate: number
+          this_month_sent: number
+          total_failed: number
+          total_sent: number
         }[]
       }
       get_occupancy_stats: {
@@ -5584,6 +5603,10 @@ export type Database = {
       }
       refresh_revenue_views: {
         Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      seed_tenant_sms_templates: {
+        Args: { p_tenant_id: string }
         Returns: undefined
       }
       set_limit: {

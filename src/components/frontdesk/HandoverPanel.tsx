@@ -13,526 +13,385 @@ import {
   MessageSquare,
   User,
   Calendar,
+  ArrowRight,
+  ExternalLink,
   FileText,
-  Send,
-  ArrowRight
+  Monitor,
+  AlertTriangle
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-
-interface HandoverNote {
-  id: string;
-  fromStaff: string;
-  toStaff?: string;
-  shift: 'morning' | 'afternoon' | 'night';
-  date: Date;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  category: 'general' | 'guest-issue' | 'maintenance' | 'financial' | 'security';
-  subject: string;
-  content: string;
-  status: 'pending' | 'acknowledged' | 'resolved';
-  resolvedBy?: string;
-  resolvedAt?: Date;
-  followUpRequired: boolean;
-}
-
-interface ShiftSummary {
-  shift: 'morning' | 'afternoon' | 'night';
-  date: Date;
-  staff: string;
-  checkIns: number;
-  checkOuts: number;
-  issues: number;
-  revenue: number;
-  notes: string;
-}
-
-const mockHandoverNotes: HandoverNote[] = [
-  {
-    id: '1',
-    fromStaff: 'Sarah Johnson',
-    toStaff: 'Next Shift',
-    shift: 'morning',
-    date: new Date('2024-09-18T07:00:00'),
-    priority: 'high',
-    category: 'guest-issue',
-    subject: 'Room 301 Guest Complaint',
-    content: 'Guest in Room 301 reported AC not working properly. Maintenance has been notified but could not fix today. Guest offered room change but declined. Expects resolution by tomorrow morning.',
-    status: 'pending',
-    followUpRequired: true
-  },
-  {
-    id: '2',
-    fromStaff: 'Mike Chen',
-    toStaff: 'Morning Staff',
-    shift: 'night',
-    date: new Date('2024-09-17T23:00:00'),
-    priority: 'medium',
-    category: 'maintenance',
-    subject: 'Elevator Issue Floor 3',
-    content: 'Elevator making unusual noise between floors 2-3. Technician scheduled for 9 AM tomorrow. No safety concerns but guests have been informed.',
-    status: 'acknowledged',
-    followUpRequired: true
-  },
-  {
-    id: '3',
-    fromStaff: 'David Wilson',
-    toStaff: 'Evening Shift',
-    shift: 'afternoon',
-    date: new Date('2024-09-17T15:00:00'),
-    priority: 'low',
-    category: 'general',
-    subject: 'VIP Guest Arrival Tomorrow',
-    content: 'VIP guest Mr. Thompson arriving tomorrow at 2 PM. Presidential suite prepared. Requested champagne and flowers - arranged with housekeeping.',
-    status: 'resolved',
-    resolvedBy: 'Lisa Brown',
-    resolvedAt: new Date('2024-09-17T20:00:00'),
-    followUpRequired: false
-  }
-];
-
-const mockShiftSummaries: ShiftSummary[] = [
-  {
-    shift: 'morning',
-    date: new Date('2024-09-18'),
-    staff: 'Sarah Johnson',
-    checkIns: 8,
-    checkOuts: 12,
-    issues: 2,
-    revenue: 245000,
-    notes: 'Busy morning with multiple group check-outs. One payment issue resolved. AC repair pending in Room 301.'
-  },
-  {
-    shift: 'night',
-    date: new Date('2024-09-17'),
-    staff: 'Mike Chen',
-    checkIns: 3,
-    checkOuts: 0,
-    issues: 1,
-    revenue: 89000,
-    notes: 'Quiet night shift. Late arrival for Room 205. Elevator noise reported - technician scheduled.'
-  }
-];
+import { formatDistanceToNow, format } from "date-fns";
+import { useShiftSessions, useActiveShiftSessions } from "@/hooks/useShiftSessions";
+import { useQRRealtime } from "@/hooks/useQRRealtime";
+import { useStaffData } from "@/hooks/useStaffData";
+import { useShiftPDFReport } from "@/hooks/useShiftPDFReport";
+import { cn } from "@/lib/utils";
 
 export const HandoverPanel = () => {
-  const [activeTab, setActiveTab] = useState("current");
-  const [handoverNotes, setHandoverNotes] = useState<HandoverNote[]>(mockHandoverNotes);
-  const [shiftSummaries] = useState<ShiftSummary[]>(mockShiftSummaries);
-  const [newHandover, setNewHandover] = useState({
-    priority: 'medium' as HandoverNote['priority'],
-    category: 'general' as HandoverNote['category'],
-    subject: '',
-    content: '',
-    followUpRequired: false
-  });
+  const { data: activeShifts, isLoading: shiftsLoading } = useActiveShiftSessions();
+  const { data: allShifts } = useShiftSessions();
+  const { orders } = useQRRealtime();
+  const { generateDailyShiftsReport } = useShiftPDFReport();
+  const [selectedNote, setSelectedNote] = useState<string | null>(null);
 
-  const { toast } = useToast();
+  // Get current shift information
+  const currentShifts = activeShifts || [];
 
-  const getCurrentShift = () => {
-    const hour = new Date().getHours();
-    if (hour >= 6 && hour < 14) return 'morning';
-    if (hour >= 14 && hour < 22) return 'afternoon';
-    return 'night';
-  };
+  // Get pending QR orders that need attention
+  const pendingOrders = orders?.filter(order => 
+    order.status === 'pending' || order.status === 'assigned'
+  ).slice(0, 5) || [];
 
-  const getPriorityColor = (priority: HandoverNote['priority']) => {
-    switch (priority) {
-      case 'urgent': return 'bg-red-100 text-red-800 border-red-200';
-      case 'high': return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'medium': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'low': return 'bg-gray-100 text-gray-800 border-gray-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
+  // Get recent handover notes from completed shifts
+  const recentHandovers = allShifts?.filter(shift => 
+    shift.status === 'completed' && shift.handover_notes
+  ).slice(0, 3) || [];
 
-  const getStatusColor = (status: HandoverNote['status']) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'acknowledged': return 'bg-blue-100 text-blue-800';
-      case 'resolved': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+  // Get urgent housekeeping tasks (placeholder)
+  const urgentTasks: any[] = [];
 
-  const getCategoryIcon = (category: HandoverNote['category']) => {
-    switch (category) {
-      case 'guest-issue': return <User className="h-4 w-4" />;
-      case 'maintenance': return <AlertCircle className="h-4 w-4" />;
-      case 'financial': return <FileText className="h-4 w-4" />;
-      case 'security': return <AlertCircle className="h-4 w-4" />;
-      default: return <MessageSquare className="h-4 w-4" />;
-    }
-  };
-
-  const handleSubmitHandover = () => {
-    if (!newHandover.subject.trim() || !newHandover.content.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in both subject and content",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const handoverNote: HandoverNote = {
-      id: Date.now().toString(),
-      fromStaff: 'Current User', // Would be from auth context
-      shift: getCurrentShift(),
-      date: new Date(),
-      priority: newHandover.priority,
-      category: newHandover.category,
-      subject: newHandover.subject,
-      content: newHandover.content,
-      status: 'pending',
-      followUpRequired: newHandover.followUpRequired
-    };
-
-    setHandoverNotes(prev => [handoverNote, ...prev]);
-    setNewHandover({
-      priority: 'medium',
-      category: 'general',
-      subject: '',
-      content: '',
-      followUpRequired: false
-    });
-
-    toast({
-      title: "Handover Note Created",
-      description: "Your handover note has been logged for the next shift"
-    });
-  };
-
-  const handleAcknowledge = (noteId: string) => {
-    setHandoverNotes(prev => prev.map(note => 
-      note.id === noteId 
-        ? { ...note, status: 'acknowledged' as const }
-        : note
-    ));
-    
-    toast({
-      title: "Note Acknowledged",
-      description: "Handover note has been marked as acknowledged"
-    });
-  };
-
-  const handleResolve = (noteId: string) => {
-    setHandoverNotes(prev => prev.map(note => 
-      note.id === noteId 
-        ? { 
-            ...note, 
-            status: 'resolved' as const,
-            resolvedBy: 'Current User',
-            resolvedAt: new Date()
-          }
-        : note
-    ));
-    
-    toast({
-      title: "Issue Resolved",
-      description: "Handover note has been marked as resolved"
-    });
-  };
-
-  const pendingNotes = handoverNotes.filter(note => note.status === 'pending');
-  const urgentNotes = handoverNotes.filter(note => 
-    note.priority === 'urgent' || note.priority === 'high'
-  );
+  // Get unresolved items from all active shifts
+  const allUnresolvedItems = currentShifts.reduce((items, shift) => {
+    return items.concat(shift.unresolved_items || []);
+  }, [] as string[]);
 
   return (
-    <div className="space-y-6">
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-yellow-600">{pendingNotes.length}</div>
-            <div className="text-sm text-muted-foreground">Pending Items</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-red-600">{urgentNotes.length}</div>
-            <div className="text-sm text-muted-foreground">High Priority</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-blue-600">
-              {handoverNotes.filter(n => n.followUpRequired).length}
-            </div>
-            <div className="text-sm text-muted-foreground">Follow-up Required</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-green-600">
-              {handoverNotes.filter(n => n.status === 'resolved').length}
-            </div>
-            <div className="text-sm text-muted-foreground">Resolved Today</div>
-          </CardContent>
-        </Card>
+    <div className="space-y-6 p-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Shift Handover</h2>
+          <p className="text-muted-foreground">
+            Current shift status and handover information
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => window.open('/shift-terminal', '_blank')}
+          >
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Shift Terminal
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => generateDailyShiftsReport.mutate(
+              allShifts?.filter(s => s.status === 'completed').slice(0, 10) || []
+            )}
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Daily Report
+          </Button>
+        </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="current">Current Issues</TabsTrigger>
-          <TabsTrigger value="create">Create Handover</TabsTrigger>
-          <TabsTrigger value="history">Shift History</TabsTrigger>
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="handovers">Recent Handovers</TabsTrigger>
+          <TabsTrigger value="actions">Quick Actions</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="current" className="space-y-4">
-          {/* Urgent Items First */}
-          {urgentNotes.length > 0 && (
-            <Card className="border-red-200 bg-red-50/20">
-              <CardHeader>
-                <CardTitle className="text-red-800 flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5" />
-                  Urgent Items Requiring Attention
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Current Active Shifts */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Active Shifts
+                  {currentShifts.length > 0 && (
+                    <Badge variant="secondary">{currentShifts.length}</Badge>
+                  )}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {urgentNotes.map((note) => (
-                  <div key={note.id} className="p-3 bg-white rounded-lg border border-red-200">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge className={getPriorityColor(note.priority)}>
-                            {note.priority.toUpperCase()}
-                          </Badge>
-                          <Badge variant="outline">
-                            {getCategoryIcon(note.category)}
-                            <span className="ml-1">{note.category.replace('-', ' ')}</span>
-                          </Badge>
+              <CardContent>
+                {shiftsLoading ? (
+                  <div className="text-sm text-muted-foreground">Loading shift data...</div>
+                ) : currentShifts.length > 0 ? (
+                  <div className="space-y-3">
+                    {currentShifts.map((shift) => (
+                      <div key={shift.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                        <div className="space-y-1">
+                          <div className="font-medium">Staff: {shift.staff_id}</div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary">{shift.role}</Badge>
+                            {shift.device_id && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Monitor className="h-3 w-3" />
+                                {shift.device_id}
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Started {formatDistanceToNow(new Date(shift.start_time), { addSuffix: true })}
+                          </div>
                         </div>
-                        <h4 className="font-medium">{note.subject}</h4>
-                        <p className="text-sm text-muted-foreground mt-1">{note.content}</p>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
-                          <span>From: {note.fromStaff}</span>
-                          <span>{note.date.toLocaleString()}</span>
-                        </div>
+                        <Badge variant="outline" className="bg-green-50 text-green-700">
+                          Active
+                        </Badge>
                       </div>
-                      <div className="flex gap-2 ml-4">
-                        {note.status === 'pending' && (
-                          <>
-                            <Button size="sm" variant="outline" onClick={() => handleAcknowledge(note.id)}>
-                              Acknowledge
-                            </Button>
-                            <Button size="sm" onClick={() => handleResolve(note.id)}>
-                              Resolve
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No active shifts</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
-          )}
 
-          {/* All Handover Notes */}
-          <div className="space-y-3">
-            {handoverNotes.map((note) => (
-              <Card key={note.id}>
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge className={getPriorityColor(note.priority)}>
-                          {note.priority}
+            {/* Pending QR Requests */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5" />
+                  Pending QR Requests
+                  {pendingOrders.length > 0 && (
+                    <Badge variant="destructive">{pendingOrders.length}</Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {pendingOrders.length > 0 ? (
+                  <div className="space-y-3">
+                    {pendingOrders.map((order) => (
+                      <div key={order.id} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
+                        <div className="flex-1">
+                          <div className="font-medium capitalize">
+                            {order.service_type.replace('_', ' ')}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Room {order.room_id} • Priority {order.priority}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(new Date(order.created_at), { addSuffix: true })}
+                          </div>
+                        </div>
+                        <Badge 
+                          variant={order.status === 'pending' ? 'destructive' : 'secondary'}
+                        >
+                          {order.status}
                         </Badge>
-                        <Badge className={getStatusColor(note.status)}>
-                          {note.status === 'pending' && <Clock className="h-3 w-3 mr-1" />}
-                          {note.status === 'acknowledged' && <MessageSquare className="h-3 w-3 mr-1" />}
-                          {note.status === 'resolved' && <CheckCircle className="h-3 w-3 mr-1" />}
-                          {note.status.toUpperCase()}
-                        </Badge>
-                        <Badge variant="outline">
-                          {getCategoryIcon(note.category)}
-                          <span className="ml-1">{note.category.replace('-', ' ')}</span>
-                        </Badge>
-                        {note.followUpRequired && (
-                          <Badge variant="outline" className="text-orange-600">
-                            Follow-up Required
-                          </Badge>
-                        )}
                       </div>
-                      
-                      <h3 className="font-medium mb-1">{note.subject}</h3>
-                      <p className="text-sm text-muted-foreground mb-2">{note.content}</p>
-                      
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          {note.fromStaff}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {note.date.toLocaleString()}
-                        </span>
-                        <span className="capitalize">{note.shift} shift</span>
-                        {note.resolvedBy && (
-                          <span>Resolved by {note.resolvedBy}</span>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-2 ml-4">
-                      {note.status === 'pending' && (
-                        <>
-                          <Button size="sm" variant="outline" onClick={() => handleAcknowledge(note.id)}>
-                            Acknowledge
-                          </Button>
-                          <Button size="sm" onClick={() => handleResolve(note.id)}>
-                            Resolve
-                          </Button>
-                        </>
-                      )}
-                    </div>
+                    ))}
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No pending requests</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Urgent Housekeeping Tasks */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5" />
+                  Urgent Tasks
+                  {urgentTasks.length > 0 && (
+                    <Badge variant="destructive">{urgentTasks.length}</Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {urgentTasks.length > 0 ? (
+                  <div className="space-y-3">
+                    {urgentTasks.map((task) => (
+                      <div key={task.id} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
+                        <div className="flex-1">
+                          <div className="font-medium">{task.title}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {task.room_id && `Room ${task.room_id} • `}
+                            {task.task_type}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {task.assigned_at 
+                              ? `Assigned ${formatDistanceToNow(new Date(task.assigned_at), { addSuffix: true })}`
+                              : 'Not assigned'
+                            }
+                          </div>
+                        </div>
+                        <Badge variant="destructive">
+                          {task.priority}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No urgent tasks</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Unresolved Items */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5" />
+                  Unresolved Items
+                  {allUnresolvedItems.length > 0 && (
+                    <Badge variant="destructive">{allUnresolvedItems.length}</Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {allUnresolvedItems.length > 0 ? (
+                  <div className="space-y-2">
+                    {allUnresolvedItems.slice(0, 5).map((item, index) => (
+                      <div key={index} className="flex items-start gap-2 p-2 bg-destructive/5 rounded">
+                        <AlertTriangle className="h-4 w-4 text-destructive mt-0.5" />
+                        <span className="text-sm">{item}</span>
+                      </div>
+                    ))}
+                    {allUnresolvedItems.length > 5 && (
+                      <div className="text-xs text-muted-foreground">
+                        ... and {allUnresolvedItems.length - 5} more items
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-50 text-green-500" />
+                    <p>All items resolved</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 
-        <TabsContent value="create" className="space-y-6">
+        <TabsContent value="handovers" className="space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5" />
-                Create Shift Handover Note
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <ExternalLink className="h-5 w-5" />
+                Recent Shift Handovers
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">Priority Level</label>
-                  <select 
-                    className="w-full mt-1 p-2 border rounded-md"
-                    value={newHandover.priority}
-                    onChange={(e) => setNewHandover(prev => ({ 
-                      ...prev, 
-                      priority: e.target.value as HandoverNote['priority'] 
-                    }))}
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="urgent">Urgent</option>
-                  </select>
+            <CardContent>
+              {recentHandovers.length > 0 ? (
+                <div className="space-y-4">
+                  {recentHandovers.map((shift) => (
+                    <Card key={shift.id} className="border-l-4 border-l-primary">
+                      <CardContent className="p-4">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <span className="font-medium">Staff: {shift.staff_id}</span>
+                              <Badge variant="outline" className="ml-2">{shift.role}</Badge>
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {shift.end_time && format(new Date(shift.end_time), 'MMM d, HH:mm')}
+                            </div>
+                          </div>
+
+                          {shift.handover_notes && (
+                            <div className="bg-muted p-3 rounded-lg">
+                              <div className="text-sm font-medium mb-1">Handover Notes:</div>
+                              <div className="text-sm">{shift.handover_notes}</div>
+                            </div>
+                          )}
+
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="text-muted-foreground">Cash Total:</span>
+                              <span className="ml-2 font-medium">${shift.cash_total?.toFixed(2) || '0.00'}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">POS Total:</span>
+                              <span className="ml-2 font-medium">${shift.pos_total?.toFixed(2) || '0.00'}</span>
+                            </div>
+                          </div>
+
+                          {shift.unresolved_items?.length > 0 && (
+                            <div className="border-l-4 border-l-destructive pl-3">
+                              <div className="text-sm font-medium text-destructive mb-1">
+                                Unresolved Items ({shift.unresolved_items.length}):
+                              </div>
+                              <ul className="text-sm text-muted-foreground space-y-1">
+                                {shift.unresolved_items.slice(0, 3).map((item, index) => (
+                                  <li key={index} className="flex items-start gap-2">
+                                    <span className="text-destructive">•</span>
+                                    {item}
+                                  </li>
+                                ))}
+                                {shift.unresolved_items.length > 3 && (
+                                  <li className="text-xs">... and {shift.unresolved_items.length - 3} more</li>
+                                )}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-                
-                <div>
-                  <label className="text-sm font-medium">Category</label>
-                  <select 
-                    className="w-full mt-1 p-2 border rounded-md"
-                    value={newHandover.category}
-                    onChange={(e) => setNewHandover(prev => ({ 
-                      ...prev, 
-                      category: e.target.value as HandoverNote['category'] 
-                    }))}
-                  >
-                    <option value="general">General</option>
-                    <option value="guest-issue">Guest Issue</option>
-                    <option value="maintenance">Maintenance</option>
-                    <option value="financial">Financial</option>
-                    <option value="security">Security</option>
-                  </select>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>No recent handovers found</p>
                 </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Subject *</label>
-                <input
-                  type="text"
-                  className="w-full mt-1 p-2 border rounded-md"
-                  value={newHandover.subject}
-                  onChange={(e) => setNewHandover(prev => ({ ...prev, subject: e.target.value }))}
-                  placeholder="Brief subject line"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Detailed Notes *</label>
-                <Textarea
-                  className="mt-1"
-                  value={newHandover.content}
-                  onChange={(e) => setNewHandover(prev => ({ ...prev, content: e.target.value }))}
-                  placeholder="Detailed information for the next shift..."
-                  rows={4}
-                />
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="followUp"
-                  checked={newHandover.followUpRequired}
-                  onChange={(e) => setNewHandover(prev => ({ ...prev, followUpRequired: e.target.checked }))}
-                />
-                <label htmlFor="followUp" className="text-sm">Requires follow-up action</label>
-              </div>
-
-              <div className="flex gap-2 pt-4">
-                <Button onClick={handleSubmitHandover} className="flex-1">
-                  <Send className="h-4 w-4 mr-2" />
-                  Submit Handover Note
-                </Button>
-              </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="history" className="space-y-4">
-          {shiftSummaries.map((summary, index) => (
-            <Card key={index}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarFallback>
-                        {summary.staff.split(' ').map(n => n[0]).join('')}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h3 className="font-medium">{summary.staff}</h3>
-                      <div className="text-sm text-muted-foreground">
-                        {summary.date.toLocaleDateString()} • {summary.shift} shift
-                      </div>
-                    </div>
-                  </div>
-                  <Badge variant="outline" className="capitalize">
-                    {summary.shift} Shift
-                  </Badge>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-green-600">{summary.checkIns}</div>
-                    <div className="text-xs text-muted-foreground">Check-ins</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-blue-600">{summary.checkOuts}</div>
-                    <div className="text-xs text-muted-foreground">Check-outs</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-yellow-600">{summary.issues}</div>
-                    <div className="text-xs text-muted-foreground">Issues</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-primary">₦{(summary.revenue / 1000).toFixed(0)}K</div>
-                    <div className="text-xs text-muted-foreground">Revenue</div>
-                  </div>
-                </div>
-
-                <Separator className="my-3" />
-                
-                <div>
-                  <h4 className="font-medium text-sm mb-2">Shift Notes:</h4>
-                  <p className="text-sm text-muted-foreground">{summary.notes}</p>
-                </div>
+        <TabsContent value="actions" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Shift Management</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <a href="/shift-terminal" target="_blank">
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Open Shift Terminal
+                  </a>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => generateDailyShiftsReport.mutate(
+                    allShifts?.filter(s => s.status === 'completed').slice(0, 10) || []
+                  )}
+                  disabled={generateDailyShiftsReport.isPending}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Generate Daily Report
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  View Shift Schedule
+                </Button>
               </CardContent>
             </Card>
-          ))}
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Communication</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Button variant="outline" className="w-full justify-start">
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Send Staff Message
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  <AlertCircle className="h-4 w-4 mr-2" />
+                  Create Alert
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  <User className="h-4 w-4 mr-2" />
+                  Staff Directory
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

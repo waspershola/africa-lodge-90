@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, Filter } from "lucide-react";
@@ -56,53 +56,55 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
   const [filteredRooms, setFilteredRooms] = useState<Room[]>([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  // Transform Supabase room data to component format
-  const roomData: Room[] = rooms?.map(room => {
-    // Map Supabase status to frontend status
-    let mappedStatus: Room['status'] = 'available';
-    switch (room.status) {
-      case 'available':
-        mappedStatus = 'available';
-        break;
-      case 'occupied':
-        mappedStatus = 'occupied';
-        break;
-      case 'dirty':
-        mappedStatus = 'dirty';
-        break;
-      case 'maintenance':
-        mappedStatus = 'maintenance';
-        break;
-      case 'out_of_order':
-        mappedStatus = 'oos';
-        break;
-      default:
-        mappedStatus = 'available';
-    }
-    
-    return {
-      id: room.id,
-      room_number: room.room_number,
-      status: mappedStatus,
-      room_type: room.room_type,
-      current_reservation: undefined, // TODO: Implement reservation lookup
-      notes: room.notes,
-      last_cleaned: room.last_cleaned,
-      // Legacy compatibility fields
-      number: room.room_number,
-      name: room.room_type?.name || 'Standard',  
-      type: room.room_type?.name || 'Standard',
-      guest: undefined, // TODO: Implement from reservations
-      checkIn: undefined, // TODO: Implement from reservations
-      checkOut: undefined, // TODO: Implement from reservations
-      alerts: {
-        cleaning: room.status === 'dirty',
-        maintenance: room.status === 'maintenance',
-        depositPending: false, // Can be enhanced based on folio data
-        idMissing: false, // Can be enhanced based on reservation data
+  // Transform Supabase room data to component format - memoized to prevent infinite loops
+  const roomData: Room[] = useMemo(() => {
+    return rooms?.map(room => {
+      // Map Supabase status to frontend status
+      let mappedStatus: Room['status'] = 'available';
+      switch (room.status) {
+        case 'available':
+          mappedStatus = 'available';
+          break;
+        case 'occupied':
+          mappedStatus = 'occupied';
+          break;
+        case 'dirty':
+          mappedStatus = 'dirty';
+          break;
+        case 'maintenance':
+          mappedStatus = 'maintenance';
+          break;
+        case 'out_of_order':
+          mappedStatus = 'oos';
+          break;
+        default:
+          mappedStatus = 'available';
       }
-    };
-  }) || [];
+      
+      return {
+        id: room.id,
+        room_number: room.room_number,
+        status: mappedStatus,
+        room_type: room.room_type,
+        current_reservation: undefined, // TODO: Implement reservation lookup
+        notes: room.notes,
+        last_cleaned: room.last_cleaned,
+        // Legacy compatibility fields
+        number: room.room_number,
+        name: room.room_type?.name || 'Standard',  
+        type: room.room_type?.name || 'Standard',
+        guest: undefined, // TODO: Implement from reservations
+        checkIn: undefined, // TODO: Implement from reservations
+        checkOut: undefined, // TODO: Implement from reservations
+        alerts: {
+          cleaning: room.status === 'dirty',
+          maintenance: room.status === 'maintenance',
+          depositPending: false, // Can be enhanced based on folio data
+          idMissing: false, // Can be enhanced based on reservation data
+        }
+      };
+    }) || [];
+  }, [rooms]);
 
   // Filter rooms based on search query and active filter
   useEffect(() => {

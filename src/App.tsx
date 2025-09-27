@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useFontManager } from "@/hooks/useFontManager";
 import Index from "./pages/Index";
+import { AuthPage } from "./pages/AuthPage";
 import SignUp from "./pages/SignUp";
 import NotFound from "./pages/NotFound";
 import EmergencyAccessPage from "./pages/EmergencyAccessPage";
@@ -115,6 +116,7 @@ const App = () => (
         <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/auth" element={<AuthPage />} />
           <Route path="/signup" element={<SignUp />} />
           <Route path="/emergency-access-portal" element={<EmergencyAccessPage />} />
           <Route path="/onboarding" element={

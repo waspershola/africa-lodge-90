@@ -350,8 +350,8 @@ const Index = () => {
                 className="bg-white/20 hover:bg-white/30 text-white border border-white/30 text-lg px-8 py-6 font-semibold backdrop-blur-sm"
                 asChild
               >
-                <Link to="/front-desk">
-                  Try Demo Mode
+                <Link to="/auth?tab=reset">
+                  Reset Password
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>

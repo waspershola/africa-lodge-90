@@ -26,6 +26,27 @@ export function StaffAlertsDashboard() {
 
   useEffect(() => {
     fetchRecentAlerts();
+    
+    // Set up real-time subscription for staff alerts
+    const channel = supabase
+      .channel('staff-alerts-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'staff_alerts'
+        },
+        () => {
+          console.log('Staff alerts updated, refreshing dashboard');
+          fetchRecentAlerts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchRecentAlerts = async () => {

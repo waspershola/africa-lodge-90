@@ -4,6 +4,9 @@ import { StaffAlertsDashboard } from "./StaffAlertsDashboard";
 import { AlertConfigurations } from "./AlertConfigurations";
 import { AlertHistory } from "./AlertHistory";
 import { NotificationChannels } from "./NotificationChannels";
+import { ManagerDailySummary } from "@/components/manager/ManagerDailySummary";
+import { NotificationAnalytics } from "@/components/analytics/NotificationAnalytics";
+import { TemplatePreview } from "@/components/notifications/TemplatePreview";
 
 export function StaffAlertsCenter() {
   return (
@@ -16,11 +19,14 @@ export function StaffAlertsCenter() {
       </div>
 
       <Tabs defaultValue="dashboard" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="config">Alert Config</TabsTrigger>
           <TabsTrigger value="channels">Channels</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
+          <TabsTrigger value="summary">Daily Summary</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="templates">Templates</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6">
@@ -37,6 +43,18 @@ export function StaffAlertsCenter() {
 
         <TabsContent value="history" className="space-y-6">
           <AlertHistory />
+        </TabsContent>
+
+        <TabsContent value="summary" className="space-y-6">
+          <ManagerDailySummary />
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-6">
+          <NotificationAnalytics />
+        </TabsContent>
+
+        <TabsContent value="templates" className="space-y-6">
+          <TemplatePreview />
         </TabsContent>
       </Tabs>
     </div>

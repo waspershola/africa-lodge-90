@@ -216,7 +216,8 @@ async function processSMSNotification(supabase: any, event: NotificationEvent, r
     }
 
     if (!recipientPhone) {
-      return { success: false, error: 'No phone number available for recipient' };
+      console.log('No phone number available, falling back to email');
+      return await processEmailNotification(supabase, event, recipientType, template);
     }
 
     // Call SMS template processor
@@ -232,7 +233,8 @@ async function processSMSNotification(supabase: any, event: NotificationEvent, r
     });
 
     if (smsError) {
-      throw smsError;
+      console.log('SMS failed, falling back to email:', smsError);
+      return await processEmailNotification(supabase, event, recipientType, template);
     }
 
     return {
@@ -243,8 +245,8 @@ async function processSMSNotification(supabase: any, event: NotificationEvent, r
     };
 
   } catch (error) {
-    console.error('SMS processing error:', error);
-    return { success: false, error: error instanceof Error ? error.message : String(error) };
+    console.error('SMS processing error, falling back to email:', error);
+    return await processEmailNotification(supabase, event, recipientType, template);
   }
 }
 

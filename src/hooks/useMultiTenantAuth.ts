@@ -314,15 +314,31 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
   // Logout function
   const logout = async () => {
     try {
-      await supabase.auth.signOut();
+      // Clear all session data first
       setUser(null);
       setTenant(null);
       setSession(null);
       setTrialStatus(null);
-      // Redirect to homepage after logout
-      window.location.href = '/';
+      setError(null);
+      setNeedsPasswordReset(false);
+      setIsImpersonating(false);
+      
+      // Clear localStorage to prevent session restoration
+      localStorage.removeItem('supabase.auth.token');
+      localStorage.removeItem('sb-dxisnnjsbuuiunjmzzqj-auth-token');
+      
+      // Sign out from Supabase
+      await supabase.auth.signOut();
+      
+      // Force navigation to home without page reload
+      setTimeout(() => {
+        window.location.replace('/');
+      }, 100);
     } catch (err) {
+      console.error('Logout error:', err);
       setError(err instanceof Error ? err.message : 'Logout failed');
+      // Force redirect even if logout fails
+      window.location.replace('/');
     }
   };
 

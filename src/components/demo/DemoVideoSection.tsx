@@ -34,8 +34,15 @@ export function DemoVideoSection() {
     return match ? match[1] : null;
   };
 
+  // Convert any YouTube URL to embed format
+  const getYouTubeEmbedUrl = (url: string) => {
+    const videoId = getYouTubeVideoId(url);
+    return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+  };
+
   const videoId = getYouTubeVideoId(config.video_url);
   const thumbnailUrl = config.thumbnail_url || (videoId ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` : '');
+  const embedUrl = getYouTubeEmbedUrl(config.video_url);
 
   return (
     <>
@@ -120,7 +127,7 @@ export function DemoVideoSection() {
           <div className="aspect-video">
             {isVideoOpen && (
               <iframe
-                src={`${config.video_url}?autoplay=1&rel=0`}
+                src={`${embedUrl}?autoplay=1&rel=0`}
                 title="Demo Video"
                 className="w-full h-full rounded-lg"
                 allowFullScreen

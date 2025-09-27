@@ -89,13 +89,7 @@ export function MultiTenantAuthProvider({ children }: MultiTenantAuthProviderPro
         // Continue with logout even if audit logging fails
       }
       
-      try {
-        await auth.logout();
-      } catch (error) {
-        console.error('Logout error:', error);
-        // Force redirect even if logout fails
-        window.location.href = '/';
-      }
+      await auth.logout();
     }
   };
 

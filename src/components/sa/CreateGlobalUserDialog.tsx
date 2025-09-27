@@ -140,7 +140,7 @@ export function CreateGlobalUserDialog() {
           Create Global User
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="max-w-lg max-h-[90vh] w-[95vw] sm:w-full overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />

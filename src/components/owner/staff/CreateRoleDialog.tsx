@@ -84,7 +84,7 @@ export default function CreateRoleDialog({ open, onOpenChange, onRoleCreated }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-w-lg max-h-[90vh] w-[95vw] sm:w-full overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Role</DialogTitle>
           <DialogDescription>

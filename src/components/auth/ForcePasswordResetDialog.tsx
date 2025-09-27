@@ -64,7 +64,7 @@ export function ForcePasswordResetDialog({ isOpen, userEmail }: ForcePasswordRes
 
   return (
     <Dialog open={isOpen} onOpenChange={() => {}} modal>
-      <DialogContent className="max-w-md [&>button]:hidden">{/* Hide close button */}
+      <DialogContent className="max-w-md max-h-[90vh] w-[95vw] sm:w-full overflow-y-auto [&>button]:hidden">{/* Hide close button */}
         <DialogHeader className="text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
             <Shield className="h-6 w-6 text-blue-600" />

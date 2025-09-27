@@ -124,7 +124,7 @@ export function SessionSettingsModal({ open, onOpenChange }: SessionSettingsModa
   if (isLoading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="max-w-2xl max-h-[90vh] w-[95vw] sm:w-full overflow-y-auto">
           <div className="flex items-center justify-center p-6">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
@@ -135,7 +135,7 @@ export function SessionSettingsModal({ open, onOpenChange }: SessionSettingsModa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] w-[95vw] sm:w-full overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Guest Session Settings</DialogTitle>
         </DialogHeader>

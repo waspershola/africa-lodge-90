@@ -191,7 +191,7 @@ export default function ExtraChargesDialog({ open, onOpenChange }: ExtraChargesD
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] w-[95vw] sm:w-full overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Extra Charges & Fees Configuration</DialogTitle>
           <DialogDescription>

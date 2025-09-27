@@ -59,7 +59,7 @@ export function AddRoomDialog({ isOpen, onClose, onSave }: AddRoomDialogProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] w-[95vw] sm:w-full overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Room</DialogTitle>
         </DialogHeader>

@@ -146,7 +146,7 @@ export const QRCodeWizard = ({ open, onOpenChange, onSave, defaultServices = [] 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="max-w-lg max-h-[90vh] w-[95vw] sm:w-full overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Generate New QR Code</DialogTitle>
         </DialogHeader>

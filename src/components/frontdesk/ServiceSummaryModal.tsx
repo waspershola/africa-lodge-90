@@ -52,7 +52,7 @@ const getStatusColor = (status: ServiceCharge['status']) => {
 export const ServiceSummaryModal = ({ open, onOpenChange, services }: ServiceSummaryModalProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[80vh] w-[95vw] sm:w-full overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Service Summary</DialogTitle>
         </DialogHeader>

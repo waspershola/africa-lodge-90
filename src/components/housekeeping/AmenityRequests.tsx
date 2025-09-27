@@ -437,7 +437,7 @@ export default function AmenityRequests() {
 
       {/* Request Details Dialog */}
       <Dialog open={showRequestDetails} onOpenChange={setShowRequestDetails}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[80vh] w-[95vw] sm:w-full overflow-y-auto">
           {selectedRequest && (
             <>
               <DialogHeader>

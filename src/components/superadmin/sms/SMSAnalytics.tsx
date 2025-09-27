@@ -99,12 +99,12 @@ export function SMSAnalytics() {
       if (filters.dateTo) {
         query = query.lte('created_at', filters.dateTo);
       }
-      if (filters.status) {
-        query = query.eq('status', filters.status);
-      }
-      if (filters.eventType) {
-        query = query.eq('event_type', filters.eventType);
-      }
+          if (filters.status && filters.status !== 'all') {
+            query = query.eq('status', filters.status);
+          }
+          if (filters.eventType && filters.eventType !== 'all') {
+            query = query.eq('event_type', filters.eventType);
+          }
 
       const { data: logs, error } = await query.limit(500);
 
@@ -238,7 +238,7 @@ export function SMSAnalytics() {
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All statuses</SelectItem>
+                  <SelectItem value="all">All statuses</SelectItem>
                   <SelectItem value="sent">Sent</SelectItem>
                   <SelectItem value="failed">Failed</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
@@ -253,7 +253,7 @@ export function SMSAnalytics() {
                   <SelectValue placeholder="All events" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All events</SelectItem>
+                  <SelectItem value="all">All events</SelectItem>
                   <SelectItem value="booking_confirmed">Booking Confirmed</SelectItem>
                   <SelectItem value="payment_received">Payment Received</SelectItem>
                   <SelectItem value="qr_request_staff">QR Request</SelectItem>

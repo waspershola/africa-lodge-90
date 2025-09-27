@@ -304,7 +304,7 @@ export function InviteUserDialog({ tenantId, onSuccess }: InviteUserDialogProps)
                           // Tenant-specific roles from database
                           <>
                             {loadingTenantRoles ? (
-                              <SelectItem value="" disabled>Loading roles...</SelectItem>
+                              <SelectItem value="loading" disabled>Loading roles...</SelectItem>
                             ) : (
                               tenantRoles?.map((role) => (
                                 <SelectItem key={role.id} value={role.name}>
@@ -317,7 +317,7 @@ export function InviteUserDialog({ tenantId, onSuccess }: InviteUserDialogProps)
                           // Global roles from database
                           <>
                             {loadingGlobalRoles ? (
-                              <SelectItem value="" disabled>Loading roles...</SelectItem>
+                              <SelectItem value="loading" disabled>Loading roles...</SelectItem>
                             ) : (
                               globalRoles?.map((role) => (
                                 <SelectItem key={role.id} value={role.name}>

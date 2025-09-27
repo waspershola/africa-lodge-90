@@ -268,7 +268,7 @@ export function AuditReceiptLog() {
                 <SelectValue placeholder="Department" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Departments</SelectItem>
+                <SelectItem value="all">All Departments</SelectItem>
                 {departments.map((dept) => (
                   <SelectItem key={dept.value} value={dept.value}>
                     {dept.label}
@@ -282,7 +282,7 @@ export function AuditReceiptLog() {
                 <SelectValue placeholder="Action" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Actions</SelectItem>
+                <SelectItem value="all">All Actions</SelectItem>
                 {actions.map((action) => (
                   <SelectItem key={action.value} value={action.value}>
                     {action.label}
@@ -296,7 +296,7 @@ export function AuditReceiptLog() {
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Statuses</SelectItem>
+                <SelectItem value="all">All Statuses</SelectItem>
                 {statuses.map((status) => (
                   <SelectItem key={status.value} value={status.value}>
                     {status.label}

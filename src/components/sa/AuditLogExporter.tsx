@@ -224,7 +224,7 @@ export function AuditLogExporter({ className }: AuditLogExporterProps) {
               <SelectValue placeholder="Filter by action type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All actions</SelectItem>
+              <SelectItem value="all">All actions</SelectItem>
               <SelectItem value="user_created">User Created</SelectItem>
               <SelectItem value="user_invited">User Invited</SelectItem>
               <SelectItem value="user_deleted">User Deleted</SelectItem>
@@ -253,7 +253,7 @@ export function AuditLogExporter({ className }: AuditLogExporterProps) {
               <SelectValue placeholder="Filter by resource type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All resources</SelectItem>
+              <SelectItem value="all">All resources</SelectItem>
               <SelectItem value="user">User</SelectItem>
               <SelectItem value="tenant">Tenant</SelectItem>
               <SelectItem value="role">Role</SelectItem>

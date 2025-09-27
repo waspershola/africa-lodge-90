@@ -1,10 +1,11 @@
 import { ReactNode } from 'react';
-import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Menu, LogOut } from 'lucide-react';
+import { ArrowLeft, Menu, LogOut, PanelLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Sidebar,
   SidebarContent,
@@ -45,7 +46,16 @@ function DashboardSidebar({
   headerBadge 
 }: Omit<UnifiedDashboardLayoutProps, 'subtitle' | 'children'>) {
   const location = useLocation();
-  const { open } = useSidebar();
+  const { open, toggleSidebar, isMobile, setOpenMobile } = useSidebar();
+  const navigate = useNavigate();
+
+  const handleMenuItemClick = (href: string) => {
+    // Auto-close sidebar on mobile/tablet after navigation
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+    navigate(href);
+  };
 
   return (
     <Sidebar className="border-r border-sidebar-border">
@@ -54,13 +64,11 @@ function DashboardSidebar({
           <Button
             variant="ghost"
             size="sm"
-            asChild
+            onClick={toggleSidebar}
             className="text-sidebar-foreground hover:text-sidebar-primary hover:bg-sidebar-accent/10"
           >
-            <NavLink to={backToSiteUrl}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              {open && "Back to Site"}
-            </NavLink>
+            <PanelLeft className="h-4 w-4 mr-2" />
+            {open && "Menu"}
           </Button>
         </div>
         
@@ -89,18 +97,16 @@ function DashboardSidebar({
                 return (
                   <SidebarMenuItem key={item.name}>
                     <SidebarMenuButton 
-                      asChild
                       isActive={isActive}
+                      onClick={() => handleMenuItemClick(item.href)}
                       className={`
                         text-sidebar-foreground hover:bg-sidebar-accent/20 hover:text-sidebar-primary
                         data-[active=true]:bg-sidebar-primary/20 data-[active=true]:text-sidebar-primary
-                        data-[active=true]:font-semibold transition-colors
+                        data-[active=true]:font-semibold transition-colors cursor-pointer
                       `}
                     >
-                      <NavLink to={item.href}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.name}</span>
-                      </NavLink>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.name}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );

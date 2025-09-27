@@ -190,10 +190,18 @@ export function AuthPage() {
 
         {/* Additional Links */}
         <div className="text-center mt-8 space-y-4">
-          <div className="text-sm text-muted-foreground">
-            Need help?{' '}
+          <div className="text-sm text-muted-foreground space-x-4">
+            <span>Need help?</span>
             <Button variant="link" className="p-0 h-auto text-sm">
               Contact Support
+            </Button>
+            <span>•</span>
+            <Button 
+              variant="link" 
+              className="p-0 h-auto text-sm"
+              onClick={() => setActiveTab('reset')}
+            >
+              Reset Password
             </Button>
           </div>
           

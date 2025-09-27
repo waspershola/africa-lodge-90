@@ -420,6 +420,18 @@ export function TrialSignupFlow({ open, onOpenChange, selectedPlanId, onSuccess 
                 )}
               </Button>
             </div>
+            
+            {/* Back to Home Link */}
+            <div className="pt-4 text-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => window.location.href = '/'}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                ← Back to Home
+              </Button>
+            </div>
           </form>
         )}
       </DialogContent>

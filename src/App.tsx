@@ -94,6 +94,7 @@ import Backups from "./pages/sa/Backups";
 import RealtimeMonitoring from "./pages/sa/RealtimeMonitoring";
 import EmailProviders from "./pages/sa/EmailProviders";
 import AddonCatalog from "./pages/sa/AddonCatalog";
+import SMSManagement from "./pages/superadmin/SMSManagement";
 
 import SupportAdminLayout from "./components/layout/SupportAdminLayout";
 import SupportStaffLayout from "./components/layout/SupportStaffLayout";
@@ -273,6 +274,7 @@ const App = () => (
             <Route path="services" element={<Services />} />
             <Route path="pricing-config" element={<PricingConfig />} />
             <Route path="addon-catalog" element={<AddonCatalog />} />
+            <Route path="sms-management" element={<SMSManagement />} />
             <Route path="demo-config" element={<DemoConfig />} />
             <Route path="templates" element={<Templates />} />
             <Route path="roles" element={<Roles />} />

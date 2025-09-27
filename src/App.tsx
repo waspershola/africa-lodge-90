@@ -19,6 +19,7 @@ import OwnerLayout from "./components/layout/OwnerLayout";
 import OwnerDashboardPage from "./pages/owner/Dashboard";
 import Configuration from "./pages/owner/Configuration";
 import StaffRoles from "./pages/owner/StaffRoles";
+import ShiftTerminal from "./pages/staff/ShiftTerminal";
 import Financials from "./pages/owner/Financials";
 import Billing from "./pages/owner/Billing";
 import EnhancedBilling from "./pages/owner/EnhancedBilling";
@@ -133,6 +134,11 @@ const App = () => (
           <Route path="/front-desk" element={
             <TenantAwareLayout requiredRole="FRONT_DESK">
               <FrontDeskDashboard />
+            </TenantAwareLayout>
+          } />
+          <Route path="/shift-terminal" element={
+            <TenantAwareLayout allowedRoles={["FRONT_DESK", "MANAGER", "OWNER"]}>
+              <ShiftTerminal />
             </TenantAwareLayout>
           } />
           <Route path="/reports" element={<ReportsInterface />} />

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +19,8 @@ import {
   Wrench,
   Battery,
   DollarSign,
-  Filter
+  Filter,
+  Terminal
 } from "lucide-react";
 import { RoomGrid } from "./frontdesk/RoomGrid";
 import { ActionQueue } from "./frontdesk/ActionQueue";
@@ -460,6 +462,16 @@ const FrontDeskDashboard = () => {
           >
             QR Directory
           </Button>
+          <Link to="/shift-terminal">
+            <Button 
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <Terminal className="h-4 w-4" />
+              Shift Terminal
+            </Button>
+          </Link>
         </div>
 
         {/* Dynamic Panel Content */}

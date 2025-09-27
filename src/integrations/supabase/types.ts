@@ -59,6 +59,48 @@ export type Database = {
         }
         Relationships: []
       }
+      audio_preferences: {
+        Row: {
+          created_at: string | null
+          id: string
+          notification_sounds: boolean | null
+          payment_sound: boolean | null
+          qr_request_sound: boolean | null
+          sound_theme: string | null
+          tenant_id: string
+          updated_at: string | null
+          urgent_alert_sound: boolean | null
+          user_id: string
+          volume_level: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          notification_sounds?: boolean | null
+          payment_sound?: boolean | null
+          qr_request_sound?: boolean | null
+          sound_theme?: string | null
+          tenant_id: string
+          updated_at?: string | null
+          urgent_alert_sound?: boolean | null
+          user_id: string
+          volume_level?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          notification_sounds?: boolean | null
+          payment_sound?: boolean | null
+          qr_request_sound?: boolean | null
+          sound_theme?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+          urgent_alert_sound?: boolean | null
+          user_id?: string
+          volume_level?: number | null
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           action: string
@@ -465,6 +507,39 @@ export type Database = {
           title?: string
           updated_at?: string
           video_url?: string
+        }
+        Relationships: []
+      }
+      devices: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          location: string | null
+          metadata: Json | null
+          slug: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          location?: string | null
+          metadata?: Json | null
+          slug: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          location?: string | null
+          metadata?: Json | null
+          slug?: string
+          tenant_id?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -3680,6 +3755,68 @@ export type Database = {
           },
         ]
       }
+      shift_sessions: {
+        Row: {
+          authorized_by: string | null
+          cash_total: number | null
+          created_at: string | null
+          device_id: string | null
+          end_time: string | null
+          handover_notes: string | null
+          id: string
+          pos_total: number | null
+          role: string
+          staff_id: string
+          start_time: string
+          status: string
+          tenant_id: string
+          unresolved_items: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          authorized_by?: string | null
+          cash_total?: number | null
+          created_at?: string | null
+          device_id?: string | null
+          end_time?: string | null
+          handover_notes?: string | null
+          id?: string
+          pos_total?: number | null
+          role: string
+          staff_id: string
+          start_time?: string
+          status?: string
+          tenant_id: string
+          unresolved_items?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          authorized_by?: string | null
+          cash_total?: number | null
+          created_at?: string | null
+          device_id?: string | null
+          end_time?: string | null
+          handover_notes?: string | null
+          id?: string
+          pos_total?: number | null
+          role?: string
+          staff_id?: string
+          start_time?: string
+          status?: string
+          tenant_id?: string
+          unresolved_items?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_sessions_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sms_credits: {
         Row: {
           balance: number | null
@@ -4362,6 +4499,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      staff_shifts: {
+        Row: {
+          created_at: string | null
+          end_time: string
+          handover_by: string | null
+          handover_completed: boolean | null
+          handover_notes: string | null
+          handover_to: string | null
+          id: string
+          shift_type: string
+          start_time: string
+          status: string
+          tenant_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          end_time: string
+          handover_by?: string | null
+          handover_completed?: boolean | null
+          handover_notes?: string | null
+          handover_to?: string | null
+          id?: string
+          shift_type: string
+          start_time: string
+          status?: string
+          tenant_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          end_time?: string
+          handover_by?: string | null
+          handover_completed?: boolean | null
+          handover_notes?: string | null
+          handover_to?: string | null
+          id?: string
+          shift_type?: string
+          start_time?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       supplies: {
         Row: {

@@ -59,48 +59,6 @@ export type Database = {
         }
         Relationships: []
       }
-      audio_preferences: {
-        Row: {
-          created_at: string | null
-          id: string
-          notification_sounds: boolean | null
-          payment_sound: boolean | null
-          qr_request_sound: boolean | null
-          sound_theme: string | null
-          tenant_id: string
-          updated_at: string | null
-          urgent_alert_sound: boolean | null
-          user_id: string
-          volume_level: number | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          notification_sounds?: boolean | null
-          payment_sound?: boolean | null
-          qr_request_sound?: boolean | null
-          sound_theme?: string | null
-          tenant_id: string
-          updated_at?: string | null
-          urgent_alert_sound?: boolean | null
-          user_id: string
-          volume_level?: number | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          notification_sounds?: boolean | null
-          payment_sound?: boolean | null
-          qr_request_sound?: boolean | null
-          sound_theme?: string | null
-          tenant_id?: string
-          updated_at?: string | null
-          urgent_alert_sound?: boolean | null
-          user_id?: string
-          volume_level?: number | null
-        }
-        Relationships: []
-      }
       audit_log: {
         Row: {
           action: string
@@ -4404,54 +4362,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      staff_shifts: {
-        Row: {
-          created_at: string | null
-          end_time: string
-          handover_by: string | null
-          handover_completed: boolean | null
-          handover_notes: string | null
-          handover_to: string | null
-          id: string
-          shift_type: string
-          start_time: string
-          status: string
-          tenant_id: string
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          end_time: string
-          handover_by?: string | null
-          handover_completed?: boolean | null
-          handover_notes?: string | null
-          handover_to?: string | null
-          id?: string
-          shift_type: string
-          start_time: string
-          status?: string
-          tenant_id: string
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          end_time?: string
-          handover_by?: string | null
-          handover_completed?: boolean | null
-          handover_notes?: string | null
-          handover_to?: string | null
-          id?: string
-          shift_type?: string
-          start_time?: string
-          status?: string
-          tenant_id?: string
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: []
       }
       supplies: {
         Row: {

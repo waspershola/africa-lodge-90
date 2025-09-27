@@ -1,5 +1,8 @@
 project_id = "dxisnnjsbuuiunjmzzqj"
 
+[functions.request-password-reset]
+verify_jwt = false
+
 [functions.create-global-user]
 verify_jwt = false
 

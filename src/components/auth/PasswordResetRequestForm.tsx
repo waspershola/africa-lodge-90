@@ -45,8 +45,8 @@ export function PasswordResetRequestForm({ onBackToLogin }: PasswordResetRequest
     setFormErrors({});
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth?resetToken=true`,
+      const { error } = await supabase.functions.invoke('request-password-reset', {
+        body: { email }
       });
 
       if (error) {
@@ -56,7 +56,7 @@ export function PasswordResetRequestForm({ onBackToLogin }: PasswordResetRequest
       setSent(true);
       AuthErrorHandler.showSuccessToast(
         'Password reset instructions have been sent to your email.',
-        '📧 Reset Link Sent'
+        '📧 Temporary Password Sent'
       );
     } catch (err: any) {
       console.error('Password reset error:', err);

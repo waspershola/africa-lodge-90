@@ -4003,7 +4003,9 @@ export type Database = {
           id: string
           is_active: boolean
           is_global: boolean
+          last_synced_at: string | null
           message_template: string
+          source_template_id: string | null
           template_name: string
           tenant_id: string | null
           updated_at: string
@@ -4019,7 +4021,9 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_global?: boolean
+          last_synced_at?: string | null
           message_template: string
+          source_template_id?: string | null
           template_name: string
           tenant_id?: string | null
           updated_at?: string
@@ -4035,13 +4039,23 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_global?: boolean
+          last_synced_at?: string | null
           message_template?: string
+          source_template_id?: string | null
           template_name?: string
           tenant_id?: string | null
           updated_at?: string
           variables?: Json | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_source_template"
+            columns: ["source_template_id"]
+            isOneToOne: false
+            referencedRelation: "sms_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       staff_alert_configs: {
         Row: {

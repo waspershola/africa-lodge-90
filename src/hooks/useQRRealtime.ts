@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { toast } from 'sonner';
 import { useCreateServiceAlert } from './useNotificationScheduler';
+import { useQRShiftRouting } from './useQRShiftRouting';
 
 export interface QROrder {
   id: string;
@@ -67,6 +68,7 @@ export const useQRRealtime = () => {
   const [orders, setOrders] = useState<QROrder[]>([]);
   const [loading, setLoading] = useState(true);
   const createServiceAlert = useCreateServiceAlert();
+  const { findBestStaffForService, getShiftCoverage } = useQRShiftRouting();
 
   // Fetch initial data
   useEffect(() => {
@@ -111,9 +113,24 @@ export const useQRRealtime = () => {
           const newOrder = payload.new as QROrder;
           setOrders(prev => [newOrder, ...prev]);
           
+          // Check shift coverage for intelligent routing
+          const shiftCoverage = getShiftCoverage();
+          const bestStaff = findBestStaffForService(newOrder.service_type);
+          
+          let toastDescription = `Room ${newOrder.room_id || 'Unknown'} - Priority ${newOrder.priority}`;
+          
+          if (!shiftCoverage.hasActiveCoverage) {
+            toastDescription += ' ⚠️ Limited coverage';
+          } else if (bestStaff) {
+            toastDescription += ` → Assigned to ${bestStaff.staff_name}`;
+            
+            // Auto-assign to best available staff if they have expertise
+            assignOrder(newOrder.id, bestStaff.staff_id);
+          }
+          
           // Show notification for new requests
           toast.success(`New ${newOrder.service_type.replace('_', ' ')} request received`, {
-            description: `Room ${newOrder.room_id || 'Unknown'} - Priority ${newOrder.priority}`,
+            description: toastDescription,
           });
 
           // Trigger staff alert notification
@@ -124,7 +141,7 @@ export const useQRRealtime = () => {
             sourceId: newOrder.id,
             sourceType: 'qr_order',
             title: `New ${newOrder.service_type.replace('_', ' ')} Request`,
-            description: getServiceDescription(newOrder),
+            description: getServiceDescription(newOrder) + (bestStaff ? ` (Assigned to ${bestStaff.staff_name})` : ''),
             roomNumber: newOrder.room_id,
             priority: priority,
             department: department

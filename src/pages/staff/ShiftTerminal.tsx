@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Clock, Monitor, User, DollarSign, FileText } from "lucide-react";
 import { useStartShift, useEndShift, useActiveShiftSessions, useDevices } from "@/hooks/useShiftSessions";
+import { useShiftPDFReport } from "@/hooks/useShiftPDFReport";
 import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
 import { formatDistanceToNow } from "date-fns";
 
@@ -31,6 +32,7 @@ export default function ShiftTerminal() {
   const { data: devices } = useDevices();
   const startShiftMutation = useStartShift();
   const endShiftMutation = useEndShift();
+  const { generateShiftReport } = useShiftPDFReport();
 
   const handleStartShift = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,12 +51,29 @@ export default function ShiftTerminal() {
   const handleEndShift = async () => {
     if (!selectedShiftToEnd) return;
     
-    await endShiftMutation.mutateAsync({
+    const result = await endShiftMutation.mutateAsync({
       shiftSessionId: selectedShiftToEnd,
       cashTotal,
       posTotal,
       handoverNotes,
     });
+    
+    // Generate PDF report after successful shift end
+    if (result?.shift_summary) {
+      await generateShiftReport.mutateAsync({
+        shift_id: result.shift_summary.shift_id,
+        staff_name: result.shift_summary.staff_name || 'Unknown',
+        role: result.shift_summary.role,
+        start_time: result.shift_summary.start_time,
+        end_time: result.shift_summary.end_time,
+        duration_hours: result.shift_summary.duration_hours,
+        cash_total: result.shift_summary.cash_total,
+        pos_total: result.shift_summary.pos_total,
+        total_collected: result.shift_summary.total_collected,
+        handover_notes: result.shift_summary.handover_notes,
+        unresolved_items: result.shift_summary.unresolved_items || []
+      });
+    }
     
     // Clear form and close modal
     setCashTotal(0);

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useShiftNotifications } from './useShiftNotifications';
 
 export interface ShiftSession {
   id: string;
@@ -81,6 +82,7 @@ export function useDevices() {
 export function useStartShift() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { notifyShiftStart } = useShiftNotifications();
 
   return useMutation({
     mutationFn: async (params: {
@@ -96,9 +98,20 @@ export function useStartShift() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['shift-sessions'] });
       queryClient.invalidateQueries({ queryKey: ['active-shift-sessions'] });
+      
+      // Send shift start notification
+      if (data.shift_session) {
+        await notifyShiftStart.mutateAsync({
+          shiftId: data.shift_session.id,
+          staffName: data.shift_session.staff_name || 'Unknown',
+          role: data.shift_session.role,
+          deviceSlug: data.shift_session.device_slug
+        });
+      }
+      
       toast({
         title: "Shift Started",
         description: "Successfully started shift session",

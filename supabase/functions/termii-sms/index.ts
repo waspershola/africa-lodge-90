@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,14 +21,37 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { to, message, sender_id = "HotelPMS", message_type = "plain", tenant_id }: SMSRequest = await req.json();
+    const { to, message, sender_id, message_type = "plain", tenant_id }: SMSRequest = await req.json();
 
     console.log(`Sending SMS via Termii to ${to} for tenant ${tenant_id}`);
 
     const termiiApiKey = Deno.env.get('TERMII_API_KEY');
-    if (!termiiApiKey) {
-      throw new Error('Termii API key not configured');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!termiiApiKey || !supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Missing required environment variables');
     }
+
+    // Initialize Supabase client
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get Termii provider configuration
+    const { data: providerConfig, error: configError } = await supabase
+      .from('sms_providers')
+      .select('sender_id, api_key')
+      .eq('provider_type', 'termii')
+      .eq('is_enabled', true)
+      .single();
+
+    if (configError || !providerConfig) {
+      throw new Error('Termii provider not configured or disabled');
+    }
+
+    // Use sender_id from request or fall back to provider config
+    const finalSenderId = sender_id || providerConfig.sender_id || 'SMS';
+
+    console.log(`Using sender ID: ${finalSenderId}`);
 
     // Send SMS via Termii API
     const termiiResponse = await fetch('https://api.ng.termii.com/api/sms/send', {
@@ -37,7 +61,7 @@ const handler = async (req: Request): Promise<Response> => {
       },
       body: JSON.stringify({
         to,
-        from: sender_id,
+        from: finalSenderId,
         sms: message,
         type: message_type,
         api_key: termiiApiKey,

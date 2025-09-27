@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import heroHotelBg from '@/assets/hero-hotel-bg.jpg';
+import { PasswordStrength } from '@/components/ui/password-strength';
 
 const SignUp = () => {
   const [formData, setFormData] = useState({
@@ -249,6 +250,9 @@ const SignUp = () => {
                       required
                     />
                   </div>
+                  {formData.password && (
+                    <PasswordStrength password={formData.password} className="mt-2" />
+                  )}
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input

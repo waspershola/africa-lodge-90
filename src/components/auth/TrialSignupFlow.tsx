@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { usePricingPlans } from '@/hooks/usePricingPlans';
 import { supabase } from '@/integrations/supabase/client';
+import { PasswordStrength } from '@/components/ui/password-strength';
 
 interface TrialSignupData {
   hotel_name: string;
@@ -375,6 +376,9 @@ export function TrialSignupFlow({ open, onOpenChange, selectedPlanId, onSuccess 
                     placeholder="Create a strong password"
                     disabled={loading}
                   />
+                  {formData.password && (
+                    <PasswordStrength password={formData.password} className="mt-2" />
+                  )}
                 </div>
                 
                 <div className="space-y-2">

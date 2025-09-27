@@ -179,6 +179,18 @@ export function TrialSignupFlow({ open, onOpenChange, selectedPlanId, onSuccess 
               Go to Login
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
+            
+            {/* Back to Home Link */}
+            <div className="pt-2 text-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => window.location.href = '/'}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                ← Back to Home
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -202,45 +214,59 @@ export function TrialSignupFlow({ open, onOpenChange, selectedPlanId, onSuccess 
         </DialogHeader>
 
         {step === 'plan' && (
-          <div className="grid gap-4">
-            {plans.filter(p => p.trial_enabled).map((plan) => (
-              <Card 
-                key={plan.id}
-                className={`cursor-pointer transition-all hover:shadow-md ${plan.popular ? 'ring-2 ring-accent' : ''}`}
-                onClick={() => handlePlanSelect(plan.id)}
+          <div className="space-y-4">
+            <div className="grid gap-4">
+              {plans.filter(p => p.trial_enabled).map((plan) => (
+                <Card 
+                  key={plan.id}
+                  className={`cursor-pointer transition-all hover:shadow-md ${plan.popular ? 'ring-2 ring-accent' : ''}`}
+                  onClick={() => handlePlanSelect(plan.id)}
+                >
+                  {plan.popular && (
+                    <div className="bg-accent text-accent-foreground text-center py-2 text-sm font-medium">
+                      Most Popular Choice
+                    </div>
+                  )}
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          {plan.name}
+                          {plan.popular && <Star className="h-4 w-4 text-accent" />}
+                        </CardTitle>
+                        <CardDescription>{plan.description}</CardDescription>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold">₦{plan.price.toLocaleString()}</div>
+                        <div className="text-sm text-muted-foreground">/month</div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <Badge variant="outline" className="text-green-600 border-green-600">
+                        {plan.trial_duration_days}-day free trial
+                      </Badge>
+                      <div className="text-sm text-muted-foreground">
+                        {plan.room_capacity_min}-{plan.room_capacity_max === 9999 ? '∞' : plan.room_capacity_max} rooms
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            
+            {/* Back to Home Link */}
+            <div className="pt-2 text-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => window.location.href = '/'}
+                className="text-muted-foreground hover:text-foreground"
               >
-                {plan.popular && (
-                  <div className="bg-accent text-accent-foreground text-center py-2 text-sm font-medium">
-                    Most Popular Choice
-                  </div>
-                )}
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        {plan.name}
-                        {plan.popular && <Star className="h-4 w-4 text-accent" />}
-                      </CardTitle>
-                      <CardDescription>{plan.description}</CardDescription>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold">₦{plan.price.toLocaleString()}</div>
-                      <div className="text-sm text-muted-foreground">/month</div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <Badge variant="outline" className="text-green-600 border-green-600">
-                      {plan.trial_duration_days}-day free trial
-                    </Badge>
-                    <div className="text-sm text-muted-foreground">
-                      {plan.room_capacity_min}-{plan.room_capacity_max === 9999 ? '∞' : plan.room_capacity_max} rooms
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                ← Back to Home
+              </Button>
+            </div>
           </div>
         )}
 

@@ -751,6 +751,7 @@ const Index = () => {
               <ul className="space-y-2 text-white/70">
                 <li><a href="#" className="hover:text-yellow-400 transition-colors">Help Center</a></li>
                 <li><a href="#" className="hover:text-yellow-400 transition-colors">Contact Us</a></li>
+                <li><a href="/auth?tab=reset" className="hover:text-yellow-400 transition-colors">Reset Password</a></li>
                 <li><a href="#" className="hover:text-yellow-400 transition-colors">Status</a></li>
                 <li><a href="#" className="hover:text-yellow-400 transition-colors">Training</a></li>
               </ul>

@@ -58,7 +58,7 @@ function DashboardSidebar({
   };
 
   return (
-    <Sidebar className="border-r border-sidebar-border">
+    <Sidebar className="border-r border-sidebar-border" collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border bg-sidebar-background">
         <div className="flex h-16 items-center gap-4 px-6">
           <Button
@@ -137,7 +137,7 @@ export default function UnifiedDashboardLayout({
     }
   };
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen>
       <div className="min-h-screen flex w-full bg-gradient-subtle">
         <DashboardSidebar 
           navigation={navigation}

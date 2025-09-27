@@ -80,6 +80,9 @@ export const RoomActionDrawer = ({
   };
 
   const handleGuestCaptureComplete = (updatedRoom: Room) => {
+    // Log successful completion for audit trail
+    console.log(`${captureAction === 'walkin' ? 'Walk-in check-in' : 'Room assignment'} completed for Room ${updatedRoom.number}`);
+    
     onRoomUpdate?.(updatedRoom);
     setShowQuickCapture(false);
     onClose();

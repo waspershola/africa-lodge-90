@@ -33,7 +33,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
-import { 
+import {
   CreditCard, 
   User, 
   Phone, 
@@ -43,10 +43,15 @@ import {
   CheckCircle,
   Search,
   Plus,
-  UserCheck
+  UserCheck,
+  Calendar,
+  DollarSign,
+  Globe,
+  Briefcase
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
+import { RateSelectionComponent } from "./RateSelectionComponent";
 import type { Room } from "./RoomGrid";
 
 interface QuickGuestCaptureProps {
@@ -61,12 +66,20 @@ interface GuestFormData {
   guestName: string;
   phone: string;
   email: string;
+  nationality: string;
+  sex: string;
+  occupation: string;
   idType: string;
   idNumber: string;
   paymentMode: string;
   depositAmount: string;
   printNow: boolean;
   notes: string;
+  checkInDate: string;
+  checkOutDate: string;
+  roomRate: number;
+  totalAmount: number;
+  numberOfNights: number;
 }
 
 interface MockGuest {
@@ -74,6 +87,9 @@ interface MockGuest {
   name: string;
   phone: string;
   email: string;
+  nationality?: string;
+  sex?: string;
+  occupation?: string;
   idType: string;
   idNumber: string;
   lastStay?: string;
@@ -131,6 +147,16 @@ const ID_TYPES = [
   { value: 'voters-card', label: "Voter's Card" },
 ];
 
+const NATIONALITIES = [
+  'Nigerian', 'American', 'British', 'Canadian', 'German', 'French', 
+  'South African', 'Ghanaian', 'Kenyan', 'Egyptian', 'Other'
+];
+
+const OCCUPATIONS = [
+  'Business Executive', 'Government Official', 'Doctor', 'Lawyer', 'Engineer',
+  'Teacher/Professor', 'Consultant', 'Entrepreneur', 'Student', 'Retired', 'Other'
+];
+
 // Payment modes now come from usePaymentMethods hook
 
 export const QuickGuestCapture = ({
@@ -154,12 +180,20 @@ export const QuickGuestCapture = ({
     guestName: '',
     phone: '',
     email: '',
+    nationality: '',
+    sex: '',
+    occupation: '',
     idType: '',
     idNumber: '',
     paymentMode: 'cash',
     depositAmount: '10000',
     printNow: true,
     notes: '',
+    checkInDate: new Date().toISOString().split('T')[0],
+    checkOutDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Tomorrow
+    roomRate: 0,
+    totalAmount: 0,
+    numberOfNights: 1,
   });
 
   // Filter guests based on search
@@ -220,14 +254,17 @@ export const QuickGuestCapture = ({
     if (mode === 'new') {
       setSelectedGuest(null);
       setGuestSearchValue("");
-      setFormData(prev => ({
-        ...prev,
-        guestName: '',
-        phone: '',
-        email: '',
-        idType: '',
-        idNumber: '',
-      }));
+        setFormData(prev => ({
+          ...prev,
+          guestName: '',
+          phone: '',
+          email: '',
+          nationality: '',
+          sex: '',
+          occupation: '',
+          idType: '',
+          idNumber: '',
+        }));
     }
   };
 
@@ -269,6 +306,43 @@ export const QuickGuestCapture = ({
       return;
     }
 
+    if (!formData.nationality.trim()) {
+      toast({
+        title: "Validation Error", 
+        description: "Nationality is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.sex.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Sex is required", 
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.occupation.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Occupation is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Date validation for walk-in actions
+    if ((action === 'walkin' || action === 'assign') && formData.checkOutDate <= formData.checkInDate) {
+      toast({
+        title: "Validation Error",
+        description: "Check-out date must be after check-in date",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
@@ -301,15 +375,16 @@ export const QuickGuestCapture = ({
         ));
       }
       
-      // Update room status
+      // Update room status based on action and payment
       const updatedRoom = {
         ...room,
-        status: 'occupied' as const,
+        status: (action === 'walkin' || action === 'check-in') ? 'occupied' as const : room?.status || 'available' as const,
         guest: formData.guestName,
-        checkIn: new Date().toISOString(),
+        checkIn: (action === 'walkin' || action === 'check-in') ? formData.checkInDate : room?.checkIn,
+        checkOut: (action === 'walkin' || action === 'check-in') ? formData.checkOutDate : room?.checkOut,
         folio: {
-          balance: parseInt(formData.depositAmount) || 0,
-          isPaid: formData.paymentMode !== 'credit'
+          balance: parseInt(formData.depositAmount) || formData.totalAmount || 0,
+          isPaid: formData.paymentMode !== 'pay_later'
         }
       };
 
@@ -318,12 +393,12 @@ export const QuickGuestCapture = ({
       if (formData.printNow) {
         toast({
           title: "Processing Complete",
-          description: `${getActionTitle()} completed for ${formData.guestName}. Check-in slip sent to printer.`,
+          description: `${getActionTitle()} completed for ${formData.guestName}. Receipt sent to printer.`,
         });
       } else {
         toast({
           title: "Processing Complete", 
-          description: `${getActionTitle()} completed for ${formData.guestName}.`,
+          description: `${getActionTitle()} completed for ${formData.guestName}. Room ${room?.number} status updated.`,
         });
       }
 
@@ -332,12 +407,20 @@ export const QuickGuestCapture = ({
         guestName: '',
         phone: '',
         email: '',
+        nationality: '',
+        sex: '',
+        occupation: '',
         idType: '',
         idNumber: '',
         paymentMode: 'cash',
         depositAmount: '10000',
         printNow: true,
         notes: '',
+        checkInDate: new Date().toISOString().split('T')[0],
+        checkOutDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        roomRate: 0,
+        totalAmount: 0,
+        numberOfNights: 1,
       });
       setGuestMode('existing');
       setSelectedGuest(null);
@@ -459,85 +542,140 @@ export const QuickGuestCapture = ({
               {/* New Guest Fields */}
               {guestMode === 'new' && (
                 <>
-                  <div>
-                    <Label htmlFor="guestName">Guest Name *</Label>
-                    <Input
-                      id="guestName"
-                      value={formData.guestName}
-                      onChange={(e) => handleInputChange('guestName', e.target.value)}
-                      placeholder="Enter guest full name"
-                      className="mt-1"
-                      required
-                    />
-                  </div>
+                   {/* Required Guest Information */}
+                   <div>
+                     <Label htmlFor="guestName">Guest Name *</Label>
+                     <Input
+                       id="guestName"
+                       value={formData.guestName}
+                       onChange={(e) => handleInputChange('guestName', e.target.value)}
+                       placeholder="Enter guest full name"
+                       className="mt-1"
+                       required
+                     />
+                   </div>
 
-                  <div>
-                    <Label htmlFor="phone">Phone Number *</Label>
-                    <Input
-                      id="phone"
-                      value={formData.phone}
-                      onChange={(e) => handleInputChange('phone', e.target.value)}
-                      placeholder="080XXXXXXXX"
-                      className="mt-1"
-                      required
-                    />
-                  </div>
+                   <div>
+                     <Label htmlFor="phone">Phone Number *</Label>
+                     <Input
+                       id="phone"
+                       value={formData.phone}
+                       onChange={(e) => handleInputChange('phone', e.target.value)}
+                       placeholder="080XXXXXXXX"
+                       className="mt-1"
+                       required
+                     />
+                   </div>
 
-                  {/* Optional Contact Fields */}
-                  <div className="space-y-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowOptionalFields(!showOptionalFields)}
-                      className="text-xs"
-                    >
-                      {showOptionalFields ? 'Hide' : 'Add'} ID & Contact Info (Optional)
-                    </Button>
-                    
-                    {showOptionalFields && (
-                      <div className="space-y-3 pt-2 border-t">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <Label htmlFor="idType">ID Type</Label>
-                            <Select value={formData.idType} onValueChange={(value) => handleInputChange('idType', value)}>
-                              <SelectTrigger className="mt-1">
-                                <SelectValue placeholder="Select ID" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {ID_TYPES.map((type) => (
-                                  <SelectItem key={type.value} value={type.value}>
-                                    {type.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label htmlFor="idNumber">ID Number</Label>
-                            <Input
-                              id="idNumber"
-                              value={formData.idNumber}
-                              onChange={(e) => handleInputChange('idNumber', e.target.value)}
-                              placeholder="Enter ID number"
-                              className="mt-1"
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <Label htmlFor="email">Email Address</Label>
-                          <Input
-                            id="email"
-                            type="email"
-                            value={formData.email}
-                            onChange={(e) => handleInputChange('email', e.target.value)}
-                            placeholder="guest@email.com"
-                            className="mt-1"
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                   {/* Blueprint Required Fields - Nationality, Sex, Occupation */}
+                   <div className="grid grid-cols-2 gap-2">
+                     <div>
+                       <Label htmlFor="nationality">Nationality *</Label>
+                       <Select value={formData.nationality} onValueChange={(value) => handleInputChange('nationality', value)}>
+                         <SelectTrigger className="mt-1">
+                           <SelectValue placeholder="Select nationality" />
+                         </SelectTrigger>
+                         <SelectContent>
+                           {NATIONALITIES.map((nationality) => (
+                             <SelectItem key={nationality} value={nationality.toLowerCase()}>
+                               <div className="flex items-center gap-2">
+                                 <Globe className="h-3 w-3" />
+                                 {nationality}
+                               </div>
+                             </SelectItem>
+                           ))}
+                         </SelectContent>
+                       </Select>
+                     </div>
+                     
+                     <div>
+                       <Label htmlFor="sex">Sex *</Label>
+                       <Select value={formData.sex} onValueChange={(value) => handleInputChange('sex', value)}>
+                         <SelectTrigger className="mt-1">
+                           <SelectValue placeholder="Select sex" />
+                         </SelectTrigger>
+                         <SelectContent>
+                           <SelectItem value="male">Male</SelectItem>
+                           <SelectItem value="female">Female</SelectItem>
+                         </SelectContent>
+                       </Select>
+                     </div>
+                   </div>
+
+                   <div>
+                     <Label htmlFor="occupation">Occupation *</Label>
+                     <Select value={formData.occupation} onValueChange={(value) => handleInputChange('occupation', value)}>
+                       <SelectTrigger className="mt-1">
+                         <SelectValue placeholder="Select occupation" />
+                       </SelectTrigger>
+                       <SelectContent>
+                         {OCCUPATIONS.map((occupation) => (
+                           <SelectItem key={occupation} value={occupation.toLowerCase()}>
+                             <div className="flex items-center gap-2">
+                               <Briefcase className="h-3 w-3" />
+                               {occupation}
+                             </div>
+                           </SelectItem>
+                         ))}
+                       </SelectContent>
+                     </Select>
+                   </div>
+
+                   {/* Optional Contact Fields */}
+                   <div className="space-y-2">
+                     <Button
+                       type="button"
+                       variant="ghost"
+                       size="sm"
+                       onClick={() => setShowOptionalFields(!showOptionalFields)}
+                       className="text-xs"
+                     >
+                       {showOptionalFields ? 'Hide' : 'Add'} ID & Email (Optional)
+                     </Button>
+                     
+                     {showOptionalFields && (
+                       <div className="space-y-3 pt-2 border-t">
+                         <div>
+                           <Label htmlFor="email">Email Address</Label>
+                           <Input
+                             id="email"
+                             type="email"
+                             value={formData.email}
+                             onChange={(e) => handleInputChange('email', e.target.value)}
+                             placeholder="guest@email.com"
+                             className="mt-1"
+                           />
+                         </div>
+                         <div className="grid grid-cols-2 gap-2">
+                           <div>
+                             <Label htmlFor="idType">ID Type</Label>
+                             <Select value={formData.idType} onValueChange={(value) => handleInputChange('idType', value)}>
+                               <SelectTrigger className="mt-1">
+                                 <SelectValue placeholder="Select ID" />
+                               </SelectTrigger>
+                               <SelectContent>
+                                 {ID_TYPES.map((type) => (
+                                   <SelectItem key={type.value} value={type.value}>
+                                     {type.label}
+                                   </SelectItem>
+                                 ))}
+                               </SelectContent>
+                             </Select>
+                           </div>
+                           <div>
+                             <Label htmlFor="idNumber">ID Number</Label>
+                             <Input
+                               id="idNumber"
+                               value={formData.idNumber}
+                               onChange={(e) => handleInputChange('idNumber', e.target.value)}
+                               placeholder="Enter ID number"
+                               className="mt-1"
+                             />
+                           </div>
+                         </div>
+                       </div>
+                     )}
+                   </div>
                 </>
               )}
 
@@ -562,6 +700,62 @@ export const QuickGuestCapture = ({
               )}
             </CardContent>
           </Card>
+
+          {/* Rate Selection - Only for walk-in and assign actions */}
+          {(action === 'walkin' || action === 'assign') && (
+            <>
+              {/* Check-in/Check-out Date Selection */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Stay Dates
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="checkInDate">Check-in Date *</Label>
+                      <Input
+                        id="checkInDate"
+                        type="date"
+                        value={formData.checkInDate}
+                        onChange={(e) => handleInputChange('checkInDate', e.target.value)}
+                        className="mt-1"
+                        min={new Date().toISOString().split('T')[0]}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="checkOutDate">Check-out Date *</Label>
+                      <Input
+                        id="checkOutDate"
+                        type="date"
+                        value={formData.checkOutDate}
+                        onChange={(e) => handleInputChange('checkOutDate', e.target.value)}
+                        className="mt-1"
+                        min={formData.checkInDate || new Date().toISOString().split('T')[0]}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <RateSelectionComponent
+                checkInDate={formData.checkInDate}
+                checkOutDate={formData.checkOutDate}
+                onRateChange={(rate, nights, total, roomTypeId) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    roomRate: rate,
+                    numberOfNights: nights,
+                    totalAmount: total,
+                    depositAmount: total.toString()
+                  }));
+                }}
+                defaultRate={formData.roomRate}
+              />
+            </>
+          )}
 
           {/* Payment Information */}
           <Card>
@@ -589,15 +783,29 @@ export const QuickGuestCapture = ({
               </div>
 
               <div>
-                <Label htmlFor="depositAmount">Deposit Amount (₦)</Label>
-                <Input
-                  id="depositAmount"
-                  type="number"
-                  value={formData.depositAmount}
-                  onChange={(e) => handleInputChange('depositAmount', e.target.value)}
-                  placeholder="10000"
-                  className="mt-1"
-                />
+                <Label htmlFor="depositAmount">
+                  {action === 'walkin' ? 'Total Amount' : 'Deposit Amount'} (₦)
+                </Label>
+                <div className="relative mt-1">
+                  <Input
+                    id="depositAmount"
+                    type="number"
+                    value={formData.depositAmount}
+                    onChange={(e) => handleInputChange('depositAmount', e.target.value)}
+                    placeholder={formData.totalAmount > 0 ? formData.totalAmount.toString() : "10000"}
+                    className="pr-20"
+                  />
+                  {formData.totalAmount > 0 && (
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                      / ₦{formData.totalAmount.toLocaleString()}
+                    </div>
+                  )}
+                </div>
+                {action === 'walkin' && formData.numberOfNights > 0 && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    ₦{formData.roomRate.toLocaleString()}/night × {formData.numberOfNights} nights
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

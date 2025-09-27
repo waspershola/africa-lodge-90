@@ -1,5 +1,5 @@
 import React from 'react';
-import { CreditCard, Banknote, Smartphone, Building2 } from 'lucide-react';
+import { CreditCard, Banknote, Smartphone, Building2, Clock } from 'lucide-react';
 
 export interface PaymentMethod {
   id: string;
@@ -10,7 +10,7 @@ export interface PaymentMethod {
 }
 
 export const usePaymentMethods = () => {
-  // In a real implementation, this would come from hotel settings
+  // Payment methods as per blueprint specifications
   const paymentMethods: PaymentMethod[] = [
     {
       id: 'cash',
@@ -19,21 +19,27 @@ export const usePaymentMethods = () => {
       enabled: true,
     },
     {
-      id: 'card',
-      name: 'Credit/Debit Card',
+      id: 'moniepoint_pos',
+      name: 'Moniepoint POS',
       icon: 'credit-card',
       enabled: true,
     },
     {
-      id: 'bank_transfer',
-      name: 'Bank Transfer',
+      id: 'opay_pos',
+      name: 'Opay POS',
+      icon: 'credit-card',
+      enabled: true,
+    },
+    {
+      id: 'zenith_transfer',
+      name: 'Zenith Transfer',
       icon: 'building',
       enabled: true,
     },
     {
-      id: 'mobile_money',
-      name: 'Mobile Money',
-      icon: 'smartphone',
+      id: 'pay_later',
+      name: 'Pay Later',
+      icon: 'clock',
       enabled: true,
     },
   ];
@@ -50,6 +56,8 @@ export const usePaymentMethods = () => {
         return React.createElement(Building2, { className: "h-4 w-4" });
       case 'smartphone':
         return React.createElement(Smartphone, { className: "h-4 w-4" });
+      case 'clock':
+        return React.createElement(Clock, { className: "h-4 w-4" });
       default:
         return React.createElement(CreditCard, { className: "h-4 w-4" });
     }

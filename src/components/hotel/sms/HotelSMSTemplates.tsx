@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { MessageSquare, Edit, Trash2, Plus, AlertTriangle } from "lucide-react";
+import { MessageSquare, Edit, Trash2, Plus, AlertTriangle, RefreshCw, Globe } from "lucide-react";
 import { SMSTemplateForm } from "@/components/ui/sms-template-form";
 import { extractPlaceholders, validateSMSTemplate } from "@/lib/sms-validation";
 
@@ -22,6 +22,8 @@ interface SMSTemplate {
   created_at: string;
   estimated_sms_count?: number;
   character_count_warning?: boolean;
+  source_template_id?: string;
+  last_synced_at?: string;
 }
 
 const eventTypes = [
@@ -38,6 +40,7 @@ const eventTypes = [
 export function HotelSMSTemplates() {
   const [templates, setTemplates] = useState<SMSTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<SMSTemplate | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [messageTemplate, setMessageTemplate] = useState('');
@@ -64,6 +67,7 @@ export function HotelSMSTemplates() {
         .from('sms_templates')
         .select('*')
         .eq('tenant_id', userData.tenant_id)
+        .eq('is_global', false)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -77,6 +81,45 @@ export function HotelSMSTemplates() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const syncGlobalTemplates = async () => {
+    try {
+      setSyncing(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: userData } = await supabase
+        .from('users')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!userData?.tenant_id) return;
+
+      // Call the seeding function
+      const { data, error } = await supabase.rpc('seed_tenant_sms_templates', {
+        p_tenant_id: userData.tenant_id
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `Synced ${data} new templates from global templates`,
+      });
+
+      fetchTemplates();
+    } catch (error) {
+      console.error('Error syncing templates:', error);
+      toast({
+        title: "Error",
+        description: "Failed to sync global templates",
+        variant: "destructive",
+      });
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -191,83 +234,93 @@ export function HotelSMSTemplates() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold">SMS Templates</h2>
-          <p className="text-muted-foreground">Manage your hotel's SMS templates</p>
+          <p className="text-muted-foreground">Manage your hotel's SMS templates (Auto-synced from global templates)</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => {
-          setDialogOpen(open);
-          if (open) {
-            setMessageTemplate(editingTemplate?.message_template || '');
-          } else {
-            setEditingTemplate(null);
-            setMessageTemplate('');
-          }
-        }}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setEditingTemplate(null)}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Template
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {editingTemplate ? 'Edit Template' : 'Create Template'}
-              </DialogTitle>
-              <DialogDescription>
-                Create or edit SMS templates for automated notifications
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              const formData = new FormData(e.target as HTMLFormElement);
-              formData.set('message_template', messageTemplate);
-              handleSaveTemplate(formData);
-            }} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="template_name">Template Name</Label>
-                  <Input
-                    id="template_name"
-                    name="template_name"
-                    defaultValue={editingTemplate?.template_name || ''}
-                    required
-                  />
+        <div className="flex space-x-2">
+          <Button 
+            onClick={syncGlobalTemplates}
+            disabled={syncing}
+            variant="outline"
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? 'Syncing...' : 'Sync Global Templates'}
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (open) {
+              setMessageTemplate(editingTemplate?.message_template || '');
+            } else {
+              setEditingTemplate(null);
+              setMessageTemplate('');
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button onClick={() => setEditingTemplate(null)}>
+                <Plus className="mr-2 h-4 w-4" />
+                New Template
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingTemplate ? 'Edit Template' : 'Create Template'}
+                </DialogTitle>
+                <DialogDescription>
+                  Create or edit SMS templates for automated notifications
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target as HTMLFormElement);
+                formData.set('message_template', messageTemplate);
+                handleSaveTemplate(formData);
+              }} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="template_name">Template Name</Label>
+                    <Input
+                      id="template_name"
+                      name="template_name"
+                      defaultValue={editingTemplate?.template_name || ''}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="event_type">Event Type</Label>
+                    <Select name="event_type" defaultValue={editingTemplate?.event_type || ''}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select event type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {eventTypes.map((type) => (
+                          <SelectItem key={type.value} value={type.value}>
+                            {type.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="event_type">Event Type</Label>
-                  <Select name="event_type" defaultValue={editingTemplate?.event_type || ''}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select event type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {eventTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                
+                {/* Enhanced SMS Template Form with Real-time Validation */}
+                <SMSTemplateForm
+                  value={messageTemplate}
+                  onChange={setMessageTemplate}
+                  placeholder="Enter your SMS template with variables like {guest}, {hotel}, {room}"
+                />
+                
+                <div className="flex justify-end space-x-2">
+                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">
+                    {editingTemplate ? 'Update' : 'Create'} Template
+                  </Button>
                 </div>
-              </div>
-              
-              {/* Enhanced SMS Template Form with Real-time Validation */}
-              <SMSTemplateForm
-                value={messageTemplate}
-                onChange={setMessageTemplate}
-                placeholder="Enter your SMS template with variables like {guest}, {hotel}, {room}"
-              />
-              
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">
-                  {editingTemplate ? 'Update' : 'Create'} Template
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-4">
@@ -277,12 +330,18 @@ export function HotelSMSTemplates() {
               <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium mb-2">No templates yet</h3>
               <p className="text-muted-foreground mb-4">
-                Create your first SMS template to start sending automated notifications
+                Sync global templates to get started, or create your own custom templates
               </p>
-              <Button onClick={() => setDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Template
-              </Button>
+              <div className="flex space-x-2 justify-center">
+                <Button onClick={syncGlobalTemplates} disabled={syncing} variant="outline">
+                  <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+                  {syncing ? 'Syncing...' : 'Sync Global Templates'}
+                </Button>
+                <Button onClick={() => setDialogOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Template
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ) : (
@@ -293,6 +352,12 @@ export function HotelSMSTemplates() {
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       {template.template_name}
+                      {template.source_template_id && (
+                        <Badge variant="outline" className="flex items-center gap-1">
+                          <Globe className="h-3 w-3" />
+                          From Global
+                        </Badge>
+                      )}
                       <Badge variant={template.is_active ? 'default' : 'secondary'}>
                         {template.is_active ? 'Active' : 'Inactive'}
                       </Badge>

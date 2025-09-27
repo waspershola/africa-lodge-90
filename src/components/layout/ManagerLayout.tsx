@@ -10,7 +10,8 @@ import {
   Bed,
   Settings,
   QrCode,
-  CheckCircle
+  CheckCircle,
+  MessageSquare
 } from 'lucide-react';
 import UnifiedDashboardLayout from './UnifiedDashboardLayout';
 import { useTenantInfo } from '@/hooks/useTenantInfo';
@@ -23,6 +24,7 @@ const navigation = [
   { name: 'Service Requests', href: '/manager-dashboard/requests', icon: Bell },
   { name: 'Staff Management', href: '/manager-dashboard/staff', icon: Users },
   { name: 'QR Management', href: '/manager-dashboard/qr-codes', icon: QrCode },
+  { name: 'SMS Center', href: '/manager-dashboard/sms', icon: MessageSquare },
   { name: 'Department Finance', href: '/manager-dashboard/financials', icon: DollarSign },
   { name: 'Receipt Control', href: '/manager-dashboard/receipts', icon: Receipt },
   { name: 'Events & Packages', href: '/manager-dashboard/events', icon: Calendar },

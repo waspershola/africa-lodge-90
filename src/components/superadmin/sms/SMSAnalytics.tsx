@@ -57,13 +57,13 @@ export function SMSAnalytics() {
       // Get tenant and provider names separately
       const { data: tenants } = await supabase
         .from('tenants')
-        .select('id, business_name');
+        .select('tenant_id, hotel_name');
 
       const { data: providers } = await supabase
         .from('sms_providers')
         .select('id, name');
 
-      const tenantMap = new Map(tenants?.map(t => [t.id, t.business_name]) || []);
+      const tenantMap = new Map(tenants?.map(t => [t.tenant_id, t.hotel_name]) || []);
       const providerMap = new Map(providers?.map(p => [p.id, p.name]) || []);
 
       const formattedLogs = logs?.map(log => ({
@@ -113,13 +113,13 @@ export function SMSAnalytics() {
       // Get tenant and provider names separately
       const { data: tenants } = await supabase
         .from('tenants')
-        .select('id, business_name');
+        .select('tenant_id, hotel_name');
 
       const { data: providers } = await supabase
         .from('sms_providers')
         .select('id, name');
 
-      const tenantMap = new Map(tenants?.map(t => [t.id, t.business_name]) || []);
+      const tenantMap = new Map(tenants?.map(t => [t.tenant_id, t.hotel_name]) || []);
       const providerMap = new Map(providers?.map(p => [p.id, p.name]) || []);
 
       const formattedLogs = logs?.map(log => ({

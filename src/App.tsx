@@ -47,6 +47,7 @@ import ManagerDepartmentFinance from "./pages/manager/DepartmentFinance";
 import ManagerReceiptControl from "./pages/manager/ReceiptControl";
 import ManagerEventsPackages from "./pages/manager/EventsPackages";
 import ManagerCompliance from "./pages/manager/Compliance";
+import SMSCenter from '@/pages/hotel/SMSCenter';
 import QRSettings from "./pages/owner/QRSettings";
 import HousekeepingLayout from "./components/layout/HousekeepingLayout";
 import HousekeepingDashboard from "./pages/housekeeping/Dashboard";
@@ -155,6 +156,7 @@ const App = () => (
             <Route path="rooms" element={<Rooms />} />
             <Route path="utilities" element={<Utilities />} />
             <Route path="housekeeping" element={<Housekeeping />} />
+            <Route path="sms" element={<SMSCenter />} />
             <Route path="profile" element={<OwnerProfileSettings />} />
           </Route>
           <Route path="/qr-export" element={<QRExportPage />} />
@@ -177,6 +179,7 @@ const App = () => (
             <Route path="receipts" element={<ManagerReceiptControl />} />
             <Route path="events" element={<ManagerEventsPackages />} />
             <Route path="compliance" element={<ManagerCompliance />} />
+            <Route path="sms" element={<SMSCenter />} />
           </Route>
 
           {/* Housekeeping Dashboard Routes */}

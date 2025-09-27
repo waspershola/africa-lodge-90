@@ -11,7 +11,8 @@ import {
   DollarSign,
   CreditCard,
   Sparkles,
-  User
+  User,
+  MessageSquare
 } from 'lucide-react';
 import UnifiedDashboardLayout from './UnifiedDashboardLayout';
 import { TrialBanner } from '@/components/trial/TrialBanner';
@@ -27,6 +28,7 @@ const navigation = [
   { name: 'Billing & Payments', href: '/owner-dashboard/billing', icon: CreditCard },
   { name: 'QR Manager', href: '/owner-dashboard/qr-manager', icon: QrCode },
   { name: 'QR Analytics', href: '/owner-dashboard/qr-analytics', icon: BarChart3 },
+  { name: 'SMS Center', href: '/owner-dashboard/sms', icon: MessageSquare },
   { name: 'Reports', href: '/owner-dashboard/reports', icon: FileText },
   { name: 'Staff & Roles', href: '/owner-dashboard/staff', icon: UserCircle },
   { name: 'Financials', href: '/owner-dashboard/financials', icon: DollarSign },

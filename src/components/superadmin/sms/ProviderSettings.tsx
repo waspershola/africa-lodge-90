@@ -72,7 +72,7 @@ export function ProviderSettings() {
         // Create new provider
         const { error } = await supabase
           .from('sms_providers')
-          .insert(provider);
+          .insert([provider as any]);
 
         if (error) throw error;
         toast.success("Provider created successfully");

@@ -2,10 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { MessageSquare, Mail, Bell, Smartphone, Settings, TestTube } from "lucide-react";
 
@@ -14,245 +11,75 @@ interface ChannelSettings {
   channel_type: string;
   is_enabled: boolean;
   config: any;
-  last_test_at?: string;
   status: string;
 }
 
-const channelTypes = [
+const availableChannels = [
   {
     id: 'sms',
     name: 'SMS Notifications',
     icon: MessageSquare,
-    description: 'Send SMS alerts to staff mobile phones',
-    configFields: []
+    description: 'Send SMS alerts to staff mobile phones'
   },
   {
     id: 'email',
-    name: 'Email Notifications',
+    name: 'Email Notifications', 
     icon: Mail,
-    description: 'Send email alerts to staff email addresses',
-    configFields: [
-      { key: 'from_email', label: 'From Email', type: 'email' },
-      { key: 'from_name', label: 'From Name', type: 'text' }
-    ]
+    description: 'Send email alerts to staff email addresses'
   },
   {
     id: 'in_app',
     name: 'In-App Notifications',
     icon: Bell,
-    description: 'Show notifications within the hotel management system',
-    configFields: [
-      { key: 'badge_count', label: 'Show Badge Count', type: 'boolean' },
-      { key: 'sound_enabled', label: 'Enable Sound', type: 'boolean' }
-    ]
+    description: 'Show notifications within the hotel management system'
   },
   {
     id: 'push',
     name: 'Push Notifications',
     icon: Smartphone,
-    description: 'Send push notifications to mobile devices',
-    configFields: [
-      { key: 'app_name', label: 'App Name', type: 'text' },
-      { key: 'icon_url', label: 'Icon URL', type: 'url' }
-    ]
+    description: 'Send push notifications to mobile devices'
   }
 ];
 
 export function NotificationChannels() {
   const [channels, setChannels] = useState<ChannelSettings[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchChannelSettings();
+    fetchChannels();
   }, []);
 
-  const fetchChannelSettings = async () => {
+  const fetchChannels = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: userData } = await supabase
-        .from('users')
-        .select('tenant_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!userData?.tenant_id) return;
-
-      const { data, error } = await supabase
-        .from('notification_channels')
-        .select('*')
-        .eq('tenant_id', userData.tenant_id);
-
-      if (error) throw error;
-
-      // Create default channels if none exist
-      const existingChannels = data || [];
-      const defaultChannels = channelTypes.map(type => {
-        const existing = existingChannels.find(c => c.channel_type === type.id);
-        return existing || {
-          id: `default-${type.id}`,
-          channel_type: type.id,
-          is_enabled: type.id === 'in_app', // Enable in-app by default
-          config: {},
-          status: 'inactive'
-        };
-      });
-
+      // TODO: Enable after migration is approved
+      const defaultChannels = availableChannels.map(channel => ({
+        id: channel.id,
+        channel_type: channel.id,
+        is_enabled: false,
+        config: {},
+        status: 'inactive'
+      }));
       setChannels(defaultChannels);
     } catch (error) {
-      console.error('Error fetching channel settings:', error);
+      console.error('Error fetching notification channels:', error);
       toast({
         title: "Error",
         description: "Failed to load notification channels",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
-  const updateChannelStatus = async (channelType: string, enabled: boolean) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: userData } = await supabase
-        .from('users')
-        .select('tenant_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!userData?.tenant_id) return;
-
-      const existingChannel = channels.find(c => c.channel_type === channelType);
-
-      if (existingChannel?.id.startsWith('default-')) {
-        // Create new channel
-        const { error } = await supabase
-          .from('notification_channels')
-          .insert([{
-            tenant_id: userData.tenant_id,
-            channel_type: channelType,
-            is_enabled: enabled,
-            config: {},
-            status: enabled ? 'active' : 'inactive'
-          }]);
-
-        if (error) throw error;
-      } else {
-        // Update existing channel
-        const { error } = await supabase
-          .from('notification_channels')
-          .update({ 
-            is_enabled: enabled,
-            status: enabled ? 'active' : 'inactive'
-          })
-          .eq('id', existingChannel?.id);
-
-        if (error) throw error;
-      }
-
-      toast({
-        title: "Success",
-        description: `${channelTypes.find(c => c.id === channelType)?.name} ${enabled ? 'enabled' : 'disabled'}`,
-      });
-
-      fetchChannelSettings();
-    } catch (error) {
-      console.error('Error updating channel:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update notification channel",
-        variant: "destructive",
-      });
-    }
+  const toggleChannel = async (channelId: string) => {
+    // TODO: Enable after migration is approved
+    toast({ title: "Info", description: "Database migration pending approval" });
   };
 
-  const testChannel = async (channelType: string) => {
-    setTesting(channelType);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: userData } = await supabase
-        .from('users')
-        .select('tenant_id, name, email, phone')
-        .eq('id', user.id)
-        .single();
-
-      if (!userData?.tenant_id) return;
-
-      let testResult = false;
-
-      switch (channelType) {
-        case 'sms':
-          if (userData.phone) {
-            // Test SMS via template processor
-            const { data, error } = await supabase.functions.invoke('sms-template-processor', {
-              body: {
-                template_name: 'test_alert',
-                event_type: 'system_test',
-                tenant_id: userData.tenant_id,
-                variables: {
-                  staff_name: userData.name || 'Staff Member',
-                  test_time: new Date().toLocaleTimeString()
-                },
-                to: userData.phone,
-                send_sms: true
-              }
-            });
-            testResult = data?.success || false;
-          }
-          break;
-
-        case 'email':
-          // Test email (would integrate with email system)
-          testResult = true; // Simulated for now
-          break;
-
-        case 'in_app':
-          // Test in-app notification
-          testResult = true;
-          break;
-
-        case 'push':
-          // Test push notification
-          testResult = true; // Simulated for now
-          break;
-      }
-
-      if (testResult) {
-        toast({
-          title: "Test Successful",
-          description: `${channelTypes.find(c => c.id === channelType)?.name} test completed successfully`,
-        });
-
-        // Update last test time
-        const channel = channels.find(c => c.channel_type === channelType);
-        if (channel && !channel.id.startsWith('default-')) {
-          await supabase
-            .from('notification_channels')
-            .update({ last_test_at: new Date().toISOString() })
-            .eq('id', channel.id);
-        }
-      } else {
-        throw new Error('Test failed');
-      }
-
-      fetchChannelSettings();
-    } catch (error) {
-      console.error('Error testing channel:', error);
-      toast({
-        title: "Test Failed",
-        description: `Failed to test ${channelTypes.find(c => c.id === channelType)?.name}`,
-        variant: "destructive",
-      });
-    } finally {
-      setTesting(null);
-    }
+  const testChannel = async (channelId: string) => {
+    // TODO: Enable after migration is approved
+    toast({ title: "Info", description: "Test functionality pending migration approval" });
   };
 
   if (loading) {
@@ -269,7 +96,7 @@ export function NotificationChannels() {
       </div>
 
       <div className="grid gap-6">
-        {channelTypes.map((channelType) => {
+        {availableChannels.map((channelType) => {
           const channel = channels.find(c => c.channel_type === channelType.id);
           const IconComponent = channelType.icon;
           
@@ -287,18 +114,6 @@ export function NotificationChannels() {
                         >
                           {channel?.is_enabled ? 'Enabled' : 'Disabled'}
                         </Badge>
-                        {channel?.status && (
-                          <Badge 
-                            variant="outline"
-                            className={
-                              channel.status === 'active' 
-                                ? 'border-green-200 text-green-700' 
-                                : 'border-gray-200 text-gray-700'
-                            }
-                          >
-                            {channel.status}
-                          </Badge>
-                        )}
                       </CardTitle>
                       <CardDescription>{channelType.description}</CardDescription>
                     </div>
@@ -306,7 +121,7 @@ export function NotificationChannels() {
                   <div className="flex items-center space-x-3">
                     <Switch
                       checked={channel?.is_enabled || false}
-                      onCheckedChange={(checked) => updateChannelStatus(channelType.id, checked)}
+                      onCheckedChange={(checked) => toggleChannel(channelType.id)}
                     />
                   </div>
                 </div>
@@ -315,32 +130,6 @@ export function NotificationChannels() {
               {channel?.is_enabled && (
                 <CardContent>
                   <div className="space-y-4">
-                    {/* Configuration Fields */}
-                    {channelType.configFields.length > 0 && (
-                      <div className="grid gap-4 md:grid-cols-2">
-                        {channelType.configFields.map((field) => (
-                          <div key={field.key} className="space-y-2">
-                            <Label htmlFor={`${channelType.id}-${field.key}`}>
-                              {field.label}
-                            </Label>
-                            {field.type === 'boolean' ? (
-                              <Switch
-                                id={`${channelType.id}-${field.key}`}
-                                defaultChecked={channel?.config?.[field.key] || false}
-                              />
-                            ) : (
-                              <Input
-                                id={`${channelType.id}-${field.key}`}
-                                type={field.type}
-                                defaultValue={channel?.config?.[field.key] || ''}
-                                placeholder={`Enter ${field.label.toLowerCase()}`}
-                              />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
                     {/* Channel Status */}
                     <div className="flex items-center justify-between pt-4 border-t">
                       <div className="space-y-1">
@@ -351,11 +140,6 @@ export function NotificationChannels() {
                           >
                             {channel?.status || 'inactive'}
                           </Badge>
-                          {channel?.last_test_at && (
-                            <span className="text-xs text-muted-foreground">
-                              Last tested: {new Date(channel.last_test_at).toLocaleString()}
-                            </span>
-                          )}
                         </div>
                       </div>
                       <Button

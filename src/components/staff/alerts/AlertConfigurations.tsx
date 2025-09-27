@@ -62,25 +62,8 @@ export function AlertConfigurations() {
 
   const fetchConfigurations = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: userData } = await supabase
-        .from('users')
-        .select('tenant_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!userData?.tenant_id) return;
-
-      const { data, error } = await supabase
-        .from('staff_alert_configs')
-        .select('*')
-        .eq('tenant_id', userData.tenant_id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setConfigs(data || []);
+      // TODO: Enable after migration is approved
+      setConfigs([]);
     } catch (error) {
       console.error('Error fetching alert configurations:', error);
       toast({
@@ -95,49 +78,10 @@ export function AlertConfigurations() {
 
   const handleSaveConfig = async (formData: FormData) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: userData } = await supabase
-        .from('users')
-        .select('tenant_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!userData?.tenant_id) return;
-
-      const channels = formData.getAll('channels') as string[];
-      const configData = {
-        tenant_id: userData.tenant_id,
-        alert_type: formData.get('alert_type') as string,
-        alert_name: formData.get('alert_name') as string,
-        description: formData.get('description') as string,
-        priority: formData.get('priority') as string,
-        channels,
-        trigger_conditions: {},
-        is_active: true
-      };
-
-      if (editingConfig?.id) {
-        const { error } = await supabase
-          .from('staff_alert_configs')
-          .update(configData)
-          .eq('id', editingConfig.id);
-
-        if (error) throw error;
-        toast({ title: "Success", description: "Alert configuration updated" });
-      } else {
-        const { error } = await supabase
-          .from('staff_alert_configs')
-          .insert([configData]);
-
-        if (error) throw error;
-        toast({ title: "Success", description: "Alert configuration created" });
-      }
-
+      // TODO: Enable after migration is approved
+      toast({ title: "Info", description: "Database migration pending approval" });
       setDialogOpen(false);
       setEditingConfig(null);
-      fetchConfigurations();
     } catch (error) {
       console.error('Error saving configuration:', error);
       toast({
@@ -149,46 +93,13 @@ export function AlertConfigurations() {
   };
 
   const handleDeleteConfig = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('staff_alert_configs')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      toast({ title: "Success", description: "Configuration deleted" });
-      fetchConfigurations();
-    } catch (error) {
-      console.error('Error deleting configuration:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete configuration",
-        variant: "destructive",
-      });
-    }
+    // TODO: Enable after migration is approved
+    toast({ title: "Info", description: "Database migration pending approval" });
   };
 
   const toggleConfigStatus = async (id: string, currentStatus: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('staff_alert_configs')
-        .update({ is_active: !currentStatus })
-        .eq('id', id);
-
-      if (error) throw error;
-      toast({ 
-        title: "Success", 
-        description: `Configuration ${!currentStatus ? 'activated' : 'deactivated'}` 
-      });
-      fetchConfigurations();
-    } catch (error) {
-      console.error('Error updating configuration:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update configuration",
-        variant: "destructive",
-      });
-    }
+    // TODO: Enable after migration is approved
+    toast({ title: "Info", description: "Database migration pending approval" });
   };
 
   if (loading) {

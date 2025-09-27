@@ -1,175 +1,38 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Download, Filter, Eye, Clock, CheckCircle, AlertTriangle } from "lucide-react";
+import { Clock, CheckCircle, XCircle, AlertTriangle, Search, Filter, Download, Eye } from "lucide-react";
 
 interface StaffAlert {
   id: string;
-  alert_type: string;
+  alert_type: string; 
   title: string;
   message: string;
   priority: string;
   channels: string[];
   status: string;
-  triggered_by?: string;
-  acknowledged_by?: string;
-  acknowledged_at?: string;
-  resolved_by?: string;
-  resolved_at?: string;
   created_at: string;
-  metadata?: any;
 }
 
 export function AlertHistory() {
-  const [alerts, setAlerts] = useState<StaffAlert[]>([]);
-  const [filteredAlerts, setFilteredAlerts] = useState<StaffAlert[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [alerts] = useState<StaffAlert[]>([]);
+  const [loading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [priorityFilter, setPriorityFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useState('7');
+  const [typeFilter, setTypeFilter] = useState('all');
   const [selectedAlert, setSelectedAlert] = useState<StaffAlert | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchAlerts();
-  }, [dateFilter]);
-
-  useEffect(() => {
-    filterAlerts();
-  }, [alerts, searchTerm, statusFilter, priorityFilter]);
-
-  const fetchAlerts = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: userData } = await supabase
-        .from('users')
-        .select('tenant_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!userData?.tenant_id) return;
-
-      // Calculate date range
-      const daysAgo = parseInt(dateFilter);
-      const fromDate = new Date();
-      fromDate.setDate(fromDate.getDate() - daysAgo);
-
-      const { data, error } = await supabase
-        .from('staff_alerts')
-        .select('*')
-        .eq('tenant_id', userData.tenant_id)
-        .gte('created_at', fromDate.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(200);
-
-      if (error) throw error;
-      setAlerts(data || []);
-    } catch (error) {
-      console.error('Error fetching alerts:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load alert history",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filterAlerts = () => {
-    let filtered = alerts;
-
-    // Filter by search term
-    if (searchTerm) {
-      filtered = filtered.filter(alert =>
-        alert.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        alert.message?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        alert.alert_type?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Filter by status
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(alert => alert.status === statusFilter);
-    }
-
-    // Filter by priority
-    if (priorityFilter !== 'all') {
-      filtered = filtered.filter(alert => alert.priority === priorityFilter);
-    }
-
-    setFilteredAlerts(filtered);
-  };
-
-  const updateAlertStatus = async (alertId: string, newStatus: string) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const updateData: any = { status: newStatus };
-
-      if (newStatus === 'acknowledged') {
-        updateData.acknowledged_by = user.id;
-        updateData.acknowledged_at = new Date().toISOString();
-      } else if (newStatus === 'resolved') {
-        updateData.resolved_by = user.id;
-        updateData.resolved_at = new Date().toISOString();
-      }
-
-      const { error } = await supabase
-        .from('staff_alerts')
-        .update(updateData)
-        .eq('id', alertId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: `Alert marked as ${newStatus}`,
-      });
-
-      fetchAlerts();
-    } catch (error) {
-      console.error('Error updating alert:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update alert status",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const exportAlerts = () => {
-    const csvContent = [
-      ['Date', 'Type', 'Title', 'Priority', 'Status', 'Channels', 'Message'].join(','),
-      ...filteredAlerts.map(alert => [
-        new Date(alert.created_at).toLocaleString(),
-        alert.alert_type || 'N/A',
-        alert.title || 'N/A',
-        alert.priority || 'N/A',
-        alert.status || 'N/A',
-        alert.channels?.join(';') || 'N/A',
-        alert.message?.substring(0, 100).replace(/,/g, ';') || 'N/A'
-      ].join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `staff-alerts-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+  const markAsRead = async (alertId: string) => {
+    // TODO: Enable after migration is approved
+    toast({ title: "Info", description: "Database migration pending approval" });
   };
 
   const getStatusIcon = (status: string) => {
@@ -183,6 +46,10 @@ export function AlertHistory() {
       default:
         return <Clock className="h-4 w-4 text-gray-500" />;
     }
+  };
+
+  const exportAlerts = () => {
+    toast({ title: "Info", description: "Export functionality pending migration approval" });
   };
 
   if (loading) {
@@ -211,12 +78,13 @@ export function AlertHistory() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Search</label>
+              <Label htmlFor="search">Search</Label>
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
+                  id="search"
                   placeholder="Search alerts..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -225,9 +93,9 @@ export function AlertHistory() {
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
+              <Label htmlFor="status">Status</Label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
+                <SelectTrigger id="status">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -239,31 +107,17 @@ export function AlertHistory() {
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Priority</label>
-              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                <SelectTrigger>
+              <Label htmlFor="type">Alert Type</Label>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger id="type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Priorities</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="critical">Critical</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Time Period</label>
-              <Select value={dateFilter} onValueChange={setDateFilter}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">Last Day</SelectItem>
-                  <SelectItem value="7">Last Week</SelectItem>
-                  <SelectItem value="30">Last Month</SelectItem>
-                  <SelectItem value="90">Last 3 Months</SelectItem>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                  <SelectItem value="housekeeping">Housekeeping</SelectItem>
+                  <SelectItem value="guest_issue">Guest Issue</SelectItem>
+                  <SelectItem value="system">System</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -274,21 +128,18 @@ export function AlertHistory() {
       {/* Alerts Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Staff Alerts ({filteredAlerts.length})</CardTitle>
+          <CardTitle>Staff Alerts ({alerts.length})</CardTitle>
           <CardDescription>
             Complete history of staff alerts and notifications
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {filteredAlerts.length === 0 ? (
+          {alerts.length === 0 ? (
             <div className="text-center py-8">
               <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium mb-2">No alerts found</h3>
               <p className="text-muted-foreground">
-                {searchTerm || statusFilter !== 'all' || priorityFilter !== 'all'
-                  ? 'Try adjusting your filters to see more results'
-                  : 'No staff alerts have been generated yet'
-                }
+                Database migration is pending approval. Alerts will appear here once the system is active.
               </p>
             </div>
           ) : (
@@ -305,7 +156,7 @@ export function AlertHistory() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAlerts.map((alert) => (
+                  {alerts.map((alert) => (
                     <TableRow key={alert.id}>
                       <TableCell>
                         <div className="text-sm">
@@ -318,7 +169,7 @@ export function AlertHistory() {
                       <TableCell>
                         <div className="space-y-1">
                           <Badge variant="outline" className="text-xs">
-                            {alert.alert_type || 'system'}
+                            {alert.alert_type}
                           </Badge>
                           <Badge 
                             variant={
@@ -330,15 +181,15 @@ export function AlertHistory() {
                             }
                             className="text-xs"
                           >
-                            {alert.priority || 'medium'}
+                            {alert.priority}
                           </Badge>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          <div className="font-medium">{alert.title || 'Staff Alert'}</div>
+                          <div className="font-medium">{alert.title}</div>
                           <div className="text-muted-foreground max-w-xs truncate">
-                            {alert.message || 'No message'}
+                            {alert.message}
                           </div>
                         </div>
                       </TableCell>
@@ -352,7 +203,7 @@ export function AlertHistory() {
                               'destructive'
                             }
                           >
-                            {alert.status || 'pending'}
+                            {alert.status}
                           </Badge>
                         </div>
                       </TableCell>
@@ -362,114 +213,70 @@ export function AlertHistory() {
                             <Badge key={index} variant="outline" className="text-xs">
                               {channel}
                             </Badge>
-                          )) || <span className="text-xs text-muted-foreground">No channels</span>}
+                          ))}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex space-x-1">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setSelectedAlert(alert)}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-2xl">
-                              <DialogHeader>
-                                <DialogTitle>Alert Details</DialogTitle>
-                                <DialogDescription>
-                                  Complete information about this staff alert
-                                </DialogDescription>
-                              </DialogHeader>
-                              {selectedAlert && (
-                                <div className="space-y-4">
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                      <Label className="text-sm font-medium">Alert Type</Label>
-                                      <p className="text-sm">{selectedAlert.alert_type || 'System'}</p>
-                                    </div>
-                                    <div>
-                                      <Label className="text-sm font-medium">Priority</Label>
-                                      <Badge 
-                                        variant={
-                                          selectedAlert.priority === 'critical' || selectedAlert.priority === 'high' 
-                                            ? 'destructive' : 
-                                          selectedAlert.priority === 'medium' 
-                                            ? 'default' : 
-                                            'secondary'
-                                        }
-                                      >
-                                        {selectedAlert.priority || 'medium'}
-                                      </Badge>
-                                    </div>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedAlert(alert)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-2xl">
+                            <DialogHeader>
+                              <DialogTitle>Alert Details</DialogTitle>
+                              <DialogDescription>
+                                Complete information about this staff alert
+                              </DialogDescription>
+                            </DialogHeader>
+                            {selectedAlert && (
+                              <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <Label className="text-sm font-medium">Alert Type</Label>
+                                    <p className="text-sm">{selectedAlert.alert_type}</p>
                                   </div>
                                   <div>
-                                    <Label className="text-sm font-medium">Title</Label>
-                                    <p className="text-sm">{selectedAlert.title || 'Staff Alert'}</p>
-                                  </div>
-                                  <div>
-                                    <Label className="text-sm font-medium">Message</Label>
-                                    <p className="text-sm bg-muted p-2 rounded">
-                                      {selectedAlert.message || 'No message provided'}
-                                    </p>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                      <Label className="text-sm font-medium">Status</Label>
-                                      <div className="flex items-center space-x-2">
-                                        {getStatusIcon(selectedAlert.status)}
-                                        <span className="text-sm">{selectedAlert.status || 'pending'}</span>
-                                      </div>
-                                    </div>
-                                    <div>
-                                      <Label className="text-sm font-medium">Channels</Label>
-                                      <div className="flex flex-wrap gap-1">
-                                        {selectedAlert.channels?.map((channel, index) => (
-                                          <Badge key={index} variant="outline" className="text-xs">
-                                            {channel}
-                                          </Badge>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
-                                    <div>
-                                      <strong>Created:</strong> {new Date(selectedAlert.created_at).toLocaleString()}
-                                    </div>
-                                    {selectedAlert.acknowledged_at && (
-                                      <div>
-                                        <strong>Acknowledged:</strong> {new Date(selectedAlert.acknowledged_at).toLocaleString()}
-                                      </div>
-                                    )}
+                                    <Label className="text-sm font-medium">Priority</Label>
+                                    <Badge variant="outline">{selectedAlert.priority}</Badge>
                                   </div>
                                 </div>
-                              )}
-                            </DialogContent>
-                          </Dialog>
-                          
-                          {alert.status === 'pending' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => updateAlertStatus(alert.id, 'acknowledged')}
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </Button>
-                          )}
-                          
-                          {alert.status === 'acknowledged' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => updateAlertStatus(alert.id, 'resolved')}
-                            >
-                              Resolve
-                            </Button>
-                          )}
-                        </div>
+                                <div>
+                                  <Label className="text-sm font-medium">Title</Label>
+                                  <p className="text-sm">{selectedAlert.title}</p>
+                                </div>
+                                <div>
+                                  <Label className="text-sm font-medium">Message</Label>
+                                  <p className="text-sm bg-muted p-2 rounded">{selectedAlert.message}</p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <Label className="text-sm font-medium">Status</Label>
+                                    <div className="flex items-center space-x-2">
+                                      {getStatusIcon(selectedAlert.status)}
+                                      <span className="text-sm">{selectedAlert.status}</span>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <Label className="text-sm font-medium">Channels</Label>
+                                    <div className="flex flex-wrap gap-1">
+                                      {selectedAlert.channels?.map((channel, index) => (
+                                        <Badge key={index} variant="outline" className="text-xs">
+                                          {channel}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </DialogContent>
+                        </Dialog>
                       </TableCell>
                     </TableRow>
                   ))}

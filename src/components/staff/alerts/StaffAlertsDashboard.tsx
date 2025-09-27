@@ -2,107 +2,30 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Bell, AlertTriangle, CheckCircle, Clock, Users, MessageSquare } from "lucide-react";
 
 interface AlertStats {
-  total_alerts: number;
-  pending_alerts: number;
-  resolved_alerts: number;
-  active_channels: number;
-  staff_subscribed: number;
-  recent_alerts: any[];
+  totalAlerts: number;
+  activeAlerts: number;
+  pendingAlerts: number;
+  subscribedChannels: number;
 }
 
 export function StaffAlertsDashboard() {
-  const [stats, setStats] = useState<AlertStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [stats] = useState<AlertStats>({
+    totalAlerts: 0,
+    activeAlerts: 0,
+    pendingAlerts: 0,
+    subscribedChannels: 0
+  });
+  const [recentAlerts] = useState<any[]>([]);
+  const [loading] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchAlertStats();
-  }, []);
-
-  const fetchAlertStats = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: userData } = await supabase
-        .from('users')
-        .select('tenant_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!userData?.tenant_id) return;
-
-      // Fetch staff alerts
-      const { data: alerts } = await supabase
-        .from('staff_alerts')
-        .select('*')
-        .eq('tenant_id', userData.tenant_id)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      // Fetch staff alert subscriptions
-      const { data: subscriptions } = await supabase
-        .from('staff_alert_subscriptions')
-        .select('user_id')
-        .eq('tenant_id', userData.tenant_id)
-        .eq('is_active', true);
-
-      const totalAlerts = alerts?.length || 0;
-      const pendingAlerts = alerts?.filter(alert => alert.status === 'pending').length || 0;
-      const resolvedAlerts = alerts?.filter(alert => alert.status === 'resolved').length || 0;
-      const uniqueStaff = new Set(subscriptions?.map(sub => sub.user_id) || []).size;
-
-      setStats({
-        total_alerts: totalAlerts,
-        pending_alerts: pendingAlerts,
-        resolved_alerts: resolvedAlerts,
-        active_channels: 3, // SMS, Email, In-App
-        staff_subscribed: uniqueStaff,
-        recent_alerts: alerts?.slice(0, 5) || []
-      });
-    } catch (error) {
-      console.error('Error fetching alert stats:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load alert statistics",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const markAlertAsRead = async (alertId: string) => {
-    try {
-      const { error } = await supabase
-        .from('staff_alerts')
-        .update({ 
-          status: 'acknowledged', 
-          acknowledged_at: new Date().toISOString() 
-        })
-        .eq('id', alertId);
-
-      if (error) throw error;
-      
-      toast({
-        title: "Success",
-        description: "Alert marked as acknowledged",
-      });
-      
-      fetchAlertStats();
-    } catch (error) {
-      console.error('Error updating alert:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update alert",
-        variant: "destructive",
-      });
-    }
+  const acknowledgeAlert = async (alertId: string) => {
+    // TODO: Enable after migration is approved
+    toast({ title: "Info", description: "Database migration pending approval" });
   };
 
   if (loading) {
@@ -112,26 +35,26 @@ export function StaffAlertsDashboard() {
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Alerts</CardTitle>
             <Bell className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.total_alerts || 0}</div>
+            <div className="text-2xl font-bold">{stats.totalAlerts}</div>
             <p className="text-xs text-muted-foreground">All time</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
+            <CardTitle className="text-sm font-medium">Active Alerts</CardTitle>
             <AlertTriangle className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              {stats?.pending_alerts || 0}
+              {stats.activeAlerts}
             </div>
             <p className="text-xs text-muted-foreground">Needs attention</p>
           </CardContent>
@@ -139,38 +62,25 @@ export function StaffAlertsDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Resolved</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {stats?.resolved_alerts || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">Completed</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Channels</CardTitle>
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Pending</CardTitle>
+            <Clock className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {stats?.active_channels || 0}
+              {stats.pendingAlerts}
             </div>
-            <p className="text-xs text-muted-foreground">Channels enabled</p>
+            <p className="text-xs text-muted-foreground">Awaiting response</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Staff Subscribed</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Channels</CardTitle>
+            <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.staff_subscribed || 0}</div>
-            <p className="text-xs text-muted-foreground">Staff members</p>
+            <div className="text-2xl font-bold">{stats.subscribedChannels}</div>
+            <p className="text-xs text-muted-foreground">Active channels</p>
           </CardContent>
         </Card>
       </div>
@@ -183,52 +93,35 @@ export function StaffAlertsDashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {stats?.recent_alerts?.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                No recent alerts
-              </p>
+            {recentAlerts.length === 0 ? (
+              <div className="text-center py-8">
+                <Bell className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">No recent alerts</h3>
+                <p className="text-muted-foreground">
+                  Database migration is pending approval. Alerts will appear here once the system is active.
+                </p>
+              </div>
             ) : (
-              stats?.recent_alerts?.map((alert, index) => (
+              recentAlerts.map((alert, index) => (
                 <div key={index} className="flex items-center justify-between border-b pb-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <Badge 
-                        variant={
-                          alert.priority === 'high' ? 'destructive' : 
-                          alert.priority === 'medium' ? 'default' : 
-                          'secondary'
-                        }
-                      >
-                        {alert.priority || 'medium'}
-                      </Badge>
-                      <Badge variant="outline">
-                        {alert.alert_type || 'system'}
-                      </Badge>
+                      <Badge variant="outline">{alert.priority}</Badge>
+                      <Badge variant="secondary">{alert.alert_type}</Badge>
                     </div>
-                    <p className="text-sm font-medium">{alert.title || 'Staff Alert'}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {alert.message?.substring(0, 100)}
-                      {alert.message?.length > 100 ? '...' : ''}
-                    </p>
+                    <p className="text-sm font-medium">{alert.title}</p>
+                    <p className="text-sm text-muted-foreground">{alert.message}</p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(alert.created_at).toLocaleString()}
                     </p>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Badge 
-                      variant={
-                        alert.status === 'resolved' ? 'default' : 
-                        alert.status === 'acknowledged' ? 'secondary' : 
-                        'destructive'
-                      }
-                    >
-                      {alert.status || 'pending'}
-                    </Badge>
+                    <Badge variant="outline">{alert.status}</Badge>
                     {alert.status === 'pending' && (
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => markAlertAsRead(alert.id)}
+                        onClick={() => acknowledgeAlert(alert.id)}
                       >
                         <CheckCircle className="h-4 w-4" />
                       </Button>
@@ -251,10 +144,10 @@ export function StaffAlertsDashboard() {
           <CardContent>
             <div className="space-y-3">
               {[
-                { type: 'Maintenance Required', icon: AlertTriangle, count: 5, color: 'text-orange-600' },
-                { type: 'Guest Issues', icon: Users, count: 3, color: 'text-red-600' },
-                { type: 'System Alerts', icon: Bell, count: 2, color: 'text-blue-600' },
-                { type: 'Housekeeping', icon: Clock, count: 4, color: 'text-green-600' },
+                { type: 'Maintenance Required', icon: AlertTriangle, count: 0, color: 'text-orange-600' },
+                { type: 'Guest Issues', icon: Users, count: 0, color: 'text-red-600' },
+                { type: 'System Alerts', icon: Bell, count: 0, color: 'text-blue-600' },
+                { type: 'Housekeeping', icon: Clock, count: 0, color: 'text-green-600' },
               ].map((alertType, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">

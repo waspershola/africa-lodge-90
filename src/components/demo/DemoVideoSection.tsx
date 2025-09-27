@@ -41,7 +41,8 @@ export function DemoVideoSection() {
   };
 
   const videoId = getYouTubeVideoId(config.video_url);
-  const thumbnailUrl = config.thumbnail_url || (videoId ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` : '');
+  // Always generate thumbnail from current video URL, ignore stored thumbnail_url for YouTube videos
+  const thumbnailUrl = videoId ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` : (config.thumbnail_url || '');
   const embedUrl = getYouTubeEmbedUrl(config.video_url);
 
   return (

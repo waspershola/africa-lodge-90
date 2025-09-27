@@ -476,7 +476,7 @@ export function PricingConfigManager() {
 
       {/* Edit/Create Plan Dialog */}
       <Dialog open={!!editingPlan} onOpenChange={() => setEditingPlan(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] w-[95vw] sm:w-full overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {isCreating ? 'Create New Plan' : 'Edit Plan'}
@@ -487,8 +487,8 @@ export function PricingConfigManager() {
           </DialogHeader>
 
           {editingPlan && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-6 pr-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="name">Plan Name</Label>
                   <Input
@@ -509,7 +509,7 @@ export function PricingConfigManager() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="price_monthly">Monthly Price (₦)</Label>
                   <Input
@@ -533,7 +533,7 @@ export function PricingConfigManager() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="max_rooms">Maximum Rooms</Label>
                   <Input
@@ -554,7 +554,7 @@ export function PricingConfigManager() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="room_capacity_min">Room Capacity Min</Label>
                   <Input
@@ -575,7 +575,7 @@ export function PricingConfigManager() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="included_sms_credits">Included SMS Credits</Label>
                   <Input
@@ -599,24 +599,26 @@ export function PricingConfigManager() {
 
               <div>
                 <Label>Features</Label>
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-48 overflow-y-auto">
                   {editingPlan.features.map((feature, index) => (
                     <div key={index} className="flex gap-2">
                       <Input
                         value={feature}
                         onChange={(e) => updateFeature(index, e.target.value)}
                         placeholder="Feature description"
+                        className="flex-1"
                       />
                       <Button
                         variant="destructive"
                         size="sm"
                         onClick={() => removeFeature(index)}
+                        className="shrink-0"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   ))}
-                  <Button variant="outline" onClick={addFeature}>
+                  <Button variant="outline" onClick={addFeature} className="w-full">
                     <Plus className="mr-2 h-4 w-4" />
                     Add Feature
                   </Button>
@@ -631,26 +633,27 @@ export function PricingConfigManager() {
                 <p className="text-sm text-muted-foreground mb-3">
                   Select add-ons that will be automatically activated for hotels subscribing to this plan
                 </p>
-                <div className="space-y-3 max-h-60 overflow-y-auto">
+                <div className="space-y-3 max-h-60 overflow-y-auto border rounded-lg p-2">
                   {addons.map((addon) => {
                     const includedAddon = editingPlan.included_addons.find(ia => ia.addon_id === addon.id);
                     const isSelected = includedAddon?.is_included || false;
                     
                     return (
-                      <div key={addon.id} className="flex items-center space-x-3 p-3 border rounded-lg">
+                      <div key={addon.id} className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 p-3 border rounded-lg">
                         <Checkbox
                           checked={isSelected}
                           onCheckedChange={(checked) => handleAddonToggle(addon, checked as boolean)}
+                          className="shrink-0"
                         />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">{addon.name}</p>
-                            <Badge variant="outline" className="text-xs">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-medium truncate">{addon.name}</p>
+                            <Badge variant="outline" className="text-xs shrink-0">
                               {addon.addon_type.replace('_', ' ')}
                             </Badge>
                           </div>
-                          <p className="text-sm text-muted-foreground">{addon.description}</p>
-                          <div className="flex items-center gap-2 mt-1">
+                          <p className="text-sm text-muted-foreground line-clamp-2">{addon.description}</p>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
                             <span className="text-sm font-medium">₦{addon.price.toLocaleString()}</span>
                             {addon.sms_credits_bonus > 0 && (
                               <Badge variant="secondary" className="text-xs">
@@ -660,7 +663,7 @@ export function PricingConfigManager() {
                           </div>
                         </div>
                         {isSelected && (
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 shrink-0">
                             <Label htmlFor={`quantity-${addon.id}`} className="text-sm">Qty:</Label>
                             <Input
                               id={`quantity-${addon.id}`}
@@ -678,11 +681,11 @@ export function PricingConfigManager() {
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setEditingPlan(null)}>
+              <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2 pt-4 border-t">
+                <Button variant="outline" onClick={() => setEditingPlan(null)} className="w-full sm:w-auto">
                   Cancel
                 </Button>
-                <Button onClick={handleSavePlan}>
+                <Button onClick={handleSavePlan} className="w-full sm:w-auto">
                   {isCreating ? 'Create Plan' : 'Update Plan'}
                 </Button>
               </div>

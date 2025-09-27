@@ -14,7 +14,6 @@ import { GuestExperience } from './GuestExperience';
 import { StaffPermissions } from './StaffPermissions';
 import { AuditLogs } from './AuditLogs';
 import EmailSettings from '../settings/EmailSettings';
-import { SMSProviderConfig } from '../SMSProviderConfig';
 import { 
   Settings, 
   DollarSign, 
@@ -24,7 +23,6 @@ import {
   Shield, 
   History,
   Mail,
-  MessageSquare,
   RotateCcw,
   Save,
   CheckCircle,
@@ -169,7 +167,7 @@ export const ConfigurationCenter = () => {
           <CardContent className="p-0">
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
               <div className="border-b">
-                <TabsList className="grid w-full grid-cols-9 h-auto p-1">
+                <TabsList className="grid w-full grid-cols-8 h-auto p-1">
                   <TabsTrigger value="general" className="flex items-center gap-2 py-3 px-2">
                     <Settings className="h-4 w-4" />
                     <span className="hidden sm:inline">General</span>
@@ -201,10 +199,6 @@ export const ConfigurationCenter = () => {
                   <TabsTrigger value="email" className="flex items-center gap-2 py-3 px-2">
                     <Mail className="h-4 w-4" />
                     <span className="hidden sm:inline">Email</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="sms" className="flex items-center gap-2 py-3 px-2">
-                    <MessageSquare className="h-4 w-4" />
-                    <span className="hidden sm:inline">SMS</span>
                   </TabsTrigger>
                 </TabsList>
               </div>
@@ -294,10 +288,6 @@ export const ConfigurationCenter = () => {
 
                 <TabsContent value="email" className="mt-0">
                   <EmailSettings />
-                </TabsContent>
-
-                <TabsContent value="sms" className="mt-0">
-                  <SMSProviderConfig />
                 </TabsContent>
               </div>
             </Tabs>

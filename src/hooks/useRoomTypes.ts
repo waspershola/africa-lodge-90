@@ -11,8 +11,12 @@ export interface RoomType {
   base_rate: number;
   max_occupancy: number;
   amenities: string[];
+  available_count: number;
+  reserved_count: number;
+  total_count: number;
+  auto_assign_hours: number;
+  grace_period_hours: number;
   created_at: string;
-  updated_at: string;
 }
 
 export function useRoomTypes() {
@@ -44,12 +48,22 @@ export function useCreateRoomType() {
   const tenantId = tenant?.tenant_id || user?.tenant_id;
 
   return useMutation({
-    mutationFn: async (roomType: Omit<RoomType, "id" | "tenant_id" | "created_at" | "updated_at">) => {
+    mutationFn: async (roomType: Omit<RoomType, "id" | "tenant_id" | "created_at" | "available_count" | "reserved_count" | "total_count" | "auto_assign_hours" | "grace_period_hours">) => {
       if (!tenantId) throw new Error("No tenant ID");
+
+      const roomTypeData = {
+        ...roomType,
+        tenant_id: tenantId,
+        available_count: 0,
+        reserved_count: 0,
+        total_count: 0,
+        auto_assign_hours: 2,
+        grace_period_hours: 3
+      };
 
       const { data, error } = await supabase
         .from("room_types")
-        .insert([{ ...roomType, tenant_id: tenantId }])
+        .insert([roomTypeData])
         .select()
         .single();
 

@@ -32,43 +32,36 @@ const defaultPaymentMethods: PaymentMethod[] = [
     enabled: true
   },
   {
-    id: 'moniepoint-pos',
-    name: 'Moniepoint POS',
+    id: 'card_pos',
+    name: 'Card (POS Terminal)',
     type: 'pos',
     icon: 'CreditCard',
     enabled: true,
-    fees: { percentage: 0.75, fixed: 0 }
+    fees: { percentage: 1.5, fixed: 0 }
   },
   {
-    id: 'opay-pos',
-    name: 'Opay POS',
-    type: 'pos',
-    icon: 'CreditCard',
-    enabled: false,
-    fees: { percentage: 0.5, fixed: 0 }
-  },
-  {
-    id: 'bank-transfer',
+    id: 'bank_transfer',
     name: 'Bank Transfer',
     type: 'transfer',
-    icon: 'Bank',
+    icon: 'ArrowRightLeft',
     enabled: true,
-    fees: { percentage: 0, fixed: 50 }
+    fees: { percentage: 0, fixed: 25 }
   },
   {
-    id: 'paystack',
-    name: 'Paystack Online',
-    type: 'digital',
+    id: 'mobile_money',
+    name: 'Mobile Money',
+    type: 'transfer',
     icon: 'Smartphone',
-    enabled: false,
-    fees: { percentage: 1.5, fixed: 100 }
+    enabled: true,
+    fees: { percentage: 1.0, fixed: 0 }
   },
   {
-    id: 'pay-later',
-    name: 'Pay Later',
+    id: 'corporate_account',
+    name: 'Corporate Account',
     type: 'credit',
-    icon: 'Clock',
-    enabled: true
+    icon: 'Building',
+    enabled: true,
+    fees: { percentage: 0, fixed: 0 }
   },
   {
     id: 'debtor',

@@ -5,6 +5,7 @@ import RevenueAnalytics from "@/components/owner/financials/RevenueAnalytics";
 import PaymentSettings from "@/components/owner/financials/PaymentSettings";
 import CurrencyTaxSettings from "@/components/owner/financials/CurrencyTaxSettings";
 import PaymentMethodsConfig from "@/components/owner/financials/PaymentMethodsConfig";
+import PaymentStatusTracker from "@/components/owner/financials/PaymentStatusTracker";
 import GuestDebtTracker from "@/components/owner/billing/GuestDebtTracker";
 import { PricingChange, DelegationRule } from "@/types/pricing";
 import { toast } from "@/components/ui/use-toast";
@@ -75,14 +76,13 @@ export default function Financials() {
       </div>
 
       <Tabs defaultValue="pricing" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="pricing">Pricing</TabsTrigger>
-          <TabsTrigger value="approvals">Manager Approvals</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="payments">Payments</TabsTrigger>
+          <TabsTrigger value="payments">Settings</TabsTrigger>
           <TabsTrigger value="methods">Methods</TabsTrigger>
+          <TabsTrigger value="status">Payment Status</TabsTrigger>
           <TabsTrigger value="debts">Debts</TabsTrigger>
-          <TabsTrigger value="currency">Currency</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pricing" className="space-y-6">
@@ -109,6 +109,10 @@ export default function Financials() {
 
         <TabsContent value="methods" className="space-y-6">
           <PaymentMethodsConfig />
+        </TabsContent>
+
+        <TabsContent value="status" className="space-y-6">
+          <PaymentStatusTracker />
         </TabsContent>
 
         <TabsContent value="debts" className="space-y-6">

@@ -65,10 +65,11 @@ serve(async (req) => {
     for (const reservation of expiredReservations || []) {
       try {
         // Check if SMS credits are available
+        const tenantId = reservation.tenants?.[0]?.tenant_id;
         const { data: smsCredits } = await supabase
           .from('sms_credits')
           .select('balance')
-          .eq('tenant_id', reservation.tenant_id)
+          .eq('tenant_id', tenantId)
           .single();
 
         // Send SMS notification if guest has phone and credits available
@@ -81,7 +82,7 @@ serve(async (req) => {
           const { error: consumeError } = await supabase.rpc(
             'consume_sms_credits',
             {
-              p_tenant_id: reservation.tenant_id,
+              p_tenant_id: tenantId,
               p_credits: 1,
               p_purpose: `auto_${reservation.status}_notification`,
               p_recipient_phone: reservation.guest_phone,

@@ -115,7 +115,7 @@ const SignUp = () => {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center space-x-2">
             <Building2 className="h-8 w-8 text-white" />
-            <span className="text-xl font-bold text-white">LuxuryHotelSaaS</span>
+            <span className="text-xl font-bold text-white">LUXURYHOTELPRO</span>
           </Link>
           <div className="flex items-center gap-4">
             <span className="text-white/90">Already have an account?</span>
@@ -143,7 +143,7 @@ const SignUp = () => {
               Start Your Free Trial
             </CardTitle>
             <CardDescription className="text-lg">
-              Join thousands of hotels worldwide using LuxuryHotelSaaS
+              Join thousands of hotels worldwide using LUXURYHOTELPRO
             </CardDescription>
             <div className="flex justify-center mt-4">
               <Badge className="bg-success/10 text-success border-success/20">

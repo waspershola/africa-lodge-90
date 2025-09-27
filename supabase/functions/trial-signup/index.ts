@@ -322,12 +322,12 @@ const handler = async (req: Request): Promise<Response> => {
         const loginUrl = `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '')}.lovable.app`;
         
         const emailResult = await resend.emails.send({
-          from: 'LuxuryHotelSaaS <noreply@mail.luxuryhotelsaas.com>',
+          from: 'LUXURYHOTELPRO <noreply@mail.luxuryhotelpro.com>',
           to: [owner_email],
           subject: 'Welcome to Your 14-Day Free Trial!',
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h1 style="color: #1f2937;">Welcome to LuxuryHotelSaaS!</h1>
+              <h1 style="color: #1f2937;">Welcome to LUXURYHOTELPRO!</h1>
               <p>Hello ${owner_name},</p>
               <p>Your 14-day free trial for <strong>${hotel_name}</strong> has been activated!</p>
               
@@ -351,7 +351,7 @@ const handler = async (req: Request): Promise<Response> => {
               </ul>
               
               <p>Questions? Reply to this email or contact our support team.</p>
-              <p>Best regards,<br>The LuxuryHotelSaaS Team</p>
+              <p>Best regards,<br>The LUXURYHOTELPRO Team</p>
             </div>
           `,
         });

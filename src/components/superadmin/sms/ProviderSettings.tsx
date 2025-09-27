@@ -98,7 +98,7 @@ export function ProviderSettings() {
       const { error } = await supabase.functions.invoke('sms-router', {
         body: {
           to: testNumber,
-          message: "Test message from LuxuryHotelSaaS SMS system",
+          message: "Test message from LUXURYHOTELPRO SMS system",
           tenant_id: "test",
           event_type: "test"
         }

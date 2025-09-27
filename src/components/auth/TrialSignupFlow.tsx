@@ -153,7 +153,7 @@ export function TrialSignupFlow({ open, onOpenChange, selectedPlanId, onSuccess 
             <div className="mx-auto mb-4 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
               <CheckCircle className="h-6 w-6 text-green-600" />
             </div>
-            <DialogTitle>Welcome to LuxuryHotelSaaS!</DialogTitle>
+            <DialogTitle>Welcome to LUXURYHOTELPRO!</DialogTitle>
             <DialogDescription>
               Your 14-day free trial has started. Check your email for login details.
             </DialogDescription>

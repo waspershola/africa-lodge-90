@@ -45,7 +45,7 @@ export default function SuperAdminLayout() {
   return (
     <UnifiedDashboardLayout
       navigation={navigation}
-      title="LuxuryHotelSaaS Admin"
+      title="LUXURYHOTELPRO Admin"
       subtitle="Platform Management"
       backToSiteUrl="/"
       headerBadge={{

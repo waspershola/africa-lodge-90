@@ -188,7 +188,7 @@ const Index = () => {
       name: "Adebayo Okafor",
       role: "General Manager",
       hotel: "Lagos Grand Hotel",
-      content: "LuxuryHotelSaaS transformed our operations. The offline front desk saved us during power outages, and QR room service increased our F&B revenue by 40%.",
+      content: "LUXURYHOTELPRO transformed our operations. The offline front desk saved us during power outages, and QR room service increased our F&B revenue by 40%.",
       rating: 5
     },
     {
@@ -226,7 +226,7 @@ const Index = () => {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Building2 className="h-8 w-8 text-primary" />
-            <span className="text-xl font-bold display-heading text-gradient">LuxuryHotelSaaS</span>
+            <span className="text-xl font-bold display-heading text-gradient">LUXURYHOTELPRO</span>
           </div>
           <nav className="hidden md:flex items-center space-x-8">
             <a href="#features" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Features</a>
@@ -481,7 +481,7 @@ const Index = () => {
               Loved by Hotel Operators
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              See how hotels worldwide are transforming their operations with LuxuryHotelSaaS.
+              See how hotels worldwide are transforming their operations with LUXURYHOTELPRO.
             </p>
           </motion.div>
 
@@ -543,7 +543,7 @@ const Index = () => {
               Experience the Platform Live
             </h2>
             <p className="text-lg mb-8 max-w-2xl mx-auto text-white/90 drop-shadow-md">
-              Try our interactive demos and see how LuxuryHotelSaaS can transform your hotel operations.
+              Try our interactive demos and see how LUXURYHOTELPRO can transform your hotel operations.
             </p>
             
             <motion.div 
@@ -686,7 +686,7 @@ const Index = () => {
               Start Managing Smarter
             </h2>
             <p className="text-lg text-white/90 mb-8 max-w-2xl mx-auto drop-shadow-md">
-              Join hundreds of hotels worldwide already using LuxuryHotelSaaS to streamline operations and delight guests.
+              Join hundreds of hotels worldwide already using LUXURYHOTELPRO to streamline operations and delight guests.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
@@ -720,7 +720,7 @@ const Index = () => {
               <div className="flex items-center space-x-2 mb-4">
                 <Building2 className="h-8 w-8 text-yellow-400" />
                 <span className="text-2xl font-bold display-heading text-white">
-                  LuxuryHotelSaaS
+                  LUXURYHOTELPRO
                 </span>
               </div>
               <p className="text-white/80 leading-relaxed">
@@ -761,7 +761,7 @@ const Index = () => {
           </div>
           
           <div className="border-t border-white/20 mt-12 pt-8 text-center text-white/70">
-            <p>© 2024 LuxuryHotelSaaS. Built for Modern Hotels.</p>
+            <p>© 2024 LUXURYHOTELPRO. Built for Modern Hotels.</p>
           </div>
         </div>
       </footer>

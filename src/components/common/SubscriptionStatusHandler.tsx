@@ -57,7 +57,7 @@ export function SubscriptionStatusHandler({ children }: SubscriptionStatusHandle
             <div className="space-y-2">
               <Button 
                 className="w-full"
-                onClick={() => window.open('mailto:support@luxuryhotelsaas.com')}
+                onClick={() => window.open('mailto:support@luxuryhotelpro.com')}
               >
                 Contact Support
               </Button>
@@ -109,7 +109,7 @@ export function SubscriptionStatusHandler({ children }: SubscriptionStatusHandle
 
             <div className="text-center">
               <p className="text-xs text-muted-foreground">
-                Need help? <a href="mailto:support@luxuryhotelsaas.com" className="text-primary hover:underline">Contact Support</a>
+                Need help? <a href="mailto:support@luxuryhotelpro.com" className="text-primary hover:underline">Contact Support</a>
               </p>
             </div>
           </CardContent>
@@ -212,7 +212,7 @@ export function SubscriptionStatusHandler({ children }: SubscriptionStatusHandle
 
             <div className="text-center">
               <p className="text-xs text-muted-foreground">
-                Questions? <a href="mailto:sales@luxuryhotelsaas.com" className="text-primary hover:underline">Talk to Sales</a>
+                Questions? <a href="mailto:sales@luxuryhotelpro.com" className="text-primary hover:underline">Talk to Sales</a>
               </p>
             </div>
           </CardContent>

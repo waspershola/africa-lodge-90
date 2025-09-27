@@ -157,7 +157,7 @@ export function DemoConfigManager() {
                 id="title"
                 value={isEditing ? editedConfig?.title || '' : config.title}
                 onChange={(e) => updateField('title', e.target.value)}
-                placeholder="See LuxuryHotelSaaS in Action"
+                placeholder="See LUXURYHOTELPRO in Action"
                 disabled={!isEditing}
               />
             </div>

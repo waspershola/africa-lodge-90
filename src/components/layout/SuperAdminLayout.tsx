@@ -14,7 +14,8 @@ import {
   Flag,
   Database,
   Video,
-  Mail
+  Mail,
+  Package
 } from 'lucide-react';
 import UnifiedDashboardLayout from './UnifiedDashboardLayout';
 
@@ -23,6 +24,7 @@ const navigation = [
   { name: 'Tenants', href: '/sa/tenants', icon: Building2 },
   { name: 'Services', href: '/sa/services', icon: Layers },
   { name: 'Pricing Config', href: '/sa/pricing-config', icon: CreditCard },
+  { name: 'Add-on Catalog', href: '/sa/addon-catalog', icon: Package },
   { name: 'Demo Config', href: '/sa/demo-config', icon: Video },
   { name: 'Templates', href: '/sa/templates', icon: Layers },
   { name: 'Roles', href: '/sa/roles', icon: Shield },

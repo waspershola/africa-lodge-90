@@ -92,6 +92,7 @@ import Metrics from "./pages/sa/Metrics";
 import Backups from "./pages/sa/Backups";
 import RealtimeMonitoring from "./pages/sa/RealtimeMonitoring";
 import EmailProviders from "./pages/sa/EmailProviders";
+import AddonCatalog from "./pages/sa/AddonCatalog";
 
 import SupportAdminLayout from "./components/layout/SupportAdminLayout";
 import SupportStaffLayout from "./components/layout/SupportStaffLayout";
@@ -268,6 +269,7 @@ const App = () => (
             <Route path="tenants" element={<Tenants />} />
             <Route path="services" element={<Services />} />
             <Route path="pricing-config" element={<PricingConfig />} />
+            <Route path="addon-catalog" element={<AddonCatalog />} />
             <Route path="demo-config" element={<DemoConfig />} />
             <Route path="templates" element={<Templates />} />
             <Route path="roles" element={<Roles />} />

@@ -88,3 +88,15 @@ verify_jwt = false
 
 [functions.hotel-booking-api]
 verify_jwt = false
+
+[functions.africastalking-sms]
+verify_jwt = false
+
+[functions.twilio-sms]
+verify_jwt = false
+
+[functions.sms-router]
+verify_jwt = false
+
+[functions.sms-template-processor]
+verify_jwt = false

@@ -3586,42 +3586,80 @@ export type Database = {
           cost_per_credit: number | null
           created_at: string | null
           credits_used: number
+          delivered_at: string | null
+          delivery_status: string | null
+          error_code: string | null
+          event_type: string | null
           id: string
           message_preview: string | null
+          provider_id: string | null
           purpose: string | null
           recipient_phone: string | null
+          retry_count: number | null
+          sent_at: string | null
           source_id: string | null
           source_type: string
           status: string | null
+          template_id: string | null
           tenant_id: string
         }
         Insert: {
           cost_per_credit?: number | null
           created_at?: string | null
           credits_used: number
+          delivered_at?: string | null
+          delivery_status?: string | null
+          error_code?: string | null
+          event_type?: string | null
           id?: string
           message_preview?: string | null
+          provider_id?: string | null
           purpose?: string | null
           recipient_phone?: string | null
+          retry_count?: number | null
+          sent_at?: string | null
           source_id?: string | null
           source_type: string
           status?: string | null
+          template_id?: string | null
           tenant_id: string
         }
         Update: {
           cost_per_credit?: number | null
           created_at?: string | null
           credits_used?: number
+          delivered_at?: string | null
+          delivery_status?: string | null
+          error_code?: string | null
+          event_type?: string | null
           id?: string
           message_preview?: string | null
+          provider_id?: string | null
           purpose?: string | null
           recipient_phone?: string | null
+          retry_count?: number | null
+          sent_at?: string | null
           source_id?: string | null
           source_type?: string
           status?: string | null
+          template_id?: string | null
           tenant_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "sms_logs_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "sms_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sms_logs_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "sms_templates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sms_logs_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -3637,6 +3675,220 @@ export type Database = {
             referencedColumns: ["tenant_id"]
           },
         ]
+      }
+      sms_notifications_settings: {
+        Row: {
+          conditions: Json | null
+          created_at: string
+          delay_minutes: number | null
+          event_type: string
+          id: string
+          is_enabled: boolean
+          send_to_guest: boolean
+          send_to_staff: boolean
+          template_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          conditions?: Json | null
+          created_at?: string
+          delay_minutes?: number | null
+          event_type: string
+          id?: string
+          is_enabled?: boolean
+          send_to_guest?: boolean
+          send_to_staff?: boolean
+          template_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          conditions?: Json | null
+          created_at?: string
+          delay_minutes?: number | null
+          event_type?: string
+          id?: string
+          is_enabled?: boolean
+          send_to_guest?: boolean
+          send_to_staff?: boolean
+          template_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_notifications_settings_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "sms_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sms_providers: {
+        Row: {
+          api_key: string | null
+          api_secret: string | null
+          base_url: string | null
+          config: Json | null
+          cost_per_sms: number | null
+          created_at: string
+          delivery_rate: number | null
+          failover_provider_id: string | null
+          health_status: string | null
+          id: string
+          is_default: boolean
+          is_enabled: boolean
+          last_health_check: string | null
+          name: string
+          priority: number
+          provider_type: string
+          sender_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          api_key?: string | null
+          api_secret?: string | null
+          base_url?: string | null
+          config?: Json | null
+          cost_per_sms?: number | null
+          created_at?: string
+          delivery_rate?: number | null
+          failover_provider_id?: string | null
+          health_status?: string | null
+          id?: string
+          is_default?: boolean
+          is_enabled?: boolean
+          last_health_check?: string | null
+          name: string
+          priority?: number
+          provider_type: string
+          sender_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string | null
+          api_secret?: string | null
+          base_url?: string | null
+          config?: Json | null
+          cost_per_sms?: number | null
+          created_at?: string
+          delivery_rate?: number | null
+          failover_provider_id?: string | null
+          health_status?: string | null
+          id?: string
+          is_default?: boolean
+          is_enabled?: boolean
+          last_health_check?: string | null
+          name?: string
+          priority?: number
+          provider_type?: string
+          sender_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_providers_failover_provider_id_fkey"
+            columns: ["failover_provider_id"]
+            isOneToOne: false
+            referencedRelation: "sms_providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sms_staff_alerts: {
+        Row: {
+          alert_types: string[] | null
+          created_at: string
+          id: string
+          is_active: boolean
+          is_on_duty: boolean
+          night_shift: boolean
+          phone_number: string
+          role: string | null
+          shift_end: string | null
+          shift_start: string | null
+          staff_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          alert_types?: string[] | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_on_duty?: boolean
+          night_shift?: boolean
+          phone_number: string
+          role?: string | null
+          shift_end?: string | null
+          shift_start?: string | null
+          staff_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          alert_types?: string[] | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_on_duty?: boolean
+          night_shift?: boolean
+          phone_number?: string
+          role?: string | null
+          shift_end?: string | null
+          shift_start?: string | null
+          staff_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sms_templates: {
+        Row: {
+          allow_tenant_override: boolean
+          created_at: string
+          created_by: string | null
+          event_type: string
+          id: string
+          is_active: boolean
+          is_global: boolean
+          message_template: string
+          template_name: string
+          tenant_id: string | null
+          updated_at: string
+          variables: Json | null
+        }
+        Insert: {
+          allow_tenant_override?: boolean
+          created_at?: string
+          created_by?: string | null
+          event_type: string
+          id?: string
+          is_active?: boolean
+          is_global?: boolean
+          message_template: string
+          template_name: string
+          tenant_id?: string | null
+          updated_at?: string
+          variables?: Json | null
+        }
+        Update: {
+          allow_tenant_override?: boolean
+          created_at?: string
+          created_by?: string | null
+          event_type?: string
+          id?: string
+          is_active?: boolean
+          is_global?: boolean
+          message_template?: string
+          template_name?: string
+          tenant_id?: string | null
+          updated_at?: string
+          variables?: Json | null
+        }
+        Relationships: []
       }
       staff_financials: {
         Row: {

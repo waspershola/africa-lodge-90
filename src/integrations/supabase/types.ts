@@ -5621,7 +5621,7 @@ export type Database = {
       }
       seed_tenant_sms_templates: {
         Args: { p_tenant_id: string }
-        Returns: undefined
+        Returns: number
       }
       set_limit: {
         Args: { "": number }

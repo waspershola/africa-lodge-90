@@ -53,14 +53,32 @@ export function SMSDashboard() {
       const activeProviders = providers?.filter(p => p.is_enabled).length || 0;
       const averageDeliveryRate = providers?.reduce((sum, p) => sum + (p.delivery_rate || 0), 0) / (providers?.length || 1) || 0;
 
-      // Get top hotels by usage (mock data for now)
-      const topHotels = [
-        { hotel_name: "Grand Plaza Hotel", total_sent: 2450 },
-        { hotel_name: "Sunset Resort", total_sent: 1890 },
-        { hotel_name: "City Center Inn", total_sent: 1234 },
-        { hotel_name: "Ocean View Hotel", total_sent: 987 },
-        { hotel_name: "Mountain Lodge", total_sent: 756 }
-      ];
+      // Calculate top hotels by actual usage
+      const tenantUsage = new Map<string, { name: string; usage: number }>();
+      
+      // Get tenant info first
+      const { data: tenantData } = await supabase
+        .from('tenants')
+        .select('tenant_id, hotel_name');
+      
+      const tenantMap = new Map(tenantData?.map(t => [t.tenant_id, t.hotel_name]) || []);
+      
+      // Calculate usage per tenant
+      logs?.forEach(log => {
+        const hotelName = tenantMap.get(log.tenant_id) || 'Unknown Hotel';
+        const current = tenantUsage.get(log.tenant_id) || { name: hotelName, usage: 0 };
+        current.usage += log.credits_used || 1;
+        tenantUsage.set(log.tenant_id, current);
+      });
+      
+      // Convert to array and sort by usage
+      const topHotels = Array.from(tenantUsage.values())
+        .sort((a, b) => b.usage - a.usage)
+        .slice(0, 5)
+        .map(hotel => ({
+          hotel_name: hotel.name,
+          total_sent: hotel.usage
+        }));
 
       setStats({
         totalSMSSent,
@@ -163,19 +181,26 @@ export function SMSDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {stats?.topHotels.map((hotel, index) => (
-                <div key={hotel.hotel_name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="w-6 h-6 rounded-full p-0 flex items-center justify-center text-xs">
-                      {index + 1}
-                    </Badge>
-                    <span className="font-medium">{hotel.hotel_name}</span>
-                  </div>
-                  <span className="text-sm text-muted-foreground">
-                    {hotel.total_sent.toLocaleString()} SMS
-                  </span>
+              {stats?.topHotels.length === 0 ? (
+                <div className="text-center py-4 text-muted-foreground">
+                  <MessageSquare className="mx-auto h-8 w-8 mb-2 opacity-50" />
+                  <p className="text-sm">No SMS usage data yet</p>
                 </div>
-              ))}
+              ) : (
+                stats?.topHotels.map((hotel, index) => (
+                  <div key={hotel.hotel_name} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="w-6 h-6 rounded-full p-0 flex items-center justify-center text-xs">
+                        {index + 1}
+                      </Badge>
+                      <span className="font-medium">{hotel.hotel_name}</span>
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      {hotel.total_sent.toLocaleString()} SMS
+                    </span>
+                  </div>
+                )) || []
+              )}
             </div>
           </CardContent>
         </Card>
@@ -190,27 +215,34 @@ export function SMSDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {stats?.providerHealth.map((provider) => (
-                <div key={provider.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {getHealthIcon(provider.health_status)}
-                    <span className="font-medium">{provider.name}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">
-                      {provider.delivery_rate}% delivery
-                    </span>
-                    <Badge 
-                      variant={
-                        provider.health_status === 'healthy' ? 'default' :
-                        provider.health_status === 'degraded' ? 'secondary' : 'destructive'
-                      }
-                    >
-                      {provider.health_status}
-                    </Badge>
-                  </div>
+              {stats?.providerHealth.length === 0 ? (
+                <div className="text-center py-4 text-muted-foreground">
+                  <AlertCircle className="mx-auto h-8 w-8 mb-2 opacity-50" />
+                  <p className="text-sm">No provider data available</p>
                 </div>
-              ))}
+              ) : (
+                stats?.providerHealth.map((provider) => (
+                  <div key={provider.name} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {getHealthIcon(provider.health_status)}
+                      <span className="font-medium">{provider.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        {provider.delivery_rate}% delivery
+                      </span>
+                      <Badge 
+                        variant={
+                          provider.health_status === 'healthy' ? 'default' :
+                          provider.health_status === 'degraded' ? 'secondary' : 'destructive'
+                        }
+                      >
+                        {provider.health_status}
+                      </Badge>
+                    </div>
+                  </div>
+                )) || []
+              )}
             </div>
           </CardContent>
         </Card>

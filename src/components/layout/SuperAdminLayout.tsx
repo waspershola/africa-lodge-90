@@ -27,6 +27,7 @@ const navigation = [
   { name: 'Add-on Catalog', href: '/sa/addon-catalog', icon: Package },
   { name: 'Demo Config', href: '/sa/demo-config', icon: Video },
   { name: 'Templates', href: '/sa/templates', icon: Layers },
+  { name: 'SMS Management', href: '/sa/sms-management', icon: Mail },
   { name: 'Roles', href: '/sa/roles', icon: Shield },
   { name: 'Global Users', href: '/sa/global-users', icon: UserCheck },
   { name: 'System Owners', href: '/sa/system-owners', icon: Shield },

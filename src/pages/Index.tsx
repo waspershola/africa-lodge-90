@@ -233,8 +233,10 @@ const Index = () => {
             <a href="#pricing" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Pricing</a>
             <a href="#testimonials" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Reviews</a>
             <Button variant="outline" size="sm">About</Button>
-            <Button className="bg-gradient-primary shadow-luxury hover:shadow-hover" size="sm">
-              Request Demo
+            <Button className="bg-gradient-primary shadow-luxury hover:shadow-hover" size="sm" asChild>
+              <Link to="/auth?tab=reset">
+                Reset Password
+              </Link>
             </Button>
           </nav>
         </div>
@@ -345,16 +347,6 @@ const Index = () => {
               className="flex flex-col sm:flex-row gap-4 justify-center items-center"
               variants={fadeIn}
             >
-              <Button 
-                size="lg" 
-                className="bg-white/20 hover:bg-white/30 text-white border border-white/30 text-lg px-8 py-6 font-semibold backdrop-blur-sm"
-                asChild
-              >
-                <Link to="/auth?tab=reset">
-                  Reset Password
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Link>
-              </Button>
               <Button 
                 variant="outline" 
                 size="lg"

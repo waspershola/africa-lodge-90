@@ -33,6 +33,20 @@ export const useCreateReservation = () => {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) throw new Error('Not authenticated');
 
+      // Get hotel settings for notifications
+      const { data: hotelSettings } = await supabase
+        .from('hotel_settings')
+        .select('front_desk_phone')
+        .eq('tenant_id', user.user_metadata?.tenant_id)
+        .single();
+
+      // Get tenant info for notifications
+      const { data: tenant } = await supabase
+        .from('tenants')
+        .select('hotel_name')
+        .eq('tenant_id', user.user_metadata?.tenant_id)
+        .single();
+
       // Calculate total amount
       const checkInDate = new Date(reservationData.check_in_date);
       const checkOutDate = new Date(reservationData.check_out_date);
@@ -64,6 +78,124 @@ export const useCreateReservation = () => {
         .single();
 
       if (error) throw error;
+
+      // Create booking confirmation notification event
+      const notificationEvent = {
+        event_type: 'booking_confirmed',
+        event_source: 'reservation',
+        source_id: data.id,
+        template_data: {
+          guest_name: reservationData.guest_name,
+          hotel_name: tenant?.hotel_name || 'Hotel',
+          reservation_number: reservationNumber,
+          room_number: 'TBA',
+          check_in_date: reservationData.check_in_date,
+          check_out_date: reservationData.check_out_date,
+          total_amount: totalAmount,
+          front_desk_phone: hotelSettings?.front_desk_phone
+        },
+        recipients: [
+          {
+            type: 'guest',
+            email: reservationData.guest_email,
+            phone: reservationData.guest_phone
+          },
+          {
+            type: 'staff',
+            role: 'FRONT_DESK',
+            phone: hotelSettings?.front_desk_phone
+          },
+          {
+            type: 'manager',
+            role: 'MANAGER'
+          }
+        ],
+        channels: ['sms', 'email'],
+        priority: 'high'
+      };
+
+      // Create the notification event
+      await supabase
+        .from('notification_events')
+        .insert({
+          tenant_id: user.user_metadata?.tenant_id,
+          ...notificationEvent,
+          status: 'pending',
+          scheduled_at: new Date().toISOString(),
+          metadata: {}
+        });
+
+      // Schedule additional reminders
+      try {
+        // Schedule pre-arrival reminder (1 day before check-in)
+        const checkInDate = new Date(reservationData.check_in_date);
+        const reminderDate = new Date(checkInDate);
+        reminderDate.setDate(reminderDate.getDate() - 1);
+        reminderDate.setHours(10, 0, 0, 0);
+
+        await supabase
+          .from('notification_events')
+          .insert({
+            tenant_id: user.user_metadata?.tenant_id,
+            event_type: 'pre_arrival_reminder',
+            event_source: 'reservation',
+            source_id: data.id,
+            template_data: {
+              guest_name: reservationData.guest_name,
+              check_in_date: reservationData.check_in_date,
+              reservation_number: reservationNumber,
+              check_in_time: '14:00'
+            },
+            recipients: [
+              {
+                type: 'guest',
+                email: reservationData.guest_email,
+                phone: reservationData.guest_phone
+              }
+            ],
+            channels: ['email', 'sms'],
+            priority: 'medium',
+            status: 'pending',
+            scheduled_at: reminderDate.toISOString(),
+            metadata: {}
+          });
+
+        // Schedule checkout reminder (on checkout day)
+        const checkOutDate = new Date(reservationData.check_out_date);
+        checkOutDate.setHours(9, 0, 0, 0);
+
+        await supabase
+          .from('notification_events')
+          .insert({
+            tenant_id: user.user_metadata?.tenant_id,
+            event_type: 'checkout_reminder',
+            event_source: 'reservation',
+            source_id: data.id,
+            template_data: {
+              guest_name: reservationData.guest_name,
+              check_out_date: reservationData.check_out_date,
+              check_out_time: '12:00',
+              total_amount: totalAmount
+            },
+            recipients: [
+              {
+                type: 'guest',
+                email: reservationData.guest_email,
+                phone: reservationData.guest_phone
+              }
+            ],
+            channels: ['email'],
+            priority: 'low',
+            status: 'pending',
+            scheduled_at: checkOutDate.toISOString(),
+            metadata: {}
+          });
+
+      } catch (reminderError) {
+        console.warn('Failed to schedule reminder notifications:', reminderError);
+        // Don't fail the reservation creation if reminders fail
+      }
+
       return data;
     },
     onSuccess: () => {
@@ -138,6 +270,19 @@ export const useCancelReservation = () => {
 
   return useMutation({
     mutationFn: async (reservationId: string) => {
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error('Not authenticated');
+
+      // Get reservation details for notification
+      const { data: reservation, error: resError } = await supabase
+        .from('reservations')
+        .select('*')
+        .eq('id', reservationId)
+        .single();
+
+      if (resError) throw resError;
+
       const { data, error } = await supabase
         .from('reservations')
         .update({ 
@@ -149,6 +294,44 @@ export const useCancelReservation = () => {
         .single();
 
       if (error) throw error;
+
+      // Create cancellation notification event
+      const notificationEvent = {
+        event_type: 'reservation_cancelled',
+        event_source: 'reservation',
+        source_id: reservationId,
+        template_data: {
+          guest_name: reservation.guest_name,
+          reservation_number: reservation.reservation_number,
+          check_in_date: reservation.check_in_date,
+          cancellation_reason: 'Guest cancellation'
+        },
+        recipients: [
+          {
+            type: 'guest',
+            email: reservation.guest_email,
+            phone: reservation.guest_phone
+          },
+          {
+            type: 'staff',
+            role: 'FRONT_DESK'
+          }
+        ],
+        channels: ['sms', 'email'],
+        priority: 'medium'
+      };
+
+      // Create the notification event
+      await supabase
+        .from('notification_events')
+        .insert({
+          tenant_id: user.user_metadata?.tenant_id,
+          ...notificationEvent,
+          status: 'pending',
+          scheduled_at: new Date().toISOString(),
+          metadata: {}
+        });
+
       return data;
     },
     onSuccess: () => {

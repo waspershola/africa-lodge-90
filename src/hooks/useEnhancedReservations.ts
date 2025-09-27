@@ -137,6 +137,19 @@ export const useCreateEnhancedReservation = () => {
 
       if (error) throw error;
 
+      // Get hotel settings and tenant info for notifications
+      const { data: hotelSettings } = await supabase
+        .from('hotel_settings')
+        .select('front_desk_phone')
+        .eq('tenant_id', user.user_metadata?.tenant_id)
+        .single();
+
+      const { data: tenant } = await supabase
+        .from('tenants')
+        .select('hotel_name')
+        .eq('tenant_id', user.user_metadata?.tenant_id)
+        .single();
+
       // Create initial invoice if payment is required
       if (paymentCalc.depositAmount > 0) {
         const invoiceNumber = `INV-${reservationNumber.replace('RES-', '')}`;
@@ -155,7 +168,92 @@ export const useCreateEnhancedReservation = () => {
             due_date: paymentDueDate?.toISOString().split('T')[0],
             sent_to_email: reservationData.guest_email
           });
+
+        // Create payment reminder if needed
+        if (paymentCalc.balanceDue > 0 && paymentDueDate) {
+          const reminderEvent = {
+            event_type: 'payment_reminder',
+            event_source: 'reservation',
+            source_id: data.id,
+            template_data: {
+              guest_name: reservationData.guest_name,
+              amount_due: paymentCalc.balanceDue,
+              due_date: paymentDueDate.toISOString().split('T')[0]
+            },
+            recipients: [
+              {
+                type: 'guest',
+                email: reservationData.guest_email,
+                phone: reservationData.guest_phone
+              }
+            ],
+            channels: ['sms', 'email'],
+            priority: 'medium'
+          };
+
+          // Schedule payment reminder 24 hours before due date
+          const reminderTime = new Date(paymentDueDate);
+          reminderTime.setHours(reminderTime.getHours() - 24);
+
+          await supabase
+            .from('notification_events')
+            .insert({
+              tenant_id: user.user_metadata?.tenant_id,
+              ...reminderEvent,
+              status: 'pending',
+              scheduled_at: reminderTime.toISOString(),
+              metadata: { invoice_number: invoiceNumber }
+            });
+        }
       }
+
+      // Create booking confirmation notification event
+      const notificationEvent = {
+        event_type: 'booking_confirmed',
+        event_source: 'reservation',
+        source_id: data.id,
+        template_data: {
+          guest_name: reservationData.guest_name,
+          hotel_name: tenant?.hotel_name || 'Hotel',
+          reservation_number: reservationNumber,
+          room_number: 'TBA',
+          check_in_date: reservationData.check_in_date,
+          check_out_date: reservationData.check_out_date,
+          total_amount: paymentCalc.totalAmount,
+          deposit_amount: paymentCalc.depositAmount,
+          balance_due: paymentCalc.balanceDue,
+          front_desk_phone: hotelSettings?.front_desk_phone
+        },
+        recipients: [
+          {
+            type: 'guest',
+            email: reservationData.guest_email,
+            phone: reservationData.guest_phone
+          },
+          {
+            type: 'staff',
+            role: 'FRONT_DESK',
+            phone: hotelSettings?.front_desk_phone
+          },
+          {
+            type: 'manager',
+            role: 'MANAGER'
+          }
+        ],
+        channels: ['sms', 'email'],
+        priority: 'high'
+      };
+
+      // Create the notification event
+      await supabase
+        .from('notification_events')
+        .insert({
+          tenant_id: user.user_metadata?.tenant_id,
+          ...notificationEvent,
+          status: 'pending',
+          scheduled_at: new Date().toISOString(),
+          metadata: {}
+        });
 
       return data;
     },

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { toast } from 'sonner';
+import { useCreateServiceAlert } from './useNotificationScheduler';
 
 export interface QROrder {
   id: string;
@@ -28,10 +29,44 @@ export interface QROrder {
   }>;
 }
 
+// Helper functions for staff notifications
+const getServiceDepartment = (serviceType: string): string => {
+  switch (serviceType) {
+    case 'room_service':
+    case 'food_beverage':
+      return 'KITCHEN';
+    case 'housekeeping':
+    case 'laundry':
+      return 'HOUSEKEEPING';
+    case 'maintenance':
+      return 'MAINTENANCE';
+    case 'concierge':
+      return 'FRONT_DESK';
+    default:
+      return 'GENERAL';
+  }
+};
+
+const getPriorityLevel = (priority: number): 'low' | 'medium' | 'high' => {
+  if (priority >= 3) return 'high';
+  if (priority >= 2) return 'medium';
+  return 'low';
+};
+
+const getServiceDescription = (order: QROrder): string => {
+  const details = order.request_details;
+  if (details?.items && Array.isArray(details.items)) {
+    const itemCount = details.items.length;
+    return `${order.service_type.replace('_', ' ')} order with ${itemCount} item(s)`;
+  }
+  return details?.description || `${order.service_type.replace('_', ' ')} request`;
+};
+
 export const useQRRealtime = () => {
   const { user } = useAuth();
   const [orders, setOrders] = useState<QROrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const createServiceAlert = useCreateServiceAlert();
 
   // Fetch initial data
   useEffect(() => {
@@ -79,6 +114,20 @@ export const useQRRealtime = () => {
           // Show notification for new requests
           toast.success(`New ${newOrder.service_type.replace('_', ' ')} request received`, {
             description: `Room ${newOrder.room_id || 'Unknown'} - Priority ${newOrder.priority}`,
+          });
+
+          // Trigger staff alert notification
+          const department = getServiceDepartment(newOrder.service_type);
+          const priority = getPriorityLevel(newOrder.priority);
+          
+          createServiceAlert.mutate({
+            sourceId: newOrder.id,
+            sourceType: 'qr_order',
+            title: `New ${newOrder.service_type.replace('_', ' ')} Request`,
+            description: getServiceDescription(newOrder),
+            roomNumber: newOrder.room_id,
+            priority: priority,
+            department: department
           });
         }
       )

@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useFontManager } from "@/hooks/useFontManager";
+import { SecurityDebugPanel } from "@/components/debug/SecurityDebugPanel";
 import Index from "./pages/Index";
 import { AuthPage } from "./pages/AuthPage";
 import SignUp from "./pages/SignUp";
@@ -297,7 +298,8 @@ const App = () => (
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </BrowserRouter>
+        <SecurityDebugPanel />
+        </BrowserRouter>
       </MultiTenantAuthProvider>
     </TooltipProvider>
   </QueryClientProvider>

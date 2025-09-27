@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
+import { useSecurityValidation } from '@/hooks/useSecurityValidation';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Lock, Building2 } from 'lucide-react';
@@ -19,6 +20,11 @@ export default function TenantAwareLayout({ children, requiredRole, allowedRoles
     trialStatus,
     logout 
   } = useAuth();
+
+  // Add security validation hook
+  const securityValidation = useSecurityValidation();
+
+  console.log('[SECURITY DEBUG] TenantAwareLayout security validation:', securityValidation);
 
   // Show loading state
   if (isLoading) {
@@ -92,9 +98,18 @@ export default function TenantAwareLayout({ children, requiredRole, allowedRoles
     );
   }
 
-  // Show access denied
+  // Show access denied with enhanced security logging
   const hasRequiredAccess = requiredRole ? hasAccess(requiredRole) : true;
   const hasAllowedAccess = allowedRoles ? allowedRoles.some(role => hasAccess(role)) : true;
+  
+  console.log('[SECURITY DEBUG] TenantAwareLayout access check:', {
+    user: user ? { id: user.id, email: user.email, role: user.role } : null,
+    requiredRole,
+    allowedRoles,
+    hasRequiredAccess,
+    hasAllowedAccess,
+    currentPath: window.location.pathname
+  });
   
   if ((requiredRole || allowedRoles) && !hasRequiredAccess && !hasAllowedAccess) {
     return (

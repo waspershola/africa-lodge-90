@@ -344,7 +344,23 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
 
   // Check if user has required role access
   const hasAccess = (requiredRole: string): boolean => {
-    if (!user) return false;
+    // SECURITY DEBUG: Log access attempt details
+    console.log('[SECURITY DEBUG] hasAccess called:', {
+      user: user ? {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        tenant_id: user.tenant_id
+      } : null,
+      requiredRole,
+      currentPath: window.location.pathname,
+      timestamp: new Date().toISOString()
+    });
+
+    if (!user) {
+      console.log('[SECURITY DEBUG] Access denied: No user');
+      return false;
+    }
 
     // Handle both new standardized role names and legacy names
     const normalizeRole = (role: string) => {
@@ -359,6 +375,13 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
 
     const normalizedUserRole = normalizeRole(user.role);
     const normalizedRequiredRole = normalizeRole(requiredRole);
+
+    console.log('[SECURITY DEBUG] Role normalization:', {
+      originalUserRole: user.role,
+      normalizedUserRole,
+      originalRequiredRole: requiredRole,
+      normalizedRequiredRole
+    });
 
     const roleHierarchy = {
       'SUPER_ADMIN': ['SUPER_ADMIN', 'PLATFORM_ADMIN', 'SUPPORT_ADMIN', 'SUPPORT_STAFF'],
@@ -375,7 +398,52 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
     };
 
     const userRoles = roleHierarchy[normalizedUserRole] || [normalizedUserRole];
-    return userRoles.includes(normalizedRequiredRole);
+    const hasPermission = userRoles.includes(normalizedRequiredRole);
+
+    console.log('[SECURITY DEBUG] Access check result:', {
+      userRoles,
+      requiredRole: normalizedRequiredRole,
+      hasPermission,
+      isOwnerRequestingSuperAdmin: normalizedUserRole === 'OWNER' && normalizedRequiredRole === 'SUPER_ADMIN'
+    });
+
+    // CRITICAL SECURITY: Explicitly block OWNER from SUPER_ADMIN access
+    if (normalizedUserRole === 'OWNER' && normalizedRequiredRole === 'SUPER_ADMIN') {
+      console.error('[SECURITY VIOLATION] OWNER attempting to access SUPER_ADMIN route!', {
+        userEmail: user.email,
+        userId: user.id,
+        currentPath: window.location.pathname,
+        timestamp: new Date().toISOString(),
+        sessionData: session ? {
+          accessToken: session.access_token?.substring(0, 20) + '...',
+          expiresAt: session.expires_at
+        } : null
+      });
+      
+      // Log security violation to audit system if available
+      try {
+        supabase.from('audit_log').insert({
+          action: 'UNAUTHORIZED_ACCESS_ATTEMPT',
+          resource_type: 'ROUTE',
+          description: `OWNER ${user.email} attempted to access SUPER_ADMIN route: ${window.location.pathname}`,
+          actor_id: user.id,
+          actor_email: user.email,
+          actor_role: user.role,
+          tenant_id: user.tenant_id,
+          metadata: {
+            attempted_route: window.location.pathname,
+            required_role: normalizedRequiredRole,
+            actual_role: normalizedUserRole
+          }
+        });
+      } catch (auditError) {
+        console.error('[SECURITY] Failed to log security violation:', auditError);
+      }
+      
+      return false;
+    }
+
+    return hasPermission;
   };
 
   // Check if user has specific permission (for backward compatibility)

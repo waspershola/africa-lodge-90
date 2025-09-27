@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit, Eye, AlertTriangle } from "lucide-react";
+import { Plus, Edit, Eye, AlertTriangle, Send } from "lucide-react";
 import { toast } from "sonner";
 import { SMSTemplateForm } from "@/components/ui/sms-template-form";
 import { extractPlaceholders, validateSMSTemplate } from "@/lib/sms-validation";
@@ -31,6 +31,7 @@ interface SMSTemplate {
 export function GlobalTemplates() {
   const [templates, setTemplates] = useState<SMSTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [bulkSeeding, setBulkSeeding] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<SMSTemplate | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState<SMSTemplate | null>(null);
@@ -89,6 +90,27 @@ export function GlobalTemplates() {
       setTemplates([]); // Set empty array on error
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleBulkSeedTenants = async () => {
+    try {
+      setBulkSeeding(true);
+      
+      const { data, error } = await supabase.rpc('bulk_seed_existing_tenants');
+      
+      if (error) throw error;
+      
+      const totalSeeded = data.reduce((sum: number, result: any) => sum + result.seeded_count, 0);
+      const tenantCount = data.length;
+      
+      toast.success(`Seeded ${totalSeeded} templates across ${tenantCount} active tenants`);
+      
+    } catch (error) {
+      console.error('Error bulk seeding tenants:', error);
+      toast.error("Failed to seed templates to tenants");
+    } finally {
+      setBulkSeeding(false);
     }
   };
 
@@ -209,13 +231,22 @@ export function GlobalTemplates() {
             Manage global SMS templates that hotels can customize
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setEditingTemplate(null)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Template
-            </Button>
-          </DialogTrigger>
+        <div className="flex space-x-2">
+          <Button 
+            onClick={handleBulkSeedTenants}
+            disabled={bulkSeeding}
+            variant="outline"
+          >
+            <Send className={`mr-2 h-4 w-4 ${bulkSeeding ? 'animate-pulse' : ''}`} />
+            {bulkSeeding ? 'Seeding All Tenants...' : 'Seed All Tenants'}
+          </Button>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => setEditingTemplate(null)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Template
+              </Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>
@@ -230,8 +261,9 @@ export function GlobalTemplates() {
               onSave={handleSaveTemplate}
               onCancel={() => setIsDialogOpen(false)}
             />
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Templates Table */}

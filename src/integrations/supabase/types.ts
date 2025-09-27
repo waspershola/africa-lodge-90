@@ -5210,6 +5210,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      bulk_seed_existing_tenants: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          seeded_count: number
+          tenant_id: string
+          tenant_name: string
+        }[]
+      }
       can_access_tenant: {
         Args: { tenant_uuid: string }
         Returns: boolean
@@ -5638,6 +5646,10 @@ export type Database = {
       strict_tenant_access: {
         Args: { target_tenant_id: string }
         Returns: boolean
+      }
+      sync_global_template_to_tenants: {
+        Args: { p_global_template_id: string }
+        Returns: number
       }
       update_room_type_counts: {
         Args: { p_room_type_id: string; p_tenant_id: string }

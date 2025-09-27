@@ -5,7 +5,16 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 
 export function ImpersonationBanner() {
-  const { isImpersonating, impersonationData, stopImpersonation } = useAuth();
+  // Safely access auth context
+  let auth;
+  try {
+    auth = useAuth();
+  } catch (error) {
+    // Not in auth context, return null
+    return null;
+  }
+
+  const { isImpersonating, impersonationData, stopImpersonation } = auth;
 
   if (!isImpersonating || !impersonationData) {
     return null;

@@ -17,7 +17,17 @@ export function useSecurityValidation() {
     userDbRecord: null,
     sessionValid: true
   });
-  const { user, session, logout } = useAuth();
+  
+  // Safely access auth context
+  let auth;
+  try {
+    auth = useAuth();
+  } catch (error) {
+    // Not in auth context, return default validation
+    return validation;
+  }
+  
+  const { user, session, logout } = auth;
 
   useEffect(() => {
     if (!user || !session) return;

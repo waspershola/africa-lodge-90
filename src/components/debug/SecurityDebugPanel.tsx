@@ -9,7 +9,24 @@ import { supabase } from '@/integrations/supabase/client';
 export function SecurityDebugPanel() {
   const [isVisible, setIsVisible] = useState(false);
   const [debugData, setDebugData] = useState<any>(null);
-  const { user, session, tenant } = useAuth();
+  
+  // Safely access auth context
+  let auth;
+  try {
+    auth = useAuth();
+  } catch (error) {
+    // Not in auth context, return null
+    return null;
+  }
+  
+  const { user, session, tenant, hasAccess } = auth || {};
+  
+  // Only show for authenticated super admins or if explicitly enabled
+  const shouldShow = user?.role === 'SUPER_ADMIN' || window.location.search.includes('debug=true');
+  
+  if (!shouldShow) {
+    return null;
+  }
 
   const runSecurityDiagnostics = async () => {
     try {
@@ -51,17 +68,14 @@ export function SecurityDebugPanel() {
         }
       }
 
-      // 3. Test access control functions
       const testRoles = ['SUPER_ADMIN', 'OWNER', 'MANAGER', 'STAFF'];
       const accessTests = {};
-      if (user) {
+      if (user && typeof hasAccess === 'function') {
         testRoles.forEach(role => {
           try {
-            // Access the hasAccess function through the auth context
-            const { hasAccess } = useAuth();
             accessTests[role] = hasAccess(role);
           } catch (err) {
-            accessTests[role] = `Error: ${err.message}`;
+            accessTests[role] = `Error: ${err?.message}`;
           }
         });
       }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Search, ArrowUpDown } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, ArrowUpDown, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -22,57 +23,117 @@ interface PricingPlan {
   max_staff: number;
   features: string[];
   trial_days: number;
+  included_sms_credits: number;
+  sms_rate_per_credit: number;
+  room_capacity_min: number;
+  room_capacity_max: number;
+  included_addons: IncludedAddon[];
   created_at: string;
   updated_at: string;
 }
 
+interface Addon {
+  id: string;
+  name: string;
+  description: string;
+  addon_type: string;
+  price: number;
+  is_recurring: boolean;
+  billing_interval: string;
+  sms_credits_bonus: number;
+  is_active: boolean;
+}
+
+interface IncludedAddon {
+  addon_id: string;
+  addon: Addon;
+  quantity: number;
+  is_included: boolean;
+}
+
 export function PricingConfigManager() {
   const [plans, setPlans] = useState<PricingPlan[]>([]);
+  const [addons, setAddons] = useState<Addon[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingPlan, setEditingPlan] = useState<PricingPlan | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'price' | 'created_at'>('created_at');
 
-  // Fetch plans from Supabase
-  const fetchPlans = async () => {
+  // Fetch plans and addons from Supabase
+  const fetchData = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      // Fetch plans with their included add-ons
+      const { data: plansData, error: plansError } = await supabase
         .from('plans')
-        .select('*')
+        .select(`
+          *,
+          plan_addons (
+            addon_id,
+            quantity,
+            is_included,
+            addons (*)
+          )
+        `)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching plans:', error);
+      if (plansError) {
+        console.error('Error fetching plans:', plansError);
         toast.error('Failed to fetch pricing plans');
         return;
       }
 
-      // Transform the data to ensure features is always a string array
-      const transformedData = data?.map(plan => ({
+      // Fetch available add-ons
+      const { data: addonsData, error: addonsError } = await supabase
+        .from('addons')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+
+      if (addonsError) {
+        console.error('Error fetching add-ons:', addonsError);
+        toast.error('Failed to fetch add-ons');
+        return;
+      }
+
+      setAddons(addonsData || []);
+
+      // Transform plans data
+      const transformedPlans = plansData?.map(plan => ({
         ...plan,
         features: Array.isArray(plan.features) ? 
           plan.features.map(f => typeof f === 'string' ? f : String(f)) : 
           typeof plan.features === 'string' ? [plan.features] : [],
         trial_days: plan.trial_days || 14,
+        included_sms_credits: plan.included_sms_credits || 0,
+        sms_rate_per_credit: plan.sms_rate_per_credit || 0.50,
+        room_capacity_min: plan.room_capacity_min || 1,
+        room_capacity_max: plan.room_capacity_max || plan.max_rooms,
         price_annual: plan.price_annual || undefined,
+        included_addons: plan.plan_addons?.map(pa => ({
+          addon_id: pa.addon_id,
+          addon: pa.addons,
+          quantity: pa.quantity,
+          is_included: pa.is_included
+        })) || [],
         created_at: plan.created_at || new Date().toISOString(),
         updated_at: plan.updated_at || new Date().toISOString()
       })) || [];
 
-      setPlans(transformedData);
+      setPlans(transformedPlans);
     } catch (error) {
-      console.error('Error fetching plans:', error);
-      toast.error('Failed to fetch pricing plans');
+      console.error('Error fetching data:', error);
+      toast.error('Failed to fetch data');
     } finally {
       setLoading(false);
     }
   };
 
-  // Load plans on component mount
+  // Load data on component mount
   useEffect(() => {
-    fetchPlans();
+    fetchData();
   }, []);
 
   if (loading) return <LoadingState />;
@@ -103,6 +164,11 @@ export function PricingConfigManager() {
       max_staff: 5,
       features: [],
       trial_days: 14,
+      included_sms_credits: 0,
+      sms_rate_per_credit: 0.50,
+      room_capacity_min: 1,
+      room_capacity_max: 10,
+      included_addons: [],
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     });
@@ -118,8 +184,11 @@ export function PricingConfigManager() {
     if (!editingPlan) return;
 
     try {
+      let planId = editingPlan.id;
+
       if (isCreating) {
-        const { error } = await supabase
+        // Create the plan first
+        const { data: planData, error: planError } = await supabase
           .from('plans')
           .insert({
             name: editingPlan.name,
@@ -128,13 +197,21 @@ export function PricingConfigManager() {
             max_rooms: editingPlan.max_rooms,
             max_staff: editingPlan.max_staff,
             features: editingPlan.features,
-            trial_days: editingPlan.trial_days
-          });
+            trial_days: editingPlan.trial_days,
+            included_sms_credits: editingPlan.included_sms_credits,
+            sms_rate_per_credit: editingPlan.sms_rate_per_credit,
+            room_capacity_min: editingPlan.room_capacity_min,
+            room_capacity_max: editingPlan.room_capacity_max
+          })
+          .select('id')
+          .single();
 
-        if (error) throw error;
+        if (planError) throw planError;
+        planId = planData.id;
         toast.success('Plan created successfully');
       } else {
-        const { error } = await supabase
+        // Update existing plan
+        const { error: planError } = await supabase
           .from('plans')
           .update({
             name: editingPlan.name,
@@ -144,17 +221,48 @@ export function PricingConfigManager() {
             max_staff: editingPlan.max_staff,
             features: editingPlan.features,
             trial_days: editingPlan.trial_days,
+            included_sms_credits: editingPlan.included_sms_credits,
+            sms_rate_per_credit: editingPlan.sms_rate_per_credit,
+            room_capacity_min: editingPlan.room_capacity_min,
+            room_capacity_max: editingPlan.room_capacity_max,
             updated_at: new Date().toISOString()
           })
-          .eq('id', editingPlan.id);
+          .eq('id', planId);
 
-        if (error) throw error;
+        if (planError) throw planError;
+
+        // Delete existing plan_addons for this plan
+        await supabase
+          .from('plan_addons')
+          .delete()
+          .eq('plan_id', planId);
+
         toast.success('Plan updated successfully');
+      }
+
+      // Insert the included add-ons
+      if (editingPlan.included_addons.length > 0) {
+        const planAddonsToInsert = editingPlan.included_addons
+          .filter(addon => addon.is_included)
+          .map(addon => ({
+            plan_id: planId,
+            addon_id: addon.addon_id,
+            quantity: addon.quantity,
+            is_included: true
+          }));
+
+        if (planAddonsToInsert.length > 0) {
+          const { error: addonsError } = await supabase
+            .from('plan_addons')
+            .insert(planAddonsToInsert);
+
+          if (addonsError) throw addonsError;
+        }
       }
 
       setEditingPlan(null);
       setIsCreating(false);
-      fetchPlans();
+      fetchData();
     } catch (error) {
       console.error('Error saving plan:', error);
       toast.error('Failed to save plan');
@@ -174,7 +282,7 @@ export function PricingConfigManager() {
 
       if (error) throw error;
       toast.success('Plan deleted successfully');
-      fetchPlans();
+      fetchData();
     } catch (error) {
       console.error('Error deleting plan:', error);
       toast.error('Failed to delete plan');
@@ -203,6 +311,47 @@ export function PricingConfigManager() {
       const newFeatures = editingPlan.features.filter((_, i) => i !== index);
       setEditingPlan({ ...editingPlan, features: newFeatures });
     }
+  };
+
+  const handleAddonToggle = (addon: Addon, checked: boolean) => {
+    if (!editingPlan) return;
+
+    const existingAddonIndex = editingPlan.included_addons.findIndex(
+      ia => ia.addon_id === addon.id
+    );
+
+    let newIncludedAddons = [...editingPlan.included_addons];
+
+    if (checked) {
+      if (existingAddonIndex === -1) {
+        newIncludedAddons.push({
+          addon_id: addon.id,
+          addon,
+          quantity: 1,
+          is_included: true
+        });
+      } else {
+        newIncludedAddons[existingAddonIndex].is_included = true;
+      }
+    } else {
+      if (existingAddonIndex !== -1) {
+        newIncludedAddons = newIncludedAddons.filter(ia => ia.addon_id !== addon.id);
+      }
+    }
+
+    setEditingPlan({ ...editingPlan, included_addons: newIncludedAddons });
+  };
+
+  const handleAddonQuantityChange = (addonId: string, quantity: number) => {
+    if (!editingPlan) return;
+
+    const newIncludedAddons = editingPlan.included_addons.map(addon => 
+      addon.addon_id === addonId 
+        ? { ...addon, quantity: Math.max(1, quantity) }
+        : addon
+    );
+
+    setEditingPlan({ ...editingPlan, included_addons: newIncludedAddons });
   };
 
   return (
@@ -281,8 +430,24 @@ export function PricingConfigManager() {
                   </div>
                 </div>
 
+                {plan.included_addons && plan.included_addons.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium mb-2 flex items-center gap-1">
+                      <Package className="h-3 w-3" />
+                      Included Add-ons:
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {plan.included_addons.map((includedAddon, index) => (
+                        <Badge key={index} variant="secondary" className="text-xs">
+                          {includedAddon.addon.name} {includedAddon.quantity > 1 && `(${includedAddon.quantity}x)`}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="text-sm text-muted-foreground">
-                  {plan.trial_days} day trial • Created {new Date(plan.created_at).toLocaleDateString()}
+                  {plan.trial_days} day trial • {plan.included_sms_credits} SMS credits • Created {new Date(plan.created_at).toLocaleDateString()}
                 </div>
 
                 <div className="flex space-x-2">
@@ -389,6 +554,49 @@ export function PricingConfigManager() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="room_capacity_min">Room Capacity Min</Label>
+                  <Input
+                    id="room_capacity_min"
+                    type="number"
+                    value={editingPlan.room_capacity_min}
+                    onChange={(e) => setEditingPlan({ ...editingPlan, room_capacity_min: parseInt(e.target.value) || 1 })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="room_capacity_max">Room Capacity Max</Label>
+                  <Input
+                    id="room_capacity_max"
+                    type="number"
+                    value={editingPlan.room_capacity_max}
+                    onChange={(e) => setEditingPlan({ ...editingPlan, room_capacity_max: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="included_sms_credits">Included SMS Credits</Label>
+                  <Input
+                    id="included_sms_credits"
+                    type="number"
+                    value={editingPlan.included_sms_credits}
+                    onChange={(e) => setEditingPlan({ ...editingPlan, included_sms_credits: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="sms_rate_per_credit">SMS Rate per Credit (₦)</Label>
+                  <Input
+                    id="sms_rate_per_credit"
+                    type="number"
+                    step="0.01"
+                    value={editingPlan.sms_rate_per_credit}
+                    onChange={(e) => setEditingPlan({ ...editingPlan, sms_rate_per_credit: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+
               <div>
                 <Label>Features</Label>
                 <div className="space-y-2">
@@ -412,6 +620,61 @@ export function PricingConfigManager() {
                     <Plus className="mr-2 h-4 w-4" />
                     Add Feature
                   </Button>
+                </div>
+              </div>
+
+              <div>
+                <Label className="flex items-center gap-2">
+                  <Package className="h-4 w-4" />
+                  Included Add-ons
+                </Label>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Select add-ons that will be automatically activated for hotels subscribing to this plan
+                </p>
+                <div className="space-y-3 max-h-60 overflow-y-auto">
+                  {addons.map((addon) => {
+                    const includedAddon = editingPlan.included_addons.find(ia => ia.addon_id === addon.id);
+                    const isSelected = includedAddon?.is_included || false;
+                    
+                    return (
+                      <div key={addon.id} className="flex items-center space-x-3 p-3 border rounded-lg">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={(checked) => handleAddonToggle(addon, checked as boolean)}
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">{addon.name}</p>
+                            <Badge variant="outline" className="text-xs">
+                              {addon.addon_type.replace('_', ' ')}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{addon.description}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-sm font-medium">₦{addon.price.toLocaleString()}</span>
+                            {addon.sms_credits_bonus > 0 && (
+                              <Badge variant="secondary" className="text-xs">
+                                +{addon.sms_credits_bonus} SMS credits
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor={`quantity-${addon.id}`} className="text-sm">Qty:</Label>
+                            <Input
+                              id={`quantity-${addon.id}`}
+                              type="number"
+                              min="1"
+                              value={includedAddon?.quantity || 1}
+                              onChange={(e) => handleAddonQuantityChange(addon.id, parseInt(e.target.value) || 1)}
+                              className="w-20"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 

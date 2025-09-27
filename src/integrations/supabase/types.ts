@@ -1782,6 +1782,48 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_addons: {
+        Row: {
+          addon_id: string
+          created_at: string | null
+          id: string
+          is_included: boolean | null
+          plan_id: string
+          quantity: number | null
+        }
+        Insert: {
+          addon_id: string
+          created_at?: string | null
+          id?: string
+          is_included?: boolean | null
+          plan_id: string
+          quantity?: number | null
+        }
+        Update: {
+          addon_id?: string
+          created_at?: string | null
+          id?: string
+          is_included?: boolean | null
+          plan_id?: string
+          quantity?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_addons_addon_id_fkey"
+            columns: ["addon_id"]
+            isOneToOne: false
+            referencedRelation: "addons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_addons_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plans: {
         Row: {
           created_at: string | null
@@ -1793,6 +1835,8 @@ export type Database = {
           name: string
           price_annual: number | null
           price_monthly: number
+          room_capacity_max: number | null
+          room_capacity_min: number | null
           sms_rate_per_credit: number | null
           trial_days: number | null
           updated_at: string | null
@@ -1807,6 +1851,8 @@ export type Database = {
           name: string
           price_annual?: number | null
           price_monthly: number
+          room_capacity_max?: number | null
+          room_capacity_min?: number | null
           sms_rate_per_credit?: number | null
           trial_days?: number | null
           updated_at?: string | null
@@ -1821,6 +1867,8 @@ export type Database = {
           name?: string
           price_annual?: number | null
           price_monthly?: number
+          room_capacity_max?: number | null
+          room_capacity_min?: number | null
           sms_rate_per_credit?: number | null
           trial_days?: number | null
           updated_at?: string | null

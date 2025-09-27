@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Mail, Loader2, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Mail, Loader2, CheckCircle, ArrowLeft, Home } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { AuthAlert, InlineError } from '@/components/ui/auth-alert';
 import { AuthErrorHandler } from '@/lib/errorHandler';
@@ -15,6 +16,7 @@ interface PasswordResetRequestFormProps {
 }
 
 export function PasswordResetRequestForm({ onBackToLogin }: PasswordResetRequestFormProps) {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -99,12 +101,18 @@ export function PasswordResetRequestForm({ onBackToLogin }: PasswordResetRequest
                 </div>
               </div>
             </div>
-            {onBackToLogin && (
-              <Button onClick={onBackToLogin} variant="outline" className="w-full">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Login
+            <div className="space-y-2">
+              {onBackToLogin && (
+                <Button onClick={onBackToLogin} variant="outline" className="w-full">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Login
+                </Button>
+              )}
+              <Button onClick={() => navigate('/')} variant="ghost" className="w-full">
+                <Home className="mr-2 h-4 w-4" />
+                Back to Home Page
               </Button>
-            )}
+            </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -163,18 +171,30 @@ export function PasswordResetRequestForm({ onBackToLogin }: PasswordResetRequest
               )}
             </Button>
 
-            {onBackToLogin && (
+            <div className="space-y-2">
+              {onBackToLogin && (
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={onBackToLogin}
+                  className="w-full"
+                  disabled={loading}
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Login
+                </Button>
+              )}
               <Button 
                 type="button" 
-                variant="outline" 
-                onClick={onBackToLogin}
+                variant="ghost" 
+                onClick={() => navigate('/')}
                 className="w-full"
                 disabled={loading}
               >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Login
+                <Home className="mr-2 h-4 w-4" />
+                Back to Home Page
               </Button>
-            )}
+            </div>
           </form>
         )}
       </CardContent>

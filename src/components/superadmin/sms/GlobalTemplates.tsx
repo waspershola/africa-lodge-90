@@ -42,24 +42,51 @@ export function GlobalTemplates() {
 
   const fetchTemplates = async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('sms_templates')
-        .select('*')
+        .select(`
+          id,
+          template_name,
+          event_type,
+          message_template,
+          is_active,
+          is_global,
+          allow_tenant_override,
+          variables,
+          created_at,
+          updated_at,
+          estimated_sms_count,
+          character_count_warning
+        `)
         .eq('is_global', true)
         .order('event_type');
 
-      if (error) throw error;
-      setTemplates((data || []).map(template => ({
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      console.log('Fetched global templates:', data);
+      
+      const processedTemplates = (data || []).map(template => ({
         ...template,
         variables: Array.isArray(template.variables) 
           ? (template.variables as string[])
           : typeof template.variables === 'string' 
             ? [template.variables] 
-            : []
-      })));
+            : [],
+        allow_tenant_override: template.allow_tenant_override ?? true,
+        estimated_sms_count: template.estimated_sms_count ?? 1,
+        character_count_warning: template.character_count_warning ?? false
+      }));
+      
+      console.log('Processed templates:', processedTemplates);
+      setTemplates(processedTemplates);
     } catch (error) {
       console.error('Error fetching templates:', error);
       toast.error("Failed to load SMS templates");
+      setTemplates([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -163,7 +190,14 @@ export function GlobalTemplates() {
   };
 
   if (loading) {
-    return <div className="flex justify-center p-8">Loading templates...</div>;
+    return (
+      <div className="flex justify-center items-center p-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Loading SMS templates...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -209,21 +243,33 @@ export function GlobalTemplates() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Template Name</TableHead>
-                <TableHead>Event Type</TableHead>
-                <TableHead>Message Preview</TableHead>
-                <TableHead>SMS Cost</TableHead>
-                <TableHead>Editable by Hotels</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Last Updated</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {templates.map((template) => (
+          {templates.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground mb-4">No SMS templates found</p>
+              <Button 
+                onClick={() => setIsDialogOpen(true)}
+                variant="outline"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create First Template
+              </Button>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Template Name</TableHead>
+                  <TableHead>Event Type</TableHead>
+                  <TableHead>Message Preview</TableHead>
+                  <TableHead>SMS Cost</TableHead>
+                  <TableHead>Editable by Hotels</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Last Updated</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {templates.map((template) => (
                 <TableRow key={template.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
@@ -287,9 +333,10 @@ export function GlobalTemplates() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 

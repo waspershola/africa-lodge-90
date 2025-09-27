@@ -7,11 +7,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Clock, Monitor, User, DollarSign, FileText } from "lucide-react";
+import { Clock, Monitor, User, DollarSign, FileText, WifiOff, Wifi, RefreshCw, Shield } from "lucide-react";
 import { useStartShift, useEndShift, useActiveShiftSessions, useDevices } from "@/hooks/useShiftSessions";
 import { useShiftPDFReport } from "@/hooks/useShiftPDFReport";
+import { useShiftNotifications } from "@/hooks/useShiftNotifications";
+import { useOfflineShiftSupport } from "@/hooks/useOfflineShiftSupport";
+import { ShiftSecurityValidator } from "@/components/shift/ShiftSecurityValidator";
 import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
+import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 
 export default function ShiftTerminal() {
@@ -28,11 +33,20 @@ export default function ShiftTerminal() {
   const [selectedShiftToEnd, setSelectedShiftToEnd] = useState<string | null>(null);
 
   const { user } = useAuth();
+  const { toast } = useToast();
   const { data: activeShifts, isLoading: shiftsLoading } = useActiveShiftSessions();
   const { data: devices } = useDevices();
   const startShiftMutation = useStartShift();
   const endShiftMutation = useEndShift();
   const { generateShiftReport } = useShiftPDFReport();
+  const { notifyShiftStart, notifyShiftEnd } = useShiftNotifications();
+  const { 
+    isOnline, 
+    pendingActions, 
+    hasPendingActions, 
+    queueOfflineAction, 
+    forcSync 
+  } = useOfflineShiftSupport();
 
   const handleStartShift = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,19 +109,58 @@ export default function ShiftTerminal() {
                 Start and end staff shifts from this shared terminal
               </p>
             </div>
-            {selectedDevice && (
-              <Badge variant="outline" className="flex items-center gap-2">
-                <Monitor className="h-4 w-4" />
-                Device: {selectedDevice}
-              </Badge>
-            )}
+            <div className="flex items-center gap-3">
+              {/* Connection Status */}
+              {isOnline ? (
+                <div className="flex items-center gap-1 text-green-600">
+                  <Wifi className="h-4 w-4" />
+                  <span className="text-sm">Online</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1 text-amber-600">
+                  <WifiOff className="h-4 w-4" />
+                  <span className="text-sm">Offline</span>
+                </div>
+              )}
+              
+              {/* Sync Status */}
+              {hasPendingActions && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={forcSync}
+                  disabled={!isOnline}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Sync ({pendingActions.length})
+                </Button>
+              )}
+              
+              {selectedDevice && (
+                <Badge variant="outline" className="flex items-center gap-2">
+                  <Monitor className="h-4 w-4" />
+                  Device: {selectedDevice}
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
 
+        {/* Offline Warning */}
+        {!isOnline && (
+          <Alert className="mb-6">
+            <WifiOff className="h-4 w-4" />
+            <AlertDescription>
+              You're currently offline. Shift actions will be queued and synced when connection is restored.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Tabs defaultValue="start" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="start">Start Shift</TabsTrigger>
             <TabsTrigger value="active">Active Shifts</TabsTrigger>
+            <TabsTrigger value="security">Security Check</TabsTrigger>
           </TabsList>
 
           {/* Start Shift Tab */}
@@ -299,6 +352,11 @@ export default function ShiftTerminal() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Security Check Tab */}
+          <TabsContent value="security" className="space-y-6">
+            <ShiftSecurityValidator />
           </TabsContent>
         </Tabs>
       </div>

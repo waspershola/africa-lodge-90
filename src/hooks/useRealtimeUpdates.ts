@@ -66,11 +66,50 @@ export function useRealtimeUpdates() {
       )
       .subscribe();
 
+    // Subscribe to shift session changes
+    const shiftsChannel = supabase
+      .channel('dashboard-shift-sessions')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'shift_sessions',
+          filter: `tenant_id=eq.${tenant.tenant_id}`
+        },
+        () => {
+          console.log('Shift session changed, invalidating shift data');
+          queryClient.invalidateQueries({ queryKey: ['shift-sessions'] });
+          queryClient.invalidateQueries({ queryKey: ['active-shifts'] });
+        }
+      )
+      .subscribe();
+
+    // Subscribe to QR request changes
+    const qrRequestsChannel = supabase
+      .channel('dashboard-qr-requests')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'qr_requests',
+          filter: `tenant_id=eq.${tenant.tenant_id}`
+        },
+        () => {
+          console.log('QR request changed, invalidating QR data');
+          queryClient.invalidateQueries({ queryKey: ['qr-requests'] });
+        }
+      )
+      .subscribe();
+
     return () => {
       console.log('Cleaning up realtime subscriptions');
       supabase.removeChannel(reservationsChannel);
       supabase.removeChannel(roomsChannel);
       supabase.removeChannel(paymentsChannel);
+      supabase.removeChannel(shiftsChannel);
+      supabase.removeChannel(qrRequestsChannel);
     };
   }, [user, tenant, queryClient]);
 }

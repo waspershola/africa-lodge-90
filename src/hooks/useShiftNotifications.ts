@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { useCreateServiceAlert } from './useNotificationScheduler';
 import { useAuditLog } from './useAuditLog';
+import { useAudioNotifications } from './useAudioNotifications';
 
 interface ShiftNotificationData {
   shiftId: string;
@@ -17,6 +18,7 @@ interface ShiftNotificationData {
 export const useShiftNotifications = () => {
   const createServiceAlert = useCreateServiceAlert();
   const { logEvent } = useAuditLog();
+  const { notifyShiftStart: audioShiftStart, notifyShiftEnd: audioShiftEnd, notifyHandoverRequired: audioHandover } = useAudioNotifications();
 
   const notifyShiftStart = useMutation({
     mutationFn: async (data: ShiftNotificationData) => {
@@ -29,6 +31,9 @@ export const useShiftNotifications = () => {
         priority: 'medium',
         department: 'FRONT_DESK'
       });
+
+      // Play audio notification
+      audioShiftStart(data.staffName, data.role);
 
       // Log audit event
       await logEvent({
@@ -59,6 +64,9 @@ export const useShiftNotifications = () => {
         priority: data.unresolvedItems?.length ? 'high' : 'medium',
         department: 'MANAGEMENT'
       });
+
+      // Play audio notification
+      audioShiftEnd(data.staffName, data.role, data.unresolvedItems?.length);
 
       // Log audit event
       await logEvent({
@@ -91,6 +99,9 @@ export const useShiftNotifications = () => {
         priority: 'high',
         department: 'MANAGEMENT'
       });
+
+      // Play audio notification
+      audioHandover(data.unresolvedCount);
     }
   });
 

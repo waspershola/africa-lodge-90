@@ -73,9 +73,25 @@ export const HandoverPanel = () => {
           </Button>
           <Button
             variant="outline"
-            onClick={() => generateDailyShiftsReport.mutate(
-              allShifts?.filter(s => s.status === 'completed').slice(0, 10) || []
-            )}
+            onClick={() => {
+              const completedShifts = allShifts?.filter(s => s.status === 'completed').slice(0, 10) || [];
+              const summaryData = completedShifts.map(shift => ({
+                shift_id: shift.id,
+                staff_name: shift.staff_id,
+                role: shift.role || 'Staff',
+                start_time: shift.start_time,
+                end_time: shift.end_time || new Date().toISOString(),
+                duration_hours: shift.end_time ? 
+                  (new Date(shift.end_time).getTime() - new Date(shift.start_time).getTime()) / (1000 * 60 * 60) : 0,
+                cash_total: shift.cash_total || 0,
+                pos_total: shift.pos_total || 0,
+                total_collected: (shift.cash_total || 0) + (shift.pos_total || 0),
+                handover_notes: shift.handover_notes,
+                unresolved_items: shift.unresolved_items || [],
+                device_slug: shift.device_id,
+              }));
+              generateDailyShiftsReport.mutate(summaryData);
+            }}
           >
             <FileText className="h-4 w-4 mr-2" />
             Daily Report
@@ -357,9 +373,25 @@ export const HandoverPanel = () => {
                 <Button 
                   variant="outline" 
                   className="w-full justify-start"
-                  onClick={() => generateDailyShiftsReport.mutate(
-                    allShifts?.filter(s => s.status === 'completed').slice(0, 10) || []
-                  )}
+                  onClick={() => {
+                    const completedShifts = allShifts?.filter(s => s.status === 'completed').slice(0, 10) || [];
+                    const summaryData = completedShifts.map(shift => ({
+                      shift_id: shift.id,
+                      staff_name: shift.staff_id,
+                      role: shift.role || 'Staff',
+                      start_time: shift.start_time,
+                      end_time: shift.end_time || new Date().toISOString(),
+                      duration_hours: shift.end_time ? 
+                        (new Date(shift.end_time).getTime() - new Date(shift.start_time).getTime()) / (1000 * 60 * 60) : 0,
+                      cash_total: shift.cash_total || 0,
+                      pos_total: shift.pos_total || 0,
+                      total_collected: (shift.cash_total || 0) + (shift.pos_total || 0),
+                      handover_notes: shift.handover_notes,
+                      unresolved_items: shift.unresolved_items || [],
+                      device_slug: shift.device_id,
+                    }));
+                    generateDailyShiftsReport.mutate(summaryData);
+                  }}
                   disabled={generateDailyShiftsReport.isPending}
                 >
                   <FileText className="h-4 w-4 mr-2" />

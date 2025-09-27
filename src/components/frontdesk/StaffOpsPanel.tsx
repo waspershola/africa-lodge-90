@@ -17,6 +17,9 @@ import {
   MapPin,
   Timer
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
 
 interface StaffMember {
   id: string;
@@ -130,9 +133,67 @@ const mockTasks: Task[] = [
 ];
 
 export const StaffOpsPanel = () => {
-  const [staff] = useState<StaffMember[]>(mockStaff);
-  const [tasks] = useState<Task[]>(mockTasks);
+  const { user, tenant } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
+
+  // Fetch actual staff data
+  const { data: staff = [], isLoading: staffLoading } = useQuery({
+    queryKey: ['staff', tenant?.tenant_id],
+    queryFn: async () => {
+      if (!tenant?.tenant_id) return [];
+      
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('tenant_id', tenant.tenant_id)
+        .eq('is_active', true);
+      
+      if (error) throw error;
+      
+      return data.map(u => ({
+        id: u.id,
+        name: u.name || 'Unknown',
+        role: u.role?.toLowerCase().replace('_', '-') as StaffMember['role'] || 'front-desk',
+        status: 'on-duty' as const,
+        completedTasks: 0,
+        shiftStart: '08:00',
+        currentTask: undefined,
+        currentRoom: undefined
+      }));
+    },
+    enabled: !!tenant?.tenant_id
+  });
+
+  // Fetch housekeeping tasks as staff tasks
+  const { data: tasks = [], isLoading: tasksLoading } = useQuery({
+    queryKey: ['housekeeping-tasks', tenant?.tenant_id],
+    queryFn: async () => {
+      if (!tenant?.tenant_id) return [];
+      
+      const { data, error } = await supabase
+        .from('housekeeping_tasks')
+        .select('*')
+        .eq('tenant_id', tenant.tenant_id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      
+      if (error) throw error;
+      
+      return data.map(task => ({
+        id: task.id,
+        type: task.task_type as Task['type'] || 'cleaning',
+        room: task.room_id ? `Room ${task.room_id}` : 'General',
+        description: task.description || task.title,
+        assignedTo: task.assigned_to || '',
+        status: task.status as Task['status'],
+        priority: task.priority as Task['priority'] || 'medium',
+        estimatedTime: task.estimated_minutes || 30,
+        startedAt: task.started_at ? new Date(task.started_at) : undefined,
+        completedAt: task.completed_at ? new Date(task.completed_at) : undefined
+      }));
+    },
+    enabled: !!tenant?.tenant_id
+  });
 
   const getStaffName = (staffId: string) => {
     return staff.find(s => s.id === staffId)?.name || 'Unassigned';

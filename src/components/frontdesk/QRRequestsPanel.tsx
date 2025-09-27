@@ -22,6 +22,7 @@ import {
   X
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useQRRealtime } from "@/hooks/useQRRealtime";
 
 interface QRRequest {
   id: string;
@@ -123,10 +124,32 @@ const requestTypes = {
 };
 
 export const QRRequestsPanel = () => {
-  const [requests, setRequests] = useState<QRRequest[]>(mockQRRequests);
+  const { orders: qrOrders, loading, updateOrderStatus, assignOrder } = useQRRealtime();
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterType, setFilterType] = useState("all");
   const { toast } = useToast();
+
+  // Convert QR orders to request format
+  const requests: QRRequest[] = qrOrders.map(order => ({
+    id: order.id,
+    room: order.room_id ? `${order.room_id}` : 'General',
+    guestName: 'Guest',
+    type: order.service_type === 'restaurant' ? 'service' : 
+          order.service_type === 'housekeeping' ? 'housekeeping' :
+          order.service_type === 'maintenance' ? 'maintenance' : 'amenity',
+    category: order.service_type,
+    description: order.request_details || 'Service request',
+    priority: order.priority === 1 ? 'low' : 
+              order.priority === 2 ? 'medium' : 
+              order.priority === 3 ? 'high' : 'urgent',
+    status: order.status as QRRequest['status'],
+    requestedAt: new Date(order.created_at),
+    assignedTo: order.assigned_to || undefined,
+    completedAt: order.completed_at ? new Date(order.completed_at) : undefined,
+    estimatedTime: 30, // Default estimate
+    specialInstructions: order.notes || undefined,
+    qrToken: order.qr_code_id || 'QR_TOKEN'
+  }));
 
   const getRequestIcon = (type: QRRequest['type']) => {
     const IconComponent = requestTypes[type].icon;
@@ -158,43 +181,34 @@ export const QRRequestsPanel = () => {
     }
   };
 
-  const handleAssignRequest = (requestId: string) => {
-    setRequests(prev => prev.map(req => 
-      req.id === requestId 
-        ? { ...req, status: 'assigned' as const, assignedTo: 'Front Desk Staff' }
-        : req
-    ));
-    
-    toast({
-      title: "Request Assigned",
-      description: "Request has been assigned to staff member"
-    });
+  const handleAssignRequest = async (requestId: string) => {
+    const success = await assignOrder(requestId, 'Front Desk Staff');
+    if (success) {
+      toast({
+        title: "Request Assigned",
+        description: "Request has been assigned to staff member"
+      });
+    }
   };
 
-  const handleCompleteRequest = (requestId: string) => {
-    setRequests(prev => prev.map(req => 
-      req.id === requestId 
-        ? { ...req, status: 'completed' as const, completedAt: new Date() }
-        : req
-    ));
-    
-    toast({
-      title: "Request Completed",
-      description: "Request has been marked as completed"
-    });
+  const handleCompleteRequest = async (requestId: string) => {
+    const success = await updateOrderStatus(requestId, 'completed');
+    if (success) {
+      toast({
+        title: "Request Completed",
+        description: "Request has been marked as completed"
+      });
+    }
   };
 
-  const handleCancelRequest = (requestId: string) => {
-    setRequests(prev => prev.map(req => 
-      req.id === requestId 
-        ? { ...req, status: 'cancelled' as const }
-        : req
-    ));
-    
-    toast({
-      title: "Request Cancelled",
-      description: "Request has been cancelled"
-    });
+  const handleCancelRequest = async (requestId: string) => {
+    const success = await updateOrderStatus(requestId, 'cancelled');
+    if (success) {
+      toast({
+        title: "Request Cancelled",
+        description: "Request has been cancelled"
+      });
+    }
   };
 
   const getTimeAgo = (date: Date) => {

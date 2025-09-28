@@ -7,6 +7,7 @@ import { RoomActionDrawer } from "./RoomActionDrawer";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRooms } from "@/hooks/useRooms";
 import { useAuditLog } from "@/hooks/useAuditLog";
+import { useRoomStatusManager } from "@/hooks/useRoomStatusManager";
 
 export interface Room {
   id: string;

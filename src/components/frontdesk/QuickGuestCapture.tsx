@@ -53,6 +53,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { useGuestSearch, useRecentGuests } from "@/hooks/useGuestSearch";
+import { useGuestContactManager } from "@/hooks/useGuestContactManager";
 import { RateSelectionComponent } from "./RateSelectionComponent";
 import type { Room } from "./RoomGrid";
 
@@ -126,6 +127,7 @@ export const QuickGuestCapture = ({
   const { toast } = useToast();
   const { enabledMethods } = usePaymentMethods();
   const { data: recentGuests } = useRecentGuests();
+  const { saveGuestContactAsync, searchGuestContacts, quickContactLookup } = useGuestContactManager();
   const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
   const [showOptionalFields, setShowOptionalFields] = useState(false);
@@ -340,51 +342,46 @@ export const QuickGuestCapture = ({
 
       let guestId = selectedGuest?.id;
       
-      // Create or update guest if needed
+      // Enhanced guest contact management with auto-save
       if (guestMode === 'new' || !guestId) {
-        const guestData = {
-          first_name: formData.guestName.split(' ')[0],
-          last_name: formData.guestName.split(' ').slice(1).join(' ') || '',
-          phone: formData.phone,
-          email: formData.email,
-          nationality: formData.nationality || null,
-          id_type: formData.idType,
-          id_number: formData.idNumber,
-          tenant_id: user.user_metadata?.tenant_id
-        };
+        try {
+          // Determine the correct source type
+          let sourceType: 'create_user' | 'check_in' | 'assign_room' | 'walk_in' | 'transfer' | 'reservation' | 'manual';
+          if (action === 'walkin') {
+            sourceType = 'walk_in';
+          } else if (action === 'assign') {
+            sourceType = 'assign_room';
+          } else if (action === 'check-in') {
+            sourceType = 'check_in';
+          } else {
+            sourceType = 'manual';
+          }
 
-        // First try to find existing guest
-        const { data: existingGuest } = await supabase
-          .from('guests')
-          .select('id')
-          .eq('tenant_id', user.user_metadata?.tenant_id)
-          .eq('email', formData.email)
-          .single();
+          const guestContactData = {
+            firstName: formData.guestName.split(' ')[0],
+            lastName: formData.guestName.split(' ').slice(1).join(' ') || '',
+            email: formData.email.trim() || undefined,
+            phone: formData.phone.trim() || undefined,
+            nationality: formData.nationality || undefined,
+            idType: formData.idType || undefined,
+            idNumber: formData.idNumber || undefined,
+            vipStatus: 'regular' as const,
+            source: sourceType
+          };
 
-        let guest;
-        if (existingGuest) {
-          // Update existing guest
-          const { data: updatedGuest, error: updateError } = await supabase
-            .from('guests')
-            .update(guestData)
-            .eq('id', existingGuest.id)
-            .select()
-            .single();
-          if (updateError) throw updateError;
-          guest = updatedGuest;
-        } else {
-          // Create new guest
-          const { data: newGuest, error: createError } = await supabase
-            .from('guests')
-            .insert(guestData)
-            .select()
-            .single();
-          if (createError) throw createError;
-          guest = newGuest;
+          const result = await saveGuestContactAsync(guestContactData);
+          guestId = result.guest.id;
+          
+          // Update form with saved guest data for consistency
+          if (result.isNew) {
+            console.log(`New guest contact created: ${result.guest.first_name} ${result.guest.last_name}`);
+          } else {
+            console.log(`Existing guest contact updated: ${result.guest.first_name} ${result.guest.last_name}`);
+          }
+        } catch (error) {
+          console.error('Error saving guest contact:', error);
+          throw new Error('Failed to save guest contact information');
         }
-
-        if (!guest) throw new Error('Failed to create or update guest');
-        guestId = guest.id;
       }
 
       let updatedRoom = { ...room };

@@ -40,66 +40,66 @@ export const useCheckout = (roomId?: string) => {
         throw new Error('No active reservation found for this room');
       }
 
-      // Use the safe folio handler to get or handle multiple folios
+      // Get or create folio for this reservation
       const { data: folioId, error: folioIdError } = await supabase
-        .rpc('handle_multiple_folios', {
-          p_reservation_id: reservation.id
+        .rpc('get_or_create_folio', {
+          p_reservation_id: reservation.id,
+          p_tenant_id: reservation.tenant_id
         });
 
       if (folioIdError) throw folioIdError;
 
-      let folio = null;
-      if (folioId) {
-        const { data: folioData, error: folioError } = await supabase
-          .from('folios')
-          .select('*')
-          .eq('id', folioId)
-          .single();
-
-        if (folioError) throw folioError;
-        folio = folioData;
+      if (!folioId) {
+        throw new Error('Failed to get or create folio for reservation');
       }
+
+      // Get the folio with its charges and payments
+      const { data: folio, error: folioError } = await supabase
+        .from('folios')
+        .select('*')
+        .eq('id', folioId)
+        .single();
+
+      if (folioError) throw folioError;
 
       let serviceCharges: ServiceCharge[] = [];
       let paymentRecords: PaymentRecord[] = [];
 
-      if (folio) {
-        // Get folio charges
-        const { data: charges, error: chargesError } = await supabase
-          .from('folio_charges')
-          .select('*')
-          .eq('folio_id', folio.id);
+      // Get folio charges
+      const { data: charges, error: chargesError } = await supabase
+        .from('folio_charges')
+        .select('*')
+        .eq('folio_id', folio.id);
 
-        if (chargesError) throw chargesError;
+      if (chargesError) throw chargesError;
 
-        serviceCharges = charges.map(charge => ({
-          id: charge.id,
-          service_type: charge.charge_type as ServiceCharge['service_type'],
-          description: charge.description,
-          amount: Number(charge.amount),
-          status: 'pending' as const,
-          created_at: charge.created_at || '',
-          staff_name: charge.posted_by || undefined
-        }));
+      serviceCharges = charges?.map(charge => ({
+        id: charge.id,
+        service_type: charge.charge_type as ServiceCharge['service_type'],
+        description: charge.description,
+        amount: Number(charge.amount),
+        status: 'pending' as const,
+        created_at: charge.created_at || '',
+        staff_name: charge.posted_by || undefined
+      })) || [];
 
-        // Get payments
-        const { data: payments, error: paymentsError } = await supabase
-          .from('payments')
-          .select('*')
-          .eq('folio_id', folio.id);
+      // Get payments
+      const { data: payments, error: paymentsError } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('folio_id', folio.id);
 
-        if (paymentsError) throw paymentsError;
+      if (paymentsError) throw paymentsError;
 
-        paymentRecords = payments.map(payment => ({
-          id: payment.id,
-          bill_id: folio.id,
-          amount: Number(payment.amount),
-          payment_method: payment.payment_method,
-          status: payment.status as PaymentRecord['status'],
-          processed_by: payment.processed_by || '',
-          processed_at: payment.created_at || ''
-        }));
-      }
+      paymentRecords = payments?.map(payment => ({
+        id: payment.id,
+        bill_id: folio.id,
+        amount: Number(payment.amount),
+        payment_method: payment.payment_method,
+        status: payment.status as PaymentRecord['status'],
+        processed_by: payment.processed_by || '',
+        processed_at: payment.created_at || ''
+      })) || [];
 
       const subtotal = serviceCharges.reduce((sum, charge) => sum + charge.amount, 0);
       const taxAmount = subtotal * 0.075; // 7.5% VAT
@@ -156,13 +156,14 @@ export const useCheckout = (roomId?: string) => {
 
       if (!reservation) throw new Error('No active reservation found');
 
-      // Use safe folio handler
+      // Get or create folio for the reservation
       const { data: folioId, error: folioError } = await supabase
-        .rpc('handle_multiple_folios', {
-          p_reservation_id: reservation.id
+        .rpc('get_or_create_folio', {
+          p_reservation_id: reservation.id,
+          p_tenant_id: user.tenant_id
         });
 
-      if (folioError || !folioId) throw new Error('No active folio found');
+      if (folioError || !folioId) throw new Error('Failed to get or create folio');
 
       // Create payment record
       const { data: payment, error: paymentError } = await supabase
@@ -266,14 +267,15 @@ export const useCheckout = (roomId?: string) => {
         throw new Error('No active reservation found');
       }
 
-      // Use safe folio handler
+      // Get or create folio for the reservation
       const { data: folioId, error: folioIdError } = await supabase
-        .rpc('handle_multiple_folios', {
-          p_reservation_id: reservation.id
+        .rpc('get_or_create_folio', {
+          p_reservation_id: reservation.id,
+          p_tenant_id: user.tenant_id  
         });
 
       if (folioIdError || !folioId) {
-        throw new Error('No active folio found');
+        throw new Error('Failed to get or create folio');
       }
 
       // Execute all updates in sequence with proper error handling

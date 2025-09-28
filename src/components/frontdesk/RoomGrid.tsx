@@ -83,6 +83,7 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
           case 'maintenance':
             mappedStatus = 'maintenance';
             break;
+          case 'out_of_service':
           case 'out_of_order':
             mappedStatus = 'oos';
             break;

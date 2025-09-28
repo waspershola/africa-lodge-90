@@ -418,16 +418,26 @@ export const QuickGuestCapture = ({
 
         if (reservationError) throw reservationError;
 
-        // Update room status to reserved
+        // Update room status to reserved with validation
+        const validStatuses = ['available', 'occupied', 'reserved', 'out_of_service', 'oos', 'overstay', 'dirty', 'clean', 'maintenance', 'checkout'];
+        const newStatus = 'reserved';
+        
+        if (!validStatuses.includes(newStatus)) {
+          throw new Error(`Invalid room status: ${newStatus}`);
+        }
+        
         const { error: roomError } = await supabase
           .from('rooms')
           .update({ 
-            status: 'reserved',
+            status: newStatus,
             updated_at: new Date().toISOString()
           })
           .eq('id', room?.id);
 
-        if (roomError) throw roomError;
+        if (roomError) {
+          console.error('Room status update error:', roomError);
+          throw new Error(`Failed to update room status: ${roomError.message}`);
+        }
 
         updatedRoom.status = 'reserved';
         updatedRoom.guest = formData.guestName;
@@ -528,16 +538,26 @@ export const QuickGuestCapture = ({
           if (paymentError) throw paymentError;
         }
 
-        // Update room status to occupied
+        // Update room status to occupied with validation
+        const validStatuses = ['available', 'occupied', 'reserved', 'out_of_service', 'oos', 'overstay', 'dirty', 'clean', 'maintenance', 'checkout'];
+        const newStatus = 'occupied';
+        
+        if (!validStatuses.includes(newStatus)) {
+          throw new Error(`Invalid room status: ${newStatus}`);
+        }
+        
         const { error: roomError } = await supabase
           .from('rooms')
           .update({ 
-            status: 'occupied',
+            status: newStatus,
             updated_at: new Date().toISOString()
           })
           .eq('id', room?.id);
 
-        if (roomError) throw roomError;
+        if (roomError) {
+          console.error('Room status update error:', roomError);
+          throw new Error(`Failed to update room status: ${roomError.message}`);
+        }
 
         updatedRoom.status = 'occupied';
         updatedRoom.guest = formData.guestName;
@@ -597,13 +617,19 @@ export const QuickGuestCapture = ({
       let errorMessage = "Failed to process guest information. Please try again.";
       
       if (error instanceof Error) {
-        // Check for specific error types
-        if (error.message.includes('duplicate key value')) {
-          errorMessage = "A guest with this information already exists.";
-        } else if (error.message.includes('not authenticated')) {
-          errorMessage = "Authentication expired. Please refresh and try again.";
-        } else if (error.message.includes('room not available')) {
-          errorMessage = "The selected room is no longer available.";
+        // Check for specific error types with better categorization
+        if (error.message.includes('duplicate key value') || error.message.includes('already exists')) {
+          errorMessage = "A guest with this information already exists. Please check existing reservations.";
+        } else if (error.message.includes('not authenticated') || error.message.includes('permission')) {
+          errorMessage = "Authentication expired or insufficient permissions. Please refresh and try again.";
+        } else if (error.message.includes('room not available') || error.message.includes('room status')) {
+          errorMessage = "The selected room is no longer available. Please refresh and select another room.";
+        } else if (error.message.includes('constraint') || error.message.includes('violates')) {
+          errorMessage = "Invalid data provided. Please check all required fields and try again.";
+        } else if (error.message.includes('network') || error.message.includes('connection')) {
+          errorMessage = "Connection error. Please check your internet connection and try again.";
+        } else if (error.message.includes('status')) {
+          errorMessage = "Invalid room status. Please refresh the page and try again.";
         } else if (error.message) {
           errorMessage = error.message;
         }

@@ -125,6 +125,7 @@ export const MaintenanceTaskDialog = ({
       // Update room status based on action
       let newStatus = room.status;
       if (action === 'set-oos') {
+        // Use 'oos' status which is now allowed by database constraint
         newStatus = 'oos';
       } else if (action === 'mark-available') {
         newStatus = 'available';

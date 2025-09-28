@@ -44,6 +44,7 @@ import { useFrontDeskRealtimeUpdates } from '@/hooks/useFrontDeskRealtimeUpdates
 import DashboardNotificationBar from '@/components/layout/DashboardNotificationBar';
 import type { Room } from "./frontdesk/RoomGrid";
 import { useTenantInfo } from "@/hooks/useTenantInfo";
+import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
 
 // Mock data
 const mockData = {
@@ -78,6 +79,7 @@ const mockAlerts = [
 
 const FrontDeskDashboard = () => {
   const { data: tenantInfo } = useTenantInfo();
+  const { logout } = useAuth();
   
   const [isOffline, setIsOffline] = useState(false);
   const [offlineTimeRemaining, setOfflineTimeRemaining] = useState(22); // hours
@@ -281,6 +283,14 @@ const FrontDeskDashboard = () => {
     console.log('View all alerts of type:', type);
     // Filter room grid or open alerts modal
     setActiveFilter(type === 'payment' ? 'pending-payments' : undefined);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   };
 
   const dashboardCards = [
@@ -605,6 +615,20 @@ const FrontDeskDashboard = () => {
         onOpenChange={setShowCheckout}
         roomId={checkoutRoomId}
       />
+
+      {/* Footer */}
+      <footer className="border-t bg-card mt-8">
+        <div className="p-4 flex justify-end">
+          <Button 
+            variant="outline"
+            onClick={handleLogout}
+            className="flex items-center gap-2"
+          >
+            <LogOut className="h-4 w-4" />
+            Logout
+          </Button>
+        </div>
+      </footer>
     </div>
   );
 };

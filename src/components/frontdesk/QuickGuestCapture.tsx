@@ -347,7 +347,9 @@ export const QuickGuestCapture = ({
           last_name: formData.guestName.split(' ').slice(1).join(' ') || '',
           phone: formData.phone,
           email: formData.email,
-          nationality: formData.nationality,
+          nationality: formData.nationality || null,
+          sex: formData.sex || null,
+          occupation: formData.occupation || null,
           id_type: formData.idType,
           id_number: formData.idNumber,
           tenant_id: user.user_metadata?.tenant_id
@@ -355,7 +357,7 @@ export const QuickGuestCapture = ({
 
         const { data: guest, error: guestError } = await supabase
           .from('guests')
-          .upsert(guestData, { onConflict: 'phone' })
+          .upsert(guestData, { onConflict: 'tenant_id,email', ignoreDuplicates: false })
           .select()
           .single();
 
@@ -570,9 +572,24 @@ export const QuickGuestCapture = ({
       onOpenChange(false);
     } catch (error) {
       console.error('Error processing guest capture:', error);
+      let errorMessage = "Failed to process guest information. Please try again.";
+      
+      if (error instanceof Error) {
+        // Check for specific error types
+        if (error.message.includes('duplicate key value')) {
+          errorMessage = "A guest with this information already exists.";
+        } else if (error.message.includes('not authenticated')) {
+          errorMessage = "Authentication expired. Please refresh and try again.";
+        } else if (error.message.includes('room not available')) {
+          errorMessage = "The selected room is no longer available.";
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to process guest information. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -718,13 +735,13 @@ export const QuickGuestCapture = ({
                      />
                    </div>
 
-                   {/* Required Fields */}
+                   {/* Optional Guest Details */}
                    <div className="grid grid-cols-2 gap-3">
                      <div>
-                       <Label htmlFor="nationality">Nationality *</Label>
+                       <Label htmlFor="nationality">Nationality</Label>
                        <Select value={formData.nationality} onValueChange={(value) => handleInputChange('nationality', value)}>
                          <SelectTrigger className="mt-1">
-                           <SelectValue />
+                           <SelectValue placeholder="Select nationality" />
                          </SelectTrigger>
                          <SelectContent>
                            {NATIONALITIES.map((nationality) => (
@@ -737,10 +754,10 @@ export const QuickGuestCapture = ({
                      </div>
 
                      <div>
-                       <Label htmlFor="sex">Sex *</Label>
+                       <Label htmlFor="sex">Sex</Label>
                        <Select value={formData.sex} onValueChange={(value) => handleInputChange('sex', value)}>
                          <SelectTrigger className="mt-1">
-                           <SelectValue />
+                           <SelectValue placeholder="Select sex" />
                          </SelectTrigger>
                          <SelectContent>
                            <SelectItem value="male">Male</SelectItem>
@@ -751,10 +768,10 @@ export const QuickGuestCapture = ({
                    </div>
 
                    <div>
-                     <Label htmlFor="occupation">Occupation *</Label>
+                     <Label htmlFor="occupation">Occupation</Label>
                      <Select value={formData.occupation} onValueChange={(value) => handleInputChange('occupation', value)}>
                        <SelectTrigger className="mt-1">
-                         <SelectValue />
+                         <SelectValue placeholder="Select occupation" />
                        </SelectTrigger>
                        <SelectContent>
                          {OCCUPATIONS.map((occupation) => (
@@ -977,23 +994,23 @@ export const QuickGuestCapture = ({
             >
               Cancel
             </Button>
-            <Button 
-              type="submit" 
-              className="flex-1 gap-2"
-              disabled={isProcessing}
-            >
-              {isProcessing ? (
-                <>
-                  <Clock className="h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="h-4 w-4" />
-                  {getActionTitle()}
-                </>
-              )}
-            </Button>
+             <Button 
+               type="submit" 
+               className="flex-1 gap-2"
+               disabled={isProcessing || (guestMode === 'existing' && !selectedGuest)}
+             >
+               {isProcessing ? (
+                 <>
+                   <Clock className="h-4 w-4 animate-spin" />
+                   Processing...
+                 </>
+               ) : (
+                 <>
+                   <CheckCircle className="h-4 w-4" />
+                   {getActionTitle()}
+                 </>
+               )}
+             </Button>
           </div>
         </form>
       </DialogContent>

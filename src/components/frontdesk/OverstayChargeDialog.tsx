@@ -167,12 +167,22 @@ export const OverstayChargeDialog = ({
 
       switch (action) {
         case 'overstay-charge':
-          // Find the open folio for this room
+          // Find the open folio for this room through reservation
+          const { data: currentReservation, error: reservationError } = await supabase
+            .from('reservations')
+            .select('id')
+            .eq('room_id', room.id)
+            .eq('status', 'checked_in')
+            .eq('tenant_id', user.user_metadata?.tenant_id)
+            .single();
+
+          if (reservationError) throw new Error('No active reservation found for this room');
+
           const { data: folios, error: folioError } = await supabase
             .from('folios')
             .select('id')
             .eq('status', 'open')
-            .eq('reservations.room_id', room.id)
+            .eq('reservation_id', currentReservation.id)
             .limit(1);
 
           if (folioError) throw folioError;

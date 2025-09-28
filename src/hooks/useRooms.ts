@@ -231,6 +231,8 @@ export const useCreateRoom = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['room-availability'] });
+      queryClient.invalidateQueries({ queryKey: ['room-types'] });
       toast({
         title: "Success",
         description: "Room created successfully"
@@ -273,6 +275,8 @@ export const useUpdateRoom = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['room-availability'] });
+      queryClient.invalidateQueries({ queryKey: ['room-types'] });
       toast({
         title: "Success",
         description: "Room updated successfully"
@@ -305,6 +309,8 @@ export const useDeleteRoom = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['room-availability'] });
+      queryClient.invalidateQueries({ queryKey: ['room-types'] });
       toast({
         title: "Success",
         description: "Room deleted successfully"

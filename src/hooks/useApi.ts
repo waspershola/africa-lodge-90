@@ -292,6 +292,8 @@ export const useCreateReservation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
       queryClient.invalidateQueries({ queryKey: ['guests'] });
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['room-availability'] });
       queryClient.invalidateQueries({ queryKey: ['owner', 'overview'] });
     },
   });
@@ -313,6 +315,8 @@ export const useUpdateReservation = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['room-availability'] });
       queryClient.invalidateQueries({ queryKey: ['owner', 'overview'] });
     },
   });
@@ -332,6 +336,8 @@ export const useDeleteReservation = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['room-availability'] });
     },
   });
 };
@@ -352,6 +358,8 @@ export const useCancelReservation = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['room-availability'] });
     },
   });
 };
@@ -372,6 +380,7 @@ export const useRefundReservation = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['room-availability'] });
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
     },
   });

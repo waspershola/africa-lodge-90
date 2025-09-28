@@ -40,7 +40,7 @@ import { BillingOverviewFD } from "./frontdesk/BillingOverviewFD";
 import { HandoverPanel } from "./frontdesk/HandoverPanel";
 import { CheckoutDialog } from "./frontdesk/CheckoutDialog";
 import { QRRequestsPanel } from "./frontdesk/QRRequestsPanel";
-import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
+import { useFrontDeskRealtimeUpdates } from '@/hooks/useFrontDeskRealtimeUpdates';
 import DashboardNotificationBar from '@/components/layout/DashboardNotificationBar';
 import type { Room } from "./frontdesk/RoomGrid";
 import { useTenantInfo } from "@/hooks/useTenantInfo";
@@ -105,7 +105,7 @@ const FrontDeskDashboard = () => {
   const [activePanel, setActivePanel] = useState<'overview' | 'qr-requests' | 'staff-ops' | 'billing' | 'handover' | 'qr-manager'>('overview');
 
   // Set up real-time updates for live dashboard experience
-  useRealtimeUpdates();
+  useFrontDeskRealtimeUpdates();
 
   // Simulate online/offline status
   useEffect(() => {

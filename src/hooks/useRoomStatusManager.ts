@@ -233,9 +233,15 @@ export const useRoomStatusManager = () => {
       };
     },
     onSuccess: (data) => {
-      // Invalidate room-related queries to refresh the UI
+      console.log('Room status updated successfully');
+      
+      // Invalidate specific front desk queries for immediate updates
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['room-availability'] });
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['room-types'] });
+      queryClient.invalidateQueries({ queryKey: ['owner', 'overview'] });
+      queryClient.invalidateQueries({ queryKey: ['housekeeping-tasks'] });
       
       toast({
         title: "Room Status Updated",

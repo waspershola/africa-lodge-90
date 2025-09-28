@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +51,7 @@ export const OverstayChargeDialog = ({
   const { toast } = useToast();
   const { enabledMethods, getMethodIcon } = usePaymentMethods();
   const { formatPrice } = useCurrency();
+  const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
   const [formData, setFormData] = useState({
     chargeAmount: '5000',
@@ -292,6 +294,9 @@ export const OverstayChargeDialog = ({
       }
 
       onComplete(updatedRoom);
+
+      // Invalidate rooms query to trigger refetch  
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
 
       const successMessages = {
         'overstay-charge': `Overstay charge of ${formatPrice(parseFloat(formData.chargeAmount))} applied to Room ${room.number}`,

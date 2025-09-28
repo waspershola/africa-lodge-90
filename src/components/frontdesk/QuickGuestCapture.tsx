@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -83,21 +84,6 @@ interface GuestFormData {
   numberOfNights: number;
 }
 
-interface MockGuest {
-  id: string;
-  name: string;
-  phone: string;
-  email: string;
-  nationality?: string;
-  sex?: string;
-  occupation?: string;
-  idType: string;
-  idNumber: string;
-  lastStay?: string;
-  totalStays: number;
-}
-
-// Interface for recent/searched guests
 interface RecentGuest {
   id: string;
   name: string;
@@ -130,8 +116,6 @@ const OCCUPATIONS = [
   'Teacher/Professor', 'Consultant', 'Entrepreneur', 'Student', 'Retired', 'Other'
 ];
 
-// Payment modes now come from usePaymentMethods hook
-
 export const QuickGuestCapture = ({
   room,
   open,
@@ -142,6 +126,7 @@ export const QuickGuestCapture = ({
   const { toast } = useToast();
   const { enabledMethods } = usePaymentMethods();
   const { data: recentGuests } = useRecentGuests();
+  const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
   const [showOptionalFields, setShowOptionalFields] = useState(false);
   const [guestMode, setGuestMode] = useState<'existing' | 'new'>('existing');
@@ -195,6 +180,44 @@ export const QuickGuestCapture = ({
       numberOfNights: 1,
     };
   });
+
+  // Detect reserved room and auto-set to existing guest mode
+  useEffect(() => {
+    if (room?.status === 'reserved' && (room as any).current_reservation && action === 'check-in') {
+      setGuestMode('existing');
+      const reservation = (room as any).current_reservation;
+      const guestData = {
+        id: reservation.id,
+        name: reservation.guest_name,
+        phone: reservation.guest_phone || '',
+        email: reservation.guest_email || '',
+        nationality: '',
+        sex: '',
+        occupation: '',
+        id_type: '',
+        id_number: '',
+        last_stay_date: '',
+        total_stays: 0,
+        vip_status: ''
+      };
+      setSelectedGuest(guestData);
+      setGuestSearchValue(reservation.guest_name);
+      
+      // Update form data with reservation info
+      setFormData(prev => ({
+        ...prev,
+        guestName: reservation.guest_name || '',
+        phone: reservation.guest_phone || '',
+        email: reservation.guest_email || '',
+        checkInDate: reservation.check_in_date || prev.checkInDate,
+        checkOutDate: reservation.check_out_date || prev.checkOutDate,
+        roomRate: room.room_type?.base_rate || 0,
+        totalAmount: reservation.total_amount || 0,
+        numberOfNights: Math.ceil((new Date(reservation.check_out_date || '').getTime() - new Date(reservation.check_in_date || '').getTime()) / (1000 * 60 * 60 * 24)) || 1,
+        depositAmount: reservation.total_amount?.toString() || '0'
+      }));
+    }
+  }, [room, action]);
 
   // Combine search results with recent guests
   const filteredGuests = useMemo(() => {
@@ -543,6 +566,9 @@ export const QuickGuestCapture = ({
 
       onComplete(updatedRoom);
 
+      // Invalidate rooms query to trigger refetch
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+
       if (formData.printNow) {
         toast({
           title: "Processing Complete",
@@ -582,6 +608,7 @@ export const QuickGuestCapture = ({
 
       onOpenChange(false);
     } catch (error) {
+      console.error('Error processing guest capture:', error);
       toast({
         title: "Error",
         description: "Failed to process guest information. Please try again.",
@@ -591,7 +618,6 @@ export const QuickGuestCapture = ({
       setIsProcessing(false);
     }
   };
-
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -704,7 +730,6 @@ export const QuickGuestCapture = ({
                        onChange={(e) => handleInputChange('guestName', e.target.value)}
                        placeholder="Enter guest full name"
                        className="mt-1"
-                       required
                      />
                    </div>
 
@@ -712,40 +737,49 @@ export const QuickGuestCapture = ({
                      <Label htmlFor="phone">Phone Number *</Label>
                      <Input
                        id="phone"
+                       type="tel"
                        value={formData.phone}
                        onChange={(e) => handleInputChange('phone', e.target.value)}
-                       placeholder="080XXXXXXXX"
+                       placeholder="+234 xxx xxx xxxx"
                        className="mt-1"
-                       required
                      />
                    </div>
 
-                   {/* Blueprint Required Fields - Nationality, Sex, Occupation */}
-                   <div className="grid grid-cols-2 gap-2">
+                   <div>
+                     <Label htmlFor="email">Email Address</Label>
+                     <Input
+                       id="email"
+                       type="email"
+                       value={formData.email}
+                       onChange={(e) => handleInputChange('email', e.target.value)}
+                       placeholder="guest@example.com"
+                       className="mt-1"
+                     />
+                   </div>
+
+                   {/* Required Fields */}
+                   <div className="grid grid-cols-2 gap-3">
                      <div>
                        <Label htmlFor="nationality">Nationality *</Label>
                        <Select value={formData.nationality} onValueChange={(value) => handleInputChange('nationality', value)}>
                          <SelectTrigger className="mt-1">
-                           <SelectValue placeholder="Select nationality" />
+                           <SelectValue />
                          </SelectTrigger>
                          <SelectContent>
                            {NATIONALITIES.map((nationality) => (
-                             <SelectItem key={nationality} value={nationality.toLowerCase()}>
-                               <div className="flex items-center gap-2">
-                                 <Globe className="h-3 w-3" />
-                                 {nationality}
-                               </div>
+                             <SelectItem key={nationality} value={nationality}>
+                               {nationality}
                              </SelectItem>
                            ))}
                          </SelectContent>
                        </Select>
                      </div>
-                     
+
                      <div>
                        <Label htmlFor="sex">Sex *</Label>
                        <Select value={formData.sex} onValueChange={(value) => handleInputChange('sex', value)}>
                          <SelectTrigger className="mt-1">
-                           <SelectValue placeholder="Select sex" />
+                           <SelectValue />
                          </SelectTrigger>
                          <SelectContent>
                            <SelectItem value="male">Male</SelectItem>
@@ -759,72 +793,60 @@ export const QuickGuestCapture = ({
                      <Label htmlFor="occupation">Occupation *</Label>
                      <Select value={formData.occupation} onValueChange={(value) => handleInputChange('occupation', value)}>
                        <SelectTrigger className="mt-1">
-                         <SelectValue placeholder="Select occupation" />
+                         <SelectValue />
                        </SelectTrigger>
                        <SelectContent>
                          {OCCUPATIONS.map((occupation) => (
-                           <SelectItem key={occupation} value={occupation.toLowerCase()}>
-                             <div className="flex items-center gap-2">
-                               <Briefcase className="h-3 w-3" />
-                               {occupation}
-                             </div>
+                           <SelectItem key={occupation} value={occupation}>
+                             {occupation}
                            </SelectItem>
                          ))}
                        </SelectContent>
                      </Select>
                    </div>
 
-                   {/* Optional Contact Fields */}
-                   <div className="space-y-2">
-                     <Button
-                       type="button"
-                       variant="ghost"
-                       size="sm"
-                       onClick={() => setShowOptionalFields(!showOptionalFields)}
-                       className="text-xs"
-                     >
-                       {showOptionalFields ? 'Hide' : 'Add'} ID & Email (Optional)
-                     </Button>
-                     
+                   {/* Optional ID Fields */}
+                   <div className="space-y-3">
+                     <div className="flex items-center justify-between">
+                       <Label className="text-sm text-muted-foreground">ID Information (Optional)</Label>
+                       <Button
+                         type="button"
+                         variant="ghost"
+                         size="sm"
+                         onClick={() => setShowOptionalFields(!showOptionalFields)}
+                         className="text-xs"
+                       >
+                         {showOptionalFields ? 'Hide' : 'Show'} ID Fields
+                       </Button>
+                     </div>
+
                      {showOptionalFields && (
-                       <div className="space-y-3 pt-2 border-t">
+                       <div className="space-y-3">
                          <div>
-                           <Label htmlFor="email">Email Address</Label>
+                           <Label htmlFor="idType">ID Type</Label>
+                           <Select value={formData.idType} onValueChange={(value) => handleInputChange('idType', value)}>
+                             <SelectTrigger className="mt-1">
+                               <SelectValue placeholder="Select ID type" />
+                             </SelectTrigger>
+                             <SelectContent>
+                               {ID_TYPES.map((idType) => (
+                                 <SelectItem key={idType.value} value={idType.value}>
+                                   {idType.label}
+                                 </SelectItem>
+                               ))}
+                             </SelectContent>
+                           </Select>
+                         </div>
+
+                         <div>
+                           <Label htmlFor="idNumber">ID Number</Label>
                            <Input
-                             id="email"
-                             type="email"
-                             value={formData.email}
-                             onChange={(e) => handleInputChange('email', e.target.value)}
-                             placeholder="guest@email.com"
+                             id="idNumber"
+                             value={formData.idNumber}
+                             onChange={(e) => handleInputChange('idNumber', e.target.value)}
+                             placeholder="Enter ID number"
                              className="mt-1"
                            />
-                         </div>
-                         <div className="grid grid-cols-2 gap-2">
-                           <div>
-                             <Label htmlFor="idType">ID Type</Label>
-                             <Select value={formData.idType} onValueChange={(value) => handleInputChange('idType', value)}>
-                               <SelectTrigger className="mt-1">
-                                 <SelectValue placeholder="Select ID" />
-                               </SelectTrigger>
-                               <SelectContent>
-                                 {ID_TYPES.map((type) => (
-                                   <SelectItem key={type.value} value={type.value}>
-                                     {type.label}
-                                   </SelectItem>
-                                 ))}
-                               </SelectContent>
-                             </Select>
-                           </div>
-                           <div>
-                             <Label htmlFor="idNumber">ID Number</Label>
-                             <Input
-                               id="idNumber"
-                               value={formData.idNumber}
-                               onChange={(e) => handleInputChange('idNumber', e.target.value)}
-                               placeholder="Enter ID number"
-                               className="mt-1"
-                             />
-                           </div>
                          </div>
                        </div>
                      )}
@@ -854,49 +876,50 @@ export const QuickGuestCapture = ({
             </CardContent>
           </Card>
 
-          {/* Rate Selection - Only for walk-in and assign actions */}
-          {(action === 'walkin' || action === 'assign') && (
-            <>
-              {/* Check-in/Check-out Date Selection */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    Stay Dates
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label htmlFor="checkInDate">Check-in Date *</Label>
-                      <Input
-                        id="checkInDate"
-                        type="date"
-                        value={formData.checkInDate}
-                        onChange={(e) => handleInputChange('checkInDate', e.target.value)}
-                        className="mt-1"
-                        min={new Date().toISOString().split('T')[0]}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="checkOutDate">Check-out Date *</Label>
-                      <Input
-                        id="checkOutDate"
-                        type="date"
-                        value={formData.checkOutDate}
-                        onChange={(e) => handleInputChange('checkOutDate', e.target.value)}
-                        className="mt-1"
-                        min={formData.checkInDate || new Date().toISOString().split('T')[0]}
-                      />
-                    </div>
+          {/* Stay Dates - Only for assign and walk-in */}
+          {(action === 'assign' || action === 'walkin') && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Stay Dates
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="checkInDate">Check-in Date *</Label>
+                    <Input
+                      id="checkInDate"
+                      type="date"
+                      value={formData.checkInDate}
+                      onChange={(e) => handleInputChange('checkInDate', e.target.value)}
+                      className="mt-1"
+                    />
                   </div>
-                </CardContent>
-              </Card>
+                  <div>
+                    <Label htmlFor="checkOutDate">Check-out Date *</Label>
+                    <Input
+                      id="checkOutDate"
+                      type="date"
+                      value={formData.checkOutDate}
+                      onChange={(e) => handleInputChange('checkOutDate', e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
+          {/* Rate Selection - Only for assign and walk-in */}
+          {(action === 'assign' || action === 'walkin') && (
+            <>
               <RateSelectionComponent
+                roomType={room?.room_type}
                 checkInDate={formData.checkInDate}
                 checkOutDate={formData.checkOutDate}
-                onRateChange={(rate, nights, total, roomTypeId) => {
+                onRateChange={(rate, nights, total) => {
                   setFormData(prev => ({
                     ...prev,
                     roomRate: rate,

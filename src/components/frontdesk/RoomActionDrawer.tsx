@@ -190,6 +190,13 @@ export const RoomActionDrawer = ({
     onRoomUpdate?.(updatedRoom);
     setShowQuickCapture(false);
     onClose();
+
+    // Force refresh to show updated room status
+    setTimeout(() => {
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
+    }, 500);
   };
 
   const getStatusColor = (status: Room['status']) => {

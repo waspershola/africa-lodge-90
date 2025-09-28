@@ -353,13 +353,37 @@ export const QuickGuestCapture = ({
           tenant_id: user.user_metadata?.tenant_id
         };
 
-        const { data: guest, error: guestError } = await supabase
+        // First try to find existing guest
+        const { data: existingGuest } = await supabase
           .from('guests')
-          .upsert(guestData, { onConflict: 'tenant_id,email', ignoreDuplicates: false })
-          .select()
+          .select('id')
+          .eq('tenant_id', user.user_metadata?.tenant_id)
+          .eq('email', formData.email)
           .single();
 
-        if (guestError) throw guestError;
+        let guest;
+        if (existingGuest) {
+          // Update existing guest
+          const { data: updatedGuest, error: updateError } = await supabase
+            .from('guests')
+            .update(guestData)
+            .eq('id', existingGuest.id)
+            .select()
+            .single();
+          if (updateError) throw updateError;
+          guest = updatedGuest;
+        } else {
+          // Create new guest
+          const { data: newGuest, error: createError } = await supabase
+            .from('guests')
+            .insert(guestData)
+            .select()
+            .single();
+          if (createError) throw createError;
+          guest = newGuest;
+        }
+
+        if (!guest) throw new Error('Failed to create or update guest');
         guestId = guest.id;
       }
 

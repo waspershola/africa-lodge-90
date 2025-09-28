@@ -351,4 +351,84 @@ export const useCancelReservation = () => {
       });
     }
   });
+export const useRefundReservation = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (reservationId: string) => {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error('Not authenticated');
+
+      const { data, error } = await supabase
+        .from('reservations')
+        .update({ 
+          status: 'refunded',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', reservationId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      toast({
+        title: "Success",
+        description: "Reservation refunded successfully"
+      });
+    },
+    onError: (error) => {
+      console.error('Reservation refund error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to refund reservation",
+        variant: "destructive"
+      });
+    }
+  });
+};
+
+export const useRefundReservation = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (reservationId: string) => {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error('Not authenticated');
+
+      const { data, error } = await supabase
+        .from('reservations')
+        .update({ 
+          status: 'refunded',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', reservationId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      toast({
+        title: "Success",
+        description: "Reservation refunded successfully"
+      });
+    },
+    onError: (error) => {
+      console.error('Reservation refund error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to refund reservation",
+        variant: "destructive"
+      });
+    }
+  });
 };

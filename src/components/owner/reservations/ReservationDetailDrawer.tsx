@@ -25,7 +25,7 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useUpdateReservation, useCancelReservation, useRefundReservation } from '@/hooks/useApi';
+import { useUpdateReservation, useCancelReservation, useRefundReservation } from '@/hooks/useReservations';
 import { formatDistanceToNow, format } from 'date-fns';
 
 interface ReservationDetailDrawerProps {
@@ -75,7 +75,8 @@ export default function ReservationDetailDrawer({
     try {
       await updateReservation.mutateAsync({
         id: reservation.id,
-        updates: { notes, room: roomAssignment }
+        notes,
+        room_id: roomAssignment
       });
       setIsEditing(false);
     } catch (error) {

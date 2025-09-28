@@ -350,16 +350,18 @@ export const RoomActionDrawer = ({
       }
     });
     
+    // Trigger real-time update instead of page reload
     onRoomUpdate?.(updatedRoom);
     setShowQuickCapture(false);
     onClose();
 
-    // Force refresh to show updated room status
+    // Show success toast for immediate feedback
     setTimeout(() => {
-      if (typeof window !== 'undefined') {
-        window.location.reload();
-      }
-    }, 500);
+      toast({
+        title: "Room Updated",
+        description: `${actionDescription} completed for Room ${updatedRoom.number}`,
+      });
+    }, 100);
   };
 
   const getStatusColor = (status: Room['status']) => {

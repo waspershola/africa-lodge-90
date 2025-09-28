@@ -342,27 +342,7 @@ export const useDeleteReservation = () => {
   });
 };
 
-export const useCancelReservation = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { data, error } = await supabase
-        .from('reservations')
-        .update({ status: 'cancelled' })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw new Error(error.message);
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['reservations'] });
-      queryClient.invalidateQueries({ queryKey: ['rooms'] });
-      queryClient.invalidateQueries({ queryKey: ['room-availability'] });
-    },
-  });
-};
+// Removed duplicate useCancelReservation - use the full-featured one from useReservations.ts
 
 export const useRefundReservation = () => {
   const queryClient = useQueryClient();

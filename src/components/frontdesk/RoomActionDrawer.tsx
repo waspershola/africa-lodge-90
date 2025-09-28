@@ -27,6 +27,12 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { QuickGuestCapture } from "./QuickGuestCapture";
+import { CheckoutDialog } from "./CheckoutDialog";
+import { PaymentDialog } from "./PaymentDialog";
+import { MaintenanceTaskDialog } from "./MaintenanceTaskDialog";
+import { ExtendStayDialog } from "./ExtendStayDialog";
+import { OverstayChargeDialog } from "./OverstayChargeDialog";
+import { AddServiceDialog } from "./AddServiceDialog";
 import type { Room } from "./RoomGrid";
 
 interface RoomActionDrawerProps {
@@ -47,12 +53,22 @@ export const RoomActionDrawer = ({
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [showQuickCapture, setShowQuickCapture] = useState(false);
-  const [captureAction, setCaptureAction] = useState<'assign' | 'walkin'>('assign');
+  const [captureAction, setCaptureAction] = useState<'assign' | 'walkin' | 'check-in' | 'check-out' | 'assign-room' | 'extend-stay' | 'transfer-room' | 'add-service' | 'work-order' | 'housekeeping'>('assign');
+  
+  // Dialog states
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [showMaintenance, setShowMaintenance] = useState(false);
+  const [maintenanceAction, setMaintenanceAction] = useState<'create-workorder' | 'set-oos' | 'mark-available'>('create-workorder');
+  const [showExtendStay, setShowExtendStay] = useState(false);
+  const [showOverstay, setShowOverstay] = useState(false);
+  const [overstayAction, setOverstayAction] = useState<'overstay-charge' | 'send-reminder' | 'escalate-manager' | 'force-checkout'>('overstay-charge');
+  const [showAddService, setShowAddService] = useState(false);
 
   if (!room) return null;
 
   const handleAction = async (action: string) => {
-    // Handle quick capture actions differently
+    // Handle quick capture actions
     if (action === 'Assign Room') {
       setCaptureAction('assign');
       setShowQuickCapture(true);
@@ -65,18 +81,88 @@ export const RoomActionDrawer = ({
       return;
     }
 
+    if (action === 'Check-In') {
+      setCaptureAction('check-in');
+      setShowQuickCapture(true);
+      return;
+    }
+
+    // Handle checkout action
+    if (action === 'Check-Out') {
+      setShowCheckout(true);
+      return;
+    }
+
+    // Handle payment action
+    if (action === 'Post Payment') {
+      setShowPayment(true);
+      return;
+    }
+
+    // Handle extend stay action
+    if (action === 'Extend Stay') {
+      setShowExtendStay(true);
+      return;
+    }
+
+    // Handle add service action
+    if (action === 'Add Service') {
+      setShowAddService(true);
+      return;
+    }
+
+    // Handle maintenance actions
+    if (action === 'Set Out of Service') {
+      setMaintenanceAction('set-oos');
+      setShowMaintenance(true);
+      return;
+    }
+
+    if (action === 'Create Work Order') {
+      setMaintenanceAction('create-workorder');
+      setShowMaintenance(true);
+      return;
+    }
+
+    if (action === 'Mark as Available') {
+      setMaintenanceAction('mark-available');
+      setShowMaintenance(true);
+      return;
+    }
+
+    // Handle overstay actions
+    if (action === 'Apply Overstay Charge') {
+      setOverstayAction('overstay-charge');
+      setShowOverstay(true);
+      return;
+    }
+
+    if (action === 'Send Reminder') {
+      setOverstayAction('send-reminder');
+      setShowOverstay(true);
+      return;
+    }
+
+    // Handle other actions with processing simulation
     setIsProcessing(true);
     
-    // Simulate API call for other actions
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    toast({
-      title: "Action Completed",
-      description: `${action} for Room ${room.number} has been processed.`,
-    });
-    
-    setIsProcessing(false);
-    onClose();
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      toast({
+        title: "Action Completed",
+        description: `${action} for Room ${room.number} has been processed.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: `Failed to process ${action}. Please try again.`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+      onClose();
+    }
   };
 
   const handleGuestCaptureComplete = (updatedRoom: Room) => {
@@ -326,6 +412,73 @@ export const RoomActionDrawer = ({
         onOpenChange={setShowQuickCapture}
         action={captureAction}
         onComplete={handleGuestCaptureComplete}
+      />
+
+      {/* Checkout Dialog */}
+      <CheckoutDialog
+        open={showCheckout}
+        onOpenChange={setShowCheckout}
+        roomId={room?.number}
+      />
+
+      {/* Payment Dialog */}
+      <PaymentDialog
+        open={showPayment}
+        onOpenChange={setShowPayment}
+        pendingAmount={room?.folio?.balance || 0}
+        onPaymentSuccess={() => {
+          setShowPayment(false);
+          toast({
+            title: "Payment Processed",
+            description: `Payment for Room ${room?.number} has been recorded.`,
+          });
+        }}
+      />
+
+      {/* Maintenance Task Dialog */}
+      <MaintenanceTaskDialog
+        room={room}
+        open={showMaintenance}
+        onOpenChange={setShowMaintenance}
+        action={maintenanceAction}
+        onComplete={(updatedRoom) => {
+          setShowMaintenance(false);
+          onRoomUpdate?.(updatedRoom);
+        }}
+      />
+
+      {/* Extend Stay Dialog */}
+      <ExtendStayDialog
+        room={room}
+        open={showExtendStay}
+        onOpenChange={setShowExtendStay}
+        onComplete={(updatedRoom) => {
+          setShowExtendStay(false);
+          onRoomUpdate?.(updatedRoom);
+        }}
+      />
+
+      {/* Overstay Charge Dialog */}
+      <OverstayChargeDialog
+        room={room}
+        open={showOverstay}
+        onOpenChange={setShowOverstay}
+        action={overstayAction}
+        onComplete={(updatedRoom) => {
+          setShowOverstay(false);
+          onRoomUpdate?.(updatedRoom);
+        }}
+      />
+
+      {/* Add Service Dialog */}
+      <AddServiceDialog
+        room={room}
+        open={showAddService}
+        onOpenChange={setShowAddService}
+        onComplete={(updatedRoom) => {
+          setShowAddService(false);
+          onRoomUpdate?.(updatedRoom);
+        }}
       />
     </>
   );

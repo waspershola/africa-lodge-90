@@ -1,0 +1,440 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { AlertTriangle, Clock, CreditCard, MessageSquare, Phone } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { usePaymentMethods } from "@/hooks/usePaymentMethods";
+import { useCurrency } from "@/hooks/useCurrency";
+import type { Room } from "./RoomGrid";
+
+interface OverstayChargeDialogProps {
+  room: Room | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  action: 'overstay-charge' | 'send-reminder' | 'escalate-manager' | 'force-checkout';
+  onComplete: (updatedRoom: Room) => void;
+}
+
+const OVERSTAY_PRESETS = [
+  { hours: 1, amount: 2000, label: '1 Hour Late' },
+  { hours: 2, amount: 4000, label: '2 Hours Late' },
+  { hours: 4, amount: 6000, label: '4 Hours Late' },
+  { hours: 8, amount: 10000, label: 'Half Day Late' },
+  { hours: 24, amount: 15000, label: 'Full Day Late' },
+];
+
+export const OverstayChargeDialog = ({
+  room,
+  open,
+  onOpenChange,
+  action,
+  onComplete,
+}: OverstayChargeDialogProps) => {
+  const { toast } = useToast();
+  const { enabledMethods, getMethodIcon } = usePaymentMethods();
+  const { formatPrice } = useCurrency();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [formData, setFormData] = useState({
+    chargeAmount: '5000',
+    paymentMethod: '',
+    notes: '',
+    reminderMessage: 'Dear guest, your checkout time has passed. Please settle your account and vacate the room. Thank you.',
+    escalationReason: '',
+    forceReason: '',
+  });
+
+  if (!room) return null;
+
+  const getDialogTitle = () => {
+    switch (action) {
+      case 'overstay-charge': return 'Apply Overstay Charge';
+      case 'send-reminder': return 'Send Checkout Reminder';
+      case 'escalate-manager': return 'Escalate to Manager';
+      case 'force-checkout': return 'Force Check-out';
+      default: return 'Overstay Management';
+    }
+  };
+
+  const getDialogDescription = () => {
+    switch (action) {
+      case 'overstay-charge': return `Apply overstay charge for Room ${room.number}`;
+      case 'send-reminder': return `Send reminder to guest in Room ${room.number}`;
+      case 'escalate-manager': return `Escalate overstay issue for Room ${room.number}`;
+      case 'force-checkout': return `Force check-out for Room ${room.number}`;
+      default: return `Handle overstay for Room ${room.number}`;
+    }
+  };
+
+  // Calculate overstay hours
+  const currentTime = new Date();
+  const checkOutTime = room.checkOut ? new Date(room.checkOut) : new Date();
+  const overstayHours = Math.max(0, Math.ceil((currentTime.getTime() - checkOutTime.getTime()) / (1000 * 60 * 60)));
+
+  const handlePresetSelect = (preset: typeof OVERSTAY_PRESETS[0]) => {
+    setFormData(prev => ({
+      ...prev,
+      chargeAmount: preset.amount.toString()
+    }));
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validation based on action
+    if (action === 'overstay-charge') {
+      if (!formData.chargeAmount || parseFloat(formData.chargeAmount) <= 0) {
+        toast({
+          title: "Validation Error",
+          description: "Charge amount is required",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!formData.paymentMethod) {
+        toast({
+          title: "Validation Error",
+          description: "Payment method is required",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    if (action === 'send-reminder' && !formData.reminderMessage.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Reminder message is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (action === 'escalate-manager' && !formData.escalationReason.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Escalation reason is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (action === 'force-checkout' && !formData.forceReason.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Force checkout reason is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      let updatedRoom = { ...room };
+
+      switch (action) {
+        case 'overstay-charge':
+          updatedRoom.folio = {
+            balance: (room.folio?.balance || 0) + parseFloat(formData.chargeAmount),
+            isPaid: formData.paymentMethod !== 'pay_later'
+          };
+          break;
+        case 'force-checkout':
+          updatedRoom.status = 'available';
+          updatedRoom.guest = undefined;
+          updatedRoom.checkIn = undefined;
+          updatedRoom.checkOut = undefined;
+          updatedRoom.alerts = {
+            ...room.alerts,
+            cleaning: true // Room needs cleaning after checkout
+          };
+          break;
+      }
+
+      onComplete(updatedRoom);
+
+      const successMessages = {
+        'overstay-charge': `Overstay charge of ${formatPrice(parseFloat(formData.chargeAmount))} applied to Room ${room.number}`,
+        'send-reminder': `Checkout reminder sent to guest in Room ${room.number}`,
+        'escalate-manager': `Overstay issue for Room ${room.number} escalated to manager`,
+        'force-checkout': `Room ${room.number} has been force checked-out`
+      };
+
+      toast({
+        title: "Action Completed",
+        description: successMessages[action],
+      });
+
+      // Reset form
+      setFormData({
+        chargeAmount: '5000',
+        paymentMethod: '',
+        notes: '',
+        reminderMessage: 'Dear guest, your checkout time has passed. Please settle your account and vacate the room. Thank you.',
+        escalationReason: '',
+        forceReason: '',
+      });
+
+      onOpenChange(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to process overstay action. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-orange-600" />
+            {getDialogTitle()}
+          </DialogTitle>
+          <DialogDescription>
+            {getDialogDescription()}
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Overstay Status */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Overstay Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Guest:</span>
+                <span className="font-medium">{room.guest}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Expected Checkout:</span>
+                <span className="font-medium text-orange-600">
+                  {room.checkOut ? new Date(room.checkOut).toLocaleString() : 'Not set'}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Overstay Hours:</span>
+                <span className="font-semibold text-red-600">{overstayHours} hours</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Action-specific forms */}
+          {action === 'overstay-charge' && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <CreditCard className="h-4 w-4" />
+                  Charge Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {/* Preset Charges */}
+                <div>
+                  <Label>Quick Select (Optional)</Label>
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                    {OVERSTAY_PRESETS.slice(0, 4).map((preset) => (
+                      <Button
+                        key={preset.hours}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePresetSelect(preset)}
+                        className="text-xs"
+                      >
+                        {preset.label}<br />₦{preset.amount.toLocaleString()}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="chargeAmount">Charge Amount (₦) *</Label>
+                  <Input
+                    id="chargeAmount"
+                    type="number"
+                    value={formData.chargeAmount}
+                    onChange={(e) => handleInputChange('chargeAmount', e.target.value)}
+                    min="0"
+                    step="500"
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <Label>Payment Method *</Label>
+                  <Select 
+                    value={formData.paymentMethod} 
+                    onValueChange={(value) => handleInputChange('paymentMethod', value)}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select payment method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {enabledMethods.map((method) => (
+                        <SelectItem key={method.id} value={method.id}>
+                          <div className="flex items-center gap-2">
+                            {getMethodIcon(method.icon)}
+                            <span>{method.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {action === 'send-reminder' && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  Reminder Message
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div>
+                  <Label htmlFor="reminderMessage">Message *</Label>
+                  <Textarea
+                    id="reminderMessage"
+                    value={formData.reminderMessage}
+                    onChange={(e) => handleInputChange('reminderMessage', e.target.value)}
+                    rows={4}
+                    className="mt-1"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {action === 'escalate-manager' && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Phone className="h-4 w-4" />
+                  Escalation Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div>
+                  <Label htmlFor="escalationReason">Reason for Escalation *</Label>
+                  <Textarea
+                    id="escalationReason"
+                    value={formData.escalationReason}
+                    onChange={(e) => handleInputChange('escalationReason', e.target.value)}
+                    placeholder="Describe why this needs manager attention..."
+                    rows={3}
+                    className="mt-1"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {action === 'force-checkout' && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2 text-red-600">
+                  <AlertTriangle className="h-4 w-4" />
+                  Force Checkout
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-800">
+                      <strong>Warning:</strong> This will immediately check out the guest and mark the room as available. 
+                      Use only when guest cannot be reached or refuses to cooperate.
+                    </p>
+                  </div>
+                  <div>
+                    <Label htmlFor="forceReason">Justification Required *</Label>
+                    <Textarea
+                      id="forceReason"
+                      value={formData.forceReason}
+                      onChange={(e) => handleInputChange('forceReason', e.target.value)}
+                      placeholder="Provide detailed justification for force checkout..."
+                      rows={3}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Notes */}
+          <div>
+            <Label htmlFor="notes">Additional Notes</Label>
+            <Textarea
+              id="notes"
+              value={formData.notes}
+              onChange={(e) => handleInputChange('notes', e.target.value)}
+              placeholder="Any additional notes about this action..."
+              rows={2}
+              className="mt-1"
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isProcessing}
+              variant={action === 'force-checkout' ? 'destructive' : 'default'}
+              className="flex-1"
+            >
+              {isProcessing ? 'Processing...' : getDialogTitle()}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};

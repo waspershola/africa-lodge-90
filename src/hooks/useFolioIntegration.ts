@@ -25,23 +25,18 @@ export const useFolioIntegration = () => {
 
     setLoading(true);
     try {
-      // Get the folio for this reservation
-      const { data: folios, error: folioError } = await supabase
-        .from('folios')
-        .select('id')
-        .eq('reservation_id', reservationId)
-        .eq('tenant_id', user.tenant_id)
-        .eq('status', 'open')
-        .limit(1);
+      // Use safe folio handler to get folio for this reservation
+      const { data: folioId, error: folioIdError } = await supabase
+        .rpc('handle_multiple_folios', {
+          p_reservation_id: reservationId
+        });
 
-      if (folioError) throw folioError;
+      if (folioIdError) throw folioIdError;
 
-      if (!folios?.length) {
+      if (!folioId) {
         toast.error('No open folio found for this reservation');
         return false;
       }
-
-      const folioId = folios[0].id;
 
       // Add charge to folio
       const { error: chargeError } = await supabase

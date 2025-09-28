@@ -477,18 +477,17 @@ export function usePOSApi() {
             .single();
 
           if (reservation) {
-            const { data: folio } = await supabase
-              .from('folios')
-              .select('id')
-              .eq('reservation_id', reservation.id)
-              .eq('status', 'open')
-              .single();
+            // Use safe folio handler
+            const { data: folioId } = await supabase
+              .rpc('handle_multiple_folios', {
+                p_reservation_id: reservation.id
+              });
 
-            if (folio) {
+            if (folioId) {
               await supabase
                 .from('folio_charges')
                 .insert([{
-                  folio_id: folio.id,
+                  folio_id: folioId,
                   charge_type: 'restaurant',
                   description: `POS Order ${order.order_number}`,
                   amount,

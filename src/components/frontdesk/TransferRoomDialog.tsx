@@ -112,18 +112,17 @@ export const TransferRoomDialog = ({
 
       // Add transfer fee charge if applicable
       if (transferFee > 0) {
-        // Get folio for this reservation
-        const { data: folio, error: folioError } = await supabase
-          .from('folios')
-          .select('id')
-          .eq('reservation_id', currentReservation.id)
-          .single();
+        // Use safe folio handler to get folio for this reservation
+        const { data: folioId, error: folioIdError } = await supabase
+          .rpc('handle_multiple_folios', {
+            p_reservation_id: currentReservation.id
+          });
 
-        if (!folioError && folio) {
+        if (!folioIdError && folioId) {
           const { error: chargeError } = await supabase
             .from('folio_charges')
             .insert({
-              folio_id: folio.id,
+              folio_id: folioId,
               charge_type: 'service',
               description: `Room transfer fee: ${sourceRoom.number} → ${targetRoom.number}`,
               amount: transferFee,

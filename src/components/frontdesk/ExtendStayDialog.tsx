@@ -126,38 +126,20 @@ export const ExtendStayDialog = ({
 
       // If there are additional charges, add them to folio
       if (additionalAmount > 0) {
-        // Get or create folio
-        let { data: folio, error: folioError } = await supabase
-          .from('folios')
-          .select('id')
-          .eq('reservation_id', reservation.id)
-          .eq('status', 'open')
-          .maybeSingle();
+        // Use safe get-or-create folio function
+        const { data: folioId, error: folioIdError } = await supabase
+          .rpc('get_or_create_folio', {
+            p_reservation_id: reservation.id,
+            p_tenant_id: user.user_metadata?.tenant_id
+          });
 
-        if (folioError) throw folioError;
-
-        if (!folio) {
-          // Create folio if it doesn't exist
-          const { data: newFolio, error: createFolioError } = await supabase
-            .from('folios')
-            .insert({
-              reservation_id: reservation.id,
-              folio_number: `FOL-${Date.now()}`,
-              status: 'open',
-              tenant_id: user.user_metadata?.tenant_id
-            })
-            .select('id')
-            .single();
-
-          if (createFolioError) throw createFolioError;
-          folio = newFolio;
-        }
+        if (folioIdError || !folioId) throw folioIdError || new Error('Failed to get or create folio');
 
         // Add extension charge to folio
         const { error: chargeError } = await supabase
           .from('folio_charges')
           .insert({
-            folio_id: folio.id,
+          folio_id: folioId,
             charge_type: 'extension',
             description: `Stay extension - ${additionalNights} additional night(s)`,
             amount: additionalAmount,
@@ -171,7 +153,7 @@ export const ExtendStayDialog = ({
           const { error: paymentError } = await supabase
             .from('payments')
             .insert({
-              folio_id: folio.id,
+              folio_id: folioId,
               amount: additionalAmount,
               payment_method: formData.paymentMethod,
               status: 'completed',

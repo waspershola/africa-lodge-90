@@ -40,15 +40,25 @@ export const useCheckout = (roomId?: string) => {
         throw new Error('No active reservation found for this room');
       }
 
-      // Get folio for the reservation
-      const { data: folio, error: folioError } = await supabase
-        .from('folios')
-        .select('*')
-        .eq('reservation_id', reservation.id)
-        .eq('status', 'open')
-        .maybeSingle();
+      // Use the safe folio handler to get or handle multiple folios
+      const { data: folioId, error: folioIdError } = await supabase
+        .rpc('handle_multiple_folios', {
+          p_reservation_id: reservation.id
+        });
 
-      if (folioError) throw folioError;
+      if (folioIdError) throw folioIdError;
+
+      let folio = null;
+      if (folioId) {
+        const { data: folioData, error: folioError } = await supabase
+          .from('folios')
+          .select('*')
+          .eq('id', folioId)
+          .single();
+
+        if (folioError) throw folioError;
+        folio = folioData;
+      }
 
       let serviceCharges: ServiceCharge[] = [];
       let paymentRecords: PaymentRecord[] = [];
@@ -136,7 +146,7 @@ export const useCheckout = (roomId?: string) => {
 
     setLoading(true);
     try {
-      // Get the folio ID
+      // Get the reservation and safely handle folio
       const { data: reservation } = await supabase
         .from('reservations')
         .select('id')
@@ -146,20 +156,19 @@ export const useCheckout = (roomId?: string) => {
 
       if (!reservation) throw new Error('No active reservation found');
 
-      const { data: folio } = await supabase
-        .from('folios')
-        .select('id')
-        .eq('reservation_id', reservation.id)
-        .eq('status', 'open')
-        .maybeSingle();
+      // Use safe folio handler
+      const { data: folioId, error: folioError } = await supabase
+        .rpc('handle_multiple_folios', {
+          p_reservation_id: reservation.id
+        });
 
-      if (!folio) throw new Error('No active folio found');
+      if (folioError || !folioId) throw new Error('No active folio found');
 
       // Create payment record
       const { data: payment, error: paymentError } = await supabase
         .from('payments')
         .insert([{
-          folio_id: folio.id,
+          folio_id: folioId,
           amount,
           payment_method: paymentMethod,
           status: 'completed',
@@ -181,7 +190,7 @@ export const useCheckout = (roomId?: string) => {
           total_payments: totalPaid,
           balance: newBalance
         })
-        .eq('id', folio.id);
+        .eq('id', folioId);
 
       // Create audit log
       await supabase
@@ -194,13 +203,13 @@ export const useCheckout = (roomId?: string) => {
           actor_email: user.email,
           actor_role: user.role,
           tenant_id: user.tenant_id,
-          description: `Processed ${paymentMethod} payment of ${amount / 100} for folio ${folio.id}`,
+          description: `Processed ${paymentMethod} payment of ${amount / 100} for folio ${folioId}`,
           new_values: { amount, payment_method: paymentMethod }
         }]);
 
       const paymentRecord: PaymentRecord = {
         id: payment.id,
-        bill_id: folio.id,
+        bill_id: folioId,
         amount,
         payment_method: paymentMethod,
         status: 'completed',
@@ -257,14 +266,13 @@ export const useCheckout = (roomId?: string) => {
         throw new Error('No active reservation found');
       }
 
-      const { data: folio, error: folioError } = await supabase
-        .from('folios')
-        .select('id')
-        .eq('reservation_id', reservation.id)
-        .eq('status', 'open')
-        .maybeSingle();
+      // Use safe folio handler
+      const { data: folioId, error: folioIdError } = await supabase
+        .rpc('handle_multiple_folios', {
+          p_reservation_id: reservation.id
+        });
 
-      if (folioError || !folio) {
+      if (folioIdError || !folioId) {
         throw new Error('No active folio found');
       }
 
@@ -278,7 +286,7 @@ export const useCheckout = (roomId?: string) => {
             closed_by: user.id,
             closed_at: new Date().toISOString()
           })
-          .eq('id', folio.id),
+          .eq('id', folioId),
 
         // Update reservation status to checked out
         supabase

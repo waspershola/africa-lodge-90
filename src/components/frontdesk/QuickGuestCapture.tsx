@@ -594,10 +594,12 @@ export const QuickGuestCapture = ({
         });
       }
 
-        // Clear timeout properly
-        clearTimeout(processingTimeout);
-        
-        const updatedFormData = {
+      // Success - clear timeout and reset processing state
+      clearTimeout(processingTimeout);
+      setIsProcessing(false);
+      setProcessingStartTime(undefined);
+      
+      const updatedFormData = {
           guestName: '',
           phone: '',
           email: '',

@@ -56,7 +56,6 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
   const rooms = roomsData.rooms || [];
   const roomTypes = roomsData.roomTypes || [];
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
-  const [filteredRooms, setFilteredRooms] = useState<Room[]>([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // Transform Supabase room data to component format with real reservation data
@@ -129,23 +128,24 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
     }) || [];
   }, [rooms]);
 
-  // Filter rooms based on search query and active filter
-  useEffect(() => {
+  // Filter rooms based on search query and active filter with dependency optimization
+  const filteredRooms = useMemo(() => {
     let filtered = roomData;
 
-        // Apply search filter with real guest names
-        if (searchQuery.trim()) {
-          filtered = filtered.filter(room => 
-            room.room_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            room.room_type?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            // Real guest name search from current reservations
-            (room.guest && room.guest.toLowerCase().includes(searchQuery.toLowerCase())) ||
-            // Legacy field support
-            (room.number && room.number.toLowerCase().includes(searchQuery.toLowerCase())) ||
-            (room.name && room.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-            (room.type && room.type.toLowerCase().includes(searchQuery.toLowerCase()))
-          );
-        }
+    // Apply search filter with real guest names
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(room => 
+        room.room_number.toLowerCase().includes(query) ||
+        room.room_type?.name.toLowerCase().includes(query) ||
+        // Real guest name search from current reservations
+        (room.guest && room.guest.toLowerCase().includes(query)) ||
+        // Legacy field support
+        (room.number && room.number.toLowerCase().includes(query)) ||
+        (room.name && room.name.toLowerCase().includes(query)) ||
+        (room.type && room.type.toLowerCase().includes(query))
+      );
+    }
 
     // Apply KPI filter
     if (activeFilter) {
@@ -180,8 +180,8 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
       }
     }
 
-    setFilteredRooms(filtered);
-  }, [searchQuery, activeFilter, roomData]);
+    return filtered;
+  }, [roomData, searchQuery, activeFilter]);
 
   const handleRoomClick = (room: Room) => {
     setSelectedRoom(room);
@@ -197,64 +197,43 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
       switch (event.key.toLowerCase()) {
         case 'i':
           event.preventDefault();
-          // Check-in action
-          console.log('Check-in:', selectedRoom.number);
+          logEvent({
+            action: 'KEYBOARD_SHORTCUT',
+            resource_type: 'ROOM',
+            resource_id: selectedRoom.id,
+            description: `Check-in shortcut used for Room ${selectedRoom.number}`,
+            metadata: { shortcut: 'i', action: 'check-in' }
+          });
           break;
         case 'o':
           event.preventDefault();
-          // Check-out action
-          console.log('Check-out:', selectedRoom.number);
-          break;
-        case 'a':
-          event.preventDefault();
-          // Assign room action
-          console.log('Assign room:', selectedRoom.number);
-          break;
-        case 'escape':
-          setSelectedRoom(null);
-          setIsDrawerOpen(false);
+          logEvent({
+            action: 'KEYBOARD_SHORTCUT', 
+            resource_type: 'ROOM',
+            resource_id: selectedRoom.id,
+            description: `Check-out shortcut used for Room ${selectedRoom.number}`,
+            metadata: { shortcut: 'o', action: 'check-out' }
+          });
           break;
       }
     };
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [selectedRoom]);
-
-  // Get status counts for summary
-  const statusCounts = roomData.reduce((acc, room) => {
-    acc[room.status] = (acc[room.status] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  }, [selectedRoom, logEvent]);
 
   const handleRoomUpdate = (updatedRoom: Room) => {
-    // Log the room update action
-    logEvent({
-      action: 'ROOM_UPDATE',
-      resource_type: 'ROOM',
-      resource_id: updatedRoom.id,
-      description: `Room ${updatedRoom.number} status updated`,
-      metadata: {
-        room_number: updatedRoom.number,
-        new_status: updatedRoom.status,
-        guest_name: updatedRoom.guest,
-        update_source: 'front_desk'
-      }
-    });
-
-    // Update local state and close drawer
-    setSelectedRoom(null);
-    setIsDrawerOpen(false);
-    
-    // The useRooms query will be invalidated by real-time updates
-    // This ensures all connected terminals see the changes immediately
+    // No need to manually update state as useRooms hook will refetch
+    // This ensures we always have the latest data from the database
+    console.log('Room updated:', updatedRoom);
   };
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="grid gap-4 p-4">
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground mt-2">Loading rooms...</p>
         </div>
       </div>
     );
@@ -262,48 +241,47 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
 
   if (error) {
     return (
-      <div className="space-y-6">
+      <div className="grid gap-4 p-4">
         <div className="text-center py-12">
-          <p className="text-lg font-medium text-destructive">Error loading rooms</p>
-          <p className="text-sm text-muted-foreground">Please try refreshing the page</p>
+          <p className="text-destructive">Failed to load rooms: {error.message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!filteredRooms || filteredRooms.length === 0) {
+    return (
+      <div className="grid gap-4 p-4">
+        <div className="text-center py-12">
+          <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-muted-foreground mb-2">No rooms found</h3>
+          <p className="text-sm text-muted-foreground">
+            {searchQuery ? 
+              `No rooms match "${searchQuery}"` : 
+              activeFilter ? 
+                `No rooms match the "${activeFilter}" filter` :
+                'No rooms available'
+            }
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Room Status Summary */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="bg-room-available/10 text-room-available border-room-available/20">
-            Available: {statusCounts.available || 0}
-          </Badge>
-          <Badge variant="outline" className="bg-room-occupied/10 text-room-occupied border-room-occupied/20">
-            Occupied: {statusCounts.occupied || 0}
-          </Badge>
-          <Badge variant="outline" className="bg-room-reserved/10 text-room-reserved border-room-reserved/20">
-            Reserved: {statusCounts.reserved || 0}
+    <div className="space-y-4">
+      {/* Filters */}
+      {activeFilter && (
+        <div className="flex items-center gap-2 px-4">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Badge variant="secondary" className="capitalize">
+            {activeFilter.replace('-', ' ')} ({filteredRooms.length})
           </Badge>
         </div>
-
-        {/* Active Filter Display */}
-        {activeFilter && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-          >
-            <Badge variant="secondary" className="flex items-center gap-2">
-              <Filter className="h-3 w-3" />
-              Filtered by: {activeFilter.replace('-', ' ')}
-            </Badge>
-          </motion.div>
-        )}
-      </div>
+      )}
 
       {/* Room Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-4">
         <AnimatePresence>
           {filteredRooms.map((room) => (
             <motion.div
@@ -316,28 +294,13 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
             >
               <RoomTile
                 room={room}
-                isSelected={selectedRoom?.id === room.id}
                 onClick={() => handleRoomClick(room)}
+                isSelected={selectedRoom?.id === room.id}
               />
             </motion.div>
           ))}
         </AnimatePresence>
       </div>
-
-      {/* Empty State */}
-      {filteredRooms.length === 0 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center py-12"
-        >
-          <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-lg font-medium text-muted-foreground">No rooms found</p>
-          <p className="text-sm text-muted-foreground">
-            Try adjusting your search or filter criteria
-          </p>
-        </motion.div>
-      )}
 
       {/* Room Action Drawer */}
       <RoomActionDrawer
@@ -350,23 +313,6 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
         }}
         onRoomUpdate={handleRoomUpdate}
       />
-
-      {/* Keyboard Shortcuts Help */}
-      {selectedRoom && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="fixed bottom-20 right-4 bg-card border rounded-lg p-3 shadow-lg"
-        >
-          <p className="text-sm font-medium mb-2">Room {selectedRoom.number} Selected</p>
-          <div className="text-xs text-muted-foreground space-y-1">
-            <div><kbd className="bg-muted px-1 rounded">I</kbd> Check-In</div>
-            <div><kbd className="bg-muted px-1 rounded">O</kbd> Check-Out</div>
-            <div><kbd className="bg-muted px-1 rounded">A</kbd> Assign Room</div>
-            <div><kbd className="bg-muted px-1 rounded">Esc</kbd> Deselect</div>
-          </div>
-        </motion.div>
-      )}
     </div>
   );
 };

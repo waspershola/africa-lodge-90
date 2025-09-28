@@ -61,8 +61,78 @@ export const TransferRoomDialog = ({
     setIsProcessing(true);
 
     try {
-      // Simulate room transfer process
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Real backend integration for room transfer
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) throw new Error('Not authenticated');
+
+      // Get current reservation for source room
+      const { data: currentReservation, error: reservationError } = await supabase
+        .from('reservations')
+        .select('*')
+        .eq('room_id', sourceRoom.id)
+        .eq('status', 'checked_in')
+        .single();
+
+      if (reservationError) throw new Error('No active reservation found');
+
+      // Start transaction: Update reservation to new room
+      const { error: updateReservationError } = await supabase
+        .from('reservations')
+        .update({ 
+          room_id: targetRoom.id,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', currentReservation.id);
+
+      if (updateReservationError) throw updateReservationError;
+
+      // Update source room status to available
+      const { error: sourceRoomError } = await supabase
+        .from('rooms')
+        .update({ 
+          status: 'available',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', sourceRoom.id);
+
+      if (sourceRoomError) throw sourceRoomError;
+
+      // Update target room status to occupied
+      const { error: targetRoomError } = await supabase
+        .from('rooms')
+        .update({ 
+          status: 'occupied',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', targetRoom.id);
+
+      if (targetRoomError) throw targetRoomError;
+
+      // Add transfer fee charge if applicable
+      if (transferFee > 0) {
+        // Get folio for this reservation
+        const { data: folio, error: folioError } = await supabase
+          .from('folios')
+          .select('id')
+          .eq('reservation_id', currentReservation.id)
+          .single();
+
+        if (!folioError && folio) {
+          const { error: chargeError } = await supabase
+            .from('folio_charges')
+            .insert({
+              folio_id: folio.id,
+              charge_type: 'service',
+              description: `Room transfer fee: ${sourceRoom.number} → ${targetRoom.number}`,
+              amount: transferFee,
+              tenant_id: user.user_metadata?.tenant_id
+            });
+
+          if (chargeError) console.warn('Failed to add transfer fee charge:', chargeError);
+        }
+      }
 
       // Log shift action
       await logShiftAction({
@@ -74,7 +144,8 @@ export const TransferRoomDialog = ({
           source_room: sourceRoom.number,
           target_room: targetRoom.number,
           transfer_fee: transferFee,
-          reason: 'Guest requested room change'
+          reason: 'Guest requested room change',
+          reservation_id: currentReservation.id
         }
       });
 

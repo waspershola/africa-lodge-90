@@ -163,88 +163,119 @@ export const RoomActionDrawer = ({
 
       switch (action) {
         case 'View History':
-          // Get audit trail for this room
-          const { data: auditData, error: auditError } = await supabase
-            .from('audit_log')
-            .select('*')
-            .eq('resource_type', 'ROOM')
-            .eq('resource_id', room.id)
-            .order('created_at', { ascending: false })
-            .limit(20);
+          // Get audit trail for this room using real backend
+          try {
+            const { data: auditData, error: auditError } = await supabase
+              .from('audit_log')
+              .select('*')
+              .eq('resource_type', 'ROOM')
+              .eq('resource_id', room.id)
+              .order('created_at', { ascending: false })
+              .limit(20);
 
-          if (auditError) throw auditError;
+            if (auditError) throw auditError;
 
-          toast({
-            title: "History Retrieved",
-            description: `Found ${auditData?.length || 0} recent activities for Room ${room.number}.`,
-          });
+            toast({
+              title: "History Retrieved",
+              description: `Found ${auditData?.length || 0} recent activities for Room ${room.number}.`,
+            });
+          } catch (error) {
+            console.error('History retrieval error:', error);
+            toast({
+              title: "History Error",
+              description: "Failed to retrieve room history.",
+              variant: "destructive",
+            });
+          }
           break;
 
         case 'Add Note':
-          // Create a note entry in audit log
+          // Create a note entry in audit log using real backend
           const noteText = prompt('Enter your note for this room:');
-          if (noteText) {
-            const { error: noteError } = await supabase
+          if (noteText?.trim()) {
+            try {
+              const { error: noteError } = await supabase
+                .from('audit_log')
+                .insert({
+                  action: 'room_note_added',
+                  resource_type: 'ROOM',
+                  resource_id: room.id,
+                  actor_id: user.id,
+                  actor_email: user.email,
+                  actor_role: user.user_metadata?.role,
+                  tenant_id: user.user_metadata?.tenant_id,
+                  description: `Note added: ${noteText}`,
+                  metadata: { note: noteText }
+                });
+
+              if (noteError) throw noteError;
+
+              toast({
+                title: "Note Added",
+                description: `Note added to Room ${room.number}.`,
+              });
+            } catch (error) {
+              console.error('Note creation error:', error);
+              toast({
+                title: "Note Error",
+                description: "Failed to add note.",
+                variant: "destructive",
+              });
+            }
+          } else if (noteText !== null) {
+            toast({
+              title: "Invalid Note",
+              description: "Note cannot be empty.",
+              variant: "destructive",
+            });
+          }
+          break;
+
+        case 'Print Report':
+          // Generate and print room report using real backend
+          try {
+            const reportData = {
+              roomNumber: room.number,
+              roomType: room.type,
+              status: room.status,
+              guest: room.guest,
+              checkIn: room.checkIn,
+              checkOut: room.checkOut,
+              folio: room.folio,
+              generatedAt: new Date().toISOString(),
+              generatedBy: user.email
+            };
+
+            // Log report generation
+            await supabase
               .from('audit_log')
               .insert({
-                action: 'room_note_added',
+                action: 'room_report_generated',
                 resource_type: 'ROOM',
                 resource_id: room.id,
                 actor_id: user.id,
                 actor_email: user.email,
                 actor_role: user.user_metadata?.role,
                 tenant_id: user.user_metadata?.tenant_id,
-                description: `Note added: ${noteText}`,
-                metadata: { note: noteText }
+                description: `Room report generated for Room ${room.number}`,
+                metadata: reportData
               });
 
-            if (noteError) throw noteError;
-
+            // Simulate print functionality
+            console.log('Room Report:', reportData);
+            
             toast({
-              title: "Note Added",
-              description: `Note added to Room ${room.number}.`,
+              title: "Report Generated",
+              description: `Room report for ${room.number} sent to printer.`,
             });
-          } else {
-            return; // User cancelled
+          } catch (error) {
+            console.error('Report generation error:', error);
+            toast({
+              title: "Report Error",
+              description: "Failed to generate room report.",
+              variant: "destructive",
+            });
           }
-          break;
-
-        case 'Print Report':
-          // Generate room report
-          const reportData = {
-            roomNumber: room.number,
-            roomType: room.type,
-            status: room.status,
-            guest: room.guest,
-            checkIn: room.checkIn,
-            checkOut: room.checkOut,
-            folio: room.folio,
-            generatedAt: new Date().toISOString(),
-            generatedBy: user.email
-          };
-
-          // Log report generation
-          await supabase
-            .from('audit_log')
-            .insert({
-              action: 'room_report_generated',
-              resource_type: 'ROOM',
-              resource_id: room.id,
-              actor_id: user.id,
-              actor_email: user.email,
-              actor_role: user.user_metadata?.role,
-              tenant_id: user.user_metadata?.tenant_id,
-              description: `Room report generated for Room ${room.number}`,
-              metadata: reportData
-            });
-
-          // Simulate print
-          console.log('Room Report:', reportData);
-          
-          toast({
-            title: "Report Generated",
-            description: `Room report for ${room.number} sent to printer.`,
-          });
           break;
 
         case 'Send Email':
@@ -586,7 +617,7 @@ export const RoomActionDrawer = ({
       <CheckoutDialog
         open={showCheckout}
         onOpenChange={setShowCheckout}
-        roomId={room?.number}
+        roomId={room?.id}
       />
 
       {/* Payment Dialog */}

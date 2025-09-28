@@ -43,14 +43,27 @@ export const MarkAsCleanedButton = ({
     setIsProcessing(true);
     
     try {
+      // Step 1: Transition from dirty to clean
       await updateRoomStatusAsync({
         roomId: room.id,
-        newStatus: 'available',
-        reason: 'Room marked as cleaned and ready for guests',
+        newStatus: 'clean',
+        reason: 'Room cleaning completed',
         metadata: {
           cleaned_by: user.email,
           cleaned_at: new Date().toISOString(),
           previous_status: room.status
+        }
+      });
+
+      // Step 2: Transition from clean to available
+      await updateRoomStatusAsync({
+        roomId: room.id,
+        newStatus: 'available',
+        reason: 'Room ready for guests',
+        metadata: {
+          made_available_by: user.email,
+          made_available_at: new Date().toISOString(),
+          previous_status: 'clean'
         }
       });
 

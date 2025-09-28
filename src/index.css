@@ -42,8 +42,8 @@
     --room-available-foreground: 0 0% 100%;
     --room-occupied: 0 84% 60%;            /* Red #EF4444 */
     --room-occupied-foreground: 0 0% 100%;
-    --room-reserved: 43 96% 56%;           /* Yellow #EAB308 */
-    --room-reserved-foreground: 0 0% 13%;
+    --room-reserved: 217 78% 42%;          /* Blue #1565C0 */
+    --room-reserved-foreground: 0 0% 100%;
     --room-dirty: 25 95% 53%;              /* Orange #F97316 */
     --room-dirty-foreground: 0 0% 100%;
     --room-overstay: 276 68% 36%;          /* Purple #6A1B9A */

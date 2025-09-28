@@ -40,6 +40,7 @@ import { useReceiptPrinter } from "@/hooks/useReceiptPrinter";
 import { AuditTrailDisplay } from "./AuditTrailDisplay";
 import { useAuditLog } from "@/hooks/useAuditLog";
 import { useAuth } from '@/hooks/useAuth';
+import { MarkAsCleanedButton } from "./MarkAsCleanedButton";
 import type { Room } from "./RoomGrid";
 
 interface RoomActionDrawerProps {
@@ -136,6 +137,44 @@ export const RoomActionDrawer = ({
     if (action === 'Mark as Available') {
       setMaintenanceAction('mark-available');
       setShowMaintenance(true);
+      return;
+    }
+
+    if (action === 'Mark as Cleaned') {
+      // Handle mark as cleaned action directly using useRoomStatusManager
+      setIsProcessing(true);
+      
+      try {
+        const { useRoomStatusManager } = await import('@/hooks/useRoomStatusManager');
+        const { updateRoomStatusAsync } = useRoomStatusManager();
+        
+        await updateRoomStatusAsync({
+          roomId: room.id,
+          newStatus: 'available',
+          reason: 'Room marked as cleaned and ready for guests',
+          metadata: {
+            cleaned_by: user?.email,
+            cleaned_at: new Date().toISOString(),
+            previous_status: room.status
+          }
+        });
+
+        toast({
+          title: "Room Cleaned",
+          description: `Room ${room.number} has been marked as cleaned and is now available.`,
+        });
+
+        onClose();
+      } catch (error) {
+        console.error('Mark as cleaned error:', error);
+        toast({
+          title: "Error",
+          description: `Failed to mark room as cleaned: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          variant: "destructive",
+        });
+      } finally {
+        setIsProcessing(false);
+      }
       return;
     }
 
@@ -362,11 +401,12 @@ export const RoomActionDrawer = ({
 
   const getStatusColor = (status: Room['status']) => {
     switch (status) {
-      case 'available': return 'text-success';
-      case 'occupied': return 'text-destructive';
-      case 'reserved': return 'text-blue-600';
-      case 'oos': return 'text-orange-600';
-      case 'overstay': return 'text-purple-600';
+      case 'available': return 'text-room-available';
+      case 'occupied': return 'text-room-occupied';
+      case 'reserved': return 'text-room-reserved';
+      case 'dirty': return 'text-room-dirty';
+      case 'oos': return 'text-room-oos';
+      case 'overstay': return 'text-room-overstay';
       default: return 'text-muted-foreground';
     }
   };
@@ -384,6 +424,12 @@ export const RoomActionDrawer = ({
         if (user?.role && ['OWNER', 'MANAGER'].includes(user.role)) {
           actions.push({ icon: Wrench, label: 'Set Out of Service', action: 'oos', variant: 'outline' as const });
         }
+        break;
+      case 'dirty':
+        actions = [
+          { icon: Sparkles, label: 'Mark as Cleaned', action: 'mark-cleaned', variant: 'default' as const },
+          { icon: Wrench, label: 'Create Work Order', action: 'create-workorder', variant: 'outline' as const },
+        ];
         break;
       case 'occupied':
         actions = [
@@ -556,6 +602,16 @@ export const RoomActionDrawer = ({
           {/* Quick Actions */}
           <div className="space-y-3">
             <h3 className="font-medium">Quick Actions</h3>
+            
+            {/* Mark as Cleaned Button - Show prominently for dirty rooms */}
+            {room.status === 'dirty' && (
+              <MarkAsCleanedButton
+                room={room}
+                onRoomUpdate={onRoomUpdate}
+                onComplete={onClose}
+              />
+            )}
+            
             <div className="grid grid-cols-2 gap-2">
               <Button 
                 variant="outline" 

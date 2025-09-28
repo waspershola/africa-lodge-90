@@ -95,6 +95,10 @@ export default {
 					DEFAULT: 'hsl(var(--room-reserved))',
 					foreground: 'hsl(var(--room-reserved-foreground))'
 				},
+				'room-dirty': {
+					DEFAULT: 'hsl(var(--room-dirty))',
+					foreground: 'hsl(var(--room-dirty-foreground))'
+				},
 				'room-overstay': {
 					DEFAULT: 'hsl(var(--room-overstay))',
 					foreground: 'hsl(var(--room-overstay-foreground))'

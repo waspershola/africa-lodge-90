@@ -26,13 +26,18 @@ export const useCheckout = (roomId?: string) => {
 
       if (roomError) throw roomError;
 
-      // Get active reservation for the room
-      const { data: reservation, error: reservationError } = await supabase
+      // Get active reservation for the room (most recent if multiple)
+      const { data: reservations, error: reservationError } = await supabase
         .from('reservations')
         .select('*')
         .eq('room_id', roomId)
         .eq('status', 'checked_in')
-        .maybeSingle();
+        .order('check_in_date', { ascending: false })
+        .limit(1);
+
+      if (reservationError) throw reservationError;
+
+      const reservation = reservations?.[0];
 
       if (reservationError) throw reservationError;
 
@@ -146,13 +151,16 @@ export const useCheckout = (roomId?: string) => {
 
     setLoading(true);
     try {
-      // Get the reservation and safely handle folio
-      const { data: reservation } = await supabase
+      // Get the reservation and safely handle folio (most recent if multiple)
+      const { data: reservations } = await supabase
         .from('reservations')
         .select('id')
         .eq('room_id', checkoutSession.room_id)
         .eq('status', 'checked_in')
-        .maybeSingle();
+        .order('check_in_date', { ascending: false })
+        .limit(1);
+
+      const reservation = reservations?.[0];
 
       if (!reservation) throw new Error('No active reservation found');
 
@@ -255,15 +263,19 @@ export const useCheckout = (roomId?: string) => {
     }, 30000); // 30 seconds timeout
 
     try {
-      // Use transaction-like approach by batching operations
-      const { data: reservation, error: reservationError } = await supabase
+      // Use transaction-like approach by batching operations (get most recent if multiple)
+      const { data: reservations, error: reservationError } = await supabase
         .from('reservations')
         .select('id')
         .eq('room_id', checkoutSession.room_id)
         .eq('status', 'checked_in')
-        .maybeSingle();
+        .order('check_in_date', { ascending: false })
+        .limit(1);
 
-      if (reservationError || !reservation) {
+      if (reservationError) throw reservationError;
+
+      const reservation = reservations?.[0];
+      if (!reservation) {
         throw new Error('No active reservation found');
       }
 

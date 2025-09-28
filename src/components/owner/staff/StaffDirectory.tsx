@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useStaff, useDeleteStaffMember, useUpdateStaffMember } from "@/hooks/useApi";
+import { useStaff } from "@/hooks/useApi";
+import { useDeleteStaffMember, useUpdateStaffMember } from "@/hooks/useRoomOperations";
 import { toast } from "sonner";
 import AddStaffDialog from "./AddStaffDialog";
 

@@ -24,9 +24,9 @@ import {
   useGuestProfiles, 
   useCompanies, 
   useImportOTAReservation,
-  useAssignRoom as useAutoAssignRoom,
   useRoomAvailability
 } from '@/hooks/useApi';
+import { useAssignRoom as useAutoAssignRoom } from '@/hooks/useRoomOperations';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, differenceInDays } from 'date-fns';

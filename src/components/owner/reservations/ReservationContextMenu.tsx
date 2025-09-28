@@ -17,13 +17,13 @@ import {
   LogOut,
   AlertTriangle
 } from 'lucide-react';
+import { useDeleteReservation } from '@/hooks/useApi';
 import { 
   useAssignRoom, 
-  useDeleteReservation, 
   useCheckInGuest, 
   useCheckOutGuest,
   useCheckRoomConflicts
-} from '@/hooks/useApi';
+} from '@/hooks/useRoomOperations';
 import { useToast } from '@/hooks/use-toast';
 
 interface ReservationContextMenuProps {
@@ -61,9 +61,9 @@ export default function ReservationContextMenu({
     try {
       const conflictResult = await checkConflicts.mutateAsync({
         roomId: reservation.room,
-        checkIn: reservation.checkIn,
-        checkOut: reservation.checkOut,
-        reservationId: reservation.id
+        checkInDate: reservation.checkIn,
+        checkOutDate: reservation.checkOut,
+        excludeReservationId: reservation.id
       });
 
       if (conflictResult.hasConflicts) {

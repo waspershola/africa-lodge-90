@@ -348,8 +348,6 @@ export const QuickGuestCapture = ({
           phone: formData.phone,
           email: formData.email,
           nationality: formData.nationality || null,
-          sex: formData.sex || null,
-          occupation: formData.occupation || null,
           id_type: formData.idType,
           id_number: formData.idNumber,
           tenant_id: user.user_metadata?.tenant_id

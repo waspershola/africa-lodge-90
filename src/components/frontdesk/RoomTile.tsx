@@ -44,14 +44,6 @@ const getStatusConfig = (status: Room['status']) => {
         badge: 'bg-room-reserved text-room-reserved-foreground',
         label: 'RESERVED'
       };
-    case 'dirty':
-      return {
-        bg: 'bg-room-dirty/20 hover:bg-room-dirty/30',
-        border: 'border-room-dirty/40',
-        text: 'text-foreground',
-        badge: 'bg-room-dirty text-room-dirty-foreground',
-        label: 'DIRTY'
-      };
     case 'oos':
       return {
         bg: 'bg-room-oos/20 hover:bg-room-oos/30',

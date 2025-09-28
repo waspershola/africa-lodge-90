@@ -41,7 +41,6 @@ import { AuditTrailDisplay } from "./AuditTrailDisplay";
 import { useAuditLog } from "@/hooks/useAuditLog";
 import { useAuth } from '@/hooks/useAuth';
 import type { Room } from "./RoomGrid";
-import { MarkAsCleanedButton } from "./MarkAsCleanedButton";
 
 interface RoomActionDrawerProps {
   room: Room | null;
@@ -596,26 +595,6 @@ export const RoomActionDrawer = ({
               </Button>
             </div>
           </div>
-
-          {/* Mark as Cleaned Button */}
-          {room.status === 'dirty' && (
-            <div className="space-y-3">
-              <h3 className="font-medium">Room Status</h3>
-              <MarkAsCleanedButton
-                roomId={room.id}
-                roomNumber={room.number}
-                currentStatus={room.status}
-                userRole={user?.user_metadata?.role}
-                onSuccess={() => {
-                  onClose();
-                  onRoomUpdate?.({
-                    ...room,
-                    status: 'available'
-                  });
-                }}
-              />
-            </div>
-          )}
 
           {/* Audit Trail */}
           <div className="pt-4 border-t text-xs text-muted-foreground">

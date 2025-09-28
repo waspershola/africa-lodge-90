@@ -99,10 +99,6 @@ export default {
 					DEFAULT: 'hsl(var(--room-overstay))',
 					foreground: 'hsl(var(--room-overstay-foreground))'
 				},
-				'room-dirty': {
-					DEFAULT: 'hsl(var(--room-dirty))',
-					foreground: 'hsl(var(--room-dirty-foreground))'
-				},
 				'room-oos': {
 					DEFAULT: 'hsl(var(--room-oos))',
 					foreground: 'hsl(var(--room-oos-foreground))'

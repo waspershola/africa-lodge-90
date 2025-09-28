@@ -56,6 +56,7 @@ import { useGuestSearch, useRecentGuests } from "@/hooks/useGuestSearch";
 import { useGuestContactManager } from "@/hooks/useGuestContactManager";
 import { useRoomStatusManager } from "@/hooks/useRoomStatusManager";
 import { RateSelectionComponent } from "./RateSelectionComponent";
+import { ProcessingStateManager } from "./ProcessingStateManager";
 import type { Room } from "./RoomGrid";
 
 interface QuickGuestCaptureProps {
@@ -132,6 +133,7 @@ export const QuickGuestCapture = ({
   const { quickCheckIn, isLoading: isStatusLoading } = useRoomStatusManager();
   const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStartTime, setProcessingStartTime] = useState<number | undefined>();
   const [showOptionalFields, setShowOptionalFields] = useState(false);
   const [guestMode, setGuestMode] = useState<'existing' | 'new'>('existing');
   const [selectedGuest, setSelectedGuest] = useState<RecentGuest | null>(null);
@@ -338,11 +340,13 @@ export const QuickGuestCapture = ({
     }
     
     setIsProcessing(true);
+    setProcessingStartTime(Date.now());
     
     // Set timeout to prevent infinite processing
     const processingTimeout = setTimeout(() => {
       if (isProcessing) {
         setIsProcessing(false);
+        setProcessingStartTime(undefined);
         toast({
           title: "Processing Timeout",
           description: "The operation took too long. Please try again.",
@@ -590,32 +594,36 @@ export const QuickGuestCapture = ({
         });
       }
 
-      // Reset form and states
-      setFormData({
-        guestName: '',
-        phone: '',
-        email: '',
-        nationality: '',
-        sex: '',
-        occupation: '',
-        idType: '',
-        idNumber: '',
-        paymentMode: 'cash',
-        depositAmount: '10000',
-        printNow: true,
-        notes: '',
-        checkInDate: new Date().toISOString().split('T')[0],
-        checkOutDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        roomRate: 0,
-        totalAmount: 0,
-        numberOfNights: 1,
-      });
-      setGuestMode('existing');
-      setSelectedGuest(null);
-      setGuestSearchValue("");
-      setShowOptionalFields(false);
+        // Clear timeout properly
+        clearTimeout(processingTimeout);
+        
+        const updatedFormData = {
+          guestName: '',
+          phone: '',
+          email: '',
+          nationality: '',
+          sex: '',
+          occupation: '',
+          idType: '',
+          idNumber: '',
+          paymentMode: 'cash',
+          depositAmount: '10000',
+          printNow: true,
+          notes: '',
+          checkInDate: new Date().toISOString().split('T')[0],
+          checkOutDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          roomRate: 0,
+          totalAmount: 0,
+          numberOfNights: 1,
+        };
+        
+        setFormData(updatedFormData);
+        setGuestMode('existing');
+        setSelectedGuest(null);
+        setGuestSearchValue("");
+        setShowOptionalFields(false);
 
-      onOpenChange(false);
+        onOpenChange(false);
     } catch (error) {
       console.error('Error processing guest capture:', error);
       let errorMessage = "Failed to process guest information. Please try again.";
@@ -647,6 +655,7 @@ export const QuickGuestCapture = ({
     } finally {
       clearTimeout(processingTimeout);
       setIsProcessing(false);
+      setProcessingStartTime(undefined);
     }
   };
 
@@ -664,6 +673,32 @@ export const QuickGuestCapture = ({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Processing State Monitor */}
+          {isProcessing && (
+            <ProcessingStateManager
+              isProcessing={isProcessing}
+              operation={getActionTitle()}
+              startTime={processingStartTime}
+              onTimeout={() => {
+                setIsProcessing(false);
+                setProcessingStartTime(undefined);
+                toast({
+                  title: "Operation Timeout",
+                  description: "The operation timed out. Please try again.",
+                  variant: "destructive",
+                });
+              }}
+              onCancel={() => {
+                setIsProcessing(false);
+                setProcessingStartTime(undefined);
+                toast({
+                  title: "Operation Cancelled",
+                  description: "The operation was cancelled by user.",
+                });
+              }}
+            />
+          )}
+
           {/* Guest Selection Mode */}
           <Card>
             <CardHeader className="pb-3">

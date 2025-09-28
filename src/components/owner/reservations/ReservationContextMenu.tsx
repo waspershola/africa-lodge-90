@@ -111,12 +111,35 @@ export default function ReservationContextMenu({
     }
   };
 
-  const handleSendConfirmation = () => {
-    // Mock sending confirmation email
-    toast({
-      title: 'Confirmation Sent',
-      description: `Confirmation email sent to ${reservation.email}`,
-    });
+  const handleSendConfirmation = async () => {
+    try {
+      // Real email sending using Supabase edge function
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data, error } = await supabase.functions.invoke('send-reservation-confirmation', {
+        body: {
+          reservationId: reservation.id,
+          guestEmail: reservation.email,
+          guestName: reservation.guestName || reservation.guest_name,
+          roomNumber: reservation.room || reservation.room_number,
+          checkInDate: reservation.checkIn || reservation.check_in_date,
+          checkOutDate: reservation.checkOut || reservation.check_out_date
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Confirmation Sent',
+        description: `Confirmation email sent to ${reservation.email}`,
+      });
+    } catch (error) {
+      console.error('Error sending confirmation:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to send confirmation email. Please try again.',
+        variant: 'destructive'
+      });
+    }
   };
 
   const getStatusColor = (status: string) => {

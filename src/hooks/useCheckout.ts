@@ -235,65 +235,91 @@ export const useCheckout = (roomId?: string) => {
     if (!checkoutSession || checkoutSession.checkout_status !== 'ready' || !user) return false;
 
     setLoading(true);
+    
+    // Set timeout to prevent infinite processing
+    const timeoutId = setTimeout(() => {
+      if (loading) {
+        setLoading(false);
+        setError('Checkout timeout. Please refresh and try again.');
+      }
+    }, 30000); // 30 seconds timeout
+
     try {
-      // Get reservation and folio
-      const { data: reservation } = await supabase
+      // Use transaction-like approach by batching operations
+      const { data: reservation, error: reservationError } = await supabase
         .from('reservations')
         .select('id')
         .eq('room_id', checkoutSession.room_id)
         .eq('status', 'checked_in')
         .single();
 
-      if (!reservation) throw new Error('No active reservation found');
+      if (reservationError || !reservation) {
+        throw new Error('No active reservation found');
+      }
 
-      const { data: folio } = await supabase
+      const { data: folio, error: folioError } = await supabase
         .from('folios')
         .select('id')
         .eq('reservation_id', reservation.id)
         .eq('status', 'open')
         .single();
 
-      if (!folio) throw new Error('No active folio found');
+      if (folioError || !folio) {
+        throw new Error('No active folio found');
+      }
 
-      // Close the folio
-      await supabase
-        .from('folios')
-        .update({
-          status: 'closed',
-          closed_by: user.id,
-          closed_at: new Date().toISOString()
-        })
-        .eq('id', folio.id);
+      // Execute all updates in sequence with proper error handling
+      const updates = [
+        // Close the folio
+        supabase
+          .from('folios')
+          .update({
+            status: 'closed',
+            closed_by: user.id,
+            closed_at: new Date().toISOString()
+          })
+          .eq('id', folio.id),
 
-      // Update reservation status to checked out
-      await supabase
-        .from('reservations')
-        .update({
-          status: 'checked_out',
-          checked_out_at: new Date().toISOString(),
-          checked_out_by: user.id
-        })
-        .eq('id', reservation.id);
+        // Update reservation status to checked out
+        supabase
+          .from('reservations')
+          .update({
+            status: 'checked_out',
+            checked_out_at: new Date().toISOString(),
+            checked_out_by: user.id
+          })
+          .eq('id', reservation.id),
 
-      // Update room status to dirty (needs cleaning)
-      await supabase
-        .from('rooms')
-        .update({ status: 'dirty' })
-        .eq('id', checkoutSession.room_id);
+        // Update room status to dirty (needs cleaning)
+        supabase
+          .from('rooms')
+          .update({ status: 'dirty' })
+          .eq('id', checkoutSession.room_id),
 
-      // Create audit log
-      await supabase
-        .from('audit_log')
-        .insert([{
-          action: 'checkout_completed',
-          resource_type: 'reservation',
-          resource_id: reservation.id,
-          actor_id: user.id,
-          actor_email: user.email,
-          actor_role: user.role,
-          tenant_id: user.tenant_id,
-          description: `Completed checkout for room ${checkoutSession.guest_bill.room_number}`
-        }]);
+        // Create audit log
+        supabase
+          .from('audit_log')
+          .insert([{
+            action: 'checkout_completed',
+            resource_type: 'reservation',
+            resource_id: reservation.id,
+            actor_id: user.id,
+            actor_email: user.email,
+            actor_role: user.role,
+            tenant_id: user.tenant_id,
+            description: `Completed checkout for room ${checkoutSession.guest_bill.room_number}`
+          }])
+      ];
+
+      // Execute all updates
+      const results = await Promise.all(updates);
+      
+      // Check for any errors
+      for (const result of results) {
+        if (result.error) {
+          throw new Error(`Update failed: ${result.error.message}`);
+        }
+      }
 
       const completedSession: CheckoutSession = {
         ...checkoutSession,
@@ -303,9 +329,12 @@ export const useCheckout = (roomId?: string) => {
       };
 
       setCheckoutSession(completedSession);
+      clearTimeout(timeoutId);
       return true;
     } catch (err: any) {
+      console.error('Checkout completion error:', err);
       setError(err.message || 'Checkout completion failed');
+      clearTimeout(timeoutId);
       return false;
     } finally {
       setLoading(false);

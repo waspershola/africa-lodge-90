@@ -96,9 +96,112 @@ export const ExtendStayDialog = ({
     setIsProcessing(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Real backend integration for extending stay
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data: { user } } = await supabase.auth.getUser();
       
+      if (!user) throw new Error('Not authenticated');
+
+      // Get the active reservation for this room
+      const { data: reservation, error: reservationError } = await supabase
+        .from('reservations')
+        .select('id')
+        .eq('room_id', room.id)
+        .in('status', ['confirmed', 'checked_in'])
+        .single();
+
+      if (reservationError) throw new Error('No active reservation found for this room');
+
+      // Update reservation checkout date
+      const { error: updateError } = await supabase
+        .from('reservations')
+        .update({
+          check_out_date: formData.newCheckOutDate,
+          total_amount: (room.folio?.balance || 0) + additionalAmount,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', reservation.id);
+
+      if (updateError) throw updateError;
+
+      // If there are additional charges, add them to folio
+      if (additionalAmount > 0) {
+        // Get or create folio
+        let { data: folio, error: folioError } = await supabase
+          .from('folios')
+          .select('id')
+          .eq('reservation_id', reservation.id)
+          .eq('status', 'open')
+          .maybeSingle();
+
+        if (folioError) throw folioError;
+
+        if (!folio) {
+          // Create folio if it doesn't exist
+          const { data: newFolio, error: createFolioError } = await supabase
+            .from('folios')
+            .insert({
+              reservation_id: reservation.id,
+              folio_number: `FOL-${Date.now()}`,
+              status: 'open',
+              tenant_id: user.user_metadata?.tenant_id
+            })
+            .select('id')
+            .single();
+
+          if (createFolioError) throw createFolioError;
+          folio = newFolio;
+        }
+
+        // Add extension charge to folio
+        const { error: chargeError } = await supabase
+          .from('folio_charges')
+          .insert({
+            folio_id: folio.id,
+            charge_type: 'extension',
+            description: `Stay extension - ${additionalNights} additional night(s)`,
+            amount: additionalAmount,
+            tenant_id: user.user_metadata?.tenant_id
+          });
+
+        if (chargeError) throw chargeError;
+
+        // Process payment if payment method selected
+        if (formData.paymentMethod && formData.paymentMethod !== 'pay_later') {
+          const { error: paymentError } = await supabase
+            .from('payments')
+            .insert({
+              folio_id: folio.id,
+              amount: additionalAmount,
+              payment_method: formData.paymentMethod,
+              status: 'completed',
+              processed_by: user.id,
+              tenant_id: user.user_metadata?.tenant_id
+            });
+
+          if (paymentError) throw paymentError;
+        }
+      }
+
+      // Create audit log
+      await supabase
+        .from('audit_log')
+        .insert({
+          action: 'extend_stay',
+          resource_type: 'reservation',
+          resource_id: reservation.id,
+          actor_id: user.id,
+          actor_email: user.email,
+          tenant_id: user.user_metadata?.tenant_id,
+          description: `Extended stay for Room ${room.number} to ${formData.newCheckOutDate}`,
+          metadata: {
+            room_number: room.number,
+            new_checkout_date: formData.newCheckOutDate,
+            additional_amount: additionalAmount,
+            additional_nights: additionalNights
+          }
+        });
+
       const updatedRoom = {
         ...room,
         checkOut: formData.newCheckOutDate,
@@ -125,9 +228,10 @@ export const ExtendStayDialog = ({
 
       onOpenChange(false);
     } catch (error) {
+      console.error('Error extending stay:', error);
       toast({
         title: "Error",
-        description: "Failed to extend stay. Please try again.",
+        description: `Failed to extend stay: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });
     } finally {

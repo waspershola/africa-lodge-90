@@ -54,6 +54,7 @@ import { useToast } from "@/hooks/use-toast";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { useGuestSearch, useRecentGuests } from "@/hooks/useGuestSearch";
 import { useGuestContactManager } from "@/hooks/useGuestContactManager";
+import { useRoomStatusManager } from "@/hooks/useRoomStatusManager";
 import { RateSelectionComponent } from "./RateSelectionComponent";
 import type { Room } from "./RoomGrid";
 
@@ -128,6 +129,7 @@ export const QuickGuestCapture = ({
   const { enabledMethods } = usePaymentMethods();
   const { data: recentGuests } = useRecentGuests();
   const { saveGuestContactAsync, searchGuestContacts, quickContactLookup } = useGuestContactManager();
+  const { quickCheckIn, isLoading: isStatusLoading } = useRoomStatusManager();
   const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
   const [showOptionalFields, setShowOptionalFields] = useState(false);
@@ -331,7 +333,23 @@ export const QuickGuestCapture = ({
       return;
     }
 
+    if (isProcessing || isStatusLoading) {
+      return;
+    }
+    
     setIsProcessing(true);
+    
+    // Set timeout to prevent infinite processing
+    const processingTimeout = setTimeout(() => {
+      if (isProcessing) {
+        setIsProcessing(false);
+        toast({
+          title: "Processing Timeout",
+          description: "The operation took too long. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }, 30000); // 30 seconds timeout
 
     try {
       // Real backend integration
@@ -441,27 +459,27 @@ export const QuickGuestCapture = ({
         updatedRoom.checkIn = formData.checkInDate;
         updatedRoom.checkOut = formData.checkOutDate;
         
-      } else if (action === 'walkin' || action === 'check-in') {
-        // Handle check-in flow
+        } else if (action === 'walkin' || action === 'check-in') {
+        // Handle check-in flow using useRoomStatusManager
         let reservationId: string;
+        
+        console.log(`Processing ${action} for room ${room?.number}`, { roomId: room?.id, guestName: formData.guestName });
 
         if (action === 'check-in' && (room as any).current_reservation) {
-          // Use existing reservation
+          // Use existing reservation and check-in using the room status manager
           reservationId = (room as any).current_reservation.id;
+          console.log('Using existing reservation:', reservationId);
           
-          // Update reservation status to checked_in
-          const { error: reservationError } = await supabase
-            .from('reservations')
-            .update({ 
-              status: 'checked_in',
-              checked_in_at: new Date().toISOString(),
-              checked_in_by: user.id
-            })
-            .eq('id', reservationId);
-
-          if (reservationError) throw reservationError;
+          // Use quickCheckIn for better handling
+          const result = await quickCheckIn(room?.id, reservationId);
+          console.log('Check-in result:', result);
+          
+          if (!result) {
+            throw new Error('Failed to check in guest');
+          }
         } else {
           // Create new reservation for walk-in
+          console.log('Creating new walk-in reservation');
           const reservationNumber = `RES-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
           const reservationData = {
             guest_id: guestId,
@@ -490,6 +508,15 @@ export const QuickGuestCapture = ({
 
           if (reservationError) throw reservationError;
           reservationId = reservation.id;
+          console.log('New reservation created:', reservationId);
+          
+          // Use quickCheckIn for consistent status management
+          const result = await quickCheckIn(room?.id, reservationId);
+          console.log('Walk-in check-in result:', result);
+          
+          if (!result) {
+            throw new Error('Failed to complete walk-in check-in');
+          }
         }
 
         // Create folio for the reservation
@@ -535,27 +562,7 @@ export const QuickGuestCapture = ({
           if (paymentError) throw paymentError;
         }
 
-        // Update room status to occupied with validation
-        const validStatuses = ['available', 'occupied', 'reserved', 'out_of_service', 'oos', 'overstay', 'dirty', 'clean', 'maintenance', 'checkout'];
-        const newStatus = 'occupied';
-        
-        if (!validStatuses.includes(newStatus)) {
-          throw new Error(`Invalid room status: ${newStatus}`);
-        }
-        
-        const { error: roomError } = await supabase
-          .from('rooms')
-          .update({ 
-            status: newStatus,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', room?.id);
-
-        if (roomError) {
-          console.error('Room status update error:', roomError);
-          throw new Error(`Failed to update room status: ${roomError.message}`);
-        }
-
+        // Room status is already updated by quickCheckIn, just update UI state
         updatedRoom.status = 'occupied';
         updatedRoom.guest = formData.guestName;
         updatedRoom.checkIn = formData.checkInDate;
@@ -638,6 +645,7 @@ export const QuickGuestCapture = ({
         variant: "destructive",
       });
     } finally {
+      clearTimeout(processingTimeout);
       setIsProcessing(false);
     }
   };
@@ -1035,16 +1043,16 @@ export const QuickGuestCapture = ({
               variant="outline"
               onClick={() => onOpenChange(false)}
               className="flex-1"
-              disabled={isProcessing}
+              disabled={isProcessing || isStatusLoading}
             >
               Cancel
             </Button>
              <Button 
                type="submit" 
                className="flex-1 gap-2"
-               disabled={isProcessing || (guestMode === 'existing' && !selectedGuest)}
+               disabled={isProcessing || isStatusLoading || (guestMode === 'existing' && !selectedGuest)}
              >
-               {isProcessing ? (
+               {(isProcessing || isStatusLoading) ? (
                  <>
                    <Clock className="h-4 w-4 animate-spin" />
                    Processing...

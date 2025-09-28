@@ -254,12 +254,42 @@ export const useRoomStatusManager = () => {
 
   // Quick check-in function for reserved rooms
   const quickCheckIn = async (roomId: string, reservationId: string) => {
-    return updateRoomStatus.mutateAsync({
-      roomId,
-      newStatus: 'occupied',
-      reservationId,
-      reason: 'Guest check-in'
-    });
+    try {
+      console.log('QuickCheckIn: Starting check-in process', { roomId, reservationId });
+      
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // First update the reservation status to checked_in
+      const { error: reservationError } = await supabase
+        .from('reservations')
+        .update({ 
+          status: 'checked_in',
+          checked_in_at: new Date().toISOString(),
+          checked_in_by: user?.id
+        })
+        .eq('id', reservationId);
+
+      if (reservationError) {
+        console.error('QuickCheckIn: Reservation update failed', reservationError);
+        throw reservationError;
+      }
+      
+      console.log('QuickCheckIn: Reservation updated, now updating room status');
+      
+      const result = await updateRoomStatus.mutateAsync({
+        roomId,
+        newStatus: 'occupied',
+        reservationId,
+        reason: 'Guest check-in'
+      });
+      
+      console.log('QuickCheckIn: Room status updated successfully', result);
+      return result;
+    } catch (error: any) {
+      console.error('QuickCheckIn: Failed', error);
+      throw error;
+    }
   };
 
   // Quick checkout function

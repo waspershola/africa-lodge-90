@@ -274,26 +274,59 @@ export const useCancelReservation = () => {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) throw new Error('Not authenticated');
 
-      // Get reservation details for notification
+      // Get reservation details for validation and notification
       const { data: reservation, error: resError } = await supabase
         .from('reservations')
-        .select('*')
+        .select('*, rooms(room_number, status)')
         .eq('id', reservationId)
         .single();
 
       if (resError) throw resError;
+      if (!reservation) throw new Error('Reservation not found');
 
+      // Validation: Prevent cancelling checked-in reservations
+      if (reservation.status === 'checked_in') {
+        throw new Error('Cannot cancel a checked-in reservation. Please check out the guest first.');
+      }
+
+      // Validation: Prevent cancelling already cancelled reservations
+      if (reservation.status === 'cancelled') {
+        throw new Error('This reservation has already been cancelled.');
+      }
+
+      // Update reservation status to cancelled
+      // The database trigger will automatically handle room status updates
       const { data, error } = await supabase
         .from('reservations')
         .update({ 
           status: 'cancelled',
+          cancelled_at: new Date().toISOString(),
+          cancelled_by: user.id,
           updated_at: new Date().toISOString()
         })
         .eq('id', reservationId)
-        .select()
+        .select('*, rooms(room_number, status)')
         .single();
 
       if (error) throw error;
+
+      // Log cancellation for audit trail
+      await supabase.from('audit_log').insert([{
+        action: 'RESERVATION_CANCELLED',
+        resource_type: 'RESERVATION',
+        resource_id: reservationId,
+        actor_id: user.id,
+        tenant_id: user.user_metadata?.tenant_id,
+        description: `Reservation ${reservation.reservation_number} for ${reservation.guest_name} was cancelled`,
+        old_values: { status: reservation.status },
+        new_values: { status: 'cancelled' },
+        metadata: {
+          room_id: reservation.room_id,
+          room_number: reservation.rooms?.room_number,
+          guest_name: reservation.guest_name,
+          check_in_date: reservation.check_in_date
+        }
+      }]);
 
       // Create cancellation notification event
       const notificationEvent = {
@@ -303,8 +336,10 @@ export const useCancelReservation = () => {
         template_data: {
           guest_name: reservation.guest_name,
           reservation_number: reservation.reservation_number,
+          room_number: reservation.rooms?.room_number || 'TBA',
           check_in_date: reservation.check_in_date,
-          cancellation_reason: 'Guest cancellation'
+          cancellation_reason: 'Guest cancellation',
+          cancellation_date: new Date().toISOString().split('T')[0]
         },
         recipients: [
           {
@@ -315,6 +350,10 @@ export const useCancelReservation = () => {
           {
             type: 'staff',
             role: 'FRONT_DESK'
+          },
+          {
+            type: 'staff',
+            role: 'MANAGER'
           }
         ],
         channels: ['sms', 'email'],
@@ -332,14 +371,20 @@ export const useCancelReservation = () => {
           metadata: {}
         });
 
-      return data;
+      return { ...data, originalReservation: reservation };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Enhanced real-time updates for immediate UI refresh
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['room-availability'] });
+      queryClient.invalidateQueries({ queryKey: ['room-types'] });
+      queryClient.invalidateQueries({ queryKey: ['owner', 'overview'] });
+      queryClient.invalidateQueries({ queryKey: ['guest-analytics'] });
+      
       toast({
-        title: "Success",
-        description: "Reservation cancelled successfully"
+        title: "Reservation Cancelled",
+        description: `Reservation for ${data.originalReservation?.guest_name} has been cancelled. Room status updated automatically.`
       });
     },
     onError: (error) => {

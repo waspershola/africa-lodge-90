@@ -20,6 +20,7 @@ import {
   AlertTriangle,
   Printer
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface CheckoutDialogProps {
   open: boolean;
@@ -74,9 +75,67 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogPro
   if (loading && !checkoutSession) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl">
-          <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Skeleton className="h-5 w-5 rounded" />
+              <Skeleton className="h-6 w-32" />
+            </DialogTitle>
+          </DialogHeader>
+          
+          {/* PERFORMANCE FIX: Enhanced skeleton screens for better UX */}
+          <div className="space-y-6">
+            {/* Guest Info Skeleton */}
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div className="space-y-2">
+                    <Skeleton className="h-6 w-48" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                  <Skeleton className="h-8 w-20 rounded-full" />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                  <div className="space-y-1">
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Billing Overview Skeleton */}
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-40" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="flex justify-between items-center">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                ))}
+                <Separator />
+                <div className="flex justify-between items-center">
+                  <Skeleton className="h-5 w-24" />
+                  <Skeleton className="h-5 w-20" />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Action Buttons Skeleton */}
+            <div className="flex gap-3 pt-4">
+              <Skeleton className="h-10 w-32" />
+              <Skeleton className="h-10 w-28" />
+              <Skeleton className="h-10 w-36" />
+            </div>
           </div>
         </DialogContent>
       </Dialog>

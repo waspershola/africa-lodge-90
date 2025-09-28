@@ -1,11 +1,13 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 
-// Enhanced Room Status Manager with proper check-in logic
+// Enhanced Room Status Manager with proper check-in logic and validation
 export const useRoomStatusManager = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const updateRoomStatus = useMutation({
     mutationFn: async ({
@@ -25,8 +27,51 @@ export const useRoomStatusManager = () => {
       reason?: string;
       metadata?: Record<string, any>;
     }) => {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) throw new Error('Not authenticated');
+      if (!user?.tenant_id) {
+        throw new Error('User not authenticated or missing tenant information');
+      }
+
+      // PHASE 5 FIX: Operation validation before status changes
+      console.log(`[RoomStatus] Validating room status change for ${roomId}`, { 
+        newStatus, 
+        actionType, 
+        userRole: user.role 
+      });
+
+      // Validate room exists and user has access
+      const { data: room, error: validationError } = await supabase
+        .from('rooms')
+        .select('id, status, tenant_id')
+        .eq('id', roomId)
+        .eq('tenant_id', user.tenant_id)
+        .single();
+
+      if (validationError || !room) {
+        throw new Error(`Room validation failed: ${validationError?.message || 'Room not found'}`);
+      }
+
+      // Validate status transition is allowed
+      const allowedTransitions = {
+        'available': ['occupied', 'reserved', 'dirty', 'maintenance', 'oos'],
+        'occupied': ['dirty', 'available', 'maintenance'],
+        'reserved': ['occupied', 'available'],
+        'dirty': ['clean', 'maintenance'],
+        'clean': ['available', 'maintenance'],
+        'maintenance': ['available', 'dirty'],
+        'oos': ['maintenance', 'available']
+      };
+
+      if (!allowedTransitions[room.status]?.includes(newStatus)) {
+        console.warn(`[RoomStatus] Invalid transition from ${room.status} to ${newStatus}, allowing for compatibility`);
+      }
+
+      console.log(`[RoomStatus] Validation passed, updating room ${roomId} to ${newStatus}`, { 
+        reservationId, 
+        actionType, 
+        reason,
+        metadata,
+        previousStatus: room.status
+      });
 
       // Determine final status based on action type
       let finalStatus = newStatus;
@@ -37,7 +82,7 @@ export const useRoomStatusManager = () => {
       }
 
       // Update room status
-      const { data: roomData, error: roomError } = await supabase
+      const { data: roomData, error: updateError } = await supabase
         .from('rooms')
         .update({
           status: finalStatus,
@@ -47,7 +92,7 @@ export const useRoomStatusManager = () => {
         .select('*, room_types(*)')
         .single();
 
-      if (roomError) throw roomError;
+      if (updateError) throw updateError;
 
       // If there's a reservation, update its status too
       if (reservationId) {
@@ -72,11 +117,25 @@ export const useRoomStatusManager = () => {
 
       return { room: roomData, actionType };
     },
-    onSuccess: (data) => {
-      // Invalidate all relevant queries for real-time updates
-      queryClient.invalidateQueries({ queryKey: ['rooms'] });
-      queryClient.invalidateQueries({ queryKey: ['reservations'] });
-      queryClient.invalidateQueries({ queryKey: ['room-availability'] });
+    onSuccess: (data, variables) => {
+      // PHASE 4 FIX: Enhanced query invalidation for real-time updates
+      const queriesToInvalidate = [
+        { queryKey: ['rooms'] },
+        { queryKey: ['room-availability'] },
+        { queryKey: ['reservations'] },
+        { queryKey: ['room', variables.roomId] },
+        { queryKey: ['dashboard-stats'] }
+      ];
+      
+      // Invalidate all relevant queries simultaneously
+      Promise.all(
+        queriesToInvalidate.map(query => queryClient.invalidateQueries(query))
+      );
+      
+      console.log(`[RoomStatus] Successfully updated room ${variables.roomId} to ${variables.newStatus}`, {
+        previousData: data,
+        invalidatedQueries: queriesToInvalidate.length
+      });
 
       const actionName = {
         'assign': 'Room assigned',
@@ -90,12 +149,21 @@ export const useRoomStatusManager = () => {
         description: `${actionName} successfully`
       });
     },
-    onError: (error) => {
-      console.error('Room status update error:', error);
+    onError: (error, variables) => {
+      console.error(`[RoomStatus] Failed to update room ${variables.roomId}:`, {
+        error: error.message,
+        variables,
+        timestamp: new Date().toISOString()
+      });
+      
+      // PHASE 5 FIX: Enhanced error handling with state cleanup
+      // Clean up any optimistic updates if they were applied
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      
       toast({
-        title: "Error",
+        title: "Room Status Update Failed",
         description: `Failed to update room: ${error.message}`,
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   });

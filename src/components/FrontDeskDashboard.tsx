@@ -121,13 +121,51 @@ const FrontDeskDashboard = () => {
     };
   }, []);
 
-  // Keyboard shortcuts
+  // Enhanced keyboard shortcuts with comprehensive input detection
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handle if no input is focused and no modal is open
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (showNewReservation || showSearch || showPayment || showQuickCapture || showCheckout) return;
+      // Comprehensive input detection to prevent shortcut conflicts
+      const target = e.target as Element;
+      const activeElement = document.activeElement;
       
+      // Check if any input-related element is focused or active
+      const isInputActive = 
+        // Standard input elements
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        activeElement instanceof HTMLInputElement ||
+        activeElement instanceof HTMLTextAreaElement ||
+        // Content editable elements (check for HTMLElement first)
+        (target instanceof HTMLElement && target.isContentEditable) ||
+        (activeElement instanceof HTMLElement && activeElement.isContentEditable) ||
+        // Elements with contenteditable attribute
+        target.getAttribute('contenteditable') === 'true' ||
+        activeElement?.getAttribute('contenteditable') === 'true' ||
+        // Command input components (cmdk)
+        target.closest('[cmdk-input]') !== null ||
+        activeElement?.closest('[cmdk-input]') !== null ||
+        // Any element with role="textbox" or role="combobox"
+        target.getAttribute('role') === 'textbox' ||
+        target.getAttribute('role') === 'combobox' ||
+        activeElement?.getAttribute('role') === 'textbox' ||
+        activeElement?.getAttribute('role') === 'combobox' ||
+        // Any element inside a form that might be interactive
+        target.closest('form') !== null ||
+        // Check for any element with data-input or similar attributes
+        target.hasAttribute('data-input') ||
+        activeElement?.hasAttribute('data-input');
+
+      // Check if any modal/dialog is open
+      const isModalOpen = showNewReservation || showSearch || showPayment || showQuickCapture || showCheckout;
+      
+      // Additional check for any open dialog elements in the DOM
+      const openDialogs = document.querySelectorAll('[role="dialog"][data-state="open"], .dialog-content:not([style*="display: none"])');
+      const hasOpenDialog = openDialogs.length > 0;
+      
+      // Don't trigger shortcuts if input is active or modal is open
+      if (isInputActive || isModalOpen || hasOpenDialog) return;
+      
+      // Only trigger shortcuts for specific keys and prevent default behavior
       switch (e.key.toLowerCase()) {
         case 'a':
           e.preventDefault();
@@ -144,12 +182,32 @@ const FrontDeskDashboard = () => {
           setCaptureAction('check-out');
           setShowQuickCapture(true);
           break;
+        case 'escape':
+          // Allow escape to deselect room if no modal is open
+          if (selectedRoom) {
+            e.preventDefault();
+            setSelectedRoom(null);
+          }
+          break;
+        case '/':
+          // Focus search if not in input
+          e.preventDefault();
+          const searchInput = document.querySelector('input[placeholder*="Search"]') as HTMLInputElement;
+          if (searchInput) {
+            searchInput.focus();
+          }
+          break;
+        case '?':
+          // Toggle keyboard help
+          e.preventDefault();
+          setShowKeyboardHelp(!showKeyboardHelp);
+          break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showNewReservation, showSearch, showPayment, showQuickCapture, showCheckout]);
+  }, [showNewReservation, showSearch, showPayment, showQuickCapture, showCheckout, selectedRoom, showKeyboardHelp]);
 
   const handleCardClick = (filterKey: string) => {
     setActiveFilter(activeFilter === filterKey ? undefined : filterKey);

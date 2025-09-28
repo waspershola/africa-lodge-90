@@ -140,43 +140,6 @@ export const RoomActionDrawer = ({
       return;
     }
 
-    if (action === 'Mark as Cleaned') {
-      // Handle mark as cleaned action directly using useRoomStatusManager
-      setIsProcessing(true);
-      
-      try {
-        const { useRoomStatusManager } = await import('@/hooks/useRoomStatusManager');
-        const { updateRoomStatusAsync } = useRoomStatusManager();
-        
-        await updateRoomStatusAsync({
-          roomId: room.id,
-          newStatus: 'available',
-          reason: 'Room marked as cleaned and ready for guests',
-          metadata: {
-            cleaned_by: user?.email,
-            cleaned_at: new Date().toISOString(),
-            previous_status: room.status
-          }
-        });
-
-        toast({
-          title: "Room Cleaned",
-          description: `Room ${room.number} has been marked as cleaned and is now available.`,
-        });
-
-        onClose();
-      } catch (error) {
-        console.error('Mark as cleaned error:', error);
-        toast({
-          title: "Error",
-          description: `Failed to mark room as cleaned: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          variant: "destructive",
-        });
-      } finally {
-        setIsProcessing(false);
-      }
-      return;
-    }
 
     // Handle overstay actions
     if (action === 'Apply Overstay Charge') {
@@ -427,7 +390,6 @@ export const RoomActionDrawer = ({
         break;
       case 'dirty':
         actions = [
-          { icon: Sparkles, label: 'Mark as Cleaned', action: 'mark-cleaned', variant: 'default' as const },
           { icon: Wrench, label: 'Create Work Order', action: 'create-workorder', variant: 'outline' as const },
         ];
         break;

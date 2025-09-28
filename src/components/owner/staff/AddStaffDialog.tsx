@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -7,7 +8,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useCreateStaff } from "@/hooks/useRoomOperations";
 
 const addStaffSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -49,8 +49,8 @@ const departments = [
 ];
 
 export default function AddStaffDialog({ open, onOpenChange, onStaffAdded }: AddStaffDialogProps) {
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const createStaff = useCreateStaff();
 
   const form = useForm<AddStaffFormData>({
     resolver: zodResolver(addStaffSchema),
@@ -65,15 +65,11 @@ export default function AddStaffDialog({ open, onOpenChange, onStaffAdded }: Add
   });
 
   const handleSubmit = async (data: AddStaffFormData) => {
+    setIsLoading(true);
+    
     try {
-      await createStaff.mutateAsync({
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        role: data.role,
-        department: data.department,
-        hire_date: data.startDate
-      });
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       const newStaff = {
         ...data,
@@ -82,10 +78,22 @@ export default function AddStaffDialog({ open, onOpenChange, onStaffAdded }: Add
       };
       
       onStaffAdded(newStaff);
+      
+      toast({
+        title: "Staff member added",
+        description: `${data.name} has been successfully added to your team.`,
+      });
+      
       form.reset();
       onOpenChange(false);
     } catch (error) {
-      // Error is handled by the hook's onError
+      toast({
+        title: "Error",
+        description: "Failed to add staff member. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -214,12 +222,12 @@ export default function AddStaffDialog({ open, onOpenChange, onStaffAdded }: Add
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                disabled={createStaff.isPending}
+                disabled={isLoading}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={createStaff.isPending}>
-                {createStaff.isPending ? "Adding..." : "Add Staff Member"}
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? "Adding..." : "Add Staff Member"}
               </Button>
             </DialogFooter>
           </form>

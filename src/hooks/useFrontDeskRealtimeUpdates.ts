@@ -25,26 +25,10 @@ export function useFrontDeskRealtimeUpdates() {
         },
         (payload) => {
           console.log('Room status changed, updating front desk data:', payload);
-          
-          // Special handling for automatic room status updates from cancellations
-          if (payload.eventType === 'UPDATE' && payload.new?.status !== payload.old?.status) {
-            console.log(`Room ${payload.new?.room_number} status changed from ${payload.old?.status} to ${payload.new?.status}`);
-            
-            // Invalidate all room-related queries with aggressive refresh
-            queryClient.invalidateQueries({ queryKey: ['rooms'] });
-            queryClient.invalidateQueries({ queryKey: ['room-availability'] });
-            queryClient.invalidateQueries({ queryKey: ['room-types'] });
-            queryClient.invalidateQueries({ queryKey: ['reservations'] });
-            queryClient.invalidateQueries({ queryKey: ['owner', 'overview'] });
-            
-            // Force refetch to ensure immediate UI update
-            queryClient.refetchQueries({ queryKey: ['rooms'] });
-          } else {
-            // Standard room update handling
-            queryClient.invalidateQueries({ queryKey: ['rooms'] });
-            queryClient.invalidateQueries({ queryKey: ['room-availability'] });
-            queryClient.invalidateQueries({ queryKey: ['room-types'] });
-          }
+          // Invalidate all room-related queries
+          queryClient.invalidateQueries({ queryKey: ['rooms'] });
+          queryClient.invalidateQueries({ queryKey: ['room-availability'] });
+          queryClient.invalidateQueries({ queryKey: ['room-types'] });
         }
       )
       .subscribe();
@@ -62,42 +46,11 @@ export function useFrontDeskRealtimeUpdates() {
         },
         (payload) => {
           console.log('Reservation changed, updating front desk data:', payload);
-          
-          // Special handling for cancellations and status changes
-          if (payload.eventType === 'UPDATE' && payload.new?.status !== payload.old?.status) {
-            console.log(`Reservation status changed from ${payload.old?.status} to ${payload.new?.status} for reservation ${payload.new?.id}`);
-            
-            // Enhanced invalidation for status changes that affect room availability
-            if (payload.new?.status === 'cancelled' || payload.old?.status === 'cancelled' ||
-                payload.new?.status === 'confirmed' || payload.old?.status === 'confirmed' ||
-                payload.new?.status === 'checked_in' || payload.old?.status === 'checked_in' ||
-                payload.new?.status === 'checked_out' || payload.old?.status === 'checked_out') {
-              
-              // Invalidate all related queries
-              queryClient.invalidateQueries({ queryKey: ['reservations'] });
-              queryClient.invalidateQueries({ queryKey: ['rooms'] });
-              queryClient.invalidateQueries({ queryKey: ['guests'] });
-              queryClient.invalidateQueries({ queryKey: ['group-reservations'] });
-              queryClient.invalidateQueries({ queryKey: ['room-availability'] });
-              queryClient.invalidateQueries({ queryKey: ['owner', 'overview'] });
-              
-              // Force refetch for immediate UI update
-              queryClient.refetchQueries({ queryKey: ['rooms'] });
-              queryClient.refetchQueries({ queryKey: ['reservations'] });
-            } else {
-              // Standard reservation update handling
-              queryClient.invalidateQueries({ queryKey: ['reservations'] });
-              queryClient.invalidateQueries({ queryKey: ['rooms'] });
-              queryClient.invalidateQueries({ queryKey: ['guests'] });
-              queryClient.invalidateQueries({ queryKey: ['group-reservations'] });
-            }
-          } else {
-            // Standard handling for new reservations or non-status updates
-            queryClient.invalidateQueries({ queryKey: ['reservations'] });
-            queryClient.invalidateQueries({ queryKey: ['rooms'] });
-            queryClient.invalidateQueries({ queryKey: ['guests'] });
-            queryClient.invalidateQueries({ queryKey: ['group-reservations'] });
-          }
+          // Invalidate reservation and related queries
+          queryClient.invalidateQueries({ queryKey: ['reservations'] });
+          queryClient.invalidateQueries({ queryKey: ['rooms'] });
+          queryClient.invalidateQueries({ queryKey: ['guests'] });
+          queryClient.invalidateQueries({ queryKey: ['group-reservations'] });
         }
       )
       .subscribe();

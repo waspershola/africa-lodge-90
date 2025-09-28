@@ -480,6 +480,10 @@ export const useRoomAvailability = () => {
 
 export const useUsers = () => useQuery({ queryKey: ['users'], queryFn: () => Promise.resolve([]) });
 export const useStaff = () => useQuery({ queryKey: ['staff'], queryFn: () => Promise.resolve([]) });
+export const useCreateStaff = () => useMutation({ mutationFn: (data: any) => Promise.resolve(data) });
+export const useUpdateStaffMember = () => useMutation({ mutationFn: ({ id, updates }: any) => Promise.resolve({ id, updates }) });
+export const useDeleteStaffMember = () => useMutation({ mutationFn: ({ id }: { id: string }) => Promise.resolve(id) });
+export const useInviteStaff = () => useMutation({ mutationFn: (data: any) => Promise.resolve(data) });
 
 // Guests API with real Supabase integration
 export const useGuests = () => {
@@ -560,7 +564,10 @@ export const useGuestProfiles = () => {
 
 export const useCompanies = () => useQuery({ queryKey: ['companies'], queryFn: () => Promise.resolve([]) });
 export const useImportOTAReservation = () => useMutation({ mutationFn: (data: any) => Promise.resolve(data) });
-// REMOVED: Fake hooks moved to real implementations in useRoomOperations.ts
+export const useAssignRoom = () => useMutation({ mutationFn: ({ reservationId, roomId }: any) => Promise.resolve({ reservationId, roomId }) });
+export const useCheckInGuest = () => useMutation({ mutationFn: (reservationId: string) => Promise.resolve(reservationId) });
+export const useCheckOutGuest = () => useMutation({ mutationFn: (reservationId: string) => Promise.resolve(reservationId) });
+export const useCheckRoomConflicts = () => useMutation({ mutationFn: (data: any) => Promise.resolve({ hasConflicts: false }) });
 
 export const useRoles = () => useQuery({ queryKey: ['roles'], queryFn: () => Promise.resolve([]) });
 export const useDeleteRole = () => useMutation({ mutationFn: ({ id }: { id: string }) => Promise.resolve(id) });

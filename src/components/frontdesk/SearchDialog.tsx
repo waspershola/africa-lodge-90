@@ -3,61 +3,53 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, User, BedDouble, Phone, Mail } from "lucide-react";
+import { Search, User, BedDouble, Phone, Mail, Loader2 } from "lucide-react";
+import { useGuestSearch } from "@/hooks/useGuestSearch";
+import { useRooms } from "@/hooks/useRooms";
 
 interface SearchDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-const mockSearchResults = [
-  {
-    id: 1,
-    type: "guest",
-    name: "John Doe",
-    room: "201",
-    phone: "+234 801 234 5678",
-    email: "john@example.com",
-    status: "checked-in"
-  },
-  {
-    id: 2,
-    type: "room",
-    number: "305", 
-    guest: "Jane Smith",
-    type_name: "Deluxe Room",
-    status: "occupied"
-  },
-  {
-    id: 3,
-    type: "guest",
-    name: "Mike Wilson",
-    room: "102",
-    phone: "+234 802 345 6789", 
-    email: "mike@example.com",
-    status: "reserved"
-  }
-];
-
 export const SearchDialog = ({ open, onOpenChange }: SearchDialogProps) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [results, setResults] = useState<typeof mockSearchResults>([]);
+  const { data: guestResults, isLoading: loadingGuests } = useGuestSearch(searchQuery);
+  const { data: roomData, isLoading: loadingRooms } = useRooms();
 
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-    if (query.length > 2) {
-      // Filter mock results based on query
-      const filtered = mockSearchResults.filter(item =>
-        item.name?.toLowerCase().includes(query.toLowerCase()) ||
-        item.number?.toLowerCase().includes(query.toLowerCase()) ||
-        item.phone?.includes(query) ||
-        item.email?.toLowerCase().includes(query.toLowerCase())
-      );
-      setResults(filtered);
-    } else {
-      setResults([]);
-    }
-  };
+  // Combine guest and room results
+  const results = searchQuery.length > 2 ? [
+    // Guest results
+    ...(guestResults || []).map(guest => ({
+      id: `guest-${guest.id}`,
+      type: "guest" as const,
+      name: guest.name,
+      room: guest.current_room,
+      phone: guest.phone,
+      email: guest.email,
+      status: guest.reservation_status || (guest.current_room ? "checked-in" : "none"),
+      guest_id: guest.id
+    })),
+    // Room results
+    ...(roomData?.rooms || [])
+      .filter(room => 
+        room.room_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        room.room_type?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (room.current_reservation?.guest_name && 
+         room.current_reservation.guest_name.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+      .map(room => ({
+        id: `room-${room.id}`,
+        type: "room" as const,
+        number: room.room_number,
+        guest: room.current_reservation?.guest_name,
+        type_name: room.room_type?.name,
+        status: room.status,
+        room_id: room.id
+      }))
+  ] : [];
+
+  const isLoading = loadingGuests || loadingRooms;
 
   const handleResultClick = (result: any) => {
     console.log("Selected result:", result);
@@ -79,7 +71,7 @@ export const SearchDialog = ({ open, onOpenChange }: SearchDialogProps) => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by guest name, room number, phone, or email..."
               className="pl-10"
               autoFocus
@@ -87,7 +79,14 @@ export const SearchDialog = ({ open, onOpenChange }: SearchDialogProps) => {
           </div>
 
           <div className="space-y-2 max-h-96 overflow-y-auto">
-            {results.length === 0 && searchQuery.length > 2 && (
+            {isLoading && searchQuery.length > 2 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                Searching...
+              </div>
+            )}
+            
+            {!isLoading && results.length === 0 && searchQuery.length > 2 && (
               <div className="text-center py-8 text-muted-foreground">
                 No results found for "{searchQuery}"
               </div>

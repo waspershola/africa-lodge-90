@@ -37,6 +37,8 @@ import { TransferRoomDialog } from "./TransferRoomDialog";
 import { ReleaseReservationDialog } from "./ReleaseReservationDialog";
 import { useShiftIntegratedAction } from "./ShiftIntegratedAction";
 import { useReceiptPrinter } from "@/hooks/useReceiptPrinter";
+import { AuditTrailDisplay } from "./AuditTrailDisplay";
+import { useAuditLog } from "@/hooks/useAuditLog";
 import type { Room } from "./RoomGrid";
 
 interface RoomActionDrawerProps {
@@ -55,6 +57,7 @@ export const RoomActionDrawer = ({
   onRoomUpdate,
 }: RoomActionDrawerProps) => {
   const { toast } = useToast();
+  const { logEvent } = useAuditLog();
   const [isProcessing, setIsProcessing] = useState(false);
   const [showQuickCapture, setShowQuickCapture] = useState(false);
   const [captureAction, setCaptureAction] = useState<'assign' | 'walkin' | 'check-in' | 'check-out' | 'assign-room' | 'extend-stay' | 'transfer-room' | 'add-service' | 'work-order' | 'housekeeping'>('assign');
@@ -170,8 +173,19 @@ export const RoomActionDrawer = ({
   };
 
   const handleGuestCaptureComplete = (updatedRoom: Room) => {
-    // Log successful completion for audit trail
-    console.log(`${captureAction === 'walkin' ? 'Walk-in check-in' : 'Room assignment'} completed for Room ${updatedRoom.number}`);
+    // Log action to audit trail
+    const actionDescription = captureAction === 'walkin' ? 'Walk-in check-in' : 'Room assignment';
+    logEvent({
+      action: captureAction === 'walkin' ? 'WALKIN_CHECKIN' : 'ROOM_ASSIGNMENT',
+      resource_type: 'ROOM',
+      resource_id: updatedRoom.id,
+      description: `${actionDescription} completed for Room ${updatedRoom.number}`,
+      metadata: {
+        room_number: updatedRoom.number,
+        guest_name: updatedRoom.guest,
+        action_type: captureAction
+      }
+    });
     
     onRoomUpdate?.(updatedRoom);
     setShowQuickCapture(false);
@@ -403,7 +417,7 @@ export const RoomActionDrawer = ({
 
           {/* Audit Trail */}
           <div className="pt-4 border-t text-xs text-muted-foreground">
-            <p>Last updated by John Doe at {new Date().toLocaleTimeString()}</p>
+            <AuditTrailDisplay roomId={room.id} />
           </div>
         </div>
         </SheetContent>

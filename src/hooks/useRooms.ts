@@ -55,20 +55,112 @@ export interface Reservation {
   guests?: any;
 }
 
-// Main hook for rooms data using React Query
+// Main hook for rooms data using React Query with real reservation integration
 export const useRooms = () => {
   return useQuery({
     queryKey: ['rooms'],
     queryFn: async () => {
+      // Fetch rooms with room types and current reservations
       const { data: roomsData, error: roomsError } = await supabase
         .from('rooms')
         .select(`
           *,
-          room_type:room_type_id (*)
+          room_type:room_type_id (*),
+          current_reservation:reservations!inner(
+            id,
+            guest_name,
+            guest_email,
+            guest_phone,
+            check_in_date,
+            check_out_date,
+            status,
+            total_amount,
+            reservation_number,
+            guests:guest_id (
+              first_name,
+              last_name,
+              email,
+              phone,
+              vip_status
+            )
+          )
+        `)
+        .eq('reservations.status', 'checked_in')
+        .order('room_number');
+
+      if (roomsError && roomsError.code !== 'PGRST116') throw roomsError; // Ignore "no rows" error
+
+      // Also fetch rooms without current reservations
+      const { data: allRoomsData, error: allRoomsError } = await supabase
+        .from('rooms')
+        .select(`
+          *,
+          room_type:room_type_id (*),
+          reservations!left(
+            id,
+            guest_name,
+            guest_email,
+            guest_phone,
+            check_in_date,
+            check_out_date,
+            status,
+            total_amount,
+            reservation_number,
+            guests:guest_id (
+              first_name,
+              last_name,
+              email,
+              phone,
+              vip_status
+            )
+          )
         `)
         .order('room_number');
 
-      if (roomsError) throw roomsError;
+      if (allRoomsError) throw allRoomsError;
+
+      // Get folio balances for occupied rooms
+      const { data: folioData, error: folioError } = await supabase
+        .from('folios')
+        .select(`
+          id,
+          balance,
+          total_charges,
+          total_payments,
+          status,
+          reservations!inner(room_id)
+        `)
+        .eq('status', 'open');
+
+      if (folioError && folioError.code !== 'PGRST116') throw folioError;
+
+      // Create folio map for quick lookup
+      const folioMap = new Map();
+      folioData?.forEach(folio => {
+        if (folio.reservations?.room_id) {
+          folioMap.set(folio.reservations.room_id, {
+            balance: folio.balance || 0,
+            isPaid: (folio.balance || 0) <= 0,
+            total_charges: folio.total_charges || 0,
+            total_payments: folio.total_payments || 0
+          });
+        }
+      });
+
+      // Process rooms to include reservation and folio data
+      const processedRooms = allRoomsData?.map(room => {
+        const currentReservation = room.reservations?.find(
+          res => res.status === 'checked_in' || res.status === 'confirmed'
+        );
+        
+        return {
+          ...room,
+          current_reservation: currentReservation,
+          folio: folioMap.get(room.id) || null,
+          last_cleaned: room.last_cleaned,
+          updated_at: room.updated_at
+        };
+      }) || [];
 
       const { data: roomTypesData, error: roomTypesError } = await supabase
         .from('room_types')
@@ -78,7 +170,7 @@ export const useRooms = () => {
       if (roomTypesError) throw roomTypesError;
 
       return {
-        rooms: roomsData || [],
+        rooms: processedRooms,
         roomTypes: roomTypesData || []
       };
     },

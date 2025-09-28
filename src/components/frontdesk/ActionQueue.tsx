@@ -13,92 +13,31 @@ import {
   RotateCcw
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useActionQueue, type QueuedAction } from "@/hooks/useActionQueue";
 
-export interface QueuedAction {
-  id: string;
-  type: 'checkin' | 'checkout' | 'payment' | 'assign' | 'maintenance';
-  roomNumber: string;
-  guest?: string;
-  description: string;
-  timestamp: Date;
-  status: 'pending' | 'processing' | 'failed' | 'completed';
-  retryCount: number;
-  maxRetries: number;
-}
+// QueuedAction interface is now imported from useActionQueue hook
 
 interface ActionQueueProps {
   isVisible: boolean;
   isOnline: boolean;
 }
 
-// Mock queued actions data
-const mockQueuedActions: QueuedAction[] = [
-  {
-    id: '1',
-    type: 'checkin',
-    roomNumber: '201',
-    guest: 'John Doe',
-    description: 'Check-in John Doe to Room 201',
-    timestamp: new Date(Date.now() - 300000), // 5 minutes ago
-    status: 'pending',
-    retryCount: 0,
-    maxRetries: 3
-  },
-  {
-    id: '2',
-    type: 'payment',
-    roomNumber: '305',
-    guest: 'Jane Smith',
-    description: 'Collect ₦15,000 payment from Jane Smith',
-    timestamp: new Date(Date.now() - 180000), // 3 minutes ago
-    status: 'failed',
-    retryCount: 2,
-    maxRetries: 3
-  },
-  {
-    id: '3',
-    type: 'checkout',
-    roomNumber: '102',
-    guest: 'Mike Wilson',
-    description: 'Check-out Mike Wilson from Room 102',
-    timestamp: new Date(Date.now() - 120000), // 2 minutes ago
-    status: 'processing',
-    retryCount: 1,
-    maxRetries: 3
-  }
-];
-
 export const ActionQueue = ({ isVisible, isOnline }: ActionQueueProps) => {
-  const [queuedActions, setQueuedActions] = useState<QueuedAction[]>(mockQueuedActions);
-  const [isRetrying, setIsRetrying] = useState(false);
-
-  // Load queued actions from localStorage on mount
-  useEffect(() => {
-    const storedActions = localStorage.getItem('frontdesk-action-queue');
-    if (storedActions) {
-      try {
-        const parsedActions = JSON.parse(storedActions).map((action: any) => ({
-          ...action,
-          timestamp: new Date(action.timestamp)
-        }));
-        setQueuedActions(parsedActions);
-      } catch (error) {
-        console.error('Failed to parse stored actions:', error);
-      }
-    }
-  }, []);
-
-  // Save queued actions to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('frontdesk-action-queue', JSON.stringify(queuedActions));
-  }, [queuedActions]);
+  const { 
+    queuedActions, 
+    isRetrying, 
+    retryAction, 
+    retryAll, 
+    removeAction, 
+    clearCompleted 
+  } = useActionQueue();
 
   // Auto-retry when online
   useEffect(() => {
     if (isOnline && queuedActions.some(action => action.status === 'pending' || action.status === 'failed')) {
-      handleRetryAll();
+      retryAll();
     }
-  }, [isOnline]);
+  }, [isOnline, queuedActions, retryAll]);
 
   const getStatusConfig = (status: QueuedAction['status']) => {
     switch (status) {
@@ -115,54 +54,7 @@ export const ActionQueue = ({ isVisible, isOnline }: ActionQueueProps) => {
     }
   };
 
-  const handleRetryAction = async (actionId: string) => {
-    setQueuedActions(prev => prev.map(action => 
-      action.id === actionId 
-        ? { ...action, status: 'processing' as const, retryCount: action.retryCount + 1 }
-        : action
-    ));
-
-    // Simulate API retry
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Simulate success/failure
-    const success = Math.random() > 0.3; // 70% success rate
-    
-    setQueuedActions(prev => prev.map(action => 
-      action.id === actionId 
-        ? { 
-            ...action, 
-            status: success ? 'completed' : 'failed',
-          }
-        : action
-    ));
-  };
-
-  const handleRetryAll = async () => {
-    if (isRetrying || !isOnline) return;
-    
-    setIsRetrying(true);
-    const actionsToRetry = queuedActions.filter(
-      action => (action.status === 'pending' || action.status === 'failed') 
-        && action.retryCount < action.maxRetries
-    );
-
-    for (const action of actionsToRetry) {
-      await handleRetryAction(action.id);
-      // Small delay between retries
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-    
-    setIsRetrying(false);
-  };
-
-  const handleRemoveAction = (actionId: string) => {
-    setQueuedActions(prev => prev.filter(action => action.id !== actionId));
-  };
-
-  const handleClearCompleted = () => {
-    setQueuedActions(prev => prev.filter(action => action.status !== 'completed'));
-  };
+  // Action handlers are now managed by the useActionQueue hook
 
   const pendingCount = queuedActions.filter(action => action.status === 'pending').length;
   const failedCount = queuedActions.filter(action => action.status === 'failed').length;
@@ -196,7 +88,7 @@ export const ActionQueue = ({ isVisible, isOnline }: ActionQueueProps) => {
                   size="sm"
                   variant="outline"
                   disabled={isRetrying}
-                  onClick={handleRetryAll}
+                  onClick={retryAll}
                   className="flex items-center gap-1"
                 >
                   <RotateCcw className={`h-3 w-3 ${isRetrying ? 'animate-spin' : ''}`} />
@@ -208,7 +100,7 @@ export const ActionQueue = ({ isVisible, isOnline }: ActionQueueProps) => {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={handleClearCompleted}
+                  onClick={clearCompleted}
                 >
                   Clear Completed
                 </Button>
@@ -287,7 +179,7 @@ export const ActionQueue = ({ isVisible, isOnline }: ActionQueueProps) => {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => handleRetryAction(action.id)}
+                            onClick={() => retryAction(action.id)}
                             disabled={isRetrying}
                           >
                             <RotateCcw className="h-3 w-3" />
@@ -297,7 +189,7 @@ export const ActionQueue = ({ isVisible, isOnline }: ActionQueueProps) => {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => handleRemoveAction(action.id)}
+                          onClick={() => removeAction(action.id)}
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>

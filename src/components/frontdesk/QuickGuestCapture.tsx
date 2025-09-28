@@ -51,6 +51,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
+import { useGuestSearch, useRecentGuests } from "@/hooks/useGuestSearch";
 import { RateSelectionComponent } from "./RateSelectionComponent";
 import type { Room } from "./RoomGrid";
 
@@ -96,49 +97,21 @@ interface MockGuest {
   totalStays: number;
 }
 
-// Mock guest database - in a real app this would come from backend
-const MOCK_GUESTS: MockGuest[] = [
-  {
-    id: '1',
-    name: 'John Doe',
-    phone: '08012345678',
-    email: 'john.doe@email.com',
-    idType: 'national-id',
-    idNumber: 'NID123456789',
-    lastStay: '2024-07-15',
-    totalStays: 3
-  },
-  {
-    id: '2', 
-    name: 'Jane Smith',
-    phone: '08087654321',
-    email: 'jane.smith@email.com',
-    idType: 'passport',
-    idNumber: 'P1234567',
-    lastStay: '2024-06-20',
-    totalStays: 1
-  },
-  {
-    id: '3',
-    name: 'Mike Wilson',
-    phone: '08098765432',
-    email: 'mike.wilson@email.com',
-    idType: 'drivers-license',
-    idNumber: 'DL987654321',
-    lastStay: '2024-08-01',
-    totalStays: 5
-  },
-  {
-    id: '4',
-    name: 'Sarah Johnson',
-    phone: '08056789012',
-    email: 'sarah.j@email.com',
-    idType: 'national-id',
-    idNumber: 'NID987654321',
-    lastStay: '2024-05-10',
-    totalStays: 2
-  }
-];
+// Interface for recent/searched guests
+interface RecentGuest {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  nationality?: string;
+  sex?: string;
+  occupation?: string;
+  id_type?: string;
+  id_number?: string;
+  last_stay_date?: string;
+  total_stays: number;
+  vip_status?: string;
+}
 
 const ID_TYPES = [
   { value: 'national-id', label: 'National ID' },
@@ -168,13 +141,14 @@ export const QuickGuestCapture = ({
 }: QuickGuestCaptureProps) => {
   const { toast } = useToast();
   const { enabledMethods } = usePaymentMethods();
+  const { data: recentGuests } = useRecentGuests();
   const [isProcessing, setIsProcessing] = useState(false);
   const [showOptionalFields, setShowOptionalFields] = useState(false);
   const [guestMode, setGuestMode] = useState<'existing' | 'new'>('existing');
-  const [selectedGuest, setSelectedGuest] = useState<MockGuest | null>(null);
+  const [selectedGuest, setSelectedGuest] = useState<RecentGuest | null>(null);
   const [guestSearchOpen, setGuestSearchOpen] = useState(false);
   const [guestSearchValue, setGuestSearchValue] = useState("");
-  const [guestList, setGuestList] = useState<MockGuest[]>(MOCK_GUESTS);
+  const { data: searchResults } = useGuestSearch(guestSearchValue);
   
   const [formData, setFormData] = useState<GuestFormData>({
     guestName: '',
@@ -196,14 +170,13 @@ export const QuickGuestCapture = ({
     numberOfNights: 1,
   });
 
-  // Filter guests based on search
+  // Combine search results with recent guests
   const filteredGuests = useMemo(() => {
-    return guestList.filter(guest =>
-      guest.name.toLowerCase().includes(guestSearchValue.toLowerCase()) ||
-      guest.phone.includes(guestSearchValue) ||
-      guest.email.toLowerCase().includes(guestSearchValue.toLowerCase())
-    );
-  }, [guestList, guestSearchValue]);
+    if (guestSearchValue.length >= 2) {
+      return searchResults || [];
+    }
+    return recentGuests?.slice(0, 10) || [];
+  }, [searchResults, recentGuests, guestSearchValue]);
 
   const getActionTitle = () => {
     switch (action) {
@@ -235,15 +208,18 @@ export const QuickGuestCapture = ({
     return null;
   }
 
-  const handleGuestSelect = (guest: MockGuest) => {
+  const handleGuestSelect = (guest: RecentGuest) => {
     setSelectedGuest(guest);
     setFormData(prev => ({
       ...prev,
       guestName: guest.name,
       phone: guest.phone,
       email: guest.email,
-      idType: guest.idType,
-      idNumber: guest.idNumber,
+      nationality: guest.nationality || '',
+      sex: guest.sex || '',
+      occupation: guest.occupation || '',
+      idType: guest.id_type || '',
+      idNumber: guest.id_number || '',
     }));
     setGuestSearchOpen(false);
     setGuestSearchValue(guest.name);
@@ -349,31 +325,8 @@ export const QuickGuestCapture = ({
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // If creating a new guest, add them to the guest list for future use
-      if (guestMode === 'new') {
-        const newGuest: MockGuest = {
-          id: `guest_${Date.now()}`, // Simple ID generation
-          name: formData.guestName,
-          phone: formData.phone,
-          email: formData.email,
-          idType: formData.idType,
-          idNumber: formData.idNumber,
-          lastStay: new Date().toISOString().split('T')[0], // Today's date
-          totalStays: 1
-        };
-        setGuestList(prev => [...prev, newGuest]);
-      } else if (selectedGuest) {
-        // Update existing guest's last stay info
-        setGuestList(prev => prev.map(guest => 
-          guest.id === selectedGuest.id 
-            ? { 
-                ...guest, 
-                lastStay: new Date().toISOString().split('T')[0],
-                totalStays: guest.totalStays + 1
-              }
-            : guest
-        ));
-      }
+      // Note: Guest creation/updates are now handled through the backend
+      // The real implementation would create/update guest records via Supabase
       
       // Update room status based on action and payment
       const updatedRoom = {
@@ -523,11 +476,11 @@ export const QuickGuestCapture = ({
                                   <span className="text-xs text-muted-foreground">
                                     {guest.phone} • {guest.email}
                                   </span>
-                                  {guest.lastStay && (
-                                    <span className="text-xs text-muted-foreground">
-                                      Last stay: {guest.lastStay} • {guest.totalStays} stays
-                                    </span>
-                                  )}
+                                   {guest.last_stay_date && (
+                                     <span className="text-xs text-muted-foreground">
+                                       Last stay: {new Date(guest.last_stay_date).toLocaleDateString()} • {guest.total_stays} stays
+                                     </span>
+                                   )}
                                 </div>
                               </CommandItem>
                             ))}
@@ -689,11 +642,11 @@ export const QuickGuestCapture = ({
                   <div className="text-sm text-muted-foreground space-y-1">
                     <div>📱 {selectedGuest.phone}</div>
                     <div>📧 {selectedGuest.email}</div>
-                    {selectedGuest.idType && selectedGuest.idNumber && (
-                      <div>🆔 {ID_TYPES.find(t => t.value === selectedGuest.idType)?.label}: {selectedGuest.idNumber}</div>
+                    {selectedGuest.id_type && selectedGuest.id_number && (
+                      <div>🆔 {ID_TYPES.find(t => t.value === selectedGuest.id_type)?.label}: {selectedGuest.id_number}</div>
                     )}
-                    {selectedGuest.lastStay && (
-                      <div>🏨 Last stay: {selectedGuest.lastStay} • {selectedGuest.totalStays} stays</div>
+                    {selectedGuest.last_stay_date && (
+                      <div>🏨 Last stay: {new Date(selectedGuest.last_stay_date).toLocaleDateString()} • {selectedGuest.total_stays} stays</div>
                     )}
                   </div>
                 </div>

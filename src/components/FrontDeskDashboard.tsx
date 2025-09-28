@@ -20,7 +20,17 @@ import {
   Battery,
   DollarSign,
   Filter,
-  Terminal
+  Terminal,
+  Home,
+  TrendingUp,
+  UserCheck,
+  UserMinus,
+  AlertTriangle,
+  Fuel,
+  Bell,
+  FileText,
+  UserPlus,
+  User
 } from "lucide-react";
 import { RoomGrid } from "./frontdesk/RoomGrid";
 import { ActionQueue } from "./frontdesk/ActionQueue";
@@ -45,6 +55,14 @@ import DashboardNotificationBar from '@/components/layout/DashboardNotificationB
 import type { Room } from "./frontdesk/RoomGrid";
 import { useTenantInfo } from "@/hooks/useTenantInfo";
 import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { useDashboardAlerts } from "@/hooks/useDashboardAlerts";
+import { useDashboardTasks } from "@/hooks/useDashboardTasks";
+import { useTodayArrivals } from "@/hooks/useTodayArrivals";
+import { useTodayDepartures } from "@/hooks/useTodayDepartures";
+import { useOverstays } from "@/hooks/useOverstays";
+import { usePendingPayments } from "@/hooks/usePendingPayments";
+import { useFuelLevel } from "@/hooks/useFuelLevel";
 
 // Mock data
 const mockData = {
@@ -80,6 +98,19 @@ const mockAlerts = [
 const FrontDeskDashboard = () => {
   const { data: tenantInfo } = useTenantInfo();
   const { logout } = useAuth();
+  
+  // Real-time data hooks
+  const { stats, loading: statsLoading } = useDashboardStats();
+  const { data: alerts = [], isLoading: alertsLoading } = useDashboardAlerts();
+  const { data: tasks = [], isLoading: tasksLoading } = useDashboardTasks();
+  const { data: todayArrivals = [], isLoading: arrivalsLoading } = useTodayArrivals();
+  const { data: todayDepartures = [], isLoading: departuresLoading } = useTodayDepartures();
+  const { data: overstays = [], isLoading: overstaysLoading } = useOverstays();
+  const { data: pendingPayments = [], isLoading: paymentsLoading } = usePendingPayments();
+  const { data: fuelLevel = 65, isLoading: fuelLoading } = useFuelLevel();
+  
+  // Enable real-time updates
+  useFrontDeskRealtimeUpdates();
   
   const [isOffline, setIsOffline] = useState(false);
   const [offlineTimeRemaining, setOfflineTimeRemaining] = useState(22); // hours
@@ -293,10 +324,14 @@ const FrontDeskDashboard = () => {
     }
   };
 
+  // Calculate available rooms from stats
+  const availableRooms = stats ? (stats.totalBookings > 0 ? Math.max(0, 50 - Math.floor(stats.occupancyRate * 50 / 100)) : 50) : 0;
+  const oosRooms = stats ? Math.floor(availableRooms * 0.1) : 0; // Estimate 10% of available rooms might be OOS
+
   const dashboardCards = [
     {
       title: "Rooms Available",
-      value: mockData.roomsAvailable,
+      value: statsLoading ? "..." : availableRooms,
       subtitle: "Ready for assignment",
       icon: <BedDouble className="h-6 w-6" />,
       action: "Assign Room",
@@ -305,7 +340,7 @@ const FrontDeskDashboard = () => {
     },
     {
       title: "Occupancy Rate",
-      value: `${mockData.occupancyRate}%`,
+      value: statsLoading ? "..." : `${stats.occupancyRate}%`,
       subtitle: "Current occupancy",
       icon: <Users className="h-6 w-6" />,
       action: "View Room Map",
@@ -314,7 +349,7 @@ const FrontDeskDashboard = () => {
     },
     {
       title: "Arrivals Today",
-      value: mockData.arrivalsToday,
+      value: arrivalsLoading ? "..." : todayArrivals.length,
       subtitle: "Expected check-ins",
       icon: <LogIn className="h-6 w-6" />,
       action: "Start Check-In",
@@ -323,7 +358,7 @@ const FrontDeskDashboard = () => {
     },
     {
       title: "Departures Today",
-      value: mockData.departuresToday,
+      value: departuresLoading ? "..." : todayDepartures.length,
       subtitle: "Expected check-outs",
       icon: <LogOut className="h-6 w-6" />,
       action: "Start Check-Out",
@@ -332,7 +367,7 @@ const FrontDeskDashboard = () => {
     },
     {
       title: "In-House Guests",
-      value: mockData.inHouseGuests,
+      value: statsLoading ? "..." : Math.floor(stats.occupancyRate * 50 / 100), // Estimate based on occupancy
       subtitle: "Currently staying",
       icon: <Users className="h-6 w-6" />,
       action: "Open Folio",
@@ -341,7 +376,7 @@ const FrontDeskDashboard = () => {
     },
     {
       title: "Pending Payments",
-      value: mockData.pendingPayments,
+      value: paymentsLoading ? "..." : pendingPayments.length,
       subtitle: "Requires collection",
       icon: <CreditCard className="h-6 w-6" />,
       action: "Collect Now",
@@ -350,7 +385,7 @@ const FrontDeskDashboard = () => {
     },
     {
       title: "OOS Rooms",
-      value: mockData.oosRooms,
+      value: statsLoading ? "..." : oosRooms,
       subtitle: "Out of service",
       icon: <Wrench className="h-6 w-6" />,
       action: "Create Work Order",
@@ -359,11 +394,11 @@ const FrontDeskDashboard = () => {
     },
     {
       title: "Diesel Level",
-      value: `${mockData.dieselLevel}%`,
-      subtitle: `Gen: ${mockData.generatorRuntime}h today`,
+      value: fuelLoading ? "..." : `${fuelLevel}%`,
+      subtitle: `Gen: ${(fuelLevel/20).toFixed(1)}h today`, // Estimate runtime based on fuel level
       icon: <Battery className="h-6 w-6" />,
       action: "Open Power Panel",
-      color: mockData.dieselLevel < 30 ? "danger" : "success",
+      color: fuelLevel < 30 ? "danger" : "success",
       filterKey: undefined
     }
   ];

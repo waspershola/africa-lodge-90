@@ -185,19 +185,45 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogPro
             </Button>
           </div>
 
-          {/* Checkout Status */}
-          {!canCheckout && (
+          {/* BILLING LOGIC FIX: Checkout Status with correct logic */}
+          {!canCheckout && guest_bill.pending_balance > 0 && (
             <Card className="mt-4 border-amber-200 bg-amber-50">
               <CardContent className="pt-4">
                 <div className="flex items-center gap-2 text-amber-800">
                   <AlertTriangle className="h-4 w-4" />
                   <span className="font-medium">
-                    Pending Balance: ₦{guest_bill.pending_balance.toLocaleString()}
+                    Outstanding Balance: ₦{guest_bill.pending_balance.toLocaleString()}
                   </span>
                 </div>
                 <p className="text-sm text-amber-700 mt-1">
                   All bills must be settled before checkout can be completed.
                 </p>
+              </CardContent>
+            </Card>
+          )}
+          {/* Show success message for paid guests */}
+          {canCheckout && (
+            <Card className="mt-4 border-green-200 bg-green-50">
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2 text-green-800">
+                  <CheckCircle className="h-4 w-4" />
+                  <span className="font-medium">
+                    All bills settled - Ready for checkout
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {/* Show success message for paid guests */}
+          {canCheckout && (
+            <Card className="mt-4 border-green-200 bg-green-50">
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2 text-green-800">
+                  <CheckCircle className="h-4 w-4" />
+                  <span className="font-medium">
+                    All bills settled - Ready for checkout
+                  </span>
+                </div>
               </CardContent>
             </Card>
           )}

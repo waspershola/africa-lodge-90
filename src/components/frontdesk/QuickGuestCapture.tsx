@@ -364,7 +364,7 @@ export const QuickGuestCapture = ({
 
       let guestId = selectedGuest?.id;
       
-      // Enhanced guest contact management with auto-save
+      // ATOMIC TRANSACTION FIX: Enhanced guest contact management with rollback
       if (guestMode === 'new' || !guestId) {
         try {
           // Determine the correct source type
@@ -401,8 +401,9 @@ export const QuickGuestCapture = ({
             console.log(`Existing guest contact updated: ${result.guest.first_name} ${result.guest.last_name}`);
           }
         } catch (error) {
-          console.error('Error saving guest contact:', error);
-          throw new Error('Failed to save guest contact information');
+          console.error('ERROR: Guest contact save failed:', error);
+          // ROLLBACK FIX: Don't proceed with room operations if guest save fails
+          throw new Error(`Guest contact save failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       }
 
@@ -464,63 +465,94 @@ export const QuickGuestCapture = ({
         updatedRoom.checkOut = formData.checkOutDate;
         
         } else if (action === 'walkin' || action === 'check-in') {
-        // Handle check-in flow using useRoomStatusManager
+        // ATOMIC TRANSACTION FIX: Handle check-in flow with proper error handling and rollback
         let reservationId: string;
+        let createdReservation = false;
         
         console.log(`Processing ${action} for room ${room?.number}`, { roomId: room?.id, guestName: formData.guestName });
 
-        if (action === 'check-in' && (room as any).current_reservation) {
-          // Use existing reservation and check-in using the room status manager
-          reservationId = (room as any).current_reservation.id;
-          console.log('Using existing reservation:', reservationId);
-          
-          // Use quickCheckIn for better handling
-          const result = await quickCheckIn(room?.id, reservationId);
-          console.log('Check-in result:', result);
-          
-          if (!result) {
-            throw new Error('Failed to check in guest');
-          }
-        } else {
-          // Create new reservation for walk-in
-          console.log('Creating new walk-in reservation');
-          const reservationNumber = `RES-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
-          const reservationData = {
-            guest_id: guestId,
-            guest_name: formData.guestName,
-            guest_email: formData.email,
-            guest_phone: formData.phone,
-            room_id: room?.id,
-            check_in_date: formData.checkInDate,
-            check_out_date: formData.checkOutDate,
-            adults: 1,
-            children: 0,
-            room_rate: formData.roomRate,
-            total_amount: formData.totalAmount,
-            status: 'checked_in',
-            checked_in_at: new Date().toISOString(),
-            checked_in_by: user.id,
-            reservation_number: reservationNumber,
-            tenant_id: user.user_metadata?.tenant_id
-          };
+        try {
+          if (action === 'check-in' && (room as any).current_reservation) {
+            // Use existing reservation and check-in using the room status manager
+            reservationId = (room as any).current_reservation.id;
+            console.log('Using existing reservation:', reservationId);
+            
+            // TIMEOUT FIX: Add timeout for quickCheckIn operation
+            const checkInPromise = quickCheckIn(room?.id, reservationId);
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Check-in timeout after 15 seconds')), 15000)
+            );
+            
+            const result = await Promise.race([checkInPromise, timeoutPromise]);
+            console.log('Check-in result:', result);
+            
+            if (!result) {
+              throw new Error('Failed to check in guest - room status update failed');
+            }
+          } else {
+            // Create new reservation for walk-in
+            console.log('Creating new walk-in reservation');
+            const reservationNumber = `RES-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+            const reservationData = {
+              guest_id: guestId,
+              guest_name: formData.guestName,
+              guest_email: formData.email,
+              guest_phone: formData.phone,
+              room_id: room?.id,
+              check_in_date: formData.checkInDate,
+              check_out_date: formData.checkOutDate,
+              adults: 1,
+              children: 0,
+              room_rate: formData.roomRate,
+              total_amount: formData.totalAmount,
+              status: 'checked_in',
+              checked_in_at: new Date().toISOString(),
+              checked_in_by: user.id,
+              reservation_number: reservationNumber,
+              tenant_id: user.user_metadata?.tenant_id
+            };
 
-          const { data: reservation, error: reservationError } = await supabase
-            .from('reservations')
-            .insert([reservationData])
-            .select()
-            .single();
+            const { data: reservation, error: reservationError } = await supabase
+              .from('reservations')
+              .insert([reservationData])
+              .select()
+              .single();
 
-          if (reservationError) throw reservationError;
-          reservationId = reservation.id;
-          console.log('New reservation created:', reservationId);
-          
-          // Use quickCheckIn for consistent status management
-          const result = await quickCheckIn(room?.id, reservationId);
-          console.log('Walk-in check-in result:', result);
-          
-          if (!result) {
-            throw new Error('Failed to complete walk-in check-in');
+            if (reservationError) throw reservationError;
+            reservationId = reservation.id;
+            createdReservation = true;
+            console.log('New reservation created:', reservationId);
+            
+            // TIMEOUT FIX: Add timeout for quickCheckIn operation
+            const checkInPromise = quickCheckIn(room?.id, reservationId);
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Walk-in check-in timeout after 15 seconds')), 15000)
+            );
+            
+            const result = await Promise.race([checkInPromise, timeoutPromise]);
+            console.log('Walk-in check-in result:', result);
+            
+            if (!result) {
+              throw new Error('Failed to complete walk-in check-in - room status update failed');
+            }
           }
+        } catch (checkInError) {
+          console.error('Check-in operation failed:', checkInError);
+          
+          // ROLLBACK FIX: Clean up created reservation if check-in fails
+          if (createdReservation && reservationId) {
+            try {
+              await supabase
+                .from('reservations')
+                .delete()
+                .eq('id', reservationId);
+              console.log('Rolled back created reservation:', reservationId);
+            } catch (rollbackError) {
+              console.error('Failed to rollback reservation:', rollbackError);
+            }
+          }
+          
+          throw checkInError;
         }
 
         // Create folio for the reservation

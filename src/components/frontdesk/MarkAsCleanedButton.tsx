@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -20,7 +21,9 @@ export const MarkAsCleanedButton = ({
   const { toast } = useToast();
   const { user } = useAuth();
   const { updateRoomStatusAsync, isLoading } = useRoomStatusManager();
+  const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [buttonVisible, setButtonVisible] = useState(false);
 
   // Check if user has permission to mark rooms as cleaned
   const canMarkAsCleaned = user?.role && [
@@ -29,6 +32,12 @@ export const MarkAsCleanedButton = ({
     'MANAGER', 
     'OWNER'
   ].includes(user.role);
+
+  // REAL-TIME UPDATE FIX: Monitor room status changes and update button visibility
+  useEffect(() => {
+    const shouldShowButton = room.status === 'dirty' && canMarkAsCleaned;
+    setButtonVisible(shouldShowButton);
+  }, [room.status, canMarkAsCleaned]);
 
   const handleMarkAsCleaned = async () => {
     if (!canMarkAsCleaned) {
@@ -67,6 +76,9 @@ export const MarkAsCleanedButton = ({
         }
       });
 
+      // REAL-TIME UPDATE FIX: Trigger optimistic UI update immediately
+      setButtonVisible(false);
+      
       // Update the room object if callback provided
       if (onRoomUpdate) {
         const updatedRoom: Room = {
@@ -76,6 +88,10 @@ export const MarkAsCleanedButton = ({
         onRoomUpdate(updatedRoom);
       }
 
+      // REAL-TIME UPDATE FIX: Invalidate queries to trigger UI refresh
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['room-availability'] });
+
       toast({
         title: "Room Cleaned",
         description: `Room ${room.number} has been marked as cleaned and is now available.`,
@@ -84,6 +100,8 @@ export const MarkAsCleanedButton = ({
       onComplete?.();
     } catch (error) {
       console.error('Mark as cleaned error:', error);
+      // REAL-TIME UPDATE FIX: Restore button visibility on error
+      setButtonVisible(room.status === 'dirty' && canMarkAsCleaned);
       toast({
         title: "Error",
         description: `Failed to mark room as cleaned: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -94,8 +112,8 @@ export const MarkAsCleanedButton = ({
     }
   };
 
-  // Only show button for dirty rooms and authorized users
-  if (room.status !== 'dirty' || !canMarkAsCleaned) {
+  // REAL-TIME UPDATE FIX: Use state-based visibility instead of prop-based
+  if (!buttonVisible) {
     return null;
   }
 

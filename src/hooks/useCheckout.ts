@@ -14,33 +14,33 @@ export const useCheckout = (roomId?: string) => {
     setError(null);
     
     try {
-      // Get room info and current reservation
-      const { data: room, error: roomError } = await supabase
-        .from('rooms')
-        .select(`
-          *,
-          room_types:room_type_id (*)
-        `)
-        .eq('id', roomId)
-        .single();
+      // PERFORMANCE FIX: Optimized parallel queries
+      // Get room info and current reservation in parallel
+      const [
+        { data: room, error: roomError },
+        { data: reservations, error: reservationError }
+      ] = await Promise.all([
+        supabase
+          .from('rooms')
+          .select(`
+            *,
+            room_types:room_type_id (*)
+          `)
+          .eq('id', roomId)
+          .single(),
+        supabase
+          .from('reservations')
+          .select('*')
+          .eq('room_id', roomId)
+          .eq('status', 'checked_in')
+          .order('check_in_date', { ascending: false })
+          .limit(1)
+      ]);
 
       if (roomError) throw roomError;
-
-      // Get active reservation for the room (most recent if multiple)
-      const { data: reservations, error: reservationError } = await supabase
-        .from('reservations')
-        .select('*')
-        .eq('room_id', roomId)
-        .eq('status', 'checked_in')
-        .order('check_in_date', { ascending: false })
-        .limit(1);
-
       if (reservationError) throw reservationError;
 
       const reservation = reservations?.[0];
-
-      if (reservationError) throw reservationError;
-
       if (!reservation) {
         throw new Error('No active reservation found for this room');
       }
@@ -53,32 +53,26 @@ export const useCheckout = (roomId?: string) => {
         });
 
       if (folioIdError) throw folioIdError;
-
       if (!folioId) {
         throw new Error('Failed to get or create folio for reservation');
       }
 
-      // Get the folio with its charges and payments
-      const { data: folio, error: folioError } = await supabase
-        .from('folios')
-        .select('*')
-        .eq('id', folioId)
-        .single();
+      // Get the folio with its charges and payments in parallel
+      const [
+        { data: folio, error: folioError },
+        { data: charges, error: chargesError },
+        { data: payments, error: paymentsError }
+      ] = await Promise.all([
+        supabase.from('folios').select('*').eq('id', folioId).single(),
+        supabase.from('folio_charges').select('*').eq('folio_id', folioId),
+        supabase.from('payments').select('*').eq('folio_id', folioId)
+      ]);
 
       if (folioError) throw folioError;
-
-      let serviceCharges: ServiceCharge[] = [];
-      let paymentRecords: PaymentRecord[] = [];
-
-      // Get folio charges
-      const { data: charges, error: chargesError } = await supabase
-        .from('folio_charges')
-        .select('*')
-        .eq('folio_id', folio.id);
-
       if (chargesError) throw chargesError;
+      if (paymentsError) throw paymentsError;
 
-      serviceCharges = charges?.map(charge => ({
+      const serviceCharges: ServiceCharge[] = charges?.map(charge => ({
         id: charge.id,
         service_type: charge.charge_type as ServiceCharge['service_type'],
         description: charge.description,
@@ -88,15 +82,7 @@ export const useCheckout = (roomId?: string) => {
         staff_name: charge.posted_by || undefined
       })) || [];
 
-      // Get payments
-      const { data: payments, error: paymentsError } = await supabase
-        .from('payments')
-        .select('*')
-        .eq('folio_id', folio.id);
-
-      if (paymentsError) throw paymentsError;
-
-      paymentRecords = payments?.map(payment => ({
+      const paymentRecords: PaymentRecord[] = payments?.map(payment => ({
         id: payment.id,
         bill_id: folio.id,
         amount: Number(payment.amount),
@@ -111,7 +97,20 @@ export const useCheckout = (roomId?: string) => {
       const totalAmount = subtotal + taxAmount;
       const totalPaid = paymentRecords.reduce((sum, payment) => 
         payment.status === 'completed' ? sum + payment.amount : sum, 0);
-      const pendingBalance = Math.max(0, totalAmount - totalPaid);
+      
+      // BILLING LOGIC FIX: Correct pending balance calculation
+      const actualBalance = totalAmount - totalPaid;
+      const pendingBalance = Math.max(0, actualBalance);
+      
+      // BILLING LOGIC FIX: Proper payment status with overpayment handling
+      let paymentStatus: 'paid' | 'partial' | 'unpaid';
+      if (totalPaid >= totalAmount) {
+        paymentStatus = 'paid';
+      } else if (totalPaid > 0) {
+        paymentStatus = 'partial';
+      } else {
+        paymentStatus = 'unpaid';
+      }
 
       const guestBill: GuestBill = {
         room_id: roomId,
@@ -128,14 +127,14 @@ export const useCheckout = (roomId?: string) => {
         tax_amount: taxAmount,
         total_amount: totalAmount,
         pending_balance: pendingBalance,
-        payment_status: pendingBalance <= 0 ? 'paid' : totalPaid > 0 ? 'partial' : 'unpaid'
+        payment_status: paymentStatus
       };
 
       const session: CheckoutSession = {
         room_id: roomId,
         guest_bill: guestBill,
         payment_records: paymentRecords,
-        checkout_status: pendingBalance <= 0 ? 'ready' : 'pending'
+        checkout_status: actualBalance <= 0 ? 'ready' : 'pending'
       };
 
       setCheckoutSession(session);

@@ -155,26 +155,138 @@ export const OverstayChargeDialog = ({
     setIsProcessing(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Real backend integration
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data: { user } } = await supabase.auth.getUser();
       
+      if (!user) throw new Error('Not authenticated');
+
       let updatedRoom = { ...room };
 
       switch (action) {
         case 'overstay-charge':
-          updatedRoom.folio = {
-            balance: (room.folio?.balance || 0) + parseFloat(formData.chargeAmount),
-            isPaid: formData.paymentMethod !== 'pay_later'
-          };
+          // Find the open folio for this room
+          const { data: folios, error: folioError } = await supabase
+            .from('folios')
+            .select('id')
+            .eq('status', 'open')
+            .eq('reservations.room_id', room.id)
+            .limit(1);
+
+          if (folioError) throw folioError;
+
+          if (folios && folios.length > 0) {
+            // Add overstay charge
+            const { error: chargeError } = await supabase
+              .from('folio_charges')
+              .insert({
+                folio_id: folios[0].id,
+                charge_type: 'overstay',
+                description: `Overstay charge for Room ${room.number} - ${overstayHours} hours late`,
+                amount: parseFloat(formData.chargeAmount),
+                tenant_id: user.user_metadata?.tenant_id
+              });
+
+            if (chargeError) throw chargeError;
+
+            // Process payment if method selected
+            if (formData.paymentMethod && formData.paymentMethod !== 'pay_later') {
+              const { error: paymentError } = await supabase
+                .from('payments')
+                .insert({
+                  folio_id: folios[0].id,
+                  amount: parseFloat(formData.chargeAmount),
+                  payment_method: formData.paymentMethod,
+                  payment_status: 'completed',
+                  tenant_id: user.user_metadata?.tenant_id
+                });
+
+              if (paymentError) throw paymentError;
+            }
+
+            updatedRoom.folio = {
+              balance: (room.folio?.balance || 0) + parseFloat(formData.chargeAmount) - (formData.paymentMethod !== 'pay_later' ? parseFloat(formData.chargeAmount) : 0),
+              isPaid: formData.paymentMethod !== 'pay_later'
+            };
+          }
           break;
+
+        case 'send-reminder':
+          // Create a notification event for the reminder
+          const { error: notificationError } = await supabase
+            .from('notification_events')
+            .insert([{
+              tenant_id: user.user_metadata?.tenant_id,
+              event_type: 'overstay_reminder',
+              event_source: 'front_desk',
+              channels: ['sms', 'email'],
+              recipients: [{
+                type: 'guest',
+                contact: room.guest,
+                phone: (room as any).current_reservation?.guest_phone,
+                email: (room as any).current_reservation?.guest_email
+              }],
+              template_data: {
+                guest_name: room.guest,
+                room_number: room.number,
+                message: formData.reminderMessage,
+                overstay_hours: overstayHours
+              },
+              metadata: { room_id: room.id }
+            }]);
+
+          if (notificationError) throw notificationError;
+          break;
+
         case 'force-checkout':
+          // Update reservation status
+          if ((room as any).current_reservation) {
+            const { error: reservationError } = await supabase
+              .from('reservations')
+              .update({ 
+                status: 'checked_out',
+                checked_out_at: new Date().toISOString(),
+                checked_out_by: user.id
+              })
+              .eq('id', (room as any).current_reservation.id);
+
+            if (reservationError) throw reservationError;
+          }
+
+          // Update room status
+          const { error: roomError } = await supabase
+            .from('rooms')
+            .update({ 
+              status: 'available',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', room.id);
+
+          if (roomError) throw roomError;
+
+          // Create housekeeping task
+          const { error: taskError } = await supabase
+            .from('housekeeping_tasks')
+            .insert({
+              room_id: room.id,
+              task_type: 'checkout_cleaning',
+              title: 'Post-Checkout Cleaning',
+              description: `Clean Room ${room.number} after force checkout`,
+              priority: 'high',
+              status: 'pending',
+              tenant_id: user.user_metadata?.tenant_id,
+              created_by: user.id
+            });
+
+          if (taskError) throw taskError;
+
           updatedRoom.status = 'available';
           updatedRoom.guest = undefined;
           updatedRoom.checkIn = undefined;
           updatedRoom.checkOut = undefined;
           updatedRoom.alerts = {
             ...room.alerts,
-            cleaning: true // Room needs cleaning after checkout
+            cleaning: true
           };
           break;
       }

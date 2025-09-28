@@ -150,24 +150,50 @@ export const QuickGuestCapture = ({
   const [guestSearchValue, setGuestSearchValue] = useState("");
   const { data: searchResults } = useGuestSearch(guestSearchValue);
   
-  const [formData, setFormData] = useState<GuestFormData>({
-    guestName: '',
-    phone: '',
-    email: '',
-    nationality: '',
-    sex: '',
-    occupation: '',
-    idType: '',
-    idNumber: '',
-    paymentMode: 'cash',
-    depositAmount: '10000',
-    printNow: true,
-    notes: '',
-    checkInDate: new Date().toISOString().split('T')[0],
-    checkOutDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Tomorrow
-    roomRate: 0,
-    totalAmount: 0,
-    numberOfNights: 1,
+  const [formData, setFormData] = useState<GuestFormData>(() => {
+    // Pre-fill for reserved rooms with reservation data
+    if (room?.status === 'reserved' && (room as any).current_reservation && action === 'check-in') {
+      const reservation = (room as any).current_reservation;
+      return {
+        guestName: reservation.guest_name || '',
+        phone: reservation.guest_phone || '',
+        email: reservation.guest_email || '',
+        nationality: '',
+        sex: '',
+        occupation: '',
+        idType: '',
+        idNumber: '',
+        paymentMode: 'cash',
+        depositAmount: reservation.total_amount?.toString() || '0',
+        printNow: true,
+        notes: '',
+        checkInDate: reservation.check_in_date || new Date().toISOString().split('T')[0],
+        checkOutDate: reservation.check_out_date || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        roomRate: room.room_type?.base_rate || 0,
+        totalAmount: reservation.total_amount || 0,
+        numberOfNights: Math.ceil((new Date(reservation.check_out_date || '').getTime() - new Date(reservation.check_in_date || '').getTime()) / (1000 * 60 * 60 * 24)) || 1,
+      };
+    }
+    
+    return {
+      guestName: '',
+      phone: '',
+      email: '',
+      nationality: '',
+      sex: '',
+      occupation: '',
+      idType: '',
+      idNumber: '',
+      paymentMode: 'cash',
+      depositAmount: '10000',
+      printNow: true,
+      notes: '',
+      checkInDate: new Date().toISOString().split('T')[0],
+      checkOutDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      roomRate: 0,
+      totalAmount: 0,
+      numberOfNights: 1,
+    };
   });
 
   // Combine search results with recent guests
@@ -322,24 +348,198 @@ export const QuickGuestCapture = ({
     setIsProcessing(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Real backend integration
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data: { user } } = await supabase.auth.getUser();
       
-      // Note: Guest creation/updates are now handled through the backend
-      // The real implementation would create/update guest records via Supabase
+      if (!user) throw new Error('Not authenticated');
+
+      let guestId = selectedGuest?.id;
       
-      // Update room status based on action and payment
-      const updatedRoom = {
-        ...room,
-        status: (action === 'walkin' || action === 'check-in') ? 'occupied' as const : room?.status || 'available' as const,
-        guest: formData.guestName,
-        checkIn: (action === 'walkin' || action === 'check-in') ? formData.checkInDate : room?.checkIn,
-        checkOut: (action === 'walkin' || action === 'check-in') ? formData.checkOutDate : room?.checkOut,
-        folio: {
-          balance: parseInt(formData.depositAmount) || formData.totalAmount || 0,
-          isPaid: formData.paymentMode !== 'pay_later'
+      // Create or update guest if needed
+      if (guestMode === 'new' || !guestId) {
+        const guestData = {
+          first_name: formData.guestName.split(' ')[0],
+          last_name: formData.guestName.split(' ').slice(1).join(' ') || '',
+          phone: formData.phone,
+          email: formData.email,
+          nationality: formData.nationality,
+          id_type: formData.idType,
+          id_number: formData.idNumber,
+          tenant_id: user.user_metadata?.tenant_id
+        };
+
+        const { data: guest, error: guestError } = await supabase
+          .from('guests')
+          .upsert(guestData, { onConflict: 'phone' })
+          .select()
+          .single();
+
+        if (guestError) throw guestError;
+        guestId = guest.id;
+      }
+
+      let updatedRoom = { ...room };
+
+      // Handle different actions
+      if (action === 'assign') {
+        // Create reservation for room assignment
+        const reservationNumber = `RES-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+        const reservationData = {
+          guest_id: guestId,
+          guest_name: formData.guestName,
+          guest_email: formData.email,
+          guest_phone: formData.phone,
+          room_id: room?.id,
+          check_in_date: formData.checkInDate,
+          check_out_date: formData.checkOutDate,
+          adults: 1,
+          children: 0,
+          room_rate: formData.roomRate,
+          total_amount: formData.totalAmount,
+          status: 'confirmed',
+          reservation_number: reservationNumber,
+          tenant_id: user.user_metadata?.tenant_id
+        };
+
+        const { data: reservation, error: reservationError } = await supabase
+          .from('reservations')
+          .insert([reservationData])
+          .select()
+          .single();
+
+        if (reservationError) throw reservationError;
+
+        // Update room status to reserved
+        const { error: roomError } = await supabase
+          .from('rooms')
+          .update({ 
+            status: 'reserved',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', room?.id);
+
+        if (roomError) throw roomError;
+
+        updatedRoom.status = 'reserved';
+        updatedRoom.guest = formData.guestName;
+        updatedRoom.checkIn = formData.checkInDate;
+        updatedRoom.checkOut = formData.checkOutDate;
+        
+      } else if (action === 'walkin' || action === 'check-in') {
+        // Handle check-in flow
+        let reservationId: string;
+
+        if (action === 'check-in' && (room as any).current_reservation) {
+          // Use existing reservation
+          reservationId = (room as any).current_reservation.id;
+          
+          // Update reservation status to checked_in
+          const { error: reservationError } = await supabase
+            .from('reservations')
+            .update({ 
+              status: 'checked_in',
+              checked_in_at: new Date().toISOString(),
+              checked_in_by: user.id
+            })
+            .eq('id', reservationId);
+
+          if (reservationError) throw reservationError;
+        } else {
+          // Create new reservation for walk-in
+          const reservationNumber = `RES-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+          const reservationData = {
+            guest_id: guestId,
+            guest_name: formData.guestName,
+            guest_email: formData.email,
+            guest_phone: formData.phone,
+            room_id: room?.id,
+            check_in_date: formData.checkInDate,
+            check_out_date: formData.checkOutDate,
+            adults: 1,
+            children: 0,
+            room_rate: formData.roomRate,
+            total_amount: formData.totalAmount,
+            status: 'checked_in',
+            checked_in_at: new Date().toISOString(),
+            checked_in_by: user.id,
+            reservation_number: reservationNumber,
+            tenant_id: user.user_metadata?.tenant_id
+          };
+
+          const { data: reservation, error: reservationError } = await supabase
+            .from('reservations')
+            .insert([reservationData])
+            .select()
+            .single();
+
+          if (reservationError) throw reservationError;
+          reservationId = reservation.id;
         }
-      };
+
+        // Create folio for the reservation
+        const folioNumber = `F-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+        const { data: folio, error: folioError } = await supabase
+          .from('folios')
+          .insert({
+            folio_number: folioNumber,
+            reservation_id: reservationId,
+            status: 'open',
+            tenant_id: user.user_metadata?.tenant_id
+          })
+          .select()
+          .single();
+
+        if (folioError) throw folioError;
+
+        // Add initial charge for room
+        const { error: chargeError } = await supabase
+          .from('folio_charges')
+          .insert({
+            folio_id: folio.id,
+            charge_type: 'room',
+            description: `Room ${room?.number} - ${formData.numberOfNights} night(s)`,
+            amount: formData.totalAmount,
+            tenant_id: user.user_metadata?.tenant_id
+          });
+
+        if (chargeError) throw chargeError;
+
+        // Process payment if not pay later
+        if (formData.paymentMode !== 'pay_later' && parseFloat(formData.depositAmount) > 0) {
+          const { error: paymentError } = await supabase
+            .from('payments')
+            .insert({
+              folio_id: folio.id,
+              amount: parseFloat(formData.depositAmount),
+              payment_method: formData.paymentMode,
+              payment_status: 'completed',
+              tenant_id: user.user_metadata?.tenant_id
+            });
+
+          if (paymentError) throw paymentError;
+        }
+
+        // Update room status to occupied
+        const { error: roomError } = await supabase
+          .from('rooms')
+          .update({ 
+            status: 'occupied',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', room?.id);
+
+        if (roomError) throw roomError;
+
+        updatedRoom.status = 'occupied';
+        updatedRoom.guest = formData.guestName;
+        updatedRoom.checkIn = formData.checkInDate;
+        updatedRoom.checkOut = formData.checkOutDate;
+        updatedRoom.folio = {
+          balance: formData.totalAmount - parseFloat(formData.depositAmount),
+          isPaid: formData.paymentMode !== 'pay_later' && parseFloat(formData.depositAmount) >= formData.totalAmount
+        };
+      }
 
       onComplete(updatedRoom);
 

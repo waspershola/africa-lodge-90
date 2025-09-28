@@ -136,52 +136,33 @@ export const QuickGuestCapture = ({
   const { data: searchResults } = useGuestSearch(guestSearchValue);
   
   const [formData, setFormData] = useState<GuestFormData>(() => {
-    // Pre-fill for reserved rooms with reservation data
-    if (room?.status === 'reserved' && (room as any).current_reservation && action === 'check-in') {
-      const reservation = (room as any).current_reservation;
-      return {
-        guestName: reservation.guest_name || '',
-        phone: reservation.guest_phone || '',
-        email: reservation.guest_email || '',
-        nationality: '',
-        sex: '',
-        occupation: '',
-        idType: '',
-        idNumber: '',
-        paymentMode: 'cash',
-        depositAmount: reservation.total_amount?.toString() || '0',
-        printNow: true,
-        notes: '',
-        checkInDate: reservation.check_in_date || new Date().toISOString().split('T')[0],
-        checkOutDate: reservation.check_out_date || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        roomRate: room.room_type?.base_rate || 0,
-        totalAmount: reservation.total_amount || 0,
-        numberOfNights: Math.ceil((new Date(reservation.check_out_date || '').getTime() - new Date(reservation.check_in_date || '').getTime()) / (1000 * 60 * 60 * 24)) || 1,
-      };
-    }
+    const currentDate = new Date().toISOString().split('T')[0];
+    const nextDate = new Date();
+    nextDate.setDate(nextDate.getDate() + 1);
+    const checkoutDate = nextDate.toISOString().split('T')[0];
     
     return {
-      guestName: '',
+      guestName: '',  // Always start with clean form
       phone: '',
       email: '',
       nationality: '',
       sex: '',
       occupation: '',
-      idType: '',
+      idType: 'national-id',
       idNumber: '',
       paymentMode: 'cash',
-      depositAmount: '10000',
-      printNow: true,
+      depositAmount: '0',
+      printNow: false,
       notes: '',
-      checkInDate: new Date().toISOString().split('T')[0],
-      checkOutDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      checkInDate: currentDate,
+      checkOutDate: checkoutDate,
       roomRate: 0,
       totalAmount: 0,
       numberOfNights: 1,
     };
   });
 
-  // Detect reserved room and auto-set to existing guest mode
+  // Detect reserved room and auto-set to existing guest mode ONLY for reserved rooms during check-in
   useEffect(() => {
     if (room?.status === 'reserved' && (room as any).current_reservation && action === 'check-in') {
       setGuestMode('existing');
@@ -216,6 +197,11 @@ export const QuickGuestCapture = ({
         numberOfNights: Math.ceil((new Date(reservation.check_out_date || '').getTime() - new Date(reservation.check_in_date || '').getTime()) / (1000 * 60 * 60 * 24)) || 1,
         depositAmount: reservation.total_amount?.toString() || '0'
       }));
+    } else {
+      // For non-reserved rooms or other actions, ensure form is clean
+      setGuestMode('new');
+      setSelectedGuest(null);
+      setGuestSearchValue('');
     }
   }, [room, action]);
 
@@ -331,32 +317,7 @@ export const QuickGuestCapture = ({
       return;
     }
 
-    if (!formData.nationality.trim()) {
-      toast({
-        title: "Validation Error", 
-        description: "Nationality is required",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!formData.sex.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Sex is required", 
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!formData.occupation.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Occupation is required",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Nationality, sex, and occupation are now optional fields
 
     // Date validation for walk-in actions
     if ((action === 'walkin' || action === 'assign') && formData.checkOutDate <= formData.checkInDate) {
@@ -916,19 +877,19 @@ export const QuickGuestCapture = ({
           {(action === 'assign' || action === 'walkin') && (
             <>
               <RateSelectionComponent
-                roomType={room?.room_type}
                 checkInDate={formData.checkInDate}
                 checkOutDate={formData.checkOutDate}
-                onRateChange={(rate, nights, total) => {
+                onRateChange={(rate, nights, total, roomTypeId) => {
                   setFormData(prev => ({
                     ...prev,
                     roomRate: rate,
                     numberOfNights: nights,
                     totalAmount: total,
-                    depositAmount: total.toString()
+                    depositAmount: total.toString(),
+                    ...(roomTypeId && { roomTypeId })
                   }));
                 }}
-                defaultRate={formData.roomRate}
+                defaultRate={room?.room_type?.base_rate || formData.roomRate}
               />
             </>
           )}

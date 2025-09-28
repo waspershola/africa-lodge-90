@@ -39,6 +39,7 @@ import { useShiftIntegratedAction } from "./ShiftIntegratedAction";
 import { useReceiptPrinter } from "@/hooks/useReceiptPrinter";
 import { AuditTrailDisplay } from "./AuditTrailDisplay";
 import { useAuditLog } from "@/hooks/useAuditLog";
+import { useAuth } from '@/hooks/useAuth';
 import type { Room } from "./RoomGrid";
 
 interface RoomActionDrawerProps {
@@ -58,6 +59,7 @@ export const RoomActionDrawer = ({
 }: RoomActionDrawerProps) => {
   const { toast } = useToast();
   const { logEvent } = useAuditLog();
+  const { user } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [showQuickCapture, setShowQuickCapture] = useState(false);
   const [captureAction, setCaptureAction] = useState<'assign' | 'walkin' | 'check-in' | 'check-out' | 'assign-room' | 'extend-stay' | 'transfer-room' | 'add-service' | 'work-order' | 'housekeeping'>('assign');
@@ -211,44 +213,57 @@ export const RoomActionDrawer = ({
   };
 
   const getAvailableActions = () => {
+    let actions: Array<{ icon: any, label: string, action: string, variant: 'default' | 'outline' | 'destructive' }> = [];
+    
     switch (room.status) {
       case 'available':
-        return [
+        actions = [
           { icon: UserPlus, label: 'Assign Room', action: 'assign', variant: 'default' as const },
           { icon: LogIn, label: 'Walk-in Check-in', action: 'walkin', variant: 'outline' as const },
-          { icon: Wrench, label: 'Set Out of Service', action: 'oos', variant: 'outline' as const },
         ];
+        // Only managers and owners can set rooms out of service
+        if (user?.role && ['OWNER', 'MANAGER'].includes(user.role)) {
+          actions.push({ icon: Wrench, label: 'Set Out of Service', action: 'oos', variant: 'outline' as const });
+        }
+        break;
       case 'occupied':
-        return [
+        actions = [
           { icon: LogOut, label: 'Check-Out', action: 'checkout', variant: 'default' as const },
           { icon: Calendar, label: 'Extend Stay', action: 'extend-stay', variant: 'outline' as const },
           { icon: UserPlus, label: 'Transfer Room', action: 'transfer-room', variant: 'outline' as const },
           { icon: Sparkles, label: 'Add Service', action: 'add-service', variant: 'outline' as const },
           { icon: CreditCard, label: 'Post Payment', action: 'post-payment', variant: 'outline' as const },
         ];
+        break;
       case 'reserved':
-        return [
+        actions = [
           { icon: LogIn, label: 'Check-In', action: 'checkin', variant: 'default' as const },
           { icon: AlertTriangle, label: 'Cancel Reservation', action: 'cancel-reservation', variant: 'destructive' as const },
           { icon: FileText, label: 'Modify Reservation', action: 'modify-reservation', variant: 'outline' as const },
           { icon: UserPlus, label: 'Assign Different Room', action: 'assign-different', variant: 'outline' as const },
         ];
+        break;
       case 'oos':
-        return [
+        actions = [
           { icon: Sparkles, label: 'Mark as Available', action: 'mark-available', variant: 'default' as const },
           { icon: Wrench, label: 'Create Work Order', action: 'create-workorder', variant: 'outline' as const },
           { icon: Sparkles, label: 'Assign to Housekeeping', action: 'assign-housekeeping', variant: 'outline' as const },
         ];
+        break;
       case 'overstay':
-        return [
+        actions = [
           { icon: Calendar, label: 'Extend Stay', action: 'extend-stay', variant: 'default' as const },
           { icon: CreditCard, label: 'Apply Overstay Charge', action: 'overstay-charge', variant: 'outline' as const },
           { icon: LogOut, label: 'Check-Out', action: 'checkout', variant: 'destructive' as const },
           { icon: UserPlus, label: 'Transfer Room', action: 'transfer-room', variant: 'outline' as const },
         ];
+        break;
       default:
-        return [];
+        actions = [];
+        break;
     }
+    
+    return actions;
   };
 
   return (

@@ -5662,6 +5662,10 @@ export type Database = {
           total_rooms: number
         }[]
       }
+      get_or_create_folio: {
+        Args: { p_reservation_id: string; p_tenant_id: string }
+        Returns: string
+      }
       get_qr_portal_info: {
         Args: { p_tenant_id: string }
         Returns: {
@@ -5777,6 +5781,10 @@ export type Database = {
       gtrgm_out: {
         Args: { "": unknown }
         Returns: unknown
+      }
+      handle_multiple_folios: {
+        Args: { p_reservation_id: string }
+        Returns: string
       }
       is_super_admin: {
         Args: Record<PropertyKey, never>

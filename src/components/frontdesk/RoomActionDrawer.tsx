@@ -41,6 +41,7 @@ import { AuditTrailDisplay } from "./AuditTrailDisplay";
 import { useAuditLog } from "@/hooks/useAuditLog";
 import { useAuth } from '@/hooks/useAuth';
 import { MarkAsCleanedButton } from "./MarkAsCleanedButton";
+import { useCancelReservation } from "@/hooks/useReservations";
 import type { Room } from "./RoomGrid";
 
 interface RoomActionDrawerProps {
@@ -61,6 +62,7 @@ export const RoomActionDrawer = ({
   const { toast } = useToast();
   const { logEvent } = useAuditLog();
   const { user } = useAuth();
+  const cancelReservation = useCancelReservation();
   const [isProcessing, setIsProcessing] = useState(false);
   const [showQuickCapture, setShowQuickCapture] = useState(false);
   const [captureAction, setCaptureAction] = useState<'assign' | 'walkin' | 'check-in' | 'check-out' | 'assign-room' | 'extend-stay' | 'transfer-room' | 'add-service' | 'work-order' | 'housekeeping'>('assign');
@@ -78,6 +80,8 @@ export const RoomActionDrawer = ({
   if (!room) return null;
 
   const handleAction = async (action: string) => {
+    console.log('Handling action:', action, 'for room:', room.room_number);
+    
     // Handle quick capture actions
     if (action === 'Assign Room') {
       setCaptureAction('assign');
@@ -118,6 +122,50 @@ export const RoomActionDrawer = ({
     // Handle add service action
     if (action === 'Add Service') {
       setShowAddService(true);
+      return;
+    }
+
+    // Handle cancel reservation action
+    if (action === 'cancel-reservation') {
+      console.log('Processing cancellation for room:', room.room_number, 'reservation:', room.current_reservation);
+      
+      if (window.confirm('Are you sure you want to cancel this reservation? This action cannot be undone.')) {
+        if (room.current_reservation?.id) {
+          console.log('Cancelling reservation:', room.current_reservation.id);
+          
+          cancelReservation.mutate(room.current_reservation.id, {
+            onSuccess: () => {
+              console.log('Cancellation successful');
+              toast({
+                title: "Reservation Cancelled",
+                description: `Reservation for Room ${room.number} has been cancelled successfully.`,
+              });
+              onClose();
+              // Force refresh to show updated room status
+              setTimeout(() => {
+                if (typeof window !== 'undefined') {
+                  window.location.reload();
+                }
+              }, 500);
+            },
+            onError: (error) => {
+              console.error('Cancellation error:', error);
+              toast({
+                title: "Cancellation Failed",
+                description: error instanceof Error ? error.message : 'Failed to cancel reservation',
+                variant: "destructive",
+              });
+            }
+          });
+        } else {
+          console.warn('No reservation ID found for room:', room.room_number);
+          toast({
+            title: "Error",
+            description: "No reservation ID found for this room.",
+            variant: "destructive",
+          });
+        }
+      }
       return;
     }
 
@@ -477,6 +525,27 @@ export const RoomActionDrawer = ({
             </Card>
           )}
 
+          {/* Current Reservation Debug Info */}
+          {room.current_reservation && (
+            <Card className="border-blue-200 bg-blue-50">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <IdCard className="h-4 w-4" />
+                  Reservation Debug
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="text-xs font-mono">
+                  <div>ID: {room.current_reservation.id}</div>
+                  <div>Guest: {room.current_reservation.guest_name}</div>
+                  <div>Status: {room.current_reservation.status}</div>
+                  <div>Check-in: {room.current_reservation.check_in_date}</div>
+                  <div>Check-out: {room.current_reservation.check_out_date}</div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Folio Information */}
           {room.folio && (
             <Card>
@@ -495,46 +564,42 @@ export const RoomActionDrawer = ({
                     variant={room.folio.isPaid ? 'default' : 'destructive'}
                     className={room.folio.isPaid ? 'bg-success text-success-foreground' : ''}
                   >
-                    {room.folio.isPaid ? 'Paid' : 'Unpaid'}
+                    {room.folio.isPaid ? 'Paid' : 'Pending'}
                   </Badge>
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Alerts & Issues */}
-          {Object.values(room.alerts).some(Boolean) && (
+          {/* Room Alerts */}
+          {room.alerts && Object.values(room.alerts).some(Boolean) && (
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2 text-orange-600">
+                <CardTitle className="text-base flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4" />
-                  Alerts & Issues
+                  Alerts
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 {room.alerts.cleaning && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Sparkles className="h-4 w-4 text-blue-500" />
-                    <span>Cleaning required</span>
-                  </div>
-                )}
-                {room.alerts.depositPending && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <CreditCard className="h-4 w-4 text-yellow-500" />
-                    <span>Deposit payment pending</span>
-                  </div>
-                )}
-                {room.alerts.idMissing && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <IdCard className="h-4 w-4 text-red-500" />
-                    <span>Guest ID documentation missing</span>
-                  </div>
+                  <Badge variant="outline" className="text-yellow-600 border-yellow-200">
+                    Needs Cleaning
+                  </Badge>
                 )}
                 {room.alerts.maintenance && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Wrench className="h-4 w-4 text-orange-500" />
-                    <span>Maintenance work required</span>
-                  </div>
+                  <Badge variant="outline" className="text-red-600 border-red-200">
+                    Maintenance Required
+                  </Badge>
+                )}
+                {room.alerts.depositPending && (
+                  <Badge variant="outline" className="text-orange-600 border-orange-200">
+                    Deposit Pending
+                  </Badge>
+                )}
+                {room.alerts.idMissing && (
+                  <Badge variant="outline" className="text-red-600 border-red-200">
+                    ID Missing
+                  </Badge>
                 )}
               </CardContent>
             </Card>
@@ -542,159 +607,154 @@ export const RoomActionDrawer = ({
 
           <Separator />
 
-          {/* Available Actions */}
+          {/* Action Buttons */}
           <div className="space-y-3">
-            <h3 className="font-medium">Available Actions</h3>
-            <div className="space-y-2">
-              {getAvailableActions().map((actionItem, index) => (
+            <h3 className="text-lg font-semibold">Available Actions</h3>
+            <div className="grid gap-2">
+              {getAvailableActions().map(({ icon: Icon, label, action, variant }) => (
                 <Button
-                  key={index}
-                  variant={actionItem.variant}
-                  className="w-full justify-start gap-3 h-auto py-3"
+                  key={action}
+                  onClick={() => handleAction(action)}
+                  variant={variant}
+                  size="sm"
                   disabled={isProcessing}
-                  onClick={() => handleAction(actionItem.label)}
+                  className="justify-start gap-2 h-10"
                 >
-                  <actionItem.icon className="h-4 w-4" />
-                  <span>{actionItem.label}</span>
+                  <Icon className="h-4 w-4" />
+                  {label}
                 </Button>
               ))}
             </div>
           </div>
 
-          {/* Quick Actions */}
+          <Separator />
+
+          {/* Additional Actions */}
           <div className="space-y-3">
-            <h3 className="font-medium">Quick Actions</h3>
-            
-            {/* Mark as Cleaned Button - Show prominently for dirty rooms */}
-            {room.status === 'dirty' && (
-              <MarkAsCleanedButton
-                room={room}
-                onRoomUpdate={onRoomUpdate}
-                onComplete={onClose}
-              />
-            )}
-            
-            <div className="grid grid-cols-2 gap-2">
-              <Button 
-                variant="outline" 
-                size="sm"
+            <h3 className="text-base font-medium">General Actions</h3>
+            <div className="grid gap-2">
+              <Button
                 onClick={() => handleAction('View History')}
-                disabled={isProcessing}
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                History
-              </Button>
-              <Button 
-                variant="outline" 
+                variant="outline"
                 size="sm"
-                onClick={() => handleAction('Add Note')}
-                disabled={isProcessing}
+                className="justify-start gap-2"
               >
-                <Edit3 className="h-4 w-4 mr-2" />
+                <FileText className="h-4 w-4" />
+                View History
+              </Button>
+              <Button
+                onClick={() => handleAction('Add Note')}
+                variant="outline"
+                size="sm"
+                className="justify-start gap-2"
+              >
+                <Edit3 className="h-4 w-4" />
                 Add Note
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
+              <Button
                 onClick={() => handleAction('Print Report')}
-                disabled={isProcessing}
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Print
-              </Button>
-              <Button 
-                variant="outline" 
+                variant="outline"
                 size="sm"
-                onClick={() => handleAction('Send Email')}
-                disabled={isProcessing}
+                className="justify-start gap-2"
               >
-                <Mail className="h-4 w-4 mr-2" />
-                Email
+                <FileText className="h-4 w-4" />
+                Print Report
               </Button>
+              {room.guest && (
+                <>
+                  <Button
+                    onClick={() => handleAction('Send Email')}
+                    variant="outline"
+                    size="sm"
+                    className="justify-start gap-2"
+                  >
+                    <Mail className="h-4 w-4" />
+                    Send Email
+                  </Button>
+                  <Button
+                    onClick={() => handleAction('Call Guest')}
+                    variant="outline"
+                    size="sm"
+                    className="justify-start gap-2"
+                  >
+                    <Phone className="h-4 w-4" />
+                    Call Guest
+                  </Button>
+                </>
+              )}
             </div>
           </div>
-
-          {/* Audit Trail */}
-          <div className="pt-4 border-t text-xs text-muted-foreground">
-            <AuditTrailDisplay roomId={room.id} />
-          </div>
         </div>
-        </SheetContent>
+      </SheetContent>
       </Sheet>
 
-      {/* Quick Guest Capture Dialog */}
-      <QuickGuestCapture 
-        room={room}
+      {/* Dialogs */}
+      <QuickGuestCapture
         open={showQuickCapture}
         onOpenChange={setShowQuickCapture}
+        room={room}
         action={captureAction}
         onComplete={handleGuestCaptureComplete}
       />
 
-      {/* Checkout Dialog */}
       <CheckoutDialog
         open={showCheckout}
         onOpenChange={setShowCheckout}
         roomId={room?.id}
       />
 
-      {/* Payment Dialog */}
       <PaymentDialog
         open={showPayment}
         onOpenChange={setShowPayment}
         pendingAmount={room?.folio?.balance || 0}
-        onPaymentSuccess={() => {
-          setShowPayment(false);
+        onPaymentSuccess={(amount, method) => {
           toast({
-            title: "Payment Processed",
-            description: `Payment for Room ${room?.number} has been recorded.`,
+            title: "Payment Processed", 
+            description: `₦${amount.toLocaleString()} payment successful`
           });
+          setShowPayment(false);
         }}
       />
 
-      {/* Maintenance Task Dialog */}
       <MaintenanceTaskDialog
-        room={room}
         open={showMaintenance}
         onOpenChange={setShowMaintenance}
+        room={room}
         action={maintenanceAction}
-        onComplete={(updatedRoom) => {
+        onComplete={() => {
           setShowMaintenance(false);
-          onRoomUpdate?.(updatedRoom);
+          onClose();
         }}
       />
 
-      {/* Extend Stay Dialog */}
       <ExtendStayDialog
-        room={room}
         open={showExtendStay}
         onOpenChange={setShowExtendStay}
-        onComplete={(updatedRoom) => {
+        room={room}
+        onComplete={() => {
           setShowExtendStay(false);
-          onRoomUpdate?.(updatedRoom);
+          onClose();
         }}
       />
 
-      {/* Overstay Charge Dialog */}
       <OverstayChargeDialog
-        room={room}
         open={showOverstay}
         onOpenChange={setShowOverstay}
+        room={room}
         action={overstayAction}
-        onComplete={(updatedRoom) => {
+        onComplete={() => {
           setShowOverstay(false);
-          onRoomUpdate?.(updatedRoom);
+          onClose();
         }}
       />
 
-      {/* Add Service Dialog */}
       <AddServiceDialog
-        room={room}
         open={showAddService}
         onOpenChange={setShowAddService}
-        onComplete={(updatedRoom) => {
+        room={room}
+        onComplete={() => {
           setShowAddService(false);
-          onRoomUpdate?.(updatedRoom);
+          onClose();
         }}
       />
     </>

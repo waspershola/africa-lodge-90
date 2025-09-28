@@ -18,6 +18,7 @@ export interface Room {
     base_rate: number;
   };
   current_reservation?: {
+    id: string;
     guest_name: string;
     check_in_date: string;
     check_out_date: string;

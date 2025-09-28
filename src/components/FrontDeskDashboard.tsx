@@ -229,8 +229,8 @@ const FrontDeskDashboard = () => {
         setShowQuickCapture(true);
         break;
       case 'check-out':
-        if (selectedRoom?.number) {
-          setCheckoutRoomId(selectedRoom.number);
+        if (selectedRoom?.id) {
+          setCheckoutRoomId(selectedRoom.id);
           setShowCheckout(true);
         } else {
           setCaptureAction('check-out');

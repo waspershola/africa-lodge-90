@@ -142,7 +142,7 @@ export const useCheckout = (roomId?: string) => {
         .select('id')
         .eq('room_id', checkoutSession.room_id)
         .eq('status', 'checked_in')
-        .single();
+        .maybeSingle();
 
       if (!reservation) throw new Error('No active reservation found');
 
@@ -151,7 +151,7 @@ export const useCheckout = (roomId?: string) => {
         .select('id')
         .eq('reservation_id', reservation.id)
         .eq('status', 'open')
-        .single();
+        .maybeSingle();
 
       if (!folio) throw new Error('No active folio found');
 
@@ -251,7 +251,7 @@ export const useCheckout = (roomId?: string) => {
         .select('id')
         .eq('room_id', checkoutSession.room_id)
         .eq('status', 'checked_in')
-        .single();
+        .maybeSingle();
 
       if (reservationError || !reservation) {
         throw new Error('No active reservation found');
@@ -262,7 +262,7 @@ export const useCheckout = (roomId?: string) => {
         .select('id')
         .eq('reservation_id', reservation.id)
         .eq('status', 'open')
-        .single();
+        .maybeSingle();
 
       if (folioError || !folio) {
         throw new Error('No active folio found');

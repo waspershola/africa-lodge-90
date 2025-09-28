@@ -1,5 +1,6 @@
 import React from 'react';
-import { CreditCard, Banknote, Smartphone, Building2, Clock } from 'lucide-react';
+import { CreditCard, Banknote, Smartphone, Building2, Clock, UserX, ArrowRightLeft } from 'lucide-react';
+import { usePaymentMethodsContext } from '@/contexts/PaymentMethodsContext';
 
 export interface PaymentMethod {
   id: string;
@@ -10,54 +11,25 @@ export interface PaymentMethod {
 }
 
 export const usePaymentMethods = () => {
-  // Payment methods as per blueprint specifications
-  const paymentMethods: PaymentMethod[] = [
-    {
-      id: 'cash',
-      name: 'Cash',
-      icon: 'banknote',
-      enabled: true,
-    },
-    {
-      id: 'moniepoint_pos',
-      name: 'Moniepoint POS',
-      icon: 'credit-card',
-      enabled: true,
-    },
-    {
-      id: 'opay_pos',
-      name: 'Opay POS',
-      icon: 'credit-card',
-      enabled: true,
-    },
-    {
-      id: 'zenith_transfer',
-      name: 'Zenith Transfer',
-      icon: 'building',
-      enabled: true,
-    },
-    {
-      id: 'pay_later',
-      name: 'Pay Later',
-      icon: 'clock',
-      enabled: true,
-    },
-  ];
-
-  const enabledMethods = paymentMethods.filter(method => method.enabled);
+  // Get payment methods from context (configured in financials dashboard)
+  const { paymentMethods, enabledMethods } = usePaymentMethodsContext();
 
   const getMethodIcon = (iconName: string) => {
     switch (iconName) {
-      case 'banknote':
+      case 'Banknote':
         return React.createElement(Banknote, { className: "h-4 w-4" });
-      case 'credit-card':
+      case 'CreditCard':
         return React.createElement(CreditCard, { className: "h-4 w-4" });
-      case 'building':
+      case 'Building':
         return React.createElement(Building2, { className: "h-4 w-4" });
-      case 'smartphone':
+      case 'Smartphone':
         return React.createElement(Smartphone, { className: "h-4 w-4" });
-      case 'clock':
+      case 'Clock':
         return React.createElement(Clock, { className: "h-4 w-4" });
+      case 'UserX':
+        return React.createElement(UserX, { className: "h-4 w-4" });
+      case 'ArrowRightLeft':
+        return React.createElement(ArrowRightLeft, { className: "h-4 w-4" });
       default:
         return React.createElement(CreditCard, { className: "h-4 w-4" });
     }

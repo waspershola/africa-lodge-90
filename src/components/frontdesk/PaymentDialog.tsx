@@ -133,19 +133,28 @@ export const PaymentDialog = ({ open, onOpenChange, pendingAmount, onPaymentSucc
                         <SelectValue placeholder="Select payment method" />
                       </SelectTrigger>
                       <SelectContent>
-                        {enabledMethods.map((method) => (
-                          <SelectItem key={method.id} value={method.id}>
-                            <div className="flex items-center gap-2">
-                              {method.icon === 'Banknote' && <Banknote className="h-4 w-4" />}
-                              {method.icon === 'CreditCard' && <CreditCard className="h-4 w-4" />}
-                              {method.icon === 'Bank' && <Building className="h-4 w-4" />}
-                              {method.icon === 'Smartphone' && <Smartphone className="h-4 w-4" />}
-                              {method.icon === 'Clock' && <Clock className="h-4 w-4" />}
-                              {method.icon === 'UserX' && <UserX className="h-4 w-4" />}
-                              {method.name}
-                            </div>
-                          </SelectItem>
-                        ))}
+                         {enabledMethods.map((method) => {
+                           const IconComponent = () => {
+                             switch (method.icon) {
+                               case 'Banknote': return <Banknote className="h-4 w-4" />;
+                               case 'CreditCard': return <CreditCard className="h-4 w-4" />;
+                               case 'Building': return <Building className="h-4 w-4" />;
+                               case 'Smartphone': return <Smartphone className="h-4 w-4" />;
+                               case 'Clock': return <Clock className="h-4 w-4" />;
+                               case 'UserX': return <UserX className="h-4 w-4" />;
+                               default: return <CreditCard className="h-4 w-4" />;
+                             }
+                           };
+                           
+                           return (
+                             <SelectItem key={method.id} value={method.id}>
+                               <div className="flex items-center gap-2">
+                                 <IconComponent />
+                                 {method.name}
+                               </div>
+                             </SelectItem>
+                           );
+                         })}
                       </SelectContent>
                     </Select>
                   </div>

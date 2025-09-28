@@ -33,6 +33,10 @@ import { MaintenanceTaskDialog } from "./MaintenanceTaskDialog";
 import { ExtendStayDialog } from "./ExtendStayDialog";
 import { OverstayChargeDialog } from "./OverstayChargeDialog";
 import { AddServiceDialog } from "./AddServiceDialog";
+import { TransferRoomDialog } from "./TransferRoomDialog";
+import { ReleaseReservationDialog } from "./ReleaseReservationDialog";
+import { useShiftIntegratedAction } from "./ShiftIntegratedAction";
+import { useReceiptPrinter } from "@/hooks/useReceiptPrinter";
 import type { Room } from "./RoomGrid";
 
 interface RoomActionDrawerProps {

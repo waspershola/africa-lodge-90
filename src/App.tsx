@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useFontManager } from "@/hooks/useFontManager";
+import { PaymentMethodsProvider } from "@/contexts/PaymentMethodsContext";
 import { SecurityDebugPanel } from "@/components/debug/SecurityDebugPanel";
 import Index from "./pages/Index";
 import { AuthPage } from "./pages/AuthPage";
@@ -114,8 +115,9 @@ const FontManager = () => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <MultiTenantAuthProvider>
+    <PaymentMethodsProvider>
+      <TooltipProvider>
+        <MultiTenantAuthProvider>
         <FontManager />
         <Toaster />
         <Sonner />
@@ -318,6 +320,7 @@ const App = () => (
         </BrowserRouter>
       </MultiTenantAuthProvider>
     </TooltipProvider>
+    </PaymentMethodsProvider>
   </QueryClientProvider>
 );
 

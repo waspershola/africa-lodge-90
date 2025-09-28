@@ -3,11 +3,12 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export const RoomLegend = () => {
   const legends = [
-    { color: 'bg-success text-success-foreground', label: 'Available', status: 'available' },
-    { color: 'bg-destructive text-destructive-foreground', label: 'Occupied', status: 'occupied' },
-    { color: 'bg-blue-500 text-white', label: 'Reserved', status: 'reserved' },
-    { color: 'bg-orange-500 text-white', label: 'Out of Service', status: 'oos' },
-    { color: 'bg-purple-500 text-white', label: 'Overstay', status: 'overstay' },
+    { color: 'bg-room-available text-room-available-foreground', label: 'Available', status: 'available' },
+    { color: 'bg-room-occupied text-room-occupied-foreground', label: 'Occupied', status: 'occupied' },
+    { color: 'bg-room-reserved text-room-reserved-foreground', label: 'Reserved', status: 'reserved' },
+    { color: 'bg-room-dirty text-room-dirty-foreground', label: 'Dirty', status: 'dirty' },
+    { color: 'bg-room-oos text-room-oos-foreground', label: 'Out of Service', status: 'oos' },
+    { color: 'bg-room-overstay text-room-overstay-foreground', label: 'Overstay', status: 'overstay' },
   ];
 
   return (

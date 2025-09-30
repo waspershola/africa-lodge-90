@@ -5649,6 +5649,20 @@ export type Database = {
           unique_guests: number
         }[]
       }
+      get_folio_balance: {
+        Args: { p_folio_id: string; p_tenant_id: string }
+        Returns: {
+          balance: number
+          folio_id: string
+          folio_number: string
+          guest_name: string
+          room_number: string
+          status: string
+          tax_amount: number
+          total_charges: number
+          total_payments: number
+        }[]
+      }
       get_folio_balances: {
         Args: { p_folio_id?: string; p_status?: string; p_tenant_id: string }
         Returns: {

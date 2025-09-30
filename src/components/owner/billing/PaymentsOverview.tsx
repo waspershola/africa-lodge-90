@@ -17,6 +17,7 @@ import { format } from 'date-fns';
 import { useBilling } from '@/hooks/useBilling';
 import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
+import { usePaymentMethodsContext } from '@/contexts/PaymentMethodsContext';
 
 export default function PaymentsOverview() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -24,8 +25,9 @@ export default function PaymentsOverview() {
   const [filterPeriod, setFilterPeriod] = useState('today');
   
   const { billingStats, payments, loading, error } = useBilling();
+  const { enabledMethods, loading: methodsLoading } = usePaymentMethodsContext();
 
-  if (loading) return <LoadingState />;
+  if (loading || methodsLoading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
 
   // Calculate payment summary from real data
@@ -103,11 +105,11 @@ export default function PaymentsOverview() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Methods</SelectItem>
-                <SelectItem value="cash">Cash</SelectItem>
-                <SelectItem value="card">Card</SelectItem>
-                <SelectItem value="transfer">Bank Transfer</SelectItem>
-                <SelectItem value="pos">POS</SelectItem>
-                <SelectItem value="wallet">Digital Wallet</SelectItem>
+                {enabledMethods.map(method => (
+                  <SelectItem key={method.id} value={method.id}>
+                    {method.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 

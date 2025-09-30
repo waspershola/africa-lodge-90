@@ -19,11 +19,13 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { usePOSApi, type Order } from '@/hooks/usePOS';
+import { usePaymentMethodsContext } from '@/contexts/PaymentMethodsContext';
 
 export default function PaymentPage() {
   const { orders, isLoading, processPayment } = usePOSApi();
+  const { enabledMethods } = usePaymentMethodsContext();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'room_folio' | 'card' | 'cash'>('room_folio');
+  const [paymentMethod, setPaymentMethod] = useState('');
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [cashReceived, setCashReceived] = useState(0);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
@@ -50,21 +52,27 @@ export default function PaymentPage() {
   const initiatePayment = (order: Order) => {
     setSelectedOrder(order);
     setPaymentAmount(order.total_amount);
-    setPaymentMethod(order.room_id ? 'room_folio' : 'card');
+    // Set first available method or credit/card type as default
+    const creditMethod = enabledMethods.find(m => m.type === 'credit');
+    setPaymentMethod(creditMethod?.id || enabledMethods[0]?.id || '');
     setShowPaymentDialog(true);
   };
 
-  const getPaymentMethodIcon = (method: string) => {
-    switch (method) {
-      case 'room_folio': return <Building className="h-4 w-4" />;
-      case 'card': return <CreditCard className="h-4 w-4" />;
-      case 'cash': return <Banknote className="h-4 w-4" />;
+  const getPaymentMethodIcon = (methodId: string) => {
+    const method = enabledMethods.find(m => m.id === methodId);
+    if (!method) return <DollarSign className="h-4 w-4" />;
+    
+    switch (method.icon) {
+      case 'Building': return <Building className="h-4 w-4" />;
+      case 'CreditCard': return <CreditCard className="h-4 w-4" />;
+      case 'Banknote': return <Banknote className="h-4 w-4" />;
       default: return <DollarSign className="h-4 w-4" />;
     }
   };
 
   const calculateChange = () => {
-    if (paymentMethod === 'cash' && cashReceived > paymentAmount) {
+    const method = enabledMethods.find(m => m.id === paymentMethod);
+    if (method?.type === 'cash' && cashReceived > paymentAmount) {
       return cashReceived - paymentAmount;
     }
     return 0;
@@ -265,31 +273,19 @@ export default function PaymentPage() {
               {/* Payment Method */}
               <div>
                 <Label>Payment Method</Label>
-                <Select value={paymentMethod} onValueChange={(value: any) => setPaymentMethod(value)}>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {selectedOrder.room_id && (
-                      <SelectItem value="room_folio">
+                    {enabledMethods.map(method => (
+                      <SelectItem key={method.id} value={method.id}>
                         <div className="flex items-center gap-2">
-                          <Building className="h-4 w-4" />
-                          Charge to Room
+                          {getPaymentMethodIcon(method.id)}
+                          {method.name}
                         </div>
                       </SelectItem>
-                    )}
-                    <SelectItem value="card">
-                      <div className="flex items-center gap-2">
-                        <CreditCard className="h-4 w-4" />
-                        Credit/Debit Card
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="cash">
-                      <div className="flex items-center gap-2">
-                        <Banknote className="h-4 w-4" />
-                        Cash
-                      </div>
-                    </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -307,7 +303,7 @@ export default function PaymentPage() {
               </div>
 
               {/* Cash Payment Details */}
-              {paymentMethod === 'cash' && (
+              {enabledMethods.find(m => m.id === paymentMethod)?.type === 'cash' && (
                 <div>
                   <Label htmlFor="cashReceived">Cash Received (₦)</Label>
                   <Input
@@ -331,7 +327,7 @@ export default function PaymentPage() {
                 </Button>
                 <Button 
                   onClick={handlePayment}
-                  disabled={isLoading || paymentAmount <= 0 || (paymentMethod === 'cash' && cashReceived < paymentAmount)}
+                  disabled={isLoading || paymentAmount <= 0 || (enabledMethods.find(m => m.id === paymentMethod)?.type === 'cash' && cashReceived < paymentAmount)}
                 >
                   {getPaymentMethodIcon(paymentMethod)}
                   <span className="ml-2">Process Payment</span>

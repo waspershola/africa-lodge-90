@@ -31,6 +31,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { usePaymentMethodsContext } from '@/contexts/PaymentMethodsContext';
 
 interface QuickBookingFormProps {
   onClose?: () => void;
@@ -38,6 +39,7 @@ interface QuickBookingFormProps {
 
 export default function QuickBookingForm({ onClose }: QuickBookingFormProps) {
   const [activeTab, setActiveTab] = useState('walk-in');
+  const { enabledMethods } = usePaymentMethodsContext();
   const [formData, setFormData] = useState({
     // Guest details
     guestName: '',
@@ -54,7 +56,7 @@ export default function QuickBookingForm({ onClose }: QuickBookingFormProps) {
     children: 0,
     
     // Booking details
-    paymentMode: 'cash' as 'cash' | 'card' | 'transfer' | 'ota',
+    paymentMode: enabledMethods[0]?.id || '',
     source: 'walk-in',
     specialRequests: '',
     
@@ -648,24 +650,17 @@ export default function QuickBookingForm({ onClose }: QuickBookingFormProps) {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="cash">
-                          <div className="flex items-center gap-2">
-                            <Banknote className="h-4 w-4" />
-                            Cash
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="card">
-                          <div className="flex items-center gap-2">
-                            <CreditCard className="h-4 w-4" />
-                            Card
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="transfer">
-                          <div className="flex items-center gap-2">
-                            <ArrowRightLeft className="h-4 w-4" />
-                            Bank Transfer
-                          </div>
-                        </SelectItem>
+                        {enabledMethods.map(method => (
+                          <SelectItem key={method.id} value={method.id}>
+                            <div className="flex items-center gap-2">
+                              {method.icon === 'Banknote' && <Banknote className="h-4 w-4" />}
+                              {method.icon === 'CreditCard' && <CreditCard className="h-4 w-4" />}
+                              {method.icon === 'ArrowRightLeft' && <ArrowRightLeft className="h-4 w-4" />}
+                              {method.icon === 'Building' && <Building2 className="h-4 w-4" />}
+                              {method.name}
+                            </div>
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>

@@ -17,6 +17,7 @@ import {
   FileText,
   Printer
 } from "lucide-react";
+import { usePaymentMethodsContext } from '@/contexts/PaymentMethodsContext';
 
 // Mock report data
 const mockRevenueData = [
@@ -53,6 +54,7 @@ const ReportsInterface = () => {
   const [selectedReport, setSelectedReport] = useState("revenue");
   const [dateRange, setDateRange] = useState("last-30-days");
   const [exportFormat, setExportFormat] = useState("excel");
+  const { enabledMethods } = usePaymentMethodsContext();
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-NG', {
@@ -138,15 +140,15 @@ const ReportsInterface = () => {
       {selectedReport === "revenue" && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            {["Cash", "POS", "Transfer", "Online"].map((method, index) => {
+            {enabledMethods.slice(0, 4).map((method, index) => {
               const colors = ["success", "primary", "accent", "warning"];
               const totals = mockRevenueData.reduce((acc, curr) => {
-                const key = method.toLowerCase() as keyof typeof curr;
+                const key = method.type as keyof typeof curr;
                 return acc + (typeof curr[key] === 'number' ? curr[key] : 0);
               }, 0);
               
               return (
-                <Card key={method} className="luxury-card">
+                <Card key={method.id} className="luxury-card">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between mb-4">
                       <div className={`h-12 w-12 rounded-full flex items-center justify-center ${
@@ -160,7 +162,7 @@ const ReportsInterface = () => {
                       <TrendingUp className="h-5 w-5 text-success" />
                     </div>
                     <div className="text-2xl font-bold mb-1">{formatCurrency(totals)}</div>
-                    <div className="text-sm text-muted-foreground">{method} Payments</div>
+                    <div className="text-sm text-muted-foreground">{method.name}</div>
                   </CardContent>
                 </Card>
               );
@@ -180,10 +182,9 @@ const ReportsInterface = () => {
                   <thead>
                     <tr className="border-b">
                       <th className="text-left p-3 font-medium">Period</th>
-                      <th className="text-right p-3 font-medium">Cash</th>
-                      <th className="text-right p-3 font-medium">POS</th>
-                      <th className="text-right p-3 font-medium">Transfer</th>
-                      <th className="text-right p-3 font-medium">Online</th>
+                      {enabledMethods.slice(0, 4).map(method => (
+                        <th key={method.id} className="text-right p-3 font-medium">{method.name}</th>
+                      ))}
                       <th className="text-right p-3 font-medium">Total</th>
                     </tr>
                   </thead>
@@ -191,10 +192,13 @@ const ReportsInterface = () => {
                     {mockRevenueData.map((row, index) => (
                       <tr key={index} className="border-b hover:bg-muted/50">
                         <td className="p-3 font-medium">{row.period}</td>
-                        <td className="p-3 text-right">{formatCurrency(row.cash)}</td>
-                        <td className="p-3 text-right">{formatCurrency(row.pos)}</td>
-                        <td className="p-3 text-right">{formatCurrency(row.transfer)}</td>
-                        <td className="p-3 text-right">{formatCurrency(row.online)}</td>
+                        {enabledMethods.slice(0, 4).map(method => {
+                          const key = method.type as keyof typeof row;
+                          const value = typeof row[key] === 'number' ? row[key] : 0;
+                          return (
+                            <td key={method.id} className="p-3 text-right">{formatCurrency(value)}</td>
+                          );
+                        })}
                         <td className="p-3 text-right font-bold text-primary">
                           {formatCurrency(getTotalRevenue(row))}
                         </td>

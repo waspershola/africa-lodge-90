@@ -9,71 +9,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CreditCard, Smartphone, Building, Clock, UserX, Plus, Settings, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-interface PaymentMethod {
-  id: string;
-  name: string;
-  type: 'pos' | 'digital' | 'transfer' | 'cash' | 'credit';
-  icon: string;
-  enabled: boolean;
-  fees?: {
-    percentage: number;
-    fixed: number;
-  };
-  config?: any;
-}
-
-const defaultPaymentMethods: PaymentMethod[] = [
-  {
-    id: 'cash',
-    name: 'Cash',
-    type: 'cash',
-    icon: 'Banknote',
-    enabled: true
-  },
-  {
-    id: 'card_pos',
-    name: 'Card (POS Terminal)',
-    type: 'pos',
-    icon: 'CreditCard',
-    enabled: true,
-    fees: { percentage: 1.5, fixed: 0 }
-  },
-  {
-    id: 'bank_transfer',
-    name: 'Bank Transfer',
-    type: 'transfer',
-    icon: 'ArrowRightLeft',
-    enabled: true,
-    fees: { percentage: 0, fixed: 25 }
-  },
-  {
-    id: 'mobile_money',
-    name: 'Mobile Money',
-    type: 'transfer',
-    icon: 'Smartphone',
-    enabled: true,
-    fees: { percentage: 1.0, fixed: 0 }
-  },
-  {
-    id: 'corporate_account',
-    name: 'Corporate Account',
-    type: 'credit',
-    icon: 'Building',
-    enabled: true,
-    fees: { percentage: 0, fixed: 0 }
-  },
-  {
-    id: 'debtor',
-    name: 'Debtor Account',
-    type: 'credit',
-    icon: 'UserX',
-    enabled: true
-  }
-];
+import { usePaymentMethodsDB } from "@/hooks/usePaymentMethodsDB";
+import type { PaymentMethod } from "@/contexts/PaymentMethodsContext";
 
 export default function PaymentMethodsConfig() {
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(defaultPaymentMethods);
+  const { 
+    paymentMethods, 
+    loading,
+    togglePaymentMethod,
+    addPaymentMethod: addMethod,
+    deletePaymentMethod
+  } = usePaymentMethodsDB();
+  
   const [isAddingMethod, setIsAddingMethod] = useState(false);
   const [newMethod, setNewMethod] = useState({
     name: '',
@@ -82,46 +29,41 @@ export default function PaymentMethodsConfig() {
   });
   const { toast } = useToast();
 
-  const toggleMethod = (id: string) => {
-    setPaymentMethods(methods =>
-      methods.map(method =>
-        method.id === id ? { ...method, enabled: !method.enabled } : method
-      )
-    );
-    toast({
-      title: "Payment method updated",
-      description: "Changes have been saved successfully."
-    });
+  const toggleMethod = async (id: string) => {
+    const method = paymentMethods.find(m => m.id === id);
+    if (method) {
+      await togglePaymentMethod(id, !method.enabled);
+      toast({
+        title: "Payment method updated",
+        description: "Changes have been saved successfully."
+      });
+    }
   };
 
-  const addPaymentMethod = () => {
+  const addPaymentMethod = async () => {
     if (!newMethod.name) return;
     
-    const method: PaymentMethod = {
-      id: `custom-${Date.now()}`,
+    const success = await addMethod({
       name: newMethod.name,
       type: newMethod.type,
       icon: 'CreditCard',
       enabled: true,
       fees: newMethod.fees
-    };
-
-    setPaymentMethods(methods => [...methods, method]);
-    setNewMethod({ name: '', type: 'pos', fees: { percentage: 0, fixed: 0 } });
-    setIsAddingMethod(false);
-    toast({
-      title: "Payment method added",
-      description: `${method.name} has been configured successfully.`
     });
+
+    if (success) {
+      setNewMethod({ name: '', type: 'pos', fees: { percentage: 0, fixed: 0 } });
+      setIsAddingMethod(false);
+    }
   };
 
-  const removeMethod = (id: string) => {
-    setPaymentMethods(methods => methods.filter(method => method.id !== id));
-    toast({
-      title: "Payment method removed",
-      description: "The payment method has been deleted."
-    });
+  const removeMethod = async (id: string) => {
+    await deletePaymentMethod(id);
   };
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-8">Loading payment methods...</div>;
+  }
 
   const getMethodIcon = (type: PaymentMethod['type']) => {
     switch (type) {

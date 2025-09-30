@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext } from 'react';
+import { usePaymentMethodsDB } from '@/hooks/usePaymentMethodsDB';
 
 export interface PaymentMethod {
   id: string;
@@ -13,64 +14,25 @@ export interface PaymentMethod {
   config?: any;
 }
 
-const defaultPaymentMethods: PaymentMethod[] = [
-  {
-    id: 'cash',
-    name: 'Cash',
-    type: 'cash',
-    icon: 'Banknote',
-    enabled: true
-  },
-  {
-    id: 'moniepoint_pos',
-    name: 'Moniepoint POS',
-    type: 'pos',
-    icon: 'CreditCard',
-    enabled: true,
-    fees: { percentage: 1.5, fixed: 0 }
-  },
-  {
-    id: 'opay_pos',
-    name: 'Opay POS',
-    type: 'pos',
-    icon: 'CreditCard',
-    enabled: true,
-    fees: { percentage: 1.5, fixed: 0 }
-  },
-  {
-    id: 'zenith_transfer',
-    name: 'Zenith Transfer',
-    type: 'transfer',
-    icon: 'Building',
-    enabled: true,
-    fees: { percentage: 0, fixed: 25 }
-  },
-  {
-    id: 'pay_later',
-    name: 'Pay Later',
-    type: 'credit',
-    icon: 'Clock',
-    enabled: true
-  }
-];
-
 interface PaymentMethodsContextType {
   paymentMethods: PaymentMethod[];
   enabledMethods: PaymentMethod[];
-  updatePaymentMethods: (methods: PaymentMethod[]) => void;
+  loading: boolean;
   getMethodById: (id: string) => PaymentMethod | undefined;
+  calculateFees: (amount: number, methodId: string) => number;
+  refresh: () => Promise<void>;
 }
 
 const PaymentMethodsContext = createContext<PaymentMethodsContextType | undefined>(undefined);
 
 export const PaymentMethodsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(defaultPaymentMethods);
-
-  const enabledMethods = paymentMethods.filter(method => method.enabled);
-
-  const updatePaymentMethods = (methods: PaymentMethod[]) => {
-    setPaymentMethods(methods);
-  };
+  const { 
+    paymentMethods, 
+    enabledMethods, 
+    loading,
+    calculateFees,
+    refresh
+  } = usePaymentMethodsDB();
 
   const getMethodById = (id: string) => {
     return paymentMethods.find(method => method.id === id);
@@ -81,8 +43,10 @@ export const PaymentMethodsProvider: React.FC<{ children: React.ReactNode }> = (
       value={{
         paymentMethods,
         enabledMethods,
-        updatePaymentMethods,
+        loading,
         getMethodById,
+        calculateFees,
+        refresh,
       }}
     >
       {children}

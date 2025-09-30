@@ -204,6 +204,7 @@ export function useBilling() {
     folio_id: string;
     amount: number;
     payment_method: string;
+    payment_method_id?: string;
     reference?: string;
   }) => {
     if (!tenant?.tenant_id) return null;

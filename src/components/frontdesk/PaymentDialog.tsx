@@ -7,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CreditCard, Banknote, Building, Smartphone, Clock, UserX } from "lucide-react";
-import { usePaymentMethods } from "@/hooks/usePaymentMethods";
+import { usePaymentMethodsContext } from "@/contexts/PaymentMethodsContext";
 import { useBilling } from "@/hooks/useBilling";
+import { toast } from "sonner";
 
 interface PaymentDialogProps {
   open: boolean;
@@ -18,10 +19,10 @@ interface PaymentDialogProps {
 }
 
 export const PaymentDialog = ({ open, onOpenChange, pendingAmount, onPaymentSuccess }: PaymentDialogProps) => {
-  const { folioBalances } = useBilling();
-  const { enabledMethods } = usePaymentMethods();
+  const { folioBalances, createPayment } = useBilling();
+  const { enabledMethods, getMethodById, calculateFees } = usePaymentMethodsContext();
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
-  const [paymentMethod, setPaymentMethod] = useState("");
+  const [paymentMethodId, setPaymentMethodId] = useState("");
   const [amount, setAmount] = useState("");
 
   // Filter folios with outstanding balances as pending payments
@@ -32,23 +33,49 @@ export const PaymentDialog = ({ open, onOpenChange, pendingAmount, onPaymentSucc
     setAmount(payment.balance.toString());
   };
 
-  const handleProcessPayment = () => {
-    const paymentAmount = parseFloat(amount);
-    console.log("Processing payment:", {
-      payment: selectedPayment,
-      method: paymentMethod,
-      amount: paymentAmount
-    });
-    
-    // Call success callback if provided
-    if (onPaymentSuccess) {
-      onPaymentSuccess(paymentAmount, paymentMethod);
+  const handleProcessPayment = async () => {
+    if (!paymentMethodId || !amount || !selectedPayment) {
+      toast.error("Please select a payment method and enter an amount");
+      return;
     }
+
+    const paymentAmount = parseFloat(amount);
+    const method = getMethodById(paymentMethodId);
     
-    onOpenChange(false);
-    setSelectedPayment(null);
-    setPaymentMethod("");
-    setAmount("");
+    if (!method) {
+      toast.error("Invalid payment method");
+      return;
+    }
+
+    if (!method.enabled) {
+      toast.error(`${method.name} is currently disabled`);
+      return;
+    }
+
+    const fees = calculateFees(paymentAmount, paymentMethodId);
+
+    try {
+      await createPayment({
+        folio_id: selectedPayment.folio_id,
+        amount: paymentAmount,
+        payment_method: method.name,
+        payment_method_id: paymentMethodId
+      });
+
+      toast.success(`Payment of ₦${paymentAmount.toLocaleString()} recorded via ${method.name}`);
+      
+      if (onPaymentSuccess) {
+        onPaymentSuccess(paymentAmount, method.name);
+      }
+      
+      onOpenChange(false);
+      setSelectedPayment(null);
+      setPaymentMethodId("");
+      setAmount("");
+    } catch (error) {
+      console.error("Payment error:", error);
+      toast.error("Failed to process payment");
+    }
   };
 
   return (
@@ -128,7 +155,7 @@ export const PaymentDialog = ({ open, onOpenChange, pendingAmount, onPaymentSucc
 
                   <div>
                     <Label htmlFor="method">Payment Method</Label>
-                    <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <Select value={paymentMethodId} onValueChange={setPaymentMethodId}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select payment method" />
                       </SelectTrigger>
@@ -151,6 +178,11 @@ export const PaymentDialog = ({ open, onOpenChange, pendingAmount, onPaymentSucc
                                <div className="flex items-center gap-2">
                                  <IconComponent />
                                  {method.name}
+                                 {method.fees && method.fees.percentage > 0 && (
+                                   <span className="text-xs text-muted-foreground ml-2">
+                                     (+{method.fees.percentage}%)
+                                   </span>
+                                 )}
                                </div>
                              </SelectItem>
                            );
@@ -170,7 +202,7 @@ export const PaymentDialog = ({ open, onOpenChange, pendingAmount, onPaymentSucc
                   </Button>
                   <Button 
                     onClick={handleProcessPayment}
-                    disabled={!paymentMethod || !amount}
+                    disabled={!paymentMethodId || !amount}
                     className="flex-1"
                   >
                     Process Payment

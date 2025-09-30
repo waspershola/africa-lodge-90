@@ -1974,6 +1974,63 @@ export type Database = {
           },
         ]
       }
+      payment_methods: {
+        Row: {
+          config: Json | null
+          created_at: string | null
+          display_order: number | null
+          enabled: boolean
+          fees: Json | null
+          icon: string
+          id: string
+          name: string
+          tenant_id: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string | null
+          display_order?: number | null
+          enabled?: boolean
+          fees?: Json | null
+          icon?: string
+          id?: string
+          name: string
+          tenant_id: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string | null
+          display_order?: number | null
+          enabled?: boolean
+          fees?: Json | null
+          icon?: string
+          id?: string
+          name?: string
+          tenant_id?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_methods_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "occupancy_stats"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "payment_methods_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
       payment_policies: {
         Row: {
           auto_cancel_hours: number | null
@@ -2027,6 +2084,7 @@ export type Database = {
           folio_id: string
           id: string
           payment_method: string
+          payment_method_id: string | null
           processed_by: string | null
           reference: string | null
           status: string
@@ -2039,6 +2097,7 @@ export type Database = {
           folio_id: string
           id?: string
           payment_method: string
+          payment_method_id?: string | null
           processed_by?: string | null
           reference?: string | null
           status?: string
@@ -2051,6 +2110,7 @@ export type Database = {
           folio_id?: string
           id?: string
           payment_method?: string
+          payment_method_id?: string | null
           processed_by?: string | null
           reference?: string | null
           status?: string
@@ -2069,6 +2129,13 @@ export type Database = {
             columns: ["folio_id"]
             isOneToOne: false
             referencedRelation: "folios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
             referencedColumns: ["id"]
           },
           {

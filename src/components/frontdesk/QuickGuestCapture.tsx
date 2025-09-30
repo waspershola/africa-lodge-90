@@ -54,7 +54,6 @@ import { useToast } from "@/hooks/use-toast";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { useGuestSearch, useRecentGuests } from "@/hooks/useGuestSearch";
 import { useGuestContactManager } from "@/hooks/useGuestContactManager";
-import { useRoomStatusManager } from "@/hooks/useRoomStatusManager";
 import { useAtomicCheckIn } from "@/hooks/useAtomicCheckIn";
 import { RateSelectionComponent } from "./RateSelectionComponent";
 import { ProcessingStateManager } from "./ProcessingStateManager";
@@ -131,8 +130,7 @@ export const QuickGuestCapture = ({
   const { enabledMethods } = usePaymentMethods();
   const { data: recentGuests } = useRecentGuests();
   const { saveGuestContactAsync, searchGuestContacts, quickContactLookup } = useGuestContactManager();
-  const { checkIn: atomicCheckIn, isLoading: isAtomicCheckInLoading } = useAtomicCheckIn();
-  const { quickCheckIn, isLoading: isStatusLoading } = useRoomStatusManager();
+  const { checkIn: atomicCheckIn, isLoading: isAtomicCheckInLoading, error: checkInError } = useAtomicCheckIn();
   const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStartTime, setProcessingStartTime] = useState<number | undefined>();
@@ -337,7 +335,7 @@ export const QuickGuestCapture = ({
       return;
     }
 
-    if (isProcessing || isStatusLoading || isAtomicCheckInLoading) {
+    if (isProcessing || isAtomicCheckInLoading) {
       return;
     }
     
@@ -505,6 +503,12 @@ export const QuickGuestCapture = ({
 
             console.log('[Atomic Check-in] Success:', result);
             
+            // SINGLE TOAST: Show success immediately after atomic operation
+            toast({
+              title: "Check-in Successful",
+              description: `Guest ${formData.guestName} checked into Room ${room?.number}`,
+            });
+            
           } else {
             // Walk-in: Create reservation and check-in atomically
             console.log('[Atomic Check-in] Creating walk-in reservation');
@@ -574,6 +578,12 @@ export const QuickGuestCapture = ({
 
             console.log('[Atomic Check-in] Walk-in success:', result);
 
+            // SINGLE TOAST: Show success immediately after atomic operation
+            toast({
+              title: "Check-in Successful",
+              description: `Guest ${formData.guestName} checked into Room ${room?.number}`,
+            });
+
             // Process payment if not pay later
             if (formData.paymentMode !== 'pay_later' && parseFloat(formData.depositAmount) > 0 && result.folio_id) {
               const { error: paymentError } = await supabase
@@ -615,20 +625,13 @@ export const QuickGuestCapture = ({
 
       onComplete(updatedRoom);
 
-      // Invalidate rooms query to trigger refetch
-      queryClient.invalidateQueries({ queryKey: ['rooms'] });
-
-      if (formData.printNow) {
-        toast({
-          title: "Processing Complete",
-          description: `${getActionTitle()} completed for ${formData.guestName}. Receipt sent to printer.`,
-        });
-      } else {
-        toast({
-          title: "Processing Complete", 
-          description: `${getActionTitle()} completed for ${formData.guestName}. Room ${room?.number} status updated.`,
-        });
-      }
+      // Enhanced query invalidation with overstay queries
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['rooms'] }),
+        queryClient.invalidateQueries({ queryKey: ['reservations'] }),
+        queryClient.invalidateQueries({ queryKey: ['folios'] }),
+        queryClient.invalidateQueries({ queryKey: ['overstays'] })
+      ]);
 
       // Success - clear timeout and reset processing state
       clearTimeout(processingTimeout);
@@ -1116,16 +1119,16 @@ export const QuickGuestCapture = ({
               variant="outline"
               onClick={() => onOpenChange(false)}
               className="flex-1"
-              disabled={isProcessing || isStatusLoading}
+              disabled={isProcessing || isAtomicCheckInLoading}
             >
               Cancel
             </Button>
              <Button 
                type="submit" 
                className="flex-1 gap-2"
-               disabled={isProcessing || isStatusLoading || (guestMode === 'existing' && !selectedGuest)}
+               disabled={isProcessing || isAtomicCheckInLoading || (guestMode === 'existing' && !selectedGuest)}
              >
-               {(isProcessing || isStatusLoading) ? (
+               {(isProcessing || isAtomicCheckInLoading) ? (
                  <>
                    <Clock className="h-4 w-4 animate-spin" />
                    Processing...

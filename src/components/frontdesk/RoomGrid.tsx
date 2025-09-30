@@ -92,25 +92,10 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
         }
       }
 
-      // Check for overstay using timezone-aware logic
-      // Compare against checkout time (12:00 PM) instead of just date
-      if (room.current_reservation?.check_out_date && 
-          room.current_reservation.status === 'checked_in') {
-        // Construct checkout datetime at 12:00 PM for proper comparison
-        const checkoutDateTime = new Date(room.current_reservation.check_out_date + 'T12:00:00');
-        const now = new Date();
-        
-        // Only mark as overstay if current time is AFTER checkout time
-        if (now > checkoutDateTime) {
-          mappedStatus = 'overstay';
-          console.log('[Overstay Detection]', {
-            room: room.room_number,
-            checkoutDateTime: checkoutDateTime.toISOString(),
-            now: now.toISOString(),
-            isOverstay: true
-          });
-        }
-      }
+      // PHASE 1 FIX: Remove client-side overstay detection
+      // Overstay status is now determined by server-side calculate_reservation_overstay()
+      // and updated via real-time subscriptions for consistency
+      // The overstay status will be reflected through room.status from the database
       
       return {
         id: room.id,

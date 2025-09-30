@@ -33,6 +33,7 @@ export function useTenantRealtime() {
           console.log('[Realtime Event] Room update:', payload.eventType, payload.new);
           queryClient.invalidateQueries({ queryKey: ['rooms', tenant.tenant_id] });
           queryClient.invalidateQueries({ queryKey: ['room-availability', tenant.tenant_id] });
+          queryClient.invalidateQueries({ queryKey: ['overstays', tenant.tenant_id] });
         }
       )
       

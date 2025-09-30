@@ -72,14 +72,15 @@ export function useAtomicCheckout() {
         duration: `${duration}ms`
       });
 
-      // If successful, invalidate relevant queries for immediate UI update
+      // PHASE 1 REFINEMENT: Enhanced query invalidation including overstay
       if (result.success) {
-        console.log('[Atomic Checkout] Success - invalidating queries');
+        console.log('[Atomic Checkout] Success - invalidating queries including overstay');
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ['rooms', tenant.tenant_id] }),
           queryClient.invalidateQueries({ queryKey: ['reservations', tenant.tenant_id] }),
           queryClient.invalidateQueries({ queryKey: ['folios', tenant.tenant_id] }),
-          queryClient.invalidateQueries({ queryKey: ['billing', tenant.tenant_id] })
+          queryClient.invalidateQueries({ queryKey: ['billing', tenant.tenant_id] }),
+          queryClient.invalidateQueries({ queryKey: ['overstays', tenant.tenant_id] })
         ]);
       } else {
         setError(result.message);

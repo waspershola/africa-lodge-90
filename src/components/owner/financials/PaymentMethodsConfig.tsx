@@ -19,10 +19,12 @@ export default function PaymentMethodsConfig() {
     loading,
     togglePaymentMethod,
     addPaymentMethod: addMethod,
+    updatePaymentMethod,
     deletePaymentMethod
   } = usePaymentMethodsDB();
   
   const [isAddingMethod, setIsAddingMethod] = useState(false);
+  const [editingMethod, setEditingMethod] = useState<PaymentMethod | null>(null);
   const [newMethod, setNewMethod] = useState({
     name: '',
     type: 'pos' as PaymentMethod['type'],
@@ -59,7 +61,37 @@ export default function PaymentMethodsConfig() {
   };
 
   const removeMethod = async (id: string) => {
-    await deletePaymentMethod(id);
+    const success = await deletePaymentMethod(id);
+    if (success) {
+      toast({
+        title: "Payment method deleted",
+        description: "The payment method has been removed successfully."
+      });
+    }
+  };
+
+  const startEditing = (method: PaymentMethod) => {
+    setEditingMethod(method);
+  };
+
+  const saveEditedMethod = async () => {
+    if (!editingMethod) return;
+    
+    const success = await updatePaymentMethod(editingMethod.id, {
+      name: editingMethod.name,
+      type: editingMethod.type,
+      icon: editingMethod.icon,
+      enabled: editingMethod.enabled,
+      fees: editingMethod.fees
+    });
+
+    if (success) {
+      setEditingMethod(null);
+      toast({
+        title: "Payment method updated",
+        description: "Changes have been saved successfully."
+      });
+    }
   };
 
   const handleQuickSetup = async (scenario: 'urban' | 'business' | 'rural') => {
@@ -303,18 +335,20 @@ export default function PaymentMethodsConfig() {
                     onCheckedChange={() => toggleMethod(method.id)}
                   />
                   <div className="flex space-x-2">
-                    <Button variant="ghost" size="sm">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => startEditing(method)}
+                    >
                       <Settings className="h-4 w-4" />
                     </Button>
-                    {method.id.startsWith('custom-') && (
-                      <Button
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => removeMethod(method.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
+                    <Button
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => removeMethod(method.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -322,6 +356,87 @@ export default function PaymentMethodsConfig() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Payment Method Dialog */}
+      <Dialog open={!!editingMethod} onOpenChange={(open) => !open && setEditingMethod(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Payment Method</DialogTitle>
+          </DialogHeader>
+          {editingMethod && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-method-name">Payment Method Name</Label>
+                <Input
+                  id="edit-method-name"
+                  value={editingMethod.name}
+                  onChange={(e) => setEditingMethod({ ...editingMethod, name: e.target.value })}
+                  placeholder="e.g., Zenith Bank POS"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-method-type">Type</Label>
+                <Select
+                  value={editingMethod.type}
+                  onValueChange={(value: PaymentMethod['type']) => 
+                    setEditingMethod({ ...editingMethod, type: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="pos">POS Terminal</SelectItem>
+                    <SelectItem value="digital">Digital Payment</SelectItem>
+                    <SelectItem value="transfer">Bank Transfer</SelectItem>
+                    <SelectItem value="credit">Credit/Debt</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-fee-percentage">Fee Percentage (%)</Label>
+                  <Input
+                    id="edit-fee-percentage"
+                    type="number"
+                    step="0.01"
+                    value={editingMethod.fees?.percentage || 0}
+                    onChange={(e) => setEditingMethod({
+                      ...editingMethod,
+                      fees: { 
+                        ...editingMethod.fees, 
+                        percentage: parseFloat(e.target.value) || 0 
+                      }
+                    })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-fee-fixed">Fixed Fee (₦)</Label>
+                  <Input
+                    id="edit-fee-fixed"
+                    type="number"
+                    value={editingMethod.fees?.fixed || 0}
+                    onChange={(e) => setEditingMethod({
+                      ...editingMethod,
+                      fees: { 
+                        ...editingMethod.fees, 
+                        fixed: parseFloat(e.target.value) || 0 
+                      }
+                    })}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setEditingMethod(null)}>
+              Cancel
+            </Button>
+            <Button onClick={saveEditedMethod}>Save Changes</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

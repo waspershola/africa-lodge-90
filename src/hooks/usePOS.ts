@@ -459,55 +459,61 @@ export function usePOSApi() {
     }
   };
 
-  const processPayment = async (orderId: string, method: 'room_folio' | 'card' | 'cash', amount: number) => {
+  const processPayment = async (orderId: string, paymentMethodId: string, amount: number) => {
     if (!user) return;
 
     setIsLoading(true);
     try {
-      // If charging to room folio, create folio charge
-      if (method === 'room_folio') {
-        const order = orders.find(o => o.id === orderId);
-        if (order?.room_id) {
-          // Get active reservation and folio
-          const { data: reservation } = await supabase
-            .from('reservations')
-            .select('id')
-            .eq('room_id', order.room_id)
-            .eq('status', 'checked_in')
-            .single();
+      const order = orders.find(o => o.id === orderId);
+      
+      // If payment method is credit/folio type, charge to room folio
+      const { data: paymentMethod } = await supabase
+        .from('payment_methods')
+        .select('type')
+        .eq('id', paymentMethodId)
+        .single();
 
-          if (reservation) {
-            // Use safe folio handler
-            const { data: folioId } = await supabase
-              .rpc('handle_multiple_folios', {
-                p_reservation_id: reservation.id
-              });
+      if (paymentMethod?.type === 'credit' && order?.room_id) {
+        // Get active reservation and folio
+        const { data: reservation } = await supabase
+          .from('reservations')
+          .select('id')
+          .eq('room_id', order.room_id)
+          .eq('status', 'checked_in')
+          .single();
 
-            if (folioId) {
-              await supabase
-                .from('folio_charges')
-                .insert([{
-                  folio_id: folioId,
-                  charge_type: 'restaurant',
-                  description: `POS Order ${order.order_number}`,
-                  amount,
-                  posted_by: user.id,
-                  tenant_id: user.tenant_id
-                }]);
-            }
+        if (reservation) {
+          // Use safe folio handler
+          const { data: folioId } = await supabase
+            .rpc('handle_multiple_folios', {
+              p_reservation_id: reservation.id
+            });
+
+          if (folioId) {
+            await supabase
+              .from('folio_charges')
+              .insert([{
+                folio_id: folioId,
+                charge_type: 'restaurant',
+                description: `POS Order ${order.order_number}`,
+                amount,
+                posted_by: user.id,
+                tenant_id: user.tenant_id
+              }]);
           }
         }
       } else {
-        // For cash/card, create payment record
+        // For other payment types, create payment record
         await supabase
           .from('payments')
           .insert([{
+            tenant_id: user.tenant_id,
             folio_id: null,
             amount,
-            payment_method: method,
+            payment_method: paymentMethodId,
+            payment_method_id: paymentMethodId,
             status: 'completed',
-            processed_by: user.id,
-            tenant_id: user.tenant_id
+            processed_by: user.id
           }]);
       }
 
@@ -521,7 +527,7 @@ export function usePOSApi() {
       
       toast({
         title: "Payment Processed",
-        description: `Payment of ₦${(amount / 100).toFixed(2)} processed successfully via ${method}.`,
+        description: `Payment of ₦${amount.toLocaleString()} processed successfully.`,
       });
     } catch (error: any) {
       toast({

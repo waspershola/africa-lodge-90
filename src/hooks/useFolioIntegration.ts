@@ -8,6 +8,7 @@ export interface ServiceCharge {
   amount: number;
   description: string;
   room_id?: string;
+  payment_method_id?: string;
 }
 
 export const useFolioIntegration = () => {
@@ -52,6 +53,23 @@ export const useFolioIntegration = () => {
         });
 
       if (chargeError) throw chargeError;
+
+      // If payment method provided, record payment
+      if (serviceCharge.payment_method_id) {
+        const { error: paymentError } = await supabase
+          .from('payments')
+          .insert({
+            tenant_id: user.tenant_id,
+            folio_id: folioId,
+            amount: serviceCharge.amount,
+            payment_method_id: serviceCharge.payment_method_id,
+            payment_method: serviceCharge.payment_method_id, // For backward compatibility
+            status: 'completed',
+            processed_by: user.id
+          });
+
+        if (paymentError) throw paymentError;
+      }
 
       toast.success(`Service charge added: ${serviceCharge.description}`);
       return true;

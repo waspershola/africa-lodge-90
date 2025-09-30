@@ -26,6 +26,7 @@ export interface PaymentRecord {
   id: string;
   amount: number;
   payment_method: string;
+  payment_method_id?: string;
   status: string;
   created_at: string;
   processed_by: string;
@@ -180,6 +181,7 @@ export function useBilling() {
         .from('payments')
         .select(`
           *,
+          payment_method_id,
           folios!inner(
             folio_number,
             reservations!inner(

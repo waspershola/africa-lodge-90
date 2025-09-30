@@ -6,8 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CreditCard, Clock, Banknote, AlertCircle } from 'lucide-react';
 import { usePaymentPolicies, usePaymentCalculator } from '@/hooks/usePaymentPolicies';
-import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+import { usePaymentMethodsContext } from '@/contexts/PaymentMethodsContext';
 import { useCurrency } from '@/hooks/useCurrency';
+import { usePaymentValidation } from '@/hooks/usePaymentValidation';
 
 interface PaymentOptionsDialogProps {
   open: boolean;
@@ -31,9 +32,10 @@ export default function PaymentOptionsDialog({
   const [selectedMethods, setSelectedMethods] = useState<string[]>(['cash']);
 
   const { data: policies = [] } = usePaymentPolicies();
-  const { enabledMethods, getMethodIcon } = usePaymentMethods();
+  const { enabledMethods, getMethodById, calculateFees } = usePaymentMethodsContext();
   const { calculatePayment } = usePaymentCalculator();
   const { formatPrice } = useCurrency();
+  const { validatePaymentMethod, getPaymentTotal } = usePaymentValidation();
 
   const currentPolicy = policies.find(p => p.id === selectedPolicy) || 
                        policies.find(p => p.is_default) || 
@@ -232,10 +234,14 @@ export default function PaymentOptionsDialog({
                           }
                         }}
                       />
-                       <span>{method.name}</span>
-                       <Badge variant="outline" className="text-xs">
-                         Free
-                       </Badge>
+                      <span>{method.name}</span>
+                      {method.fees && (method.fees.percentage > 0 || method.fees.fixed > 0) && (
+                        <Badge variant="outline" className="text-xs">
+                          {method.fees.percentage > 0 && `${method.fees.percentage}%`}
+                          {method.fees.percentage > 0 && method.fees.fixed > 0 && ' + '}
+                          {method.fees.fixed > 0 && `₦${method.fees.fixed}`}
+                        </Badge>
+                      )}
                     </label>
                   ))}
               </div>

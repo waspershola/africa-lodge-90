@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useBilling } from "@/hooks/useBilling";
+import { usePaymentMethodsContext } from "@/contexts/PaymentMethodsContext";
 
 interface PendingPayment {
   id: string;
@@ -136,6 +137,7 @@ export const BillingOverviewFD = () => {
   const [paymentFilter, setPaymentFilter] = useState("all");
   const { billingStats, folioBalances, payments, loading } = useBilling();
   const { formatPrice } = useCurrency();
+  const { getMethodById } = usePaymentMethodsContext();
 
   // Convert folio balances to pending payments format
   const pendingPayments: PendingPayment[] = folioBalances
@@ -151,17 +153,20 @@ export const BillingOverviewFD = () => {
       folioId: f.folio_number
     }));
 
-  // Convert payments to completed format
-  const completedPayments: CompletedPayment[] = payments.map(p => ({
-    id: p.id,
-    guestName: (p as any).folios?.reservations?.guest_name || 'Unknown Guest',
-    room: (p as any).folios?.reservations?.rooms?.room_number || 'N/A',
-    amount: p.amount,
-    method: p.payment_method,
-    processedAt: new Date(p.created_at),
-    processedBy: p.processed_by || 'System',
-    transactionRef: p.reference
-  }));
+  // Convert payments to completed format with payment method names
+  const completedPayments: CompletedPayment[] = payments.map(p => {
+    const method = p.payment_method_id ? getMethodById(p.payment_method_id) : null;
+    return {
+      id: p.id,
+      guestName: (p as any).folios?.reservations?.guest_name || 'Unknown Guest',
+      room: (p as any).folios?.reservations?.rooms?.room_number || 'N/A',
+      amount: p.amount,
+      method: method?.name || p.payment_method || 'Unknown',
+      processedAt: new Date(p.created_at),
+      processedBy: p.processed_by || 'System',
+      transactionRef: p.reference
+    };
+  });
 
   // Calculate daily summary from real data
   const dailySummary: DailySummary = {

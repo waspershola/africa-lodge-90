@@ -18,9 +18,11 @@ import {
   Settings
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
-import RoleGuard, { ProtectedButton } from './RoleGuard';
+import RoleGuard from './RoleGuard';
 import { usePOSApi, type Order } from '@/hooks/usePOS';
 import { useToast } from '@/hooks/use-toast';
+import { usePaymentMethodsContext } from '@/contexts/PaymentMethodsContext';
+import { usePaymentValidation } from '@/hooks/usePaymentValidation';
 
 interface PaymentDrawerProps {
   order: Order;
@@ -31,8 +33,10 @@ export default function PaymentDrawer({ order, trigger }: PaymentDrawerProps) {
   const { processPayment } = usePOSApi();
   const { toast } = useToast();
   const { hasPermission } = useAuth();
+  const { enabledMethods, getMethodById, calculateFees } = usePaymentMethodsContext();
+  const { validatePaymentMethod, getPaymentTotal } = usePaymentValidation();
   const [isOpen, setIsOpen] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'room_folio' | 'card' | 'cash'>('room_folio');
+  const [paymentMethodId, setPaymentMethodId] = useState<string>('');
   const [cashReceived, setCashReceived] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -42,7 +46,24 @@ export default function PaymentDrawer({ order, trigger }: PaymentDrawerProps) {
   };
 
   const handlePayment = async () => {
-    if (paymentMethod === 'cash') {
+    if (!paymentMethodId) {
+      toast({
+        title: "Payment Method Required",
+        description: "Please select a payment method.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!validatePaymentMethod(paymentMethodId)) {
+      return;
+    }
+
+    const method = getMethodById(paymentMethodId);
+    if (!method) return;
+
+    // Check if cash payment has sufficient amount
+    if (method.type === 'cash') {
       const received = parseFloat(cashReceived) || 0;
       if (received < order.total_amount) {
         toast({
@@ -56,10 +77,13 @@ export default function PaymentDrawer({ order, trigger }: PaymentDrawerProps) {
 
     setIsProcessing(true);
     try {
-      await processPayment(order.id, paymentMethod, order.total_amount);
+      const paymentTotal = getPaymentTotal(order.total_amount, paymentMethodId);
+      
+      await processPayment(order.id, paymentMethodId, paymentTotal.total);
+      
       toast({
         title: "Payment Processed",
-        description: `Payment of $${(order.total_amount / 100).toFixed(2)} processed successfully.`,
+        description: `Payment of ₦${paymentTotal.total.toLocaleString()} processed successfully${paymentTotal.fees > 0 ? ` (includes ₦${paymentTotal.fees.toLocaleString()} fee)` : ''}.`,
       });
       setIsOpen(false);
     } catch (error) {
@@ -73,14 +97,17 @@ export default function PaymentDrawer({ order, trigger }: PaymentDrawerProps) {
     }
   };
 
-  const getPaymentMethodIcon = (method: string) => {
-    switch (method) {
-      case 'room_folio': return <Hotel className="h-5 w-5" />;
-      case 'card': return <CreditCard className="h-5 w-5" />;
-      case 'cash': return <Banknote className="h-5 w-5" />;
+  const getPaymentMethodIcon = (iconName: string) => {
+    switch (iconName) {
+      case 'Hotel': return <Hotel className="h-5 w-5" />;
+      case 'CreditCard': return <CreditCard className="h-5 w-5" />;
+      case 'Banknote': return <Banknote className="h-5 w-5" />;
       default: return <DollarSign className="h-5 w-5" />;
     }
   };
+
+  const selectedMethod = getMethodById(paymentMethodId);
+  const paymentTotal = paymentMethodId ? getPaymentTotal(order.total_amount, paymentMethodId) : null;
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -146,9 +173,22 @@ export default function PaymentDrawer({ order, trigger }: PaymentDrawerProps) {
               <Separator />
 
               <div className="flex justify-between items-center text-lg font-bold">
-                <span>Total Amount:</span>
-                <span>${(order.total_amount / 100).toFixed(2)}</span>
+                <span>Subtotal:</span>
+                <span>₦{order.total_amount.toLocaleString()}</span>
               </div>
+
+              {paymentTotal && paymentTotal.fees > 0 && (
+                <>
+                  <div className="flex justify-between items-center text-sm text-muted-foreground">
+                    <span>Payment Fee:</span>
+                    <span>₦{paymentTotal.fees.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-lg font-bold">
+                    <span>Total:</span>
+                    <span>₦{paymentTotal.total.toLocaleString()}</span>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -159,44 +199,35 @@ export default function PaymentDrawer({ order, trigger }: PaymentDrawerProps) {
             </CardHeader>
             <CardContent>
               <RadioGroup 
-                value={paymentMethod} 
-                onValueChange={(value) => setPaymentMethod(value as any)}
-                className="space-y-4"
+                value={paymentMethodId} 
+                onValueChange={setPaymentMethodId}
+                className="space-y-3"
               >
-                <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50">
-                  <RadioGroupItem value="room_folio" id="room_folio" />
-                  <Label htmlFor="room_folio" className="flex items-center gap-2 cursor-pointer flex-1">
-                    <Hotel className="h-5 w-5 text-blue-500" />
-                    <div>
-                      <div className="font-medium">Charge to Room</div>
-                      <div className="text-sm text-muted-foreground">
-                        {order.room_id ? `Room ${order.room_id}` : 'Add to guest folio'}
+                {enabledMethods.map(method => (
+                  <div key={method.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50">
+                    <RadioGroupItem value={method.id} id={method.id} />
+                    <Label htmlFor={method.id} className="flex items-center gap-2 cursor-pointer flex-1">
+                      {getPaymentMethodIcon(method.icon)}
+                      <div className="flex-1">
+                        <div className="font-medium">{method.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {method.type === 'cash' && 'Cash transaction'}
+                          {method.type === 'pos' && 'POS terminal payment'}
+                          {method.type === 'digital' && 'Digital payment'}
+                          {method.type === 'transfer' && 'Bank transfer'}
+                          {method.type === 'credit' && 'Charge to folio'}
+                        </div>
                       </div>
-                    </div>
-                  </Label>
-                </div>
-
-                <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50">
-                  <RadioGroupItem value="card" id="card" />
-                  <Label htmlFor="card" className="flex items-center gap-2 cursor-pointer flex-1">
-                    <CreditCard className="h-5 w-5 text-green-500" />
-                    <div>
-                      <div className="font-medium">Credit/Debit Card</div>
-                      <div className="text-sm text-muted-foreground">Process card payment</div>
-                    </div>
-                  </Label>
-                </div>
-
-                <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50">
-                  <RadioGroupItem value="cash" id="cash" />
-                  <Label htmlFor="cash" className="flex items-center gap-2 cursor-pointer flex-1">
-                    <Banknote className="h-5 w-5 text-amber-500" />
-                    <div>
-                      <div className="font-medium">Cash Payment</div>
-                      <div className="text-sm text-muted-foreground">Cash transaction</div>
-                    </div>
-                  </Label>
-                </div>
+                      {method.fees && (method.fees.percentage > 0 || method.fees.fixed > 0) && (
+                        <Badge variant="outline" className="text-xs">
+                          {method.fees.percentage > 0 && `${method.fees.percentage}%`}
+                          {method.fees.percentage > 0 && method.fees.fixed > 0 && ' + '}
+                          {method.fees.fixed > 0 && `₦${method.fees.fixed}`}
+                        </Badge>
+                      )}
+                    </Label>
+                  </div>
+                ))}
               </RadioGroup>
 
               <RoleGuard requiredRole={['MANAGER', 'OWNER']}>
@@ -209,7 +240,7 @@ export default function PaymentDrawer({ order, trigger }: PaymentDrawerProps) {
               </RoleGuard>
 
               {/* Cash Amount Input */}
-              {paymentMethod === 'cash' && (
+              {selectedMethod?.type === 'cash' && (
                 <div className="mt-4 space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="cash-amount">Cash Received</Label>
@@ -231,13 +262,13 @@ export default function PaymentDrawer({ order, trigger }: PaymentDrawerProps) {
                       </div>
                       <div className="flex justify-between items-center">
                         <span>Order Total:</span>
-                        <span className="font-medium">${(order.total_amount / 100).toFixed(2)}</span>
+                        <span className="font-medium">₦{(paymentTotal?.total || order.total_amount).toLocaleString()}</span>
                       </div>
                       <Separator className="my-2" />
                       <div className="flex justify-between items-center font-bold">
                         <span>Change Due:</span>
                         <span className={calculateChange() > 0 ? 'text-green-600' : 'text-red-600'}>
-                          ${calculateChange().toFixed(2)}
+                          ₦{calculateChange().toFixed(2)}
                         </span>
                       </div>
                     </div>
@@ -260,7 +291,11 @@ export default function PaymentDrawer({ order, trigger }: PaymentDrawerProps) {
             <Button 
               className="flex-1" 
               onClick={handlePayment}
-              disabled={isProcessing || (paymentMethod === 'cash' && parseFloat(cashReceived) < order.total_amount)}
+              disabled={
+                isProcessing || 
+                !paymentMethodId || 
+                (selectedMethod?.type === 'cash' && parseFloat(cashReceived) < (paymentTotal?.total || order.total_amount))
+              }
             >
               {isProcessing ? (
                 "Processing..."

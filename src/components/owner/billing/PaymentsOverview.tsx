@@ -32,7 +32,24 @@ export default function PaymentsOverview() {
   
   // Fallback if no payment methods configured
   if (!methodsLoading && enabledMethods.length === 0) {
-    return <ErrorState message="No payment methods configured. Please configure payment methods in Financial → Payment Methods." />;
+    return (
+      <Card className="border-dashed">
+        <CardContent className="pt-6 text-center space-y-4">
+          <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+            <CreditCard className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h3 className="font-semibold mb-2">No Payment Methods Configured</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Configure payment methods to start accepting payments from guests.
+            </p>
+            <Button onClick={() => window.location.href = '/financials'}>
+              Configure Payment Methods
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   // Calculate payment summary from real data

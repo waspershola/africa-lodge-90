@@ -23,12 +23,48 @@ import { usePaymentMethodsContext } from '@/contexts/PaymentMethodsContext';
 
 export default function PaymentPage() {
   const { orders, isLoading, processPayment } = usePOSApi();
-  const { enabledMethods } = usePaymentMethodsContext();
+  const { enabledMethods, loading: methodsLoading } = usePaymentMethodsContext();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('');
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [cashReceived, setCashReceived] = useState(0);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+
+  // Show empty state if no payment methods configured
+  if (methodsLoading) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="p-6 text-center">
+            Loading payment methods...
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (enabledMethods.length === 0) {
+    return (
+      <div className="p-6">
+        <Card className="border-dashed">
+          <CardContent className="pt-6 text-center space-y-4">
+            <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <CreditCard className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold mb-2">No Payment Methods Configured</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Configure payment methods before processing POS payments.
+              </p>
+              <Button onClick={() => window.location.href = '/financials'}>
+                Configure Payment Methods
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // Filter orders that need payment processing
   const unpaidOrders = orders.filter(order => 

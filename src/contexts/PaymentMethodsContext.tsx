@@ -1,6 +1,5 @@
 import React, { createContext, useContext } from 'react';
 import { usePaymentMethodsDB } from '@/hooks/usePaymentMethodsDB';
-import { usePaymentMethodsSeeding } from '@/hooks/usePaymentMethodsSeeding';
 
 export interface PaymentMethod {
   id: string;
@@ -27,10 +26,7 @@ interface PaymentMethodsContextType {
 const PaymentMethodsContext = createContext<PaymentMethodsContextType | undefined>(undefined);
 
 export const PaymentMethodsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Auto-seed default payment methods if none exist
-  usePaymentMethodsSeeding();
-  
-  const { 
+  const {
     paymentMethods, 
     enabledMethods, 
     loading,

@@ -17,7 +17,8 @@ import {
   User,
   Plus,
   Search,
-  Star
+  Star,
+  AlertCircle
 } from 'lucide-react';
 import { 
   useCreateReservation, 
@@ -39,7 +40,7 @@ interface QuickBookingFormProps {
 
 export default function QuickBookingForm({ onClose }: QuickBookingFormProps) {
   const [activeTab, setActiveTab] = useState('walk-in');
-  const { enabledMethods } = usePaymentMethodsContext();
+  const { enabledMethods, loading: methodsLoading } = usePaymentMethodsContext();
   const [formData, setFormData] = useState({
     // Guest details
     guestName: '',
@@ -250,6 +251,26 @@ export default function QuickBookingForm({ onClose }: QuickBookingFormProps) {
         <CardDescription>
           Create reservations for walk-ins, returning guests, corporate clients, and OTA imports
         </CardDescription>
+        
+        {/* Payment Methods Warning */}
+        {!methodsLoading && enabledMethods.length === 0 && (
+          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start gap-2">
+            <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-yellow-800">No Payment Methods Configured</p>
+              <p className="text-xs text-yellow-700 mt-1">
+                You need to configure payment methods before creating reservations.{' '}
+                <Button 
+                  variant="link" 
+                  className="h-auto p-0 text-xs text-yellow-800 underline"
+                  onClick={() => window.location.href = '/financials'}
+                >
+                  Configure now
+                </Button>
+              </p>
+            </div>
+          </div>
+        )}
       </CardHeader>
 
       <CardContent>
@@ -708,7 +729,11 @@ export default function QuickBookingForm({ onClose }: QuickBookingFormProps) {
               <Button type="button" variant="outline" onClick={onClose} className="flex-1">
                 Cancel
               </Button>
-              <Button type="submit" className="flex-1">
+              <Button 
+                type="submit" 
+                className="flex-1"
+                disabled={enabledMethods.length === 0}
+              >
                 Create Booking
               </Button>
             </div>

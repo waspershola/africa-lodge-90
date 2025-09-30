@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CreditCard, Smartphone, Building, Clock, UserX, Plus, Settings, Trash2 } from "lucide-react";
+import { CreditCard, Smartphone, Building, Clock, UserX, Plus, Settings, Trash2, Banknote } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePaymentMethodsDB } from "@/hooks/usePaymentMethodsDB";
 import type { PaymentMethod } from "@/contexts/PaymentMethodsContext";
+import { PaymentMethodsEmptyState } from "./PaymentMethodsEmptyState";
 
 export default function PaymentMethodsConfig() {
   const { 
@@ -61,8 +62,46 @@ export default function PaymentMethodsConfig() {
     await deletePaymentMethod(id);
   };
 
+  const handleQuickSetup = async (scenario: 'urban' | 'business' | 'rural') => {
+    const templates = {
+      urban: [
+        { name: 'Cash', type: 'cash' as const, icon: 'Banknote', fees: { percentage: 0, fixed: 0 } },
+        { name: 'POS Terminal', type: 'pos' as const, icon: 'CreditCard', fees: { percentage: 1.5, fixed: 0 } },
+        { name: 'Moniepoint', type: 'digital' as const, icon: 'Smartphone', fees: { percentage: 0.5, fixed: 0 } },
+        { name: 'OPay', type: 'digital' as const, icon: 'Smartphone', fees: { percentage: 0.5, fixed: 0 } },
+      ],
+      business: [
+        { name: 'Cash', type: 'cash' as const, icon: 'Banknote', fees: { percentage: 0, fixed: 0 } },
+        { name: 'Bank Transfer', type: 'transfer' as const, icon: 'Building', fees: { percentage: 0, fixed: 0 } },
+        { name: 'Corporate Invoice', type: 'credit' as const, icon: 'Clock', fees: { percentage: 0, fixed: 0 } },
+      ],
+      rural: [
+        { name: 'Cash', type: 'cash' as const, icon: 'Banknote', fees: { percentage: 0, fixed: 0 } },
+      ],
+    };
+
+    for (const method of templates[scenario]) {
+      await addMethod({ ...method, enabled: true });
+    }
+    
+    toast({
+      title: "Payment methods configured",
+      description: `${templates[scenario].length} payment methods have been added. You can customize them now.`
+    });
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center py-8">Loading payment methods...</div>;
+  }
+
+  // Show empty state if no payment methods configured
+  if (paymentMethods.length === 0) {
+    return (
+      <PaymentMethodsEmptyState 
+        onAddMethod={() => setIsAddingMethod(true)}
+        onQuickSetup={handleQuickSetup}
+      />
+    );
   }
 
   const getMethodIcon = (type: PaymentMethod['type']) => {

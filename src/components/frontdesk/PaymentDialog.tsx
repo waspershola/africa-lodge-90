@@ -33,6 +33,17 @@ export const PaymentDialog = ({ open, onOpenChange, pendingAmount, onPaymentSucc
     setAmount(payment.balance.toString());
   };
 
+  // Map payment method names to database values
+  const mapPaymentMethod = (methodName: string): string => {
+    const normalized = methodName.toLowerCase();
+    if (normalized.includes('cash')) return 'cash';
+    if (normalized.includes('card') || normalized.includes('credit card')) return 'card';
+    if (normalized.includes('transfer') || normalized.includes('bank')) return 'transfer';
+    if (normalized.includes('credit')) return 'credit';
+    if (normalized.includes('complimentary')) return 'complimentary';
+    return 'cash'; // Default fallback
+  };
+
   const handleProcessPayment = async () => {
     if (!paymentMethodId || !amount || !selectedPayment) {
       toast.error("Please select a payment method and enter an amount");
@@ -53,12 +64,13 @@ export const PaymentDialog = ({ open, onOpenChange, pendingAmount, onPaymentSucc
     }
 
     const fees = calculateFees(paymentAmount, paymentMethodId);
+    const dbPaymentMethod = mapPaymentMethod(method.name);
 
     try {
       await createPayment({
         folio_id: selectedPayment.folio_id,
         amount: paymentAmount,
-        payment_method: method.name,
+        payment_method: dbPaymentMethod,
         payment_method_id: paymentMethodId
       });
 

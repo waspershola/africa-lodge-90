@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -57,6 +58,41 @@ export interface Reservation {
 
 // Main hook for rooms data using React Query with real reservation integration
 export const useRooms = () => {
+  const queryClient = useQueryClient();
+
+  // Set up real-time subscriptions for folio and payment updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('room-folios-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'folios'
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['rooms'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'payments'
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['rooms'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
   return useQuery({
     queryKey: ['rooms'],
     queryFn: async () => {
@@ -127,6 +163,7 @@ export const useRooms = () => {
           balance,
           total_charges,
           total_payments,
+          tax_amount,
           status,
           reservations!inner(room_id)
         `)
@@ -142,7 +179,8 @@ export const useRooms = () => {
             balance: folio.balance || 0,
             isPaid: (folio.balance || 0) <= 0,
             total_charges: folio.total_charges || 0,
-            total_payments: folio.total_payments || 0
+            total_payments: folio.total_payments || 0,
+            tax_amount: folio.tax_amount || 0
           });
         }
       });

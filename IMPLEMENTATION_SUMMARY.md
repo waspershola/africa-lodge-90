@@ -196,23 +196,249 @@ This document tracks the implementation of atomic operations, real-time updates,
 
 ---
 
+## ✅ Phase 4: Testing, Monitoring & Rollbacks (IN PROGRESS)
+
+### 1. Comprehensive E2E Tests ✅
+**Files**: 
+- `cypress/e2e/checkout-flow.cy.ts` (enhanced)
+- `cypress/e2e/checkin-flow.cy.ts` (enhanced)
+
+**What was implemented**:
+- Happy path scenarios for check-in and checkout
+- Validation test cases (required fields, email format)
+- Edge cases (double-click prevention, timeout handling, rollback on failure)
+- Outstanding balance prevention tests
+- Same-day checkout overstay verification
+- Payment modal integration tests
+- Real-time update test scenarios
+- Service summary and receipt generation tests
+
+**Test Coverage**:
+- ✅ Atomic check-in success/failure
+- ✅ Single toast behavior
+- ✅ Overstay not immediate on same-day checkout
+- ✅ Checkout prevented with outstanding balance
+- ✅ Checkout rollback on failure
+- ✅ Payment modal scoped to specific folio
+- ✅ Real-time updates across devices (framework ready)
+- ✅ Timeout handling (30-second limit)
+
+---
+
+### 2. Monitoring & Logging Guidelines 🔄
+**Approach**: Since no Edge Functions are currently used, monitoring focuses on:
+
+**Frontend Logging**:
+- Existing: `console.log` statements in atomic hooks with timing data
+- Pattern: `[Atomic Check-in] Starting...`, `[Atomic Checkout] Result: {...}`
+- Duration tracking: logs execution time in milliseconds
+
+**Database Function Logging**:
+- All atomic functions include detailed EXCEPTION handling
+- Error messages are descriptive and actionable
+- Success/failure status returned in response
+
+**Recommended Production Monitoring**:
+- Set up Supabase Dashboard alerts for:
+  - Failed RPC calls (>5 failures per hour)
+  - Slow queries (>5 seconds)
+  - High error rates on `atomic_checkin_guest` and `atomic_checkout`
+- Use Supabase Analytics to track:
+  - Average RPC execution time
+  - Most common error messages
+  - Peak usage times
+
+**To Enable Enhanced Logging**:
+```sql
+-- Add logging table (optional)
+CREATE TABLE IF NOT EXISTS public.operation_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL,
+  operation_type TEXT NOT NULL, -- 'check_in', 'checkout', 'payment'
+  status TEXT NOT NULL, -- 'success', 'failure'
+  duration_ms INTEGER,
+  error_message TEXT,
+  metadata JSONB,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+---
+
+### 3. Rollback Procedures Document ✅
+
+#### Database Rollback
+
+**If atomic functions cause issues:**
+
+1. **Disable frontend calls immediately**:
+   ```typescript
+   // In useAtomicCheckIn.ts or useAtomicCheckout.ts
+   // Comment out RPC call and add fallback
+   throw new Error('Atomic operations temporarily disabled');
+   ```
+
+2. **Drop problematic functions**:
+   ```sql
+   -- Rollback atomic_checkin_guest
+   DROP FUNCTION IF EXISTS public.atomic_checkin_guest(uuid, uuid, uuid, jsonb, jsonb);
+   
+   -- Rollback atomic_checkout
+   DROP FUNCTION IF EXISTS public.atomic_checkout(uuid, uuid);
+   
+   -- Rollback overstay detection
+   DROP FUNCTION IF EXISTS public.calculate_reservation_overstay(uuid);
+   
+   -- Rollback folio balance
+   DROP FUNCTION IF EXISTS public.get_folio_balance(uuid, uuid);
+   ```
+
+3. **Revert to pre-migration state**:
+   - Supabase maintains migration history
+   - Use Supabase Dashboard → Database → Migrations
+   - Restore from most recent backup if needed
+
+4. **Re-enable old check-in/checkout flows**:
+   - Restore previous multi-step operations
+   - Remove atomic hook imports
+   - Use direct Supabase queries
+
+#### Frontend Rollback
+
+**If UI changes cause issues:**
+
+1. **Revert to previous commit**:
+   ```bash
+   git log --oneline  # Find last good commit
+   git revert <commit-hash>
+   ```
+
+2. **Disable specific features**:
+   ```typescript
+   // Feature flag approach
+   const USE_ATOMIC_OPERATIONS = false;
+   
+   if (USE_ATOMIC_OPERATIONS) {
+     await checkIn(params);
+   } else {
+     // Fallback to old logic
+   }
+   ```
+
+3. **Emergency fixes**:
+   - Remove `useAtomicCheckIn` and `useAtomicCheckout` imports
+   - Restore old `QuickGuestCapture` and `CheckoutDialog` logic
+   - Keep `useTenantRealtime` (safe, only affects updates)
+
+#### Monitoring After Rollback
+
+- Track user reports and error rates
+- Compare checkout completion rates before/after
+- Monitor database query performance
+- Check for data inconsistencies (orphaned folios, stuck reservations)
+
+---
+
+### 4. Load Testing Guidelines 🔄
+
+**Concurrent Operation Testing**:
+
+**Test Scenario 1: Simultaneous Check-ins**
+- Simulate 10+ concurrent check-ins to same tenant
+- Verify no duplicate folios created
+- Ensure all room status updates correctly
+- Monitor database locks and transaction rollbacks
+
+**Test Scenario 2: Rapid Check-in/Checkout Cycles**
+- Check in guest → immediate checkout
+- Verify folio closure works correctly
+- Ensure no race conditions in status updates
+
+**Test Scenario 3: Payment + Checkout Concurrency**
+- Payment submitted while checkout attempted
+- Verify balance calculations remain consistent
+- Ensure proper transaction ordering
+
+**Tools for Load Testing**:
+- k6 (already in dependencies)
+- Apache JMeter
+- Postman Collection Runner
+- Custom Node.js scripts with concurrent promises
+
+**Example k6 Script**:
+```javascript
+import http from 'k6/http';
+import { check } from 'k6';
+
+export let options = {
+  vus: 20, // 20 virtual users
+  duration: '30s',
+};
+
+export default function() {
+  let res = http.post('https://dxisnnjsbuuiunjmzzqj.supabase.co/rest/v1/rpc/atomic_checkin_guest', 
+    JSON.stringify({
+      p_tenant_id: 'YOUR_TENANT_ID',
+      p_reservation_id: 'YOUR_RESERVATION_ID',
+      p_room_id: 'YOUR_ROOM_ID',
+      p_guest_payload: {...},
+      p_initial_charges: []
+    }),
+    { headers: { 'Content-Type': 'application/json' } }
+  );
+  
+  check(res, {
+    'status is 200': (r) => r.status === 200,
+    'response time < 5s': (r) => r.timings.duration < 5000,
+  });
+}
+```
+
+---
+
+### 5. Operational Runbook 🔄
+
+**Daily Operations**:
+- Monitor Supabase Dashboard for slow queries
+- Check error rates on atomic RPCs
+- Review real-time subscription health
+- Verify query cache invalidation working
+
+**Weekly Operations**:
+- Review checkout failure rate trends
+- Analyze overstay detection accuracy
+- Check payment method constraint violations
+- Performance analysis of atomic functions
+
+**Incident Response**:
+1. **Check-in Failures**: Check database logs → verify RLS policies → test reservation data
+2. **Checkout Stuck**: Verify folio balance calculation → check for orphaned payments
+3. **Overstay False Positives**: Verify hotel timezone setting → check checkout time configuration
+4. **Real-time Not Updating**: Check Supabase realtime settings → verify channel subscriptions
+
+---
+
 ## 📋 Remaining Work (Phase 4)
 
 ### Monitoring & Logging
-- [ ] Add structured logging to Edge Functions (if using Edge Functions)
-- [ ] Add alerting for failed atomic operations
-- [ ] Track long-running RPCs >15s
+- [x] Document structured logging approach
+- [x] Provide production monitoring recommendations
+- [ ] Set up Supabase Dashboard alerts (requires production environment)
+- [ ] Implement operation_logs table (optional enhancement)
 
 ### Additional Testing
-- [ ] Add more comprehensive E2E scenarios
-- [ ] Test checkout with different payment scenarios
-- [ ] Test overstay detection across timezone boundaries
-- [ ] Load testing for concurrent check-ins
+- [x] Enhanced E2E test scenarios
+- [x] Checkout with outstanding balance tests
+- [x] Overstay detection edge cases
+- [ ] Load testing execution (k6 scripts provided, needs production data)
+- [ ] Cross-timezone testing (requires multi-region setup)
 
 ### Documentation
-- [ ] API documentation for RPC functions
-- [ ] Rollback procedures document
-- [ ] Operational runbook
+- [x] Rollback procedures document
+- [x] Operational runbook guidelines
+- [x] Load testing approach
+- [ ] API documentation for RPC functions (consider Swagger/OpenAPI spec)
+- [ ] Video walkthrough for operations team
 
 ---
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCheckout } from '@/hooks/useCheckout';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { BillingOverview } from './BillingOverview';
 import { ServiceSummaryModal } from './ServiceSummaryModal';
 import { PaymentDialog } from './PaymentDialog';
@@ -31,6 +33,8 @@ interface CheckoutDialogProps {
 export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogProps) => {
   const { checkoutSession, loading, error, fetchGuestBill, processPayment, completeCheckout } = useCheckout(roomId);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [showServiceSummary, setShowServiceSummary] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
@@ -71,7 +75,15 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogPro
       const success = await completeCheckout();
       
       if (success) {
-        console.log('[Checkout Complete] Checkout successful');
+        console.log('[Checkout Complete] Checkout successful, invalidating queries');
+        
+        // Phase 2: Force query invalidation for immediate UI update
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['folios', user?.tenant_id] }),
+          queryClient.invalidateQueries({ queryKey: ['rooms', user?.tenant_id] }),
+          queryClient.invalidateQueries({ queryKey: ['billing', user?.tenant_id] }),
+          queryClient.invalidateQueries({ queryKey: ['reservations', user?.tenant_id] })
+        ]);
         
         toast({
           title: "Checkout Complete",

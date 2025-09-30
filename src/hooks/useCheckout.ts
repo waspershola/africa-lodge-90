@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { GuestBill, CheckoutSession, ServiceCharge, PaymentRecord } from '@/types/billing';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
@@ -9,7 +8,6 @@ export const useCheckout = (roomId?: string) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
-  const queryClient = useQueryClient();
 
   // Set up real-time subscription for folio updates
   useEffect(() => {
@@ -358,16 +356,6 @@ export const useCheckout = (roomId?: string) => {
       }
 
       console.log('[Checkout Hook] Database updates complete');
-
-      // Phase 2: Force query invalidation for immediate UI update
-      console.log('[Checkout Hook] Invalidating queries for tenant:', user.tenant_id);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['folios', user.tenant_id] }),
-        queryClient.invalidateQueries({ queryKey: ['rooms', user.tenant_id] }),
-        queryClient.invalidateQueries({ queryKey: ['billing', user.tenant_id] }),
-        queryClient.invalidateQueries({ queryKey: ['reservations', user.tenant_id] }),
-        queryClient.invalidateQueries({ queryKey: ['folio-balances', user.tenant_id] })
-      ]);
 
       const completedSession: CheckoutSession = {
         ...checkoutSession,

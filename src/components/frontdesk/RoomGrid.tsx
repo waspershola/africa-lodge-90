@@ -189,38 +189,6 @@ export const RoomGrid = ({ searchQuery, activeFilter, onRoomSelect }: RoomGridPr
     onRoomSelect?.(room);
   };
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyPress = (event: KeyboardEvent) => {
-      if (!selectedRoom) return;
-      
-      switch (event.key.toLowerCase()) {
-        case 'i':
-          event.preventDefault();
-          logEvent({
-            action: 'KEYBOARD_SHORTCUT',
-            resource_type: 'ROOM',
-            resource_id: selectedRoom.id,
-            description: `Check-in shortcut used for Room ${selectedRoom.number}`,
-            metadata: { shortcut: 'i', action: 'check-in' }
-          });
-          break;
-        case 'o':
-          event.preventDefault();
-          logEvent({
-            action: 'KEYBOARD_SHORTCUT', 
-            resource_type: 'ROOM',
-            resource_id: selectedRoom.id,
-            description: `Check-out shortcut used for Room ${selectedRoom.number}`,
-            metadata: { shortcut: 'o', action: 'check-out' }
-          });
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [selectedRoom, logEvent]);
 
   const handleRoomUpdate = (updatedRoom: Room) => {
     // No need to manually update state as useRooms hook will refetch

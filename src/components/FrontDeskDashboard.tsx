@@ -50,7 +50,7 @@ import { BillingOverviewFD } from "./frontdesk/BillingOverviewFD";
 import { HandoverPanel } from "./frontdesk/HandoverPanel";
 import { CheckoutDialog } from "./frontdesk/CheckoutDialog";
 import { QRRequestsPanel } from "./frontdesk/QRRequestsPanel";
-import { useFrontDeskRealtimeUpdates } from '@/hooks/useFrontDeskRealtimeUpdates';
+import { useTenantRealtime } from '@/hooks/useTenantRealtime';
 import DashboardNotificationBar from '@/components/layout/DashboardNotificationBar';
 import type { Room } from "./frontdesk/RoomGrid";
 import { useTenantInfo } from "@/hooks/useTenantInfo";
@@ -109,8 +109,8 @@ const FrontDeskDashboard = () => {
   const { data: pendingPayments = [], isLoading: paymentsLoading } = usePendingPayments();
   const { data: fuelLevel = 65, isLoading: fuelLoading } = useFuelLevel();
   
-  // Enable real-time updates
-  useFrontDeskRealtimeUpdates();
+  // Enable centralized real-time updates for all tenant data
+  useTenantRealtime();
   
   const [isOffline, setIsOffline] = useState(false);
   const [offlineTimeRemaining, setOfflineTimeRemaining] = useState(22); // hours
@@ -136,8 +136,6 @@ const FrontDeskDashboard = () => {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [activePanel, setActivePanel] = useState<'overview' | 'qr-requests' | 'staff-ops' | 'billing' | 'handover' | 'qr-manager'>('overview');
 
-  // Set up real-time updates for live dashboard experience
-  useFrontDeskRealtimeUpdates();
 
   // Simulate online/offline status
   useEffect(() => {

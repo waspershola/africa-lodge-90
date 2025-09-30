@@ -20,8 +20,8 @@ export const useOverstays = () => {
       if (!tenant?.tenant_id) return [];
 
       const now = new Date();
-      const today = now.toISOString().split('T')[0];
       
+      // Get all checked-in reservations
       const { data, error } = await supabase
         .from('reservations')
         .select(`
@@ -35,25 +35,47 @@ export const useOverstays = () => {
           )
         `)
         .eq('tenant_id', tenant.tenant_id)
-        .lt('check_out_date', today)
         .eq('status', 'checked_in')
         .order('check_out_date', { ascending: true });
 
       if (error) throw error;
 
-      return data.map(reservation => {
-        const checkoutDate = new Date(reservation.check_out_date + 'T12:00:00');
-        const hoursOver = Math.floor((now.getTime() - checkoutDate.getTime()) / (1000 * 60 * 60));
-        
-        return {
-          id: reservation.id,
-          guest_name: reservation.guest_name || 'Guest',
-          room_number: reservation.rooms?.room_number || 'Unknown',
-          checkout_time: '12:00',
-          hours_over: Math.max(0, hoursOver),
-          phone: reservation.guest_phone
-        };
-      }) as Overstay[];
+      // Filter and calculate overstays using DB function for timezone-aware logic
+      const overstays: Overstay[] = [];
+      
+      for (const reservation of data || []) {
+        try {
+          // Use DB function to check if reservation is in overstay
+          const { data: isOverstay, error: overstayError } = await supabase
+            .rpc('calculate_reservation_overstay', {
+              p_reservation_id: reservation.id
+            });
+
+          if (overstayError) {
+            console.error('[Overstay Check] Error for reservation:', reservation.id, overstayError);
+            continue;
+          }
+
+          if (isOverstay) {
+            // Calculate hours over using timezone-aware checkout time (12:00 PM)
+            const checkoutDate = new Date(reservation.check_out_date + 'T12:00:00');
+            const hoursOver = Math.floor((now.getTime() - checkoutDate.getTime()) / (1000 * 60 * 60));
+            
+            overstays.push({
+              id: reservation.id,
+              guest_name: reservation.guest_name || 'Guest',
+              room_number: reservation.rooms?.room_number || 'Unknown',
+              checkout_time: '12:00',
+              hours_over: Math.max(0, hoursOver),
+              phone: reservation.guest_phone
+            });
+          }
+        } catch (err) {
+          console.error('[Overstay Check] Unexpected error:', err);
+        }
+      }
+
+      return overstays;
     },
     enabled: !!tenant?.tenant_id,
     refetchInterval: 30000, // Refresh every 30 seconds

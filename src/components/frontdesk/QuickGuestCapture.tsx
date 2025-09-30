@@ -55,6 +55,7 @@ import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { useGuestSearch, useRecentGuests } from "@/hooks/useGuestSearch";
 import { useGuestContactManager } from "@/hooks/useGuestContactManager";
 import { useRoomStatusManager } from "@/hooks/useRoomStatusManager";
+import { useAtomicCheckIn } from "@/hooks/useAtomicCheckIn";
 import { RateSelectionComponent } from "./RateSelectionComponent";
 import { ProcessingStateManager } from "./ProcessingStateManager";
 import type { Room } from "./RoomGrid";
@@ -130,6 +131,7 @@ export const QuickGuestCapture = ({
   const { enabledMethods } = usePaymentMethods();
   const { data: recentGuests } = useRecentGuests();
   const { saveGuestContactAsync, searchGuestContacts, quickContactLookup } = useGuestContactManager();
+  const { checkIn: atomicCheckIn, isLoading: isAtomicCheckInLoading } = useAtomicCheckIn();
   const { quickCheckIn, isLoading: isStatusLoading } = useRoomStatusManager();
   const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -335,7 +337,7 @@ export const QuickGuestCapture = ({
       return;
     }
 
-    if (isProcessing || isStatusLoading) {
+    if (isProcessing || isStatusLoading || isAtomicCheckInLoading) {
       return;
     }
     
@@ -465,33 +467,49 @@ export const QuickGuestCapture = ({
         updatedRoom.checkOut = formData.checkOutDate;
         
         } else if (action === 'walkin' || action === 'check-in') {
-        // ATOMIC TRANSACTION FIX: Handle check-in flow with proper error handling and rollback
+        // PHASE 1 FIX: Use atomic check-in for reliable, single-transaction check-in
         let reservationId: string;
-        let createdReservation = false;
         
-        console.log(`Processing ${action} for room ${room?.number}`, { roomId: room?.id, guestName: formData.guestName });
+        console.log(`[Atomic Check-in] Processing ${action} for room ${room?.number}`, { 
+          roomId: room?.id, 
+          guestName: formData.guestName 
+        });
 
         try {
           if (action === 'check-in' && (room as any).current_reservation) {
-            // Use existing reservation and check-in using the room status manager
+            // Use existing reservation for check-in
             reservationId = (room as any).current_reservation.id;
-            console.log('Using existing reservation:', reservationId);
+            console.log('[Atomic Check-in] Using existing reservation:', reservationId);
             
-            // TIMEOUT FIX: Add timeout for quickCheckIn operation
-            const checkInPromise = quickCheckIn(room?.id, reservationId);
-            const timeoutPromise = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Check-in timeout after 15 seconds')), 15000)
-            );
-            
-            const result = await Promise.race([checkInPromise, timeoutPromise]);
-            console.log('Check-in result:', result);
-            
-            if (!result) {
-              throw new Error('Failed to check in guest - room status update failed');
+            // Prepare guest data for atomic function
+            const guestData = guestMode === 'new' || !selectedGuest ? {
+              first_name: formData.guestName.split(' ')[0],
+              last_name: formData.guestName.split(' ').slice(1).join(' ') || '',
+              email: formData.email || undefined,
+              phone: formData.phone || undefined,
+              guest_id_number: formData.idNumber || undefined,
+              nationality: formData.nationality || undefined,
+            } : undefined;
+
+            // Call atomic check-in function
+            const result = await atomicCheckIn({
+              reservationId,
+              roomId: room?.id!,
+              guestData,
+              initialCharges: []  // Charges already exist from reservation
+            });
+
+            if (!result.success) {
+              throw new Error(result.message || 'Check-in failed');
             }
+
+            console.log('[Atomic Check-in] Success:', result);
+            
           } else {
-            // Create new reservation for walk-in
-            console.log('Creating new walk-in reservation');
+            // Walk-in: Create reservation and check-in atomically
+            console.log('[Atomic Check-in] Creating walk-in reservation');
+            
+            // First create the reservation
             const reservationNumber = `RES-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
             const reservationData = {
               guest_id: guestId,
@@ -505,9 +523,7 @@ export const QuickGuestCapture = ({
               children: 0,
               room_rate: formData.roomRate,
               total_amount: formData.totalAmount,
-              status: 'checked_in',
-              checked_in_at: new Date().toISOString(),
-              checked_in_by: user.id,
+              status: 'confirmed',  // Will be updated to checked_in by atomic function
               reservation_number: reservationNumber,
               tenant_id: user.user_metadata?.tenant_id
             };
@@ -520,93 +536,81 @@ export const QuickGuestCapture = ({
 
             if (reservationError) throw reservationError;
             reservationId = reservation.id;
-            createdReservation = true;
-            console.log('New reservation created:', reservationId);
+            console.log('[Atomic Check-in] Reservation created:', reservationId);
             
-            // TIMEOUT FIX: Add timeout for quickCheckIn operation
-            const checkInPromise = quickCheckIn(room?.id, reservationId);
-            const timeoutPromise = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Walk-in check-in timeout after 15 seconds')), 15000)
-            );
-            
-            const result = await Promise.race([checkInPromise, timeoutPromise]);
-            console.log('Walk-in check-in result:', result);
-            
-            if (!result) {
-              throw new Error('Failed to complete walk-in check-in - room status update failed');
-            }
-          }
-        } catch (checkInError) {
-          console.error('Check-in operation failed:', checkInError);
-          
-          // ROLLBACK FIX: Clean up created reservation if check-in fails
-          if (createdReservation && reservationId) {
-            try {
+            // Prepare guest data and initial charges
+            const guestData = {
+              first_name: formData.guestName.split(' ')[0],
+              last_name: formData.guestName.split(' ').slice(1).join(' ') || '',
+              email: formData.email || undefined,
+              phone: formData.phone || undefined,
+              guest_id_number: formData.idNumber || undefined,
+              nationality: formData.nationality || undefined,
+            };
+
+            const initialCharges = [{
+              charge_type: 'room',
+              description: `Room ${room?.number} - ${formData.numberOfNights} night(s)`,
+              amount: formData.totalAmount
+            }];
+
+            // Call atomic check-in function
+            const result = await atomicCheckIn({
+              reservationId,
+              roomId: room?.id!,
+              guestData,
+              initialCharges
+            });
+
+            if (!result.success) {
+              // Cleanup reservation if atomic check-in failed
               await supabase
                 .from('reservations')
                 .delete()
                 .eq('id', reservationId);
-              console.log('Rolled back created reservation:', reservationId);
-            } catch (rollbackError) {
-              console.error('Failed to rollback reservation:', rollbackError);
+              
+              throw new Error(result.message || 'Walk-in check-in failed');
+            }
+
+            console.log('[Atomic Check-in] Walk-in success:', result);
+
+            // Process payment if not pay later
+            if (formData.paymentMode !== 'pay_later' && parseFloat(formData.depositAmount) > 0 && result.folio_id) {
+              const { error: paymentError } = await supabase
+                .from('payments')
+                .insert({
+                  folio_id: result.folio_id,
+                  amount: parseFloat(formData.depositAmount),
+                  payment_method: formData.paymentMode,
+                  status: 'completed',
+                  tenant_id: user.user_metadata?.tenant_id
+                });
+
+              if (paymentError) {
+                console.error('[Payment] Failed to record payment:', paymentError);
+                toast({
+                  title: "Payment Recording Failed",
+                  description: "Check-in completed but payment was not recorded. Please add payment manually.",
+                  variant: "destructive",
+                });
+              }
             }
           }
+
+          // Update UI state - queries will be auto-invalidated by atomic check-in hook
+          updatedRoom.status = 'occupied';
+          updatedRoom.guest = formData.guestName;
+          updatedRoom.checkIn = formData.checkInDate;
+          updatedRoom.checkOut = formData.checkOutDate;
+          updatedRoom.folio = {
+            balance: formData.totalAmount - parseFloat(formData.depositAmount),
+            isPaid: formData.paymentMode !== 'pay_later' && parseFloat(formData.depositAmount) >= formData.totalAmount
+          };
           
+        } catch (checkInError) {
+          console.error('[Atomic Check-in] Failed:', checkInError);
           throw checkInError;
         }
-
-        // Create folio for the reservation
-        const folioNumber = `F-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
-        const { data: folio, error: folioError } = await supabase
-          .from('folios')
-          .insert({
-            folio_number: folioNumber,
-            reservation_id: reservationId,
-            status: 'open',
-            tenant_id: user.user_metadata?.tenant_id
-          })
-          .select()
-          .single();
-
-        if (folioError) throw folioError;
-
-        // Add initial charge for room
-        const { error: chargeError } = await supabase
-          .from('folio_charges')
-          .insert({
-            folio_id: folio.id,
-            charge_type: 'room',
-            description: `Room ${room?.number} - ${formData.numberOfNights} night(s)`,
-            amount: formData.totalAmount,
-            tenant_id: user.user_metadata?.tenant_id
-          });
-
-        if (chargeError) throw chargeError;
-
-        // Process payment if not pay later
-        if (formData.paymentMode !== 'pay_later' && parseFloat(formData.depositAmount) > 0) {
-          const { error: paymentError } = await supabase
-            .from('payments')
-            .insert({
-              folio_id: folio.id,
-              amount: parseFloat(formData.depositAmount),
-              payment_method: formData.paymentMode,
-              payment_status: 'completed',
-              tenant_id: user.user_metadata?.tenant_id
-            });
-
-          if (paymentError) throw paymentError;
-        }
-
-        // Room status is already updated by quickCheckIn, just update UI state
-        updatedRoom.status = 'occupied';
-        updatedRoom.guest = formData.guestName;
-        updatedRoom.checkIn = formData.checkInDate;
-        updatedRoom.checkOut = formData.checkOutDate;
-        updatedRoom.folio = {
-          balance: formData.totalAmount - parseFloat(formData.depositAmount),
-          isPaid: formData.paymentMode !== 'pay_later' && parseFloat(formData.depositAmount) >= formData.totalAmount
-        };
       }
 
       onComplete(updatedRoom);

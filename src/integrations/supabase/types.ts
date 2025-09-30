@@ -5481,6 +5481,15 @@ export type Database = {
           success: boolean
         }[]
       }
+      atomic_checkout: {
+        Args: { p_reservation_id: string; p_tenant_id: string }
+        Returns: {
+          folio_id: string
+          message: string
+          room_id: string
+          success: boolean
+        }[]
+      }
       auto_expire_reservations: {
         Args: Record<PropertyKey, never>
         Returns: undefined

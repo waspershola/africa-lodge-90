@@ -6,8 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCheckout } from '@/hooks/useCheckout';
+import { useAtomicCheckout } from '@/hooks/useAtomicCheckout';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
+import { supabase } from '@/integrations/supabase/client';
 import { BillingOverview } from './BillingOverview';
 import { ServiceSummaryModal } from './ServiceSummaryModal';
 import { PaymentDialog } from './PaymentDialog';
@@ -31,7 +33,8 @@ interface CheckoutDialogProps {
 }
 
 export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogProps) => {
-  const { checkoutSession, loading, error, fetchGuestBill, processPayment, completeCheckout } = useCheckout(roomId);
+  const { checkoutSession, loading, error, fetchGuestBill, processPayment } = useCheckout(roomId);
+  const { checkout, isLoading: isCheckingOut } = useAtomicCheckout();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -61,41 +64,54 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogPro
     }
   };
 
-  // Phase 3: Enhanced checkout completion with proper state management
+  // Phase 2: Atomic checkout with proper error handling and single toast
   const handleCompleteCheckout = async () => {
     if (!checkoutSession?.guest_bill?.room_id) return;
     
-    console.log('[Checkout Complete] Starting checkout:', {
-      roomId: checkoutSession.guest_bill.room_id,
-      folioId: checkoutSession.guest_bill.folio_id,
+    // Get reservation ID from the current checkout session
+    const { data: reservations } = await supabase
+      .from('reservations')
+      .select('id')
+      .eq('room_id', checkoutSession.guest_bill.room_id)
+      .eq('status', 'checked_in')
+      .order('check_in_date', { ascending: false })
+      .limit(1);
+
+    const reservation = reservations?.[0];
+    if (!reservation) {
+      toast({
+        title: "Error",
+        description: "No active reservation found",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    console.log('[Checkout Dialog] Starting atomic checkout:', {
+      reservationId: reservation.id,
       guestName: checkoutSession.guest_bill.guest_name
     });
 
     try {
-      const success = await completeCheckout();
+      const result = await checkout({ reservationId: reservation.id });
       
-      if (success) {
-        console.log('[Checkout Complete] Checkout successful, invalidating queries');
-        
-        // Phase 2: Force query invalidation for immediate UI update
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ['folios', user?.tenant_id] }),
-          queryClient.invalidateQueries({ queryKey: ['rooms', user?.tenant_id] }),
-          queryClient.invalidateQueries({ queryKey: ['billing', user?.tenant_id] }),
-          queryClient.invalidateQueries({ queryKey: ['reservations', user?.tenant_id] })
-        ]);
-        
+      if (result.success) {
         toast({
           title: "Checkout Complete",
-          description: "Guest has been successfully checked out",
+          description: result.message,
         });
         
-        console.log('[Checkout Complete] Closing modal');
-        // Phase 3: Ensure modal closes
+        console.log('[Checkout Dialog] Closing modal');
         onOpenChange(false);
+      } else {
+        toast({
+          title: "Checkout Failed",
+          description: result.message,
+          variant: "destructive"
+        });
       }
     } catch (error: any) {
-      console.error('[Checkout Complete] Error:', error);
+      console.error('[Checkout Dialog] Error:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to complete checkout",
@@ -272,11 +288,11 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogPro
 
             <Button 
               onClick={handleCompleteCheckout}
-              disabled={!canCheckout || loading}
+              disabled={!canCheckout || isCheckingOut}
               className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
             >
               <CheckCircle className="h-4 w-4" />
-              {loading ? 'Processing...' : 'Complete Checkout'}
+              {isCheckingOut ? 'Processing...' : 'Complete Checkout'}
             </Button>
           </div>
 

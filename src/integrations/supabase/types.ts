@@ -5464,6 +5464,23 @@ export type Database = {
         }
         Returns: number
       }
+      atomic_checkin_guest: {
+        Args: {
+          p_guest_payload: Json
+          p_initial_charges?: Json
+          p_reservation_id: string
+          p_room_id: string
+          p_tenant_id: string
+        }
+        Returns: {
+          folio_id: string
+          guest_id: string
+          message: string
+          reservation_id: string
+          room_id: string
+          success: boolean
+        }[]
+      }
       auto_expire_reservations: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -5475,6 +5492,10 @@ export type Database = {
           tenant_id: string
           tenant_name: string
         }[]
+      }
+      calculate_reservation_overstay: {
+        Args: { p_reservation_id: string }
+        Returns: boolean
       }
       can_access_tenant: {
         Args: { tenant_uuid: string }

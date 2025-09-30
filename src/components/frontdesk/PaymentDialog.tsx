@@ -101,18 +101,40 @@ export const PaymentDialog = ({
     setAmount(payment.balance.toString());
   };
 
-  // Map payment method names to database values
-  const mapPaymentMethod = (methodName: string): string => {
-    const normalized = methodName.toLowerCase();
-    if (normalized.includes('cash')) return 'cash';
-    if (normalized.includes('card') || normalized.includes('credit card')) return 'card';
-    if (normalized.includes('transfer') || normalized.includes('bank')) return 'transfer';
-    if (normalized.includes('credit')) return 'credit';
-    if (normalized.includes('complimentary')) return 'complimentary';
-    return 'cash'; // Default fallback
+  // Phase 1: Dynamic payment method mapping using DB configuration
+  const mapPaymentMethod = (method: any): string => {
+    console.log('[Payment Mapping] Input:', { methodId: method.id, methodName: method.name, methodType: method.type });
+    
+    // Map from payment_methods.type to database constraint values
+    const typeMapping: Record<string, string> = {
+      'pos': 'card',
+      'digital': 'card', 
+      'transfer': 'transfer',
+      'cash': 'cash',
+      'credit': 'credit'
+    };
+    
+    const mappedMethod = typeMapping[method.type] || 'cash';
+    
+    // Validate against database constraint
+    const validMethods = ['cash', 'card', 'transfer', 'credit', 'complimentary'];
+    if (!validMethods.includes(mappedMethod)) {
+      console.error('[Payment Mapping] Invalid method after mapping:', mappedMethod);
+      throw new Error(`Unsupported payment method: ${mappedMethod}`);
+    }
+    
+    console.log('[Payment Mapping] Output:', { mappedMethod });
+    return mappedMethod;
   };
 
   const handleProcessPayment = async () => {
+    console.log('[Payment Process] Starting payment:', { 
+      paymentMethodId, 
+      amount, 
+      selectedPayment: selectedPayment?.folio_id,
+      folioId 
+    });
+
     if (!paymentMethodId || !amount || !selectedPayment) {
       toast.error("Please select a payment method and enter an amount");
       return;
@@ -122,6 +144,7 @@ export const PaymentDialog = ({
     const method = getMethodById(paymentMethodId);
     
     if (!method) {
+      console.error('[Payment Process] Method not found:', paymentMethodId);
       toast.error("Invalid payment method");
       return;
     }
@@ -132,7 +155,14 @@ export const PaymentDialog = ({
     }
 
     const fees = calculateFees(paymentAmount, paymentMethodId);
-    const dbPaymentMethod = mapPaymentMethod(method.name);
+    const dbPaymentMethod = mapPaymentMethod(method);
+
+    console.log('[Payment Process] Creating payment:', {
+      folio_id: selectedPayment.folio_id,
+      amount: paymentAmount,
+      payment_method: dbPaymentMethod,
+      payment_method_id: paymentMethodId
+    });
 
     try {
       await createPayment({
@@ -142,6 +172,7 @@ export const PaymentDialog = ({
         payment_method_id: paymentMethodId
       });
 
+      console.log('[Payment Process] Payment successful');
       toast.success(`Payment of ₦${paymentAmount.toLocaleString()} recorded via ${method.name}`);
       
       if (onPaymentSuccess) {
@@ -152,9 +183,9 @@ export const PaymentDialog = ({
       setSelectedPayment(null);
       setPaymentMethodId("");
       setAmount("");
-    } catch (error) {
-      console.error("Payment error:", error);
-      toast.error("Failed to process payment");
+    } catch (error: any) {
+      console.error('[Payment Process] Error:', error);
+      toast.error(error.message || "Failed to process payment");
     }
   };
 

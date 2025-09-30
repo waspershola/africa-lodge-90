@@ -57,14 +57,38 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogPro
     }
   };
 
+  // Phase 3: Enhanced checkout completion with proper state management
   const handleCompleteCheckout = async () => {
-    const success = await completeCheckout();
-    if (success) {
+    if (!checkoutSession?.guest_bill?.room_id) return;
+    
+    console.log('[Checkout Complete] Starting checkout:', {
+      roomId: checkoutSession.guest_bill.room_id,
+      folioId: checkoutSession.guest_bill.folio_id,
+      guestName: checkoutSession.guest_bill.guest_name
+    });
+
+    try {
+      const success = await completeCheckout();
+      
+      if (success) {
+        console.log('[Checkout Complete] Checkout successful');
+        
+        toast({
+          title: "Checkout Complete",
+          description: "Guest has been successfully checked out",
+        });
+        
+        console.log('[Checkout Complete] Closing modal');
+        // Phase 3: Ensure modal closes
+        onOpenChange(false);
+      }
+    } catch (error: any) {
+      console.error('[Checkout Complete] Error:', error);
       toast({
-        title: "Checkout Complete",
-        description: "Guest has been successfully checked out",
+        title: "Error",
+        description: error.message || "Failed to complete checkout",
+        variant: "destructive"
       });
-      onOpenChange(false);
     }
   };
 

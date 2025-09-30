@@ -10,11 +10,13 @@ export function useFrontDeskRealtimeUpdates() {
   useEffect(() => {
     if (!user || !tenant) return;
 
-    console.log('Setting up Front Desk realtime subscriptions for tenant:', tenant.tenant_id);
+    console.log('[Realtime] Setting up Front Desk subscriptions for tenant:', tenant.tenant_id);
 
-    // Subscribe to room changes - immediate status updates
-    const roomsChannel = supabase
-      .channel('frontdesk-rooms')
+    // Phase 2: Tenant-scoped channel for better performance
+    const channel = supabase
+      .channel(`tenant-${tenant.tenant_id}-frontdesk`)
+      
+      // Subscribe to room changes - immediate status updates
       .on(
         'postgres_changes',
         {
@@ -24,18 +26,14 @@ export function useFrontDeskRealtimeUpdates() {
           filter: `tenant_id=eq.${tenant.tenant_id}`
         },
         (payload) => {
-          console.log('Room status changed, updating front desk data:', payload);
-          // Invalidate all room-related queries
-          queryClient.invalidateQueries({ queryKey: ['rooms'] });
-          queryClient.invalidateQueries({ queryKey: ['room-availability'] });
-          queryClient.invalidateQueries({ queryKey: ['room-types'] });
+          console.log('[Realtime Event] Room status changed:', payload);
+          queryClient.invalidateQueries({ queryKey: ['rooms', tenant.tenant_id] });
+          queryClient.invalidateQueries({ queryKey: ['room-availability', tenant.tenant_id] });
+          queryClient.invalidateQueries({ queryKey: ['room-types', tenant.tenant_id] });
         }
       )
-      .subscribe();
 
-    // Subscribe to reservation changes - immediate booking updates
-    const reservationsChannel = supabase
-      .channel('frontdesk-reservations')
+      // Subscribe to reservation changes - immediate booking updates
       .on(
         'postgres_changes',
         {
@@ -45,19 +43,15 @@ export function useFrontDeskRealtimeUpdates() {
           filter: `tenant_id=eq.${tenant.tenant_id}`
         },
         (payload) => {
-          console.log('Reservation changed, updating front desk data:', payload);
-          // Invalidate reservation and related queries
-          queryClient.invalidateQueries({ queryKey: ['reservations'] });
-          queryClient.invalidateQueries({ queryKey: ['rooms'] });
-          queryClient.invalidateQueries({ queryKey: ['guests'] });
-          queryClient.invalidateQueries({ queryKey: ['group-reservations'] });
+          console.log('[Realtime Event] Reservation changed:', payload);
+          queryClient.invalidateQueries({ queryKey: ['reservations', tenant.tenant_id] });
+          queryClient.invalidateQueries({ queryKey: ['rooms', tenant.tenant_id] });
+          queryClient.invalidateQueries({ queryKey: ['guests', tenant.tenant_id] });
+          queryClient.invalidateQueries({ queryKey: ['group-reservations', tenant.tenant_id] });
         }
       )
-      .subscribe();
 
-    // Subscribe to guest changes - immediate guest info updates
-    const guestsChannel = supabase
-      .channel('frontdesk-guests')
+      // Subscribe to guest changes - immediate guest info updates
       .on(
         'postgres_changes',
         {
@@ -67,17 +61,14 @@ export function useFrontDeskRealtimeUpdates() {
           filter: `tenant_id=eq.${tenant.tenant_id}`
         },
         (payload) => {
-          console.log('Guest info changed, updating front desk data:', payload);
-          queryClient.invalidateQueries({ queryKey: ['guests'] });
-          queryClient.invalidateQueries({ queryKey: ['guest-search'] });
-          queryClient.invalidateQueries({ queryKey: ['recent-guests'] });
+          console.log('[Realtime Event] Guest info changed:', payload);
+          queryClient.invalidateQueries({ queryKey: ['guests', tenant.tenant_id] });
+          queryClient.invalidateQueries({ queryKey: ['guest-search', tenant.tenant_id] });
+          queryClient.invalidateQueries({ queryKey: ['recent-guests', tenant.tenant_id] });
         }
       )
-      .subscribe();
 
-    // Subscribe to folio/payment changes - immediate billing updates
-    const foliosChannel = supabase
-      .channel('frontdesk-folios')
+      // Phase 2: Subscribe to folio changes - critical for checkout flow
       .on(
         'postgres_changes',
         {
@@ -87,17 +78,16 @@ export function useFrontDeskRealtimeUpdates() {
           filter: `tenant_id=eq.${tenant.tenant_id}`
         },
         (payload) => {
-          console.log('Folio changed, updating billing data:', payload);
-          queryClient.invalidateQueries({ queryKey: ['folios'] });
-          queryClient.invalidateQueries({ queryKey: ['folio-balances'] });
+          console.log('[Realtime Event] Folio changed:', payload);
+          queryClient.invalidateQueries({ queryKey: ['folios', tenant.tenant_id] });
+          queryClient.invalidateQueries({ queryKey: ['folio-balances', tenant.tenant_id] });
+          queryClient.invalidateQueries({ queryKey: ['billing', tenant.tenant_id] });
+          queryClient.invalidateQueries({ queryKey: ['rooms', tenant.tenant_id] });
           queryClient.invalidateQueries({ queryKey: ['owner', 'overview'] });
         }
       )
-      .subscribe();
 
-    // Subscribe to folio charges - immediate charge updates
-    const folioChargesChannel = supabase
-      .channel('frontdesk-folio-charges')
+      // Subscribe to folio charges - immediate charge updates
       .on(
         'postgres_changes',
         {
@@ -107,16 +97,13 @@ export function useFrontDeskRealtimeUpdates() {
           filter: `tenant_id=eq.${tenant.tenant_id}`
         },
         (payload) => {
-          console.log('Folio charge changed, updating billing data:', payload);
-          queryClient.invalidateQueries({ queryKey: ['folios'] });
-          queryClient.invalidateQueries({ queryKey: ['folio-balances'] });
+          console.log('[Realtime Event] Folio charge changed:', payload);
+          queryClient.invalidateQueries({ queryKey: ['folios', tenant.tenant_id] });
+          queryClient.invalidateQueries({ queryKey: ['folio-balances', tenant.tenant_id] });
         }
       )
-      .subscribe();
 
-    // Subscribe to payment changes - immediate payment updates
-    const paymentsChannel = supabase
-      .channel('frontdesk-payments')
+      // Subscribe to payment changes - immediate payment updates
       .on(
         'postgres_changes',
         {
@@ -126,18 +113,17 @@ export function useFrontDeskRealtimeUpdates() {
           filter: `tenant_id=eq.${tenant.tenant_id}`
         },
         (payload) => {
-          console.log('Payment received, updating financial data:', payload);
-          queryClient.invalidateQueries({ queryKey: ['payments'] });
-          queryClient.invalidateQueries({ queryKey: ['folios'] });
-          queryClient.invalidateQueries({ queryKey: ['folio-balances'] });
+          console.log('[Realtime Event] Payment received:', payload);
+          queryClient.invalidateQueries({ queryKey: ['payments', tenant.tenant_id] });
+          queryClient.invalidateQueries({ queryKey: ['folios', tenant.tenant_id] });
+          queryClient.invalidateQueries({ queryKey: ['folio-balances', tenant.tenant_id] });
+          queryClient.invalidateQueries({ queryKey: ['billing', tenant.tenant_id] });
+          queryClient.invalidateQueries({ queryKey: ['rooms', tenant.tenant_id] });
           queryClient.invalidateQueries({ queryKey: ['owner', 'overview'] });
         }
       )
-      .subscribe();
 
-    // Subscribe to housekeeping tasks - immediate task updates
-    const housekeepingChannel = supabase
-      .channel('frontdesk-housekeeping')
+      // Subscribe to housekeeping tasks - immediate task updates
       .on(
         'postgres_changes',
         {
@@ -147,16 +133,13 @@ export function useFrontDeskRealtimeUpdates() {
           filter: `tenant_id=eq.${tenant.tenant_id}`
         },
         (payload) => {
-          console.log('Housekeeping task changed, updating task data:', payload);
-          queryClient.invalidateQueries({ queryKey: ['housekeeping-tasks'] });
-          queryClient.invalidateQueries({ queryKey: ['rooms'] }); // Room status might change
+          console.log('[Realtime Event] Housekeeping task changed:', payload);
+          queryClient.invalidateQueries({ queryKey: ['housekeeping-tasks', tenant.tenant_id] });
+          queryClient.invalidateQueries({ queryKey: ['rooms', tenant.tenant_id] });
         }
       )
-      .subscribe();
 
-    // Subscribe to QR requests - immediate service request updates
-    const qrRequestsChannel = supabase
-      .channel('frontdesk-qr-requests')
+      // Subscribe to QR requests - immediate service request updates
       .on(
         'postgres_changes',
         {
@@ -166,23 +149,16 @@ export function useFrontDeskRealtimeUpdates() {
           filter: `tenant_id=eq.${tenant.tenant_id}`
         },
         (payload) => {
-          console.log('QR request changed, updating service data:', payload);
-          queryClient.invalidateQueries({ queryKey: ['qr-requests'] });
-          queryClient.invalidateQueries({ queryKey: ['qr-orders'] });
+          console.log('[Realtime Event] QR request changed:', payload);
+          queryClient.invalidateQueries({ queryKey: ['qr-requests', tenant.tenant_id] });
+          queryClient.invalidateQueries({ queryKey: ['qr-orders', tenant.tenant_id] });
         }
       )
       .subscribe();
 
     return () => {
-      console.log('Cleaning up Front Desk realtime subscriptions');
-      supabase.removeChannel(roomsChannel);
-      supabase.removeChannel(reservationsChannel);
-      supabase.removeChannel(guestsChannel);
-      supabase.removeChannel(foliosChannel);
-      supabase.removeChannel(folioChargesChannel);
-      supabase.removeChannel(paymentsChannel);
-      supabase.removeChannel(housekeepingChannel);
-      supabase.removeChannel(qrRequestsChannel);
+      console.log('[Realtime] Cleaning up Front Desk subscriptions');
+      supabase.removeChannel(channel);
     };
   }, [user, tenant, queryClient]);
 }

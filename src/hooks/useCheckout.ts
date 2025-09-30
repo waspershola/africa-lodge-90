@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { GuestBill, CheckoutSession, ServiceCharge, PaymentRecord } from '@/types/billing';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
@@ -8,6 +9,7 @@ export const useCheckout = (roomId?: string) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   // Set up real-time subscription for folio updates
   useEffect(() => {
@@ -255,6 +257,11 @@ export const useCheckout = (roomId?: string) => {
   const completeCheckout = async () => {
     if (!checkoutSession || checkoutSession.checkout_status !== 'ready' || !user) return false;
 
+    console.log('[Checkout Hook] Starting checkout completion:', {
+      roomId: checkoutSession.room_id,
+      guestName: checkoutSession.guest_bill?.guest_name
+    });
+
     setLoading(true);
     
     // Set timeout to prevent infinite processing
@@ -282,6 +289,8 @@ export const useCheckout = (roomId?: string) => {
         throw new Error('No active reservation found');
       }
 
+      console.log('[Checkout Hook] Found reservation:', reservation.id);
+
       // Get or create folio for the reservation
       const { data: folioId, error: folioIdError } = await supabase
         .rpc('get_or_create_folio', {
@@ -292,6 +301,8 @@ export const useCheckout = (roomId?: string) => {
       if (folioIdError || !folioId) {
         throw new Error('Failed to get or create folio');
       }
+
+      console.log('[Checkout Hook] Closing folio:', folioId);
 
       // Execute all updates in sequence with proper error handling
       const updates = [
@@ -346,6 +357,18 @@ export const useCheckout = (roomId?: string) => {
         }
       }
 
+      console.log('[Checkout Hook] Database updates complete');
+
+      // Phase 2: Force query invalidation for immediate UI update
+      console.log('[Checkout Hook] Invalidating queries for tenant:', user.tenant_id);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['folios', user.tenant_id] }),
+        queryClient.invalidateQueries({ queryKey: ['rooms', user.tenant_id] }),
+        queryClient.invalidateQueries({ queryKey: ['billing', user.tenant_id] }),
+        queryClient.invalidateQueries({ queryKey: ['reservations', user.tenant_id] }),
+        queryClient.invalidateQueries({ queryKey: ['folio-balances', user.tenant_id] })
+      ]);
+
       const completedSession: CheckoutSession = {
         ...checkoutSession,
         checkout_status: 'completed',
@@ -355,9 +378,11 @@ export const useCheckout = (roomId?: string) => {
 
       setCheckoutSession(completedSession);
       clearTimeout(timeoutId);
+      
+      console.log('[Checkout Hook] Checkout completion successful');
       return true;
     } catch (err: any) {
-      console.error('Checkout completion error:', err);
+      console.error('[Checkout Hook] Checkout completion error:', err);
       setError(err.message || 'Checkout completion failed');
       clearTimeout(timeoutId);
       return false;

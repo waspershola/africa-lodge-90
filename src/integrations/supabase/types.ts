@@ -924,6 +924,8 @@ export type Database = {
           id: string
           reservation_id: string
           status: string
+          tax_amount: number | null
+          tax_rate: number | null
           tenant_id: string
           total_charges: number | null
           total_payments: number | null
@@ -938,6 +940,8 @@ export type Database = {
           id?: string
           reservation_id: string
           status?: string
+          tax_amount?: number | null
+          tax_rate?: number | null
           tenant_id: string
           total_charges?: number | null
           total_payments?: number | null
@@ -952,6 +956,8 @@ export type Database = {
           id?: string
           reservation_id?: string
           status?: string
+          tax_amount?: number | null
+          tax_rate?: number | null
           tenant_id?: string
           total_charges?: number | null
           total_payments?: number | null

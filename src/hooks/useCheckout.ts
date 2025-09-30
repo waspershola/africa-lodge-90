@@ -9,6 +9,43 @@ export const useCheckout = (roomId?: string) => {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
+  // Set up real-time subscription for folio updates
+  useEffect(() => {
+    if (!checkoutSession?.room_id) return;
+
+    const channel = supabase
+      .channel(`checkout-${checkoutSession.room_id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'folios'
+        },
+        () => {
+          // Refetch data when folio changes
+          fetchGuestBill(checkoutSession.room_id);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'payments'
+        },
+        () => {
+          // Refetch data when payments change
+          fetchGuestBill(checkoutSession.room_id);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [checkoutSession?.room_id]);
+
   const fetchGuestBill = async (roomId: string) => {
     setLoading(true);
     setError(null);
@@ -92,19 +129,17 @@ export const useCheckout = (roomId?: string) => {
         processed_at: payment.created_at || ''
       })) || [];
 
-      const subtotal = serviceCharges.reduce((sum, charge) => sum + charge.amount, 0);
-      const taxAmount = subtotal * 0.075; // 7.5% VAT
-      const totalAmount = subtotal + taxAmount;
-      const totalPaid = paymentRecords.reduce((sum, payment) => 
-        payment.status === 'completed' ? sum + payment.amount : sum, 0);
+      // Use folio balance directly from database (includes tax calculation via triggers)
+      const totalCharges = Number(folio.total_charges) || 0;
+      const taxAmount = Number(folio.tax_amount) || 0;
+      const totalAmount = totalCharges + taxAmount;
+      const totalPaid = Number(folio.total_payments) || 0;
+      const balance = Number(folio.balance) || 0;
+      const pendingBalance = Math.max(0, balance);
       
-      // BILLING LOGIC FIX: Correct pending balance calculation
-      const actualBalance = totalAmount - totalPaid;
-      const pendingBalance = Math.max(0, actualBalance);
-      
-      // BILLING LOGIC FIX: Proper payment status with overpayment handling
+      // Determine payment status
       let paymentStatus: 'paid' | 'partial' | 'unpaid';
-      if (totalPaid >= totalAmount) {
+      if (balance <= 0) {
         paymentStatus = 'paid';
       } else if (totalPaid > 0) {
         paymentStatus = 'partial';
@@ -123,7 +158,7 @@ export const useCheckout = (roomId?: string) => {
            new Date(reservation.check_in_date).getTime()) / (1000 * 60 * 60 * 24)
         ),
         service_charges: serviceCharges,
-        subtotal,
+        subtotal: totalCharges,
         tax_amount: taxAmount,
         total_amount: totalAmount,
         pending_balance: pendingBalance,
@@ -134,7 +169,7 @@ export const useCheckout = (roomId?: string) => {
         room_id: roomId,
         guest_bill: guestBill,
         payment_records: paymentRecords,
-        checkout_status: actualBalance <= 0 ? 'ready' : 'pending'
+        checkout_status: balance <= 0 ? 'ready' : 'pending'
       };
 
       setCheckoutSession(session);
@@ -150,7 +185,7 @@ export const useCheckout = (roomId?: string) => {
 
     setLoading(true);
     try {
-      // Get the reservation and safely handle folio (most recent if multiple)
+      // Get the reservation
       const { data: reservations } = await supabase
         .from('reservations')
         .select('id')
@@ -160,10 +195,9 @@ export const useCheckout = (roomId?: string) => {
         .limit(1);
 
       const reservation = reservations?.[0];
-
       if (!reservation) throw new Error('No active reservation found');
 
-      // Get or create folio for the reservation
+      // Get or create folio
       const { data: folioId, error: folioError } = await supabase
         .rpc('get_or_create_folio', {
           p_reservation_id: reservation.id,
@@ -172,7 +206,7 @@ export const useCheckout = (roomId?: string) => {
 
       if (folioError || !folioId) throw new Error('Failed to get or create folio');
 
-      // Create payment record
+      // Create payment record (triggers will auto-update folio balance)
       const { data: payment, error: paymentError } = await supabase
         .from('payments')
         .insert([{
@@ -188,18 +222,6 @@ export const useCheckout = (roomId?: string) => {
 
       if (paymentError) throw paymentError;
 
-      // Update folio totals
-      const totalPaid = checkoutSession.payment_records.reduce((sum, p) => sum + p.amount, 0) + amount;
-      const newBalance = Math.max(0, checkoutSession.guest_bill.total_amount - totalPaid);
-
-      await supabase
-        .from('folios')
-        .update({
-          total_payments: totalPaid,
-          balance: newBalance
-        })
-        .eq('id', folioId);
-
       // Create audit log
       await supabase
         .from('audit_log')
@@ -211,36 +233,16 @@ export const useCheckout = (roomId?: string) => {
           actor_email: user.email,
           actor_role: user.role,
           tenant_id: user.tenant_id,
-          description: `Processed ${paymentMethod} payment of ${amount / 100} for folio ${folioId}`,
+          description: `Processed ${paymentMethod} payment of ${amount} for folio ${folioId}`,
           new_values: { amount, payment_method: paymentMethod }
         }]);
 
-      const paymentRecord: PaymentRecord = {
-        id: payment.id,
-        bill_id: folioId,
-        amount,
-        payment_method: paymentMethod,
-        status: 'completed',
-        processed_by: user.id,
-        processed_at: payment.created_at || new Date().toISOString()
-      };
-
-      const updatedBill = {
-        ...checkoutSession.guest_bill,
-        pending_balance: newBalance,
-        payment_status: newBalance <= 0 ? 'paid' as const : totalPaid > 0 ? 'partial' as const : 'unpaid' as const
-      };
-
-      const updatedSession: CheckoutSession = {
-        ...checkoutSession,
-        guest_bill: updatedBill,
-        payment_records: [...checkoutSession.payment_records, paymentRecord],
-        checkout_status: newBalance <= 0 ? 'ready' : 'pending'
-      };
-
-      setCheckoutSession(updatedSession);
+      // Refetch guest bill to get updated balance from database
+      await fetchGuestBill(checkoutSession.room_id);
+      
       return true;
     } catch (err: any) {
+      console.error('Payment processing error:', err);
       setError(err.message || 'Payment processing failed');
       return false;
     } finally {

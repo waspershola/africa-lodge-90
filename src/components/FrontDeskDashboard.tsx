@@ -157,74 +157,139 @@ const FrontDeskDashboard = () => {
   // Enhanced keyboard shortcuts with comprehensive input detection
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Comprehensive input detection to prevent shortcut conflicts
+      // Use requestAnimationFrame to allow DOM updates before checking focus state
+      requestAnimationFrame(() => {
+        const target = e.target as Element;
+        const activeElement = document.activeElement;
+        
+        // Enhanced comprehensive input detection to prevent shortcut conflicts
+        const isInputActive = 
+          // Standard input elements
+          target instanceof HTMLInputElement ||
+          target instanceof HTMLTextAreaElement ||
+          target instanceof HTMLSelectElement ||
+          activeElement instanceof HTMLInputElement ||
+          activeElement instanceof HTMLTextAreaElement ||
+          activeElement instanceof HTMLSelectElement ||
+          // Content editable elements
+          (target instanceof HTMLElement && target.isContentEditable) ||
+          (activeElement instanceof HTMLElement && activeElement.isContentEditable) ||
+          target.getAttribute('contenteditable') === 'true' ||
+          activeElement?.getAttribute('contenteditable') === 'true' ||
+          // Command/Search input components - ENHANCED DETECTION
+          target.closest('[cmdk-input]') !== null ||
+          target.closest('[data-cmdk-input]') !== null ||
+          target.closest('input[cmdk-input]') !== null ||
+          target.matches('[cmdk-input]') ||
+          target.matches('[data-cmdk-input]') ||
+          activeElement?.closest('[cmdk-input]') !== null ||
+          activeElement?.closest('[data-cmdk-input]') !== null ||
+          activeElement?.matches('[cmdk-input]') ||
+          activeElement?.matches('[data-cmdk-input]') ||
+          // Search-specific input types
+          target.matches('input[type="search"]') ||
+          target.matches('input[type="text"]') ||
+          activeElement?.matches('input[type="search"]') ||
+          activeElement?.matches('input[type="text"]') ||
+          // Role-based detection
+          target.getAttribute('role') === 'textbox' ||
+          target.getAttribute('role') === 'combobox' ||
+          target.getAttribute('role') === 'searchbox' ||
+          activeElement?.getAttribute('role') === 'textbox' ||
+          activeElement?.getAttribute('role') === 'combobox' ||
+          activeElement?.getAttribute('role') === 'searchbox' ||
+          // Form elements
+          target.closest('form') !== null ||
+          // Custom data attributes
+          target.hasAttribute('data-input') ||
+          activeElement?.hasAttribute('data-input') ||
+          // Check if inside any Popover or Dialog content that might contain inputs
+          target.closest('[role="dialog"]') !== null ||
+          target.closest('[data-radix-popper-content-wrapper]') !== null ||
+          activeElement?.closest('[role="dialog"]') !== null ||
+          activeElement?.closest('[data-radix-popper-content-wrapper]') !== null;
+
+        // Check if any modal/dialog is open
+        const isModalOpen = showNewReservation || showSearch || showPayment || showQuickCapture || showCheckout;
+        
+        // Enhanced check for any open dialog elements in the DOM
+        const openDialogs = document.querySelectorAll(
+          '[role="dialog"][data-state="open"], ' +
+          '.dialog-content:not([style*="display: none"]), ' +
+          '[data-state="open"][role="dialog"]'
+        );
+        const hasOpenDialog = openDialogs.length > 0;
+        
+        // Additional check: if any input inside an open dialog has focus
+        const inputInDialog = Array.from(openDialogs).some(dialog => 
+          dialog.contains(activeElement) && 
+          (activeElement instanceof HTMLInputElement || 
+           activeElement instanceof HTMLTextAreaElement ||
+           activeElement instanceof HTMLSelectElement)
+        );
+        
+        // Don't trigger shortcuts if input is active, modal is open, or input in dialog is focused
+        if (isInputActive || isModalOpen || hasOpenDialog || inputInDialog) return;
+      });
+      
+      // Immediate check before async processing - prevent default early for input fields
       const target = e.target as Element;
       const activeElement = document.activeElement;
       
-      // Check if any input-related element is focused or active
-      const isInputActive = 
-        // Standard input elements
+      const quickInputCheck = 
         target instanceof HTMLInputElement ||
         target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
         activeElement instanceof HTMLInputElement ||
         activeElement instanceof HTMLTextAreaElement ||
-        // Content editable elements (check for HTMLElement first)
-        (target instanceof HTMLElement && target.isContentEditable) ||
-        (activeElement instanceof HTMLElement && activeElement.isContentEditable) ||
-        // Elements with contenteditable attribute
-        target.getAttribute('contenteditable') === 'true' ||
-        activeElement?.getAttribute('contenteditable') === 'true' ||
-        // Command input components (cmdk)
+        activeElement instanceof HTMLSelectElement ||
         target.closest('[cmdk-input]') !== null ||
-        activeElement?.closest('[cmdk-input]') !== null ||
-        // Any element with role="textbox" or role="combobox"
-        target.getAttribute('role') === 'textbox' ||
-        target.getAttribute('role') === 'combobox' ||
-        activeElement?.getAttribute('role') === 'textbox' ||
-        activeElement?.getAttribute('role') === 'combobox' ||
-        // Any element inside a form that might be interactive
+        target.closest('[data-cmdk-input]') !== null ||
         target.closest('form') !== null ||
-        // Check for any element with data-input or similar attributes
-        target.hasAttribute('data-input') ||
-        activeElement?.hasAttribute('data-input');
-
-      // Check if any modal/dialog is open
-      const isModalOpen = showNewReservation || showSearch || showPayment || showQuickCapture || showCheckout;
+        target.closest('[role="dialog"]') !== null;
+        
+      if (quickInputCheck) return;
       
-      // Additional check for any open dialog elements in the DOM
-      const openDialogs = document.querySelectorAll('[role="dialog"][data-state="open"], .dialog-content:not([style*="display: none"])');
-      const hasOpenDialog = openDialogs.length > 0;
-      
-      // Don't trigger shortcuts if input is active or modal is open
-      if (isInputActive || isModalOpen || hasOpenDialog) return;
-      
-      // Only trigger shortcuts for specific keys and prevent default behavior
+      // Only trigger shortcuts for specific keys with proper event handling
       switch (e.key.toLowerCase()) {
         case 'a':
           e.preventDefault();
+          e.stopPropagation();
           setCaptureAction('assign-room');
           setShowQuickCapture(true);
           break;
         case 'i':
           e.preventDefault();
+          e.stopPropagation();
           setCaptureAction('check-in');
           setShowQuickCapture(true);
           break;
         case 'o':
           e.preventDefault();
+          e.stopPropagation();
           setCaptureAction('check-out');
           setShowQuickCapture(true);
+          break;
+        case 'm':
+          e.preventDefault();
+          e.stopPropagation();
+          if (selectedRoom && selectedRoom.status === 'oos') {
+            // Handle mark available action
+            console.log('Mark room as available:', selectedRoom.number);
+          }
           break;
         case 'escape':
           // Allow escape to deselect room if no modal is open
           if (selectedRoom) {
             e.preventDefault();
+            e.stopPropagation();
             setSelectedRoom(null);
           }
           break;
         case '/':
           // Focus search if not in input
           e.preventDefault();
+          e.stopPropagation();
           const searchInput = document.querySelector('input[placeholder*="Search"]') as HTMLInputElement;
           if (searchInput) {
             searchInput.focus();
@@ -233,6 +298,7 @@ const FrontDeskDashboard = () => {
         case '?':
           // Toggle keyboard help
           e.preventDefault();
+          e.stopPropagation();
           setShowKeyboardHelp(!showKeyboardHelp);
           break;
       }

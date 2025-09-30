@@ -29,6 +29,11 @@ export default function PaymentsOverview() {
 
   if (loading || methodsLoading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
+  
+  // Fallback if no payment methods configured
+  if (!methodsLoading && enabledMethods.length === 0) {
+    return <ErrorState message="No payment methods configured. Please configure payment methods in Financial → Payment Methods." />;
+  }
 
   // Calculate payment summary from real data
   const paymentSummary = {

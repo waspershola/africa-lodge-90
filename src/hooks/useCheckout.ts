@@ -148,6 +148,8 @@ export const useCheckout = (roomId?: string) => {
       }
 
       const guestBill: GuestBill = {
+        folio_id: folio.id,
+        folio_number: folio.folio_number,
         room_id: roomId,
         room_number: room.room_number,
         guest_name: reservation.guest_name,

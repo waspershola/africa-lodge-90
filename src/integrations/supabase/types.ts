@@ -5620,22 +5620,7 @@ export type Database = {
         }[]
       }
       get_folio_balances: {
-        Args: { p_status?: string; p_tenant_id: string }
-        Returns: {
-          balance: number
-          created_at: string
-          folio_id: string
-          folio_number: string
-          guest_name: string
-          reservation_id: string
-          room_number: string
-          status: string
-          total_charges: number
-          total_payments: number
-        }[]
-      }
-      get_folio_balances_secure: {
-        Args: { p_status?: string; p_tenant_id: string }
+        Args: { p_folio_id?: string; p_status?: string; p_tenant_id: string }
         Returns: {
           balance: number
           balance_status: string

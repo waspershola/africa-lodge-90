@@ -301,6 +301,10 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogPro
         onOpenChange={setShowPayment}
         pendingAmount={guest_bill.pending_balance}
         onPaymentSuccess={handlePaymentSuccess}
+        folioId={guest_bill.folio_id}
+        guestName={guest_bill.guest_name}
+        roomNumber={guest_bill.room_number}
+        triggerSource="checkout"
       />
 
       <EnhancedReceiptGenerator

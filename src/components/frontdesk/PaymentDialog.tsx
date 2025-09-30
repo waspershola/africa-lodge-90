@@ -1,32 +1,81 @@
-import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { CreditCard, Banknote, Building, Smartphone, Clock, UserX } from "lucide-react";
-import { usePaymentMethodsContext } from "@/contexts/PaymentMethodsContext";
-import { useBilling } from "@/hooks/useBilling";
-import { toast } from "sonner";
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { CreditCard, Banknote, Building, Smartphone, Clock, UserX, DollarSign, Info, Loader2 } from 'lucide-react';
+import { usePaymentMethodsContext } from '@/contexts/PaymentMethodsContext';
+import { useBilling } from '@/hooks/useBilling';
+import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
+import { toast } from 'sonner';
 
+// Phase 1: Enhanced props interface with security context
 interface PaymentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   pendingAmount?: number;
   onPaymentSuccess?: (amount: number, method: string) => void;
+  // Scoped payment context
+  folioId?: string;
+  guestName?: string;
+  roomNumber?: string;
+  triggerSource?: 'checkout' | 'frontdesk' | 'accounting';
 }
 
-export const PaymentDialog = ({ open, onOpenChange, pendingAmount, onPaymentSuccess }: PaymentDialogProps) => {
-  const { folioBalances, createPayment } = useBilling();
+export const PaymentDialog = ({ 
+  open, 
+  onOpenChange, 
+  pendingAmount, 
+  onPaymentSuccess,
+  folioId,
+  guestName,
+  roomNumber,
+  triggerSource = 'frontdesk'
+}: PaymentDialogProps) => {
+  const { folioBalances, createPayment, getFolioBalance } = useBilling();
   const { enabledMethods, getMethodById, calculateFees } = usePaymentMethodsContext();
+  const { tenant } = useAuth();
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
-  const [paymentMethodId, setPaymentMethodId] = useState("");
-  const [amount, setAmount] = useState("");
+  const [paymentMethodId, setPaymentMethodId] = useState<string>('');
+  const [amount, setAmount] = useState<string>('');
+  const [scopedFolio, setScopedFolio] = useState<any>(null);
+  const [loadingScoped, setLoadingScoped] = useState(false);
 
-  // Filter folios with outstanding balances as pending payments
-  const pendingPayments = folioBalances.filter(folio => folio.balance > 0);
+  // Phase 2 & 4: Load scoped folio if folioId provided
+  useEffect(() => {
+    const loadScopedFolio = async () => {
+      if (folioId && tenant?.tenant_id && open) {
+        setLoadingScoped(true);
+        try {
+          const folio = await getFolioBalance(folioId, tenant.tenant_id);
+          if (folio) {
+            setScopedFolio(folio);
+            setSelectedPayment(folio);
+            setAmount(folio.balance.toString());
+          } else {
+            toast.error('Folio not found');
+            onOpenChange(false);
+          }
+        } catch (error) {
+          console.error('Error loading scoped folio:', error);
+          toast.error('Failed to load folio details');
+          onOpenChange(false);
+        } finally {
+          setLoadingScoped(false);
+        }
+      }
+    };
+
+    loadScopedFolio();
+  }, [folioId, tenant?.tenant_id, open, getFolioBalance]);
+
+  // Phase 4: Determine which folios to show (scoped or all)
+  const pendingPayments = folioId 
+    ? (scopedFolio ? [scopedFolio] : [])
+    : folioBalances.filter(folio => folio.balance > 0);
 
   const handleSelectPayment = (payment: any) => {
     setSelectedPayment(payment);
@@ -96,43 +145,64 @@ export const PaymentDialog = ({ open, onOpenChange, pendingAmount, onPaymentSucc
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
-            Collect Payment
+            {/* Phase 5: Dynamic modal title based on context */}
+            {folioId && roomNumber && guestName 
+              ? `Collect Payment for Room ${roomNumber} (${guestName})`
+              : 'Pending Guest Payments'
+            }
           </DialogTitle>
         </DialogHeader>
         
         <div className="grid grid-cols-2 gap-6">
           {/* Pending Payments List */}
           <div className="space-y-4">
-            <h3 className="font-medium">Pending Payments</h3>
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              {pendingPayments.map((payment) => (
-                <Card 
-                  key={payment.folio_id}
-                  className={`cursor-pointer transition-colors ${
-                    selectedPayment?.folio_id === payment.folio_id ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'
-                  }`}
-                  onClick={() => handleSelectPayment(payment)}
-                >
-                  <CardContent className="p-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="font-medium">Room {payment.room_number}</div>
-                        <div className="text-sm text-muted-foreground">{payment.guest_name}</div>
-                        <Badge variant="outline" className="mt-1 text-xs">
-                          {payment.folio_number}
-                        </Badge>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-bold">₦{payment.balance.toLocaleString()}</div>
-                        <div className="text-xs text-muted-foreground">
-                          Outstanding
+            <h3 className="font-medium flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              {folioId ? 'Folio Details' : 'Pending Payments'}
+            </h3>
+            
+            {/* Phase 2: Loading state for scoped folio */}
+            {loadingScoped ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <span className="ml-2 text-sm">Fetching folio balance...</span>
+              </div>
+            ) : pendingPayments.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Info className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No outstanding bills for this guest.</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {pendingPayments.map((payment) => (
+                  <Card 
+                    key={payment.folio_id}
+                    className={`cursor-pointer transition-colors ${
+                      selectedPayment?.folio_id === payment.folio_id ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'
+                    }`}
+                    onClick={() => handleSelectPayment(payment)}
+                  >
+                    <CardContent className="p-3">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="font-medium">Room {payment.room_number}</div>
+                          <div className="text-sm text-muted-foreground">{payment.guest_name}</div>
+                          <Badge variant="outline" className="mt-1 text-xs">
+                            {payment.folio_number}
+                          </Badge>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold">₦{payment.balance.toLocaleString()}</div>
+                          <div className="text-xs text-muted-foreground">
+                            Outstanding
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Payment Processing */}

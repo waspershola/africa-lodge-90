@@ -10,6 +10,8 @@ export interface ServiceCharge {
 }
 
 export interface GuestBill {
+  folio_id: string;
+  folio_number: string;
   room_id: string;
   room_number: string;
   guest_name: string;

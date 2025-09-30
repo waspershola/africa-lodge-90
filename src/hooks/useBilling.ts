@@ -173,6 +173,47 @@ export function useBilling() {
     }
   };
 
+  // Phase 2: Scoped folio balance query
+  const getFolioBalance = async (folioId: string, tenantId: string): Promise<FolioBalance | null> => {
+    try {
+      // Validate tenant matches current user's tenant
+      if (tenantId !== tenant?.tenant_id) {
+        throw new Error('Invalid folio reference - tenant mismatch');
+      }
+
+      const { data, error } = await supabase
+        .rpc('get_folio_balances', {
+          p_tenant_id: tenantId,
+          p_status: 'all',
+          p_folio_id: folioId
+        });
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        return null;
+      }
+
+      // Map the response to FolioBalance format
+      const balance: FolioBalance = {
+        folio_id: data[0].folio_id,
+        folio_number: data[0].folio_number,
+        reservation_id: data[0].reservation_id,
+        guest_name: data[0].guest_name,
+        room_number: data[0].room_number,
+        total_charges: data[0].total_charges,
+        total_payments: data[0].total_payments,
+        balance: data[0].balance,
+        status: data[0].balance > 0 ? 'outstanding' : 'paid'
+      };
+
+      return balance;
+    } catch (err) {
+      console.error('Error loading folio balance:', err);
+      throw err;
+    }
+  };
+
   const loadPayments = async () => {
     if (!tenant?.tenant_id) return;
 
@@ -267,6 +308,7 @@ export function useBilling() {
     loading,
     error,
     createPayment,
+    getFolioBalance,
     refresh
   };
 }

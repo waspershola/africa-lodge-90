@@ -115,13 +115,13 @@ const FontManager = () => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <PaymentMethodsProvider>
-      <TooltipProvider>
-        <MultiTenantAuthProvider>
-        <FontManager />
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
+    <MultiTenantAuthProvider>
+      <PaymentMethodsProvider>
+        <TooltipProvider>
+          <FontManager />
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<AuthPage />} />
@@ -318,9 +318,9 @@ const App = () => (
         </Routes>
         <SecurityDebugPanel />
         </BrowserRouter>
-      </MultiTenantAuthProvider>
-    </TooltipProvider>
-    </PaymentMethodsProvider>
+        </TooltipProvider>
+      </PaymentMethodsProvider>
+    </MultiTenantAuthProvider>
   </QueryClientProvider>
 );
 

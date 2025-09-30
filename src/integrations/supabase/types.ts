@@ -5466,7 +5466,7 @@ export type Database = {
       }
       atomic_checkin_guest: {
         Args: {
-          p_guest_payload: Json
+          p_guest_payload?: Json
           p_initial_charges?: Json
           p_reservation_id: string
           p_room_id: string

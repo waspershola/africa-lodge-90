@@ -18,10 +18,12 @@ interface PaymentDialogProps {
   onOpenChange: (open: boolean) => void;
   pendingAmount?: number;
   onPaymentSuccess?: (amount: number, method: string) => void;
-  // Scoped payment context
+  // Scoped payment context with full security validation
   folioId?: string;
+  guestId?: string;
   guestName?: string;
   roomNumber?: string;
+  tenantId?: string;
   triggerSource?: 'checkout' | 'frontdesk' | 'accounting';
 }
 
@@ -31,8 +33,10 @@ export const PaymentDialog = ({
   pendingAmount, 
   onPaymentSuccess,
   folioId,
+  guestId,
   guestName,
   roomNumber,
+  tenantId,
   triggerSource = 'frontdesk'
 }: PaymentDialogProps) => {
   const { folioBalances, createPayment, getFolioBalance } = useBilling();
@@ -43,25 +47,40 @@ export const PaymentDialog = ({
   const [amount, setAmount] = useState<string>('');
   const [scopedFolio, setScopedFolio] = useState<any>(null);
   const [loadingScoped, setLoadingScoped] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
-  // Phase 2 & 4: Load scoped folio if folioId provided
+  // Phase 2 & 4: Load scoped folio with enhanced security validation
   useEffect(() => {
     const loadScopedFolio = async () => {
       if (folioId && tenant?.tenant_id && open) {
         setLoadingScoped(true);
+        setValidationError(null);
+        
         try {
+          // Phase 4: Runtime validation for tenant match
+          if (tenantId && tenantId !== tenant.tenant_id) {
+            setValidationError('Invalid folio reference - tenant mismatch');
+            toast.error('Security Error: Invalid folio access attempt');
+            onOpenChange(false);
+            return;
+          }
+
           const folio = await getFolioBalance(folioId, tenant.tenant_id);
+          
           if (folio) {
             setScopedFolio(folio);
             setSelectedPayment(folio);
             setAmount(folio.balance.toString());
           } else {
-            toast.error('Folio not found');
+            setValidationError('Folio not found');
+            toast.error('Folio not found or access denied');
             onOpenChange(false);
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('Error loading scoped folio:', error);
-          toast.error('Failed to load folio details');
+          const errorMessage = error.message || 'Failed to load folio details';
+          setValidationError(errorMessage);
+          toast.error(errorMessage);
           onOpenChange(false);
         } finally {
           setLoadingScoped(false);
@@ -70,7 +89,7 @@ export const PaymentDialog = ({
     };
 
     loadScopedFolio();
-  }, [folioId, tenant?.tenant_id, open, getFolioBalance]);
+  }, [folioId, tenant?.tenant_id, tenantId, open, getFolioBalance, onOpenChange]);
 
   // Phase 4: Determine which folios to show (scoped or all)
   const pendingPayments = folioId 

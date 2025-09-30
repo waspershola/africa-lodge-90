@@ -7,8 +7,7 @@ import {
   CreditCard,
   Search,
   MoreHorizontal,
-  Filter,
-  HelpCircle
+  Filter
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -19,11 +18,9 @@ import {
 
 interface ActionBarProps {
   onAction: (action: string) => void;
-  showKeyboardHelp: boolean;
-  onToggleKeyboardHelp: () => void;
 }
 
-export const ActionBar = ({ onAction, showKeyboardHelp, onToggleKeyboardHelp }: ActionBarProps) => {
+export const ActionBar = ({ onAction }: ActionBarProps) => {
   return (
     <div className="bg-card border rounded-lg p-4">
       <div className="flex flex-wrap items-center gap-3">
@@ -38,19 +35,16 @@ export const ActionBar = ({ onAction, showKeyboardHelp, onToggleKeyboardHelp }: 
         <Button variant="outline" onClick={() => onAction('assign-room')}>
           <UserPlus className="h-4 w-4 mr-2" />
           Assign Room
-          <kbd className="ml-2 text-xs bg-muted px-1 rounded">A</kbd>
         </Button>
         
         <Button variant="outline" onClick={() => onAction('check-in')}>
           <LogIn className="h-4 w-4 mr-2" />
           Check-In
-          <kbd className="ml-2 text-xs bg-muted px-1 rounded">I</kbd>
         </Button>
         
         <Button variant="outline" onClick={() => onAction('check-out')}>
           <LogOut className="h-4 w-4 mr-2" />
           Check-Out
-          <kbd className="ml-2 text-xs bg-muted px-1 rounded">O</kbd>
         </Button>
         
         <Button variant="outline" onClick={() => onAction('collect-payment')}>
@@ -88,17 +82,6 @@ export const ActionBar = ({ onAction, showKeyboardHelp, onToggleKeyboardHelp }: 
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-
-        <div className="ml-auto">
-          <Button 
-            variant={showKeyboardHelp ? "default" : "ghost"}
-            size="sm"
-            onClick={onToggleKeyboardHelp}
-          >
-            <HelpCircle className="h-4 w-4 mr-2" />
-            Shortcuts
-          </Button>
-        </div>
       </div>
     </div>
   );

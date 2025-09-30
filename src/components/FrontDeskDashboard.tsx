@@ -37,7 +37,7 @@ import { ActionQueue } from "./frontdesk/ActionQueue";
 import { ActionBar } from "./frontdesk/ActionBar";
 import { GuestQueuePanel } from "./frontdesk/GuestQueuePanel";
 import { RoomLegend } from "./frontdesk/RoomLegend";
-import { KeyboardShortcutsHelper } from "./frontdesk/KeyboardShortcutsHelper";
+
 import { QuickFilters } from "./frontdesk/QuickFilters";
 import { NotificationBanner } from "./frontdesk/NotificationBanner";
 import { NewReservationDialog } from "./frontdesk/NewReservationDialog";
@@ -118,7 +118,6 @@ const FrontDeskDashboard = () => {
   const [activeFilter, setActiveFilter] = useState<string | undefined>(undefined);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [showActionQueue, setShowActionQueue] = useState(false);
-  const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const [activeAlerts, setActiveAlerts] = useState([
     { id: '1', type: 'payment' as const, message: 'Pending payments require collection', count: 3, priority: 'high' as const },
     { id: '2', type: 'id' as const, message: 'Missing guest ID documentation', count: 2, priority: 'high' as const },
@@ -154,159 +153,6 @@ const FrontDeskDashboard = () => {
     };
   }, []);
 
-  // Enhanced keyboard shortcuts with comprehensive input detection
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Use requestAnimationFrame to allow DOM updates before checking focus state
-      requestAnimationFrame(() => {
-        const target = e.target as Element;
-        const activeElement = document.activeElement;
-        
-        // Enhanced comprehensive input detection to prevent shortcut conflicts
-        const isInputActive = 
-          // Standard input elements
-          target instanceof HTMLInputElement ||
-          target instanceof HTMLTextAreaElement ||
-          target instanceof HTMLSelectElement ||
-          activeElement instanceof HTMLInputElement ||
-          activeElement instanceof HTMLTextAreaElement ||
-          activeElement instanceof HTMLSelectElement ||
-          // Content editable elements
-          (target instanceof HTMLElement && target.isContentEditable) ||
-          (activeElement instanceof HTMLElement && activeElement.isContentEditable) ||
-          target.getAttribute('contenteditable') === 'true' ||
-          activeElement?.getAttribute('contenteditable') === 'true' ||
-          // Command/Search input components - ENHANCED DETECTION
-          target.closest('[cmdk-input]') !== null ||
-          target.closest('[data-cmdk-input]') !== null ||
-          target.closest('input[cmdk-input]') !== null ||
-          target.matches('[cmdk-input]') ||
-          target.matches('[data-cmdk-input]') ||
-          activeElement?.closest('[cmdk-input]') !== null ||
-          activeElement?.closest('[data-cmdk-input]') !== null ||
-          activeElement?.matches('[cmdk-input]') ||
-          activeElement?.matches('[data-cmdk-input]') ||
-          // Search-specific input types
-          target.matches('input[type="search"]') ||
-          target.matches('input[type="text"]') ||
-          activeElement?.matches('input[type="search"]') ||
-          activeElement?.matches('input[type="text"]') ||
-          // Role-based detection
-          target.getAttribute('role') === 'textbox' ||
-          target.getAttribute('role') === 'combobox' ||
-          target.getAttribute('role') === 'searchbox' ||
-          activeElement?.getAttribute('role') === 'textbox' ||
-          activeElement?.getAttribute('role') === 'combobox' ||
-          activeElement?.getAttribute('role') === 'searchbox' ||
-          // Form elements
-          target.closest('form') !== null ||
-          // Custom data attributes
-          target.hasAttribute('data-input') ||
-          activeElement?.hasAttribute('data-input') ||
-          // Check if inside any Popover or Dialog content that might contain inputs
-          target.closest('[role="dialog"]') !== null ||
-          target.closest('[data-radix-popper-content-wrapper]') !== null ||
-          activeElement?.closest('[role="dialog"]') !== null ||
-          activeElement?.closest('[data-radix-popper-content-wrapper]') !== null;
-
-        // Check if any modal/dialog is open
-        const isModalOpen = showNewReservation || showSearch || showPayment || showQuickCapture || showCheckout;
-        
-        // Enhanced check for any open dialog elements in the DOM
-        const openDialogs = document.querySelectorAll(
-          '[role="dialog"][data-state="open"], ' +
-          '.dialog-content:not([style*="display: none"]), ' +
-          '[data-state="open"][role="dialog"]'
-        );
-        const hasOpenDialog = openDialogs.length > 0;
-        
-        // Additional check: if any input inside an open dialog has focus
-        const inputInDialog = Array.from(openDialogs).some(dialog => 
-          dialog.contains(activeElement) && 
-          (activeElement instanceof HTMLInputElement || 
-           activeElement instanceof HTMLTextAreaElement ||
-           activeElement instanceof HTMLSelectElement)
-        );
-        
-        // Don't trigger shortcuts if input is active, modal is open, or input in dialog is focused
-        if (isInputActive || isModalOpen || hasOpenDialog || inputInDialog) return;
-      });
-      
-      // Immediate check before async processing - prevent default early for input fields
-      const target = e.target as Element;
-      const activeElement = document.activeElement;
-      
-      const quickInputCheck = 
-        target instanceof HTMLInputElement ||
-        target instanceof HTMLTextAreaElement ||
-        target instanceof HTMLSelectElement ||
-        activeElement instanceof HTMLInputElement ||
-        activeElement instanceof HTMLTextAreaElement ||
-        activeElement instanceof HTMLSelectElement ||
-        target.closest('[cmdk-input]') !== null ||
-        target.closest('[data-cmdk-input]') !== null ||
-        target.closest('form') !== null ||
-        target.closest('[role="dialog"]') !== null;
-        
-      if (quickInputCheck) return;
-      
-      // Only trigger shortcuts for specific keys with proper event handling
-      switch (e.key.toLowerCase()) {
-        case 'a':
-          e.preventDefault();
-          e.stopPropagation();
-          setCaptureAction('assign-room');
-          setShowQuickCapture(true);
-          break;
-        case 'i':
-          e.preventDefault();
-          e.stopPropagation();
-          setCaptureAction('check-in');
-          setShowQuickCapture(true);
-          break;
-        case 'o':
-          e.preventDefault();
-          e.stopPropagation();
-          setCaptureAction('check-out');
-          setShowQuickCapture(true);
-          break;
-        case 'm':
-          e.preventDefault();
-          e.stopPropagation();
-          if (selectedRoom && selectedRoom.status === 'oos') {
-            // Handle mark available action
-            console.log('Mark room as available:', selectedRoom.number);
-          }
-          break;
-        case 'escape':
-          // Allow escape to deselect room if no modal is open
-          if (selectedRoom) {
-            e.preventDefault();
-            e.stopPropagation();
-            setSelectedRoom(null);
-          }
-          break;
-        case '/':
-          // Focus search if not in input
-          e.preventDefault();
-          e.stopPropagation();
-          const searchInput = document.querySelector('input[placeholder*="Search"]') as HTMLInputElement;
-          if (searchInput) {
-            searchInput.focus();
-          }
-          break;
-        case '?':
-          // Toggle keyboard help
-          e.preventDefault();
-          e.stopPropagation();
-          setShowKeyboardHelp(!showKeyboardHelp);
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showNewReservation, showSearch, showPayment, showQuickCapture, showCheckout, selectedRoom, showKeyboardHelp]);
 
   const handleCardClick = (filterKey: string) => {
     setActiveFilter(activeFilter === filterKey ? undefined : filterKey);
@@ -583,8 +429,6 @@ const FrontDeskDashboard = () => {
         {/* Action Bar - Under Quick KPIs */}
         <ActionBar 
           onAction={handleAction}
-          showKeyboardHelp={showKeyboardHelp}
-          onToggleKeyboardHelp={() => setShowKeyboardHelp(!showKeyboardHelp)}
         />
 
         {/* Panel Navigation */}
@@ -682,11 +526,6 @@ const FrontDeskDashboard = () => {
         )}
       </div>
 
-      {/* Keyboard Shortcuts Helper */}
-      <KeyboardShortcutsHelper 
-        isVisible={showKeyboardHelp}
-        onClose={() => setShowKeyboardHelp(false)}
-      />
 
       {/* Action Dialogs */}
       <NewReservationDialog 

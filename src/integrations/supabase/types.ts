@@ -225,6 +225,42 @@ export type Database = {
         }
         Relationships: []
       }
+      background_job_logs: {
+        Row: {
+          completed_at: string | null
+          error_message: string | null
+          execution_time_ms: number | null
+          id: string
+          job_name: string
+          metadata: Json | null
+          rows_affected: number | null
+          started_at: string
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          error_message?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          job_name: string
+          metadata?: Json | null
+          rows_affected?: number | null
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          completed_at?: string | null
+          error_message?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          job_name?: string
+          metadata?: Json | null
+          rows_affected?: number | null
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       booking_verification: {
         Row: {
           attempts_count: number | null
@@ -5888,6 +5924,10 @@ export type Database = {
         Args: { p_reservation_id: string }
         Returns: string
       }
+      is_background_jobs_enabled: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       is_super_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -5903,6 +5943,14 @@ export type Database = {
       log_security_event: {
         Args: { event_description: string; event_type: string; metadata?: Json }
         Returns: undefined
+      }
+      process_auto_checkouts: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      process_trial_expiry: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       provision_sms_credits: {
         Args: {
@@ -5921,6 +5969,10 @@ export type Database = {
       refresh_revenue_views: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      refresh_revenue_views_safe: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       seed_tenant_sms_templates: {
         Args: { p_tenant_id: string }

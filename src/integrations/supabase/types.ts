@@ -5555,6 +5555,21 @@ export type Database = {
         Args: { tenant_uuid: string }
         Returns: boolean
       }
+      cancel_reservation_atomic: {
+        Args: {
+          p_cancelled_by: string
+          p_notes?: string
+          p_reason?: string
+          p_refund_amount?: number
+          p_reservation_id: string
+          p_tenant_id: string
+        }
+        Returns: {
+          message: string
+          reservation_id: string
+          success: boolean
+        }[]
+      }
       check_reservation_conflict: {
         Args: {
           p_check_in_date: string

@@ -47,10 +47,53 @@ export const ReleaseReservationDialog = ({
     setIsProcessing(true);
 
     try {
-      // Simulate reservation release process
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // REAL DB OPERATION: Call atomic cancel_reservation_atomic RPC
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('Not authenticated');
+      }
 
-      // Log shift action
+      const tenantId = user.user_metadata?.tenant_id;
+      if (!tenantId) {
+        throw new Error('Tenant ID not found');
+      }
+
+      // Get the current reservation for this room
+      const currentReservation = (room as any).current_reservation;
+      if (!currentReservation?.id) {
+        throw new Error('No active reservation found for this room');
+      }
+
+      // Call the atomic cancel function
+      const { data, error } = await supabase.rpc('cancel_reservation_atomic', {
+        p_tenant_id: tenantId,
+        p_reservation_id: currentReservation.id,
+        p_cancelled_by: user.id,
+        p_reason: releaseReason || null,
+        p_refund_amount: refundAmount || 0,
+        p_notes: notes || null,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      // RPC returns array of rows for RETURNS TABLE
+      const result = Array.isArray(data) ? data[0] : data;
+      
+      if (!result || result.success !== true) {
+        // Show returned error message (e.g., already cancelled, not found)
+        toast({
+          title: "Cannot Release Room",
+          description: result?.message || 'Failed to cancel reservation',
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Log shift action after successful cancellation
       await logShiftAction({
         action: 'Release Reservation',
         roomNumber: room.number || room.room_number,
@@ -60,7 +103,8 @@ export const ReleaseReservationDialog = ({
           release_reason: releaseReason,
           refund_amount: refundAmount,
           notes: notes,
-          original_status: room.status
+          original_status: room.status,
+          reservation_id: currentReservation.id
         }
       });
 
@@ -87,9 +131,10 @@ export const ReleaseReservationDialog = ({
       setRefundAmount(0);
       setNotes("");
     } catch (error) {
+      console.error('Error releasing room:', error);
       toast({
         title: "Release Failed",
-        description: "Failed to release reservation. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to release reservation. Please try again.",
         variant: "destructive",
       });
     } finally {

@@ -88,7 +88,7 @@ export function useUpsertFeatureFlag() {
       // Attempt to upsert the feature flag
       const { data, error } = await supabase
         .from('feature_flags')
-        .upsert(flag)
+        .upsert(flag, { onConflict: 'flag_name' })
         .select()
         .single();
 

@@ -41,7 +41,6 @@ import QRAnalytics from "./pages/owner/QRAnalytics";
 import QRExportPage from "./components/QRExportPage";
 import ReportsInterface from "./components/ReportsInterface";
 import MonitoringPage from "./pages/owner/Monitoring";
-import FeatureFlagsPage from "./pages/owner/FeatureFlags";
 import ManagerLayout from "./components/layout/ManagerLayout";
 import ManagerDashboard from "./pages/manager/Dashboard";
 import ManagerOperations from "./pages/manager/Operations";
@@ -102,6 +101,7 @@ import RealtimeMonitoring from "./pages/sa/RealtimeMonitoring";
 import EmailProviders from "./pages/sa/EmailProviders";
 import AddonCatalog from "./pages/sa/AddonCatalog";
 import SMSManagement from "./pages/superadmin/SMSManagement";
+import FeatureFlagsPage from "./pages/sa/FeatureFlags";
 
 import SupportAdminLayout from "./components/layout/SupportAdminLayout";
 import SupportStaffLayout from "./components/layout/SupportStaffLayout";
@@ -189,7 +189,6 @@ const App = () => (
             <Route path="sms" element={<SMSCenter />} />
             <Route path="profile" element={<OwnerProfileSettings />} />
             <Route path="monitoring" element={<MonitoringPage />} />
-            <Route path="feature-flags" element={<FeatureFlagsPage />} />
           </Route>
           <Route path="/qr-export" element={<QRExportPage />} />
           
@@ -322,6 +321,7 @@ const App = () => (
             <Route path="metrics" element={<Metrics />} />
             <Route path="backups" element={<Backups />} />
             <Route path="email-providers" element={<EmailProviders />} />
+            <Route path="feature-flags" element={<FeatureFlagsPage />} />
             <Route path="emergency-recovery" element={<EmergencyRecoveryPage />} />
           </Route>
           

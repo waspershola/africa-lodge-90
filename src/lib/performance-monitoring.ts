@@ -24,15 +24,12 @@ export async function trackPerformance<T>(
   metadata?: Record<string, any>
 ): Promise<T> {
   const startTime = performance.now();
-  const startMemory = performance.memory?.usedJSHeapSize;
 
   console.log(`[Performance] Starting: ${operation}`);
 
   try {
     const result = await fn();
     const duration = performance.now() - startTime;
-    const endMemory = performance.memory?.usedJSHeapSize;
-    const memoryDelta = endMemory && startMemory ? endMemory - startMemory : undefined;
 
     // Log metric
     logMetric({
@@ -40,7 +37,6 @@ export async function trackPerformance<T>(
       duration,
       metadata: {
         ...metadata,
-        memoryDelta,
         success: true,
       },
     });

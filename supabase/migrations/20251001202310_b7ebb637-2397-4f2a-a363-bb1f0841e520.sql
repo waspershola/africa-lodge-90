@@ -1,0 +1,2 @@
+-- Phase 6: Add comment to document tenants table structure
+COMMENT ON TABLE public.tenants IS 'Tenants table - PRIMARY KEY is tenant_id (not id). Always reference tenant_id when querying this table.';

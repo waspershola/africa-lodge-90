@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useFontManager } from "@/hooks/useFontManager";
+import { useSentry } from "@/hooks/useSentry";
 import { PaymentMethodsProvider } from "@/contexts/PaymentMethodsContext";
 import { SecurityDebugPanel } from "@/components/debug/SecurityDebugPanel";
 import Index from "./pages/Index";
@@ -39,6 +40,7 @@ import { OwnerProfileSettings } from "./components/owner/profile/OwnerProfileSet
 import QRAnalytics from "./pages/owner/QRAnalytics";
 import QRExportPage from "./components/QRExportPage";
 import ReportsInterface from "./components/ReportsInterface";
+import MonitoringPage from "./pages/owner/Monitoring";
 import ManagerLayout from "./components/layout/ManagerLayout";
 import ManagerDashboard from "./pages/manager/Dashboard";
 import ManagerOperations from "./pages/manager/Operations";
@@ -113,12 +115,19 @@ const FontManager = () => {
   return null;
 };
 
+// Phase 6: Initialize Sentry monitoring
+const SentryMonitor = () => {
+  useSentry();
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <MultiTenantAuthProvider>
       <PaymentMethodsProvider>
         <TooltipProvider>
           <FontManager />
+          <SentryMonitor />
           <Toaster />
           <Sonner />
           <BrowserRouter>
@@ -178,6 +187,7 @@ const App = () => (
             <Route path="housekeeping" element={<Housekeeping />} />
             <Route path="sms" element={<SMSCenter />} />
             <Route path="profile" element={<OwnerProfileSettings />} />
+            <Route path="monitoring" element={<MonitoringPage />} />
           </Route>
           <Route path="/qr-export" element={<QRExportPage />} />
           

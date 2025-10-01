@@ -58,106 +58,11 @@ export interface Reservation {
   guests?: any;
 }
 
-/**
- * Hook to fetch rooms with pagination support
- * Supports feature flag: ff/paginated_reservations
- */
-export const usePaginatedRooms = (limit: number = 100, offset: number = 0) => {
-  const queryClient = useQueryClient();
-
-  // Set up real-time subscriptions
-  useEffect(() => {
-    const channel = supabase
-      .channel('room-folios-realtime-paginated')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'folios' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['rooms'] });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['rooms'] });
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [queryClient]);
-
-  return useQuery({
-    queryKey: ['rooms', 'paginated', limit, offset],
-    queryFn: async () => {
-      const { data: allRoomsData, error: allRoomsError, count } = await supabase
-        .from('rooms')
-        .select(`
-          *,
-          room_type:room_type_id (*),
-          reservations!left(
-            id, guest_name, guest_email, guest_phone,
-            check_in_date, check_out_date, status, total_amount,
-            reservation_number,
-            guests:guest_id (first_name, last_name, email, phone, vip_status)
-          )
-        `, { count: 'exact' })
-        .order('room_number')
-        .range(offset, offset + limit - 1);
-
-      if (allRoomsError) throw allRoomsError;
-
-      // Get folio balances for occupied rooms
-      const { data: folioData, error: folioError } = await supabase
-        .from('folios')
-        .select('id, balance, total_charges, total_payments, tax_amount, status, reservations!inner(room_id)')
-        .eq('status', 'open')
-        .limit(1000);
-
-      if (folioError && folioError.code !== 'PGRST116') throw folioError;
-
-      // Create folio map
-      const folioMap = new Map();
-      folioData?.forEach(folio => {
-        if (folio.reservations?.room_id) {
-          folioMap.set(folio.reservations.room_id, {
-            balance: folio.balance || 0,
-            isPaid: (folio.balance || 0) <= 0,
-            total_charges: folio.total_charges || 0,
-            total_payments: folio.total_payments || 0,
-            tax_amount: folio.tax_amount || 0
-          });
-        }
-      });
-
-      const processedRooms = allRoomsData?.map(room => {
-        const currentReservation = room.reservations?.find(
-          res => res.status === 'checked_in' || res.status === 'confirmed'
-        );
-        
-        return {
-          ...room,
-          current_reservation: currentReservation,
-          folio: folioMap.get(room.id) || null,
-        };
-      }) || [];
-
-      const { data: roomTypesData, error: roomTypesError } = await supabase
-        .from('room_types')
-        .select('*')
-        .order('name');
-
-      if (roomTypesError) throw roomTypesError;
-
-      return {
-        rooms: processedRooms,
-        roomTypes: roomTypesData || [],
-        count: count || 0,
-        hasMore: (count || 0) > offset + limit,
-      };
-    },
-  });
-};
 
 // Main hook for rooms data using React Query with real reservation integration
-export const useRooms = (limit: number = 100, offset: number = 0) => {
+// Maintains backward compatibility - returns same structure as before
+export const useRooms = () => {
   const queryClient = useQueryClient();
-  const { data: paginationEnabled } = useFeatureFlag('ff/paginated_reservations');
 
   // Set up real-time subscriptions for folio and payment updates
   useEffect(() => {
@@ -193,10 +98,10 @@ export const useRooms = (limit: number = 100, offset: number = 0) => {
   }, [queryClient]);
 
   return useQuery({
-    queryKey: ['rooms', limit, offset, paginationEnabled],
+    queryKey: ['rooms'],
     queryFn: async () => {
       // Fetch rooms with room types and current reservations
-      let allRoomsQuery = supabase
+      const { data: allRoomsData, error: allRoomsError } = await supabase
         .from('rooms')
         .select(`
           *,
@@ -219,15 +124,8 @@ export const useRooms = (limit: number = 100, offset: number = 0) => {
               vip_status
             )
           )
-        `, { count: 'exact' })
+        `)
         .order('room_number');
-
-      // Apply pagination if feature flag is enabled
-      if (paginationEnabled) {
-        allRoomsQuery = allRoomsQuery.range(offset, offset + limit - 1);
-      }
-
-      const { data: allRoomsData, error: allRoomsError, count } = await allRoomsQuery;
 
       if (allRoomsError) throw allRoomsError;
 
@@ -285,9 +183,109 @@ export const useRooms = (limit: number = 100, offset: number = 0) => {
 
       return {
         rooms: processedRooms,
+        roomTypes: roomTypesData || []
+      };
+    },
+  });
+};
+
+/**
+ * Hook for paginated rooms with feature flag support
+ * Use this when you need pagination controls
+ */
+export const usePaginatedRooms = (limit: number = 100, offset: number = 0) => {
+  const queryClient = useQueryClient();
+  const { data: paginationEnabled } = useFeatureFlag('ff/paginated_reservations');
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('room-folios-realtime-paginated')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'folios' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
+  return useQuery({
+    queryKey: ['rooms', 'paginated', limit, offset, paginationEnabled],
+    queryFn: async () => {
+      let query = supabase
+        .from('rooms')
+        .select(`
+          *,
+          room_type:room_type_id (*),
+          reservations!left(
+            id, guest_name, guest_email, guest_phone,
+            check_in_date, check_out_date, status, total_amount,
+            reservation_number,
+            guests:guest_id (first_name, last_name, email, phone, vip_status)
+          )
+        `, { count: 'exact' })
+        .order('room_number');
+
+      // Apply pagination if feature flag is enabled
+      if (paginationEnabled) {
+        query = query.range(offset, offset + limit - 1);
+      }
+
+      const { data: allRoomsData, error: allRoomsError, count } = await query;
+
+      if (allRoomsError) throw allRoomsError;
+
+      // Get folio balances for occupied rooms
+      const { data: folioData, error: folioError } = await supabase
+        .from('folios')
+        .select('id, balance, total_charges, total_payments, tax_amount, status, reservations!inner(room_id)')
+        .eq('status', 'open')
+        .limit(1000);
+
+      if (folioError && folioError.code !== 'PGRST116') throw folioError;
+
+      // Create folio map
+      const folioMap = new Map();
+      folioData?.forEach(folio => {
+        if (folio.reservations?.room_id) {
+          folioMap.set(folio.reservations.room_id, {
+            balance: folio.balance || 0,
+            isPaid: (folio.balance || 0) <= 0,
+            total_charges: folio.total_charges || 0,
+            total_payments: folio.total_payments || 0,
+            tax_amount: folio.tax_amount || 0
+          });
+        }
+      });
+
+      const processedRooms = allRoomsData?.map(room => {
+        const currentReservation = room.reservations?.find(
+          res => res.status === 'checked_in' || res.status === 'confirmed'
+        );
+        
+        return {
+          ...room,
+          current_reservation: currentReservation,
+          folio: folioMap.get(room.id) || null,
+        };
+      }) || [];
+
+      const { data: roomTypesData, error: roomTypesError } = await supabase
+        .from('room_types')
+        .select('*')
+        .order('name');
+
+      if (roomTypesError) throw roomTypesError;
+
+      return {
+        rooms: processedRooms,
         roomTypes: roomTypesData || [],
         count: count || 0,
-        hasMore: paginationEnabled ? (count || 0) > offset + limit : false
+        hasMore: paginationEnabled ? (count || 0) > offset + limit : false,
       };
     },
   });

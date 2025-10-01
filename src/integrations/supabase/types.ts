@@ -5526,6 +5526,15 @@ export type Database = {
           success: boolean
         }[]
       }
+      atomic_checkout_v2: {
+        Args: { p_reservation_id: string; p_tenant_id: string }
+        Returns: {
+          folio_id: string
+          message: string
+          room_id: string
+          success: boolean
+        }[]
+      }
       auto_expire_reservations: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -5545,6 +5554,20 @@ export type Database = {
       can_access_tenant: {
         Args: { tenant_uuid: string }
         Returns: boolean
+      }
+      check_reservation_conflict: {
+        Args: {
+          p_check_in_date: string
+          p_check_out_date: string
+          p_exclude_reservation_id?: string
+          p_room_id: string
+          p_tenant_id: string
+        }
+        Returns: {
+          conflict_details: string
+          conflicting_reservation_id: string
+          has_conflict: boolean
+        }[]
       }
       check_room_availability: {
         Args: {
@@ -5604,6 +5627,18 @@ export type Database = {
           debug_message: string
           user_exists: boolean
           user_role: string
+        }[]
+      }
+      detect_overstays: {
+        Args: { p_grace_hours?: number; p_tenant_id: string }
+        Returns: {
+          expected_checkout: string
+          folio_balance: number
+          guest_name: string
+          hours_overdue: number
+          reservation_id: string
+          room_id: string
+          severity: string
         }[]
       }
       fn_adr: {
@@ -6001,6 +6036,10 @@ export type Database = {
       sync_global_template_to_tenants: {
         Args: { p_global_template_id: string }
         Returns: number
+      }
+      try_advisory_lock_with_timeout: {
+        Args: { lock_key: number; timeout_seconds?: number }
+        Returns: boolean
       }
       update_room_type_counts: {
         Args: { p_room_type_id: string; p_tenant_id: string }

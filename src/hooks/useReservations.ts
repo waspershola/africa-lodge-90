@@ -23,6 +23,35 @@ export interface UpdateReservationData extends Partial<CreateReservationData> {
   notes?: string;
 }
 
+/**
+ * Hook to fetch reservations with pagination support
+ * Supports feature flag: ff/paginated_reservations
+ */
+export const usePaginatedReservations = (limit: number = 50, offset: number = 0) => {
+  return useQuery({
+    queryKey: ['reservations', 'paginated', limit, offset],
+    queryFn: async () => {
+      const { data, error, count } = await supabase
+        .from('reservations')
+        .select(`
+          *,
+          rooms:room_id (room_number, room_types:room_type_id (name)),
+          guests:guest_id (first_name, last_name, email, phone, vip_status)
+        `, { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (error) throw new Error(error.message);
+      
+      return {
+        reservations: data || [],
+        count: count || 0,
+        hasMore: (count || 0) > offset + limit,
+      };
+    },
+  });
+};
+
 // Hook to create a new reservation
 export const useCreateReservation = () => {
   const queryClient = useQueryClient();

@@ -227,11 +227,11 @@ WHERE flag_name = 'ff/sentry_enabled';
 
 ## Known Issues & Notes
 
-### "column t.id does not exist" Error
-- **Status:** Under investigation
-- **Impact:** Low - doesn't affect core functionality
-- **Location:** Likely in legacy database function or RLS policy
-- **Action:** Monitoring logs for pattern identification
+### "column t.id does not exist" Error - FIXED ✅
+- **Status:** RESOLVED
+- **Root Cause:** `calculate_reservation_overstay` function referenced `t.id` instead of `t.tenant_id`
+- **Fix Applied:** Function updated to use correct primary key column
+- **Impact:** Overstay detection now fully operational
 
 ### Security Linter Warnings
 - **Status:** Pre-existing, not related to Phase 6

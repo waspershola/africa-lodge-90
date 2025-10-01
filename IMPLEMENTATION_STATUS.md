@@ -212,11 +212,12 @@
 
 ## 🚨 Outstanding Issues
 
-### 1. PostgreSQL Error (Low Priority)
+### 1. PostgreSQL Error - FIXED ✅
 **Error:** `column t.id does not exist`
-**Status:** Under investigation
-**Impact:** Low - not affecting core functionality
-**Action:** Monitoring logs for pattern, likely legacy RLS policy or function
+**Status:** RESOLVED
+**Root Cause:** `calculate_reservation_overstay` function incorrectly referenced `t.id` instead of `t.tenant_id`
+**Fix:** Updated function to use correct primary key column `tenant_id`
+**Impact:** Overstay detection now works correctly
 
 ### 2. Security Linter Warnings (Pre-existing)
 **Warnings:** 5 warnings (not introduced by these changes)

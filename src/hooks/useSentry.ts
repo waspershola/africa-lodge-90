@@ -14,14 +14,18 @@ export function useSentry() {
 
   useEffect(() => {
     if (sentryEnabled) {
-      console.log('[Sentry Hook] Initializing Sentry...');
+      console.log('[Sentry Hook] Feature flag enabled, initializing Sentry...');
       
-      // Initialize Sentry (DSN should be added to secrets in production)
+      // Note: SENTRY_DSN is configured as a Supabase secret for edge functions
+      // For client-side, we use a public DSN that can be safely exposed
+      // The secret DSN is only used server-side to prevent abuse
       initSentry({
-        // dsn: 'YOUR_SENTRY_DSN_HERE', // Add via secrets in production
+        dsn: import.meta.env.VITE_SENTRY_DSN || undefined, // Public DSN for client-side
         enabled: true,
         environment: import.meta.env.MODE || 'development',
       });
+    } else {
+      console.log('[Sentry Hook] Feature flag disabled, Sentry not initialized');
     }
   }, [sentryEnabled]);
 

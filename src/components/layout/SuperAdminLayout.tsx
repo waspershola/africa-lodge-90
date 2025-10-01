@@ -15,7 +15,8 @@ import {
   Database,
   Video,
   Mail,
-  Package
+  Package,
+  CheckCircle2
 } from 'lucide-react';
 import UnifiedDashboardLayout from './UnifiedDashboardLayout';
 
@@ -37,6 +38,7 @@ const navigation = [
   { name: 'Email Providers', href: '/sa/email-providers', icon: Mail },
   { name: 'Advanced', href: '/sa/advanced', icon: Settings },
   { name: 'Feature Flags', href: '/sa/feature-flags', icon: Flag },
+  { name: 'Staging Verification', href: '/sa/staging-verification', icon: CheckCircle2 },
   { name: 'Audit Logs', href: '/sa/audit', icon: Activity },
   { name: 'Realtime Monitor', href: '/sa/realtime-monitoring', icon: Activity },
   { name: 'Metrics', href: '/sa/metrics', icon: BarChart3 },

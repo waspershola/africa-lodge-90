@@ -102,6 +102,7 @@ import EmailProviders from "./pages/sa/EmailProviders";
 import AddonCatalog from "./pages/sa/AddonCatalog";
 import SMSManagement from "./pages/superadmin/SMSManagement";
 import FeatureFlagsPage from "./pages/sa/FeatureFlags";
+import StagingVerification from "./pages/sa/StagingVerification";
 
 import SupportAdminLayout from "./components/layout/SupportAdminLayout";
 import SupportStaffLayout from "./components/layout/SupportStaffLayout";
@@ -322,6 +323,7 @@ const App = () => (
             <Route path="backups" element={<Backups />} />
             <Route path="email-providers" element={<EmailProviders />} />
             <Route path="feature-flags" element={<FeatureFlagsPage />} />
+            <Route path="staging-verification" element={<StagingVerification />} />
             <Route path="emergency-recovery" element={<EmergencyRecoveryPage />} />
           </Route>
           

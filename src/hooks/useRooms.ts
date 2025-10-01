@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useFeatureFlag } from './useFeatureFlags';
+import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 
 export interface Room {
   id: string;
@@ -153,8 +155,9 @@ export const usePaginatedRooms = (limit: number = 100, offset: number = 0) => {
 };
 
 // Main hook for rooms data using React Query with real reservation integration
-export const useRooms = () => {
+export const useRooms = (limit: number = 100, offset: number = 0) => {
   const queryClient = useQueryClient();
+  const { data: paginationEnabled } = useFeatureFlag('ff/paginated_reservations');
 
   // Set up real-time subscriptions for folio and payment updates
   useEffect(() => {
@@ -190,40 +193,10 @@ export const useRooms = () => {
   }, [queryClient]);
 
   return useQuery({
-    queryKey: ['rooms'],
+    queryKey: ['rooms', limit, offset, paginationEnabled],
     queryFn: async () => {
       // Fetch rooms with room types and current reservations
-      const { data: roomsData, error: roomsError } = await supabase
-        .from('rooms')
-        .select(`
-          *,
-          room_type:room_type_id (*),
-          current_reservation:reservations!inner(
-            id,
-            guest_name,
-            guest_email,
-            guest_phone,
-            check_in_date,
-            check_out_date,
-            status,
-            total_amount,
-            reservation_number,
-            guests:guest_id (
-              first_name,
-              last_name,
-              email,
-              phone,
-              vip_status
-            )
-          )
-        `)
-        .eq('reservations.status', 'checked_in')
-        .order('room_number');
-
-      if (roomsError && roomsError.code !== 'PGRST116') throw roomsError; // Ignore "no rows" error
-
-      // Also fetch rooms without current reservations
-      const { data: allRoomsData, error: allRoomsError } = await supabase
+      let allRoomsQuery = supabase
         .from('rooms')
         .select(`
           *,
@@ -246,8 +219,15 @@ export const useRooms = () => {
               vip_status
             )
           )
-        `)
+        `, { count: 'exact' })
         .order('room_number');
+
+      // Apply pagination if feature flag is enabled
+      if (paginationEnabled) {
+        allRoomsQuery = allRoomsQuery.range(offset, offset + limit - 1);
+      }
+
+      const { data: allRoomsData, error: allRoomsError, count } = await allRoomsQuery;
 
       if (allRoomsError) throw allRoomsError;
 
@@ -305,29 +285,52 @@ export const useRooms = () => {
 
       return {
         rooms: processedRooms,
-        roomTypes: roomTypesData || []
+        roomTypes: roomTypesData || [],
+        count: count || 0,
+        hasMore: paginationEnabled ? (count || 0) > offset + limit : false
       };
     },
   });
 };
 
-// Reservations query hook
-export const useReservations = () => {
+// Reservations query hook with pagination support
+export const useReservations = (limit: number = 100, offset: number = 0) => {
+  const { tenant } = useAuth();
+  const { data: paginationEnabled } = useFeatureFlag('ff/paginated_reservations');
+
   return useQuery({
-    queryKey: ['reservations'],
+    queryKey: ['reservations', tenant?.tenant_id, limit, offset, paginationEnabled],
     queryFn: async () => {
-      const { data, error } = await supabase
+      if (!tenant?.tenant_id) {
+        throw new Error('No tenant context available');
+      }
+
+      let query = supabase
         .from('reservations')
         .select(`
           *,
           rooms:room_id (room_number, room_types:room_type_id (name)),
           guests:guest_id (first_name, last_name, email, phone, vip_status)
-        `)
+        `, { count: 'exact' })
+        .eq('tenant_id', tenant.tenant_id)
         .order('created_at', { ascending: false });
 
+      // Apply pagination if feature flag is enabled
+      if (paginationEnabled) {
+        query = query.range(offset, offset + limit - 1);
+      }
+
+      const { data, error, count } = await query;
+
       if (error) throw new Error(error.message);
-      return data || [];
+      
+      return {
+        reservations: data || [],
+        count: count || 0,
+        hasMore: paginationEnabled ? (count || 0) > offset + limit : false
+      };
     },
+    enabled: !!tenant?.tenant_id,
   });
 };
 

@@ -30,7 +30,8 @@ export default function ReservationsPage() {
     setSelectedReservation(null);
   }, []);
 
-  const { data: reservations = [], isLoading: loading, error } = useReservations();
+  const { data: reservationsData, isLoading: loading, error } = useReservations();
+  const reservations = reservationsData?.reservations || [];
 
   // Calculate stats from API data
   const reservationStats = {

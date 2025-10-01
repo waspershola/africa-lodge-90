@@ -24,7 +24,8 @@ export default function InteractiveReservationCalendar({
 }: InteractiveReservationCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<Date>(currentDate);
   const { toast } = useToast();
-  const { data: reservations = [], isLoading: loading, error } = useReservations();
+  const { data: reservationsData, isLoading: loading, error } = useReservations();
+  const reservations = reservationsData?.reservations || [];
 
   // Generate calendar days
   const calendarDays = useMemo(() => {

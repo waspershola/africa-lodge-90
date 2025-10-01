@@ -78,18 +78,59 @@ export function useUpsertFeatureFlag() {
 
   return useMutation({
     mutationFn: async (flag: Partial<FeatureFlag> & { flag_name: string }) => {
+      // First verify auth context by checking session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('No active session. Please log in again.');
+      }
+
+      // Attempt to upsert the feature flag
       const { data, error } = await supabase
         .from('feature_flags')
         .upsert(flag)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // Enhanced error messaging for common issues
+        if (error.message.includes('permission denied')) {
+          console.error('Permission denied details:', {
+            user: session.user.email,
+            error: error.message,
+            hint: 'Verify Super Admin role and active session'
+          });
+          throw new Error('Permission denied. Super Admin access required.');
+        }
+        throw error;
+      }
+      
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feature-flags'] });
       queryClient.invalidateQueries({ queryKey: ['feature-flag'] });
     },
+  });
+}
+
+/**
+ * Hook to debug authentication context for feature flags
+ */
+export function useDebugAuthContext() {
+  return useQuery({
+    queryKey: ['debug-auth-context'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('debug_auth_state');
+      
+      if (error) {
+        console.error('Debug auth context error:', error);
+        return null;
+      }
+      
+      console.log('Auth Context Debug:', data);
+      return data;
+    },
+    enabled: false, // Only run when explicitly called
   });
 }

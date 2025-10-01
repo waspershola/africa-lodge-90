@@ -5629,6 +5629,16 @@ export type Database = {
           user_role: string
         }[]
       }
+      debug_auth_state: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          current_auth_uid: string
+          is_super_admin_result: boolean
+          session_info: string
+          user_exists: boolean
+          user_role: string
+        }[]
+      }
       detect_overstays: {
         Args: { p_grace_hours?: number; p_tenant_id: string }
         Returns: {
@@ -5640,6 +5650,15 @@ export type Database = {
           room_id: string
           severity: string
         }[]
+      }
+      ensure_feature_flag_exists: {
+        Args: {
+          p_config?: Json
+          p_description?: string
+          p_flag_name: string
+          p_is_enabled?: boolean
+        }
+        Returns: string
       }
       fn_adr: {
         Args: { end_date?: string; start_date?: string; tenant_uuid: string }
@@ -5968,6 +5987,10 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin_direct: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_super_admin_with_session: {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }

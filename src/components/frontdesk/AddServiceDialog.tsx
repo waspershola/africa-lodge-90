@@ -237,14 +237,80 @@ export const AddServiceDialog = ({
     setIsProcessing(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // REAL DB OPERATION: Add charges to folio
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('Not authenticated');
+      }
+
+      const tenantId = user.user_metadata?.tenant_id;
+      if (!tenantId) {
+        throw new Error('Tenant ID not found');
+      }
+
+      // Get the current reservation and folio for this room
+      const { data: reservation, error: resError } = await supabase
+        .from('reservations')
+        .select('id, status')
+        .eq('room_id', room.id)
+        .eq('tenant_id', tenantId)
+        .in('status', ['checked_in', 'confirmed'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (resError) throw resError;
+      if (!reservation) {
+        throw new Error('No active reservation found for this room');
+      }
+
+      // Get the folio for this reservation
+      const { data: folio, error: folioError } = await supabase
+        .from('folios')
+        .select('id')
+        .eq('reservation_id', reservation.id)
+        .eq('tenant_id', tenantId)
+        .eq('status', 'open')
+        .maybeSingle();
+
+      if (folioError) throw folioError;
+      if (!folio) {
+        throw new Error('No open folio found for this reservation');
+      }
+
+      // Insert all service charges
+      const charges = services.map(service => ({
+        tenant_id: tenantId,
+        folio_id: folio.id,
+        description: `${service.category} - ${service.service}${service.quantity > 1 ? ` (x${service.quantity})` : ''}`,
+        amount: service.totalPrice,
+        charge_type: 'service',
+        reference_type: 'add_service',
+        posted_by: user.id,
+      }));
+
+      const { error: chargesError } = await supabase
+        .from('folio_charges')
+        .insert(charges);
+
+      if (chargesError) throw chargesError;
+
+      // Get updated folio balance
+      const { data: updatedFolio, error: balanceError } = await supabase
+        .from('folios')
+        .select('balance, total_charges')
+        .eq('id', folio.id)
+        .single();
+
+      if (balanceError) throw balanceError;
       
       const updatedRoom = {
         ...room,
         folio: {
-          balance: (room.folio?.balance || 0) + totalAmount,
-          isPaid: formData.paymentMethod !== 'pay_later'
+          balance: updatedFolio.balance || 0,
+          isPaid: (updatedFolio.balance || 0) === 0
         }
       };
 

@@ -119,16 +119,61 @@ export const MaintenanceTaskDialog = ({
     setIsProcessing(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // REAL DB OPERATION: Create maintenance task or update room status
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('Not authenticated');
+      }
 
-      // Update room status based on action
+      const tenantId = user.user_metadata?.tenant_id;
+      if (!tenantId) {
+        throw new Error('Tenant ID not found');
+      }
+
       let newStatus = room.status;
-      if (action === 'set-oos') {
-        // Use 'oos' status which is now allowed by database constraint
-        newStatus = 'oos';
+
+      // Create work order/maintenance task if needed
+      if (action === 'create-workorder' || action === 'set-oos') {
+        const taskData = {
+          tenant_id: tenantId,
+          room_id: room.id,
+          task_type: formData.taskType || 'maintenance',
+          title: formData.taskType || 'Maintenance Task',
+          description: formData.description || (action === 'set-oos' ? formData.reason : ''),
+          priority: formData.priority,
+          assigned_to: formData.assignedTo || null,
+          status: 'pending',
+          created_by: user.id,
+        };
+
+        const { error: taskError } = await supabase
+          .from('housekeeping_tasks')
+          .insert([taskData]);
+
+        if (taskError) throw taskError;
+
+        // Set room status based on action
+        if (action === 'set-oos') {
+          newStatus = 'oos';
+        }
       } else if (action === 'mark-available') {
         newStatus = 'available';
+      }
+
+      // Update room status if it changed
+      if (newStatus !== room.status) {
+        const { error: roomError } = await supabase
+          .from('rooms')
+          .update({ 
+            status: newStatus,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', room.id)
+          .eq('tenant_id', tenantId);
+
+        if (roomError) throw roomError;
       }
       
       const updatedRoom = {

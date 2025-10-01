@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,48 +48,54 @@ export const PaymentDialog = ({
   const [scopedFolio, setScopedFolio] = useState<any>(null);
   const [loadingScoped, setLoadingScoped] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [isFetching, setIsFetching] = useState(false);
+
+  // Memoized function to load scoped folio - prevents dependency issues
+  const loadScopedFolio = useCallback(async () => {
+    if (!folioId || !tenant?.tenant_id || !open || isFetching) {
+      return;
+    }
+
+    setIsFetching(true);
+    setLoadingScoped(true);
+    setValidationError(null);
+    
+    try {
+      // Phase 4: Runtime validation for tenant match
+      if (tenantId && tenantId !== tenant.tenant_id) {
+        setValidationError('Invalid folio reference - tenant mismatch');
+        toast.error('Security Error: Invalid folio access attempt');
+        onOpenChange(false);
+        return;
+      }
+
+      const folio = await getFolioBalance(folioId, tenant.tenant_id);
+      
+      if (folio) {
+        setScopedFolio(folio);
+        setSelectedPayment(folio);
+        setAmount(folio.balance.toString());
+      } else {
+        setValidationError('Folio not found');
+        toast.error('Folio not found or access denied');
+        onOpenChange(false);
+      }
+    } catch (error: any) {
+      console.error('Error loading scoped folio:', error);
+      const errorMessage = error.message || 'Failed to load folio details';
+      setValidationError(errorMessage);
+      toast.error(errorMessage);
+      onOpenChange(false);
+    } finally {
+      setLoadingScoped(false);
+      setIsFetching(false);
+    }
+  }, [folioId, tenant?.tenant_id, tenantId, open, isFetching, getFolioBalance, onOpenChange]);
 
   // Phase 2 & 4: Load scoped folio with enhanced security validation
   useEffect(() => {
-    const loadScopedFolio = async () => {
-      if (folioId && tenant?.tenant_id && open) {
-        setLoadingScoped(true);
-        setValidationError(null);
-        
-        try {
-          // Phase 4: Runtime validation for tenant match
-          if (tenantId && tenantId !== tenant.tenant_id) {
-            setValidationError('Invalid folio reference - tenant mismatch');
-            toast.error('Security Error: Invalid folio access attempt');
-            onOpenChange(false);
-            return;
-          }
-
-          const folio = await getFolioBalance(folioId, tenant.tenant_id);
-          
-          if (folio) {
-            setScopedFolio(folio);
-            setSelectedPayment(folio);
-            setAmount(folio.balance.toString());
-          } else {
-            setValidationError('Folio not found');
-            toast.error('Folio not found or access denied');
-            onOpenChange(false);
-          }
-        } catch (error: any) {
-          console.error('Error loading scoped folio:', error);
-          const errorMessage = error.message || 'Failed to load folio details';
-          setValidationError(errorMessage);
-          toast.error(errorMessage);
-          onOpenChange(false);
-        } finally {
-          setLoadingScoped(false);
-        }
-      }
-    };
-
     loadScopedFolio();
-  }, [folioId, tenant?.tenant_id, tenantId, open, getFolioBalance, onOpenChange]);
+  }, [open, folioId]);
 
   // Phase 4: Determine which folios to show (scoped or all)
   const pendingPayments = folioId 
@@ -106,18 +112,21 @@ export const PaymentDialog = ({
     console.log('[Payment Mapping] Input:', { methodId: method.id, methodName: method.name, methodType: method.type });
     
     // Map from payment_methods.type to database constraint values
+    // Database now supports: cash, card, transfer, pos, credit, digital, complimentary
     const typeMapping: Record<string, string> = {
-      'pos': 'card',
-      'digital': 'card', 
+      'pos': 'pos',
+      'digital': 'digital', 
       'transfer': 'transfer',
       'cash': 'cash',
-      'credit': 'credit'
+      'card': 'card',
+      'credit': 'credit',
+      'complimentary': 'complimentary'
     };
     
     const mappedMethod = typeMapping[method.type] || 'cash';
     
-    // Validate against database constraint
-    const validMethods = ['cash', 'card', 'transfer', 'credit', 'complimentary'];
+    // Validate against updated database constraint
+    const validMethods = ['cash', 'card', 'transfer', 'pos', 'credit', 'digital', 'complimentary'];
     if (!validMethods.includes(mappedMethod)) {
       console.error('[Payment Mapping] Invalid method after mapping:', mappedMethod);
       throw new Error(`Unsupported payment method: ${mappedMethod}`);

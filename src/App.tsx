@@ -41,7 +41,6 @@ import QRAnalytics from "./pages/owner/QRAnalytics";
 import QRExportPage from "./components/QRExportPage";
 import ReportsInterface from "./components/ReportsInterface";
 import MonitoringPage from "./pages/owner/Monitoring";
-import FeatureFlagsPage from "./pages/owner/FeatureFlags";
 import ManagerLayout from "./components/layout/ManagerLayout";
 import ManagerDashboard from "./pages/manager/Dashboard";
 import ManagerOperations from "./pages/manager/Operations";
@@ -189,7 +188,6 @@ const App = () => (
             <Route path="sms" element={<SMSCenter />} />
             <Route path="profile" element={<OwnerProfileSettings />} />
             <Route path="monitoring" element={<MonitoringPage />} />
-            <Route path="feature-flags" element={<FeatureFlagsPage />} />
           </Route>
           <Route path="/qr-export" element={<QRExportPage />} />
           

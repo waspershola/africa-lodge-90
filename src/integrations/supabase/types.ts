@@ -5944,6 +5944,10 @@ export type Database = {
         Args: { event_description: string; event_type: string; metadata?: Json }
         Returns: undefined
       }
+      monitor_sms_credits: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       process_auto_checkouts: {
         Args: Record<PropertyKey, never>
         Returns: Json

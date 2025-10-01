@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, CheckCircle, Flag, RefreshCw } from 'lucide-react';
+import { AlertCircle, CheckCircle, Flag, RefreshCw, ShieldAlert } from 'lucide-react';
 import { useAllFeatureFlags, useUpsertFeatureFlag } from '@/hooks/useFeatureFlags';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
+import { supabase } from '@/integrations/supabase/client';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -98,12 +100,33 @@ export default function FeatureFlags() {
   const { data: flags, isLoading, refetch } = useAllFeatureFlags();
   const upsertFlag = useUpsertFeatureFlag();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [isSuperAdmin, setIsSuperAdmin] = useState<boolean | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     flag: FlagConfig | null;
     currentState: boolean;
     newState: boolean;
   }>({ open: false, flag: null, currentState: false, newState: false });
+
+  // Check if user is Super Admin
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role, is_platform_owner')
+        .eq('id', user?.id)
+        .single();
+      
+      setIsSuperAdmin(
+        userData?.role === 'SUPER_ADMIN' && userData?.is_platform_owner === true
+      );
+    };
+
+    if (user?.id) {
+      checkAdminStatus();
+    }
+  }, [user?.id]);
 
   const handleToggle = (flag: FlagConfig, currentState: boolean) => {
     setConfirmDialog({
@@ -131,10 +154,23 @@ export default function FeatureFlags() {
       });
 
       refetch();
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Feature flag update error:', error);
+      
+      let errorMessage = 'Failed to update feature flag';
+      
+      // Check for specific error types
+      if (error?.message?.includes('Permission denied') || error?.message?.includes('permission')) {
+        errorMessage = 'Permission denied. Super Admin access required. Please log in as wasperstore@gmail.com';
+      } else if (error?.message?.includes('No active session')) {
+        errorMessage = 'Session expired. Please log out and log back in as Super Admin';
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
-        title: 'Error',
-        description: 'Failed to update feature flag',
+        title: 'Update Failed',
+        description: errorMessage,
         variant: 'destructive'
       });
     } finally {
@@ -166,10 +202,63 @@ export default function FeatureFlags() {
     return flag?.is_enabled || false;
   };
 
-  if (isLoading) {
+  if (isLoading || isSuperAdmin === null) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Show warning if not Super Admin
+  if (isSuperAdmin === false) {
+    return (
+      <div className="space-y-6 p-6">
+        <Alert variant="destructive">
+          <ShieldAlert className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Super Admin Access Required</strong>
+            <p className="mt-2">
+              You are currently logged in as <strong>{user?.email}</strong> with role <strong>{user?.role}</strong>.
+            </p>
+            <p className="mt-2">
+              Feature flag management requires Super Admin access. Please log out and log in as <strong>wasperstore@gmail.com</strong> to manage feature flags.
+            </p>
+          </AlertDescription>
+        </Alert>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Flag className="h-6 w-6" />
+              Feature Flags (Read-Only)
+            </CardTitle>
+            <CardDescription>
+              You can view feature flags but cannot modify them.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4">
+              {FLAGS_CONFIG.map((flagConfig) => {
+                const isEnabled = getFlagState(flagConfig.flag_name);
+                return (
+                  <div key={flagConfig.flag_name} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">{flagConfig.name}</span>
+                        <Badge variant={isEnabled ? 'default' : 'secondary'}>
+                          {isEnabled ? 'Enabled' : 'Disabled'}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {flagConfig.description}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

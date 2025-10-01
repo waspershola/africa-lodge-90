@@ -7,6 +7,9 @@ import { Calendar, Users, Phone, Mail, MapPin, MoreHorizontal } from 'lucide-rea
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { useReservations } from '@/hooks/useRooms';
+import { PaginationControls } from '@/components/common/PaginationControls';
+import { LoadingState, SkeletonList } from '@/components/common/LoadingState';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 interface ReservationListProps {
   searchTerm: string;
@@ -19,8 +22,13 @@ export default function ReservationList({
   statusFilter, 
   onReservationSelect 
 }: ReservationListProps) {
-  const { data: reservationsData, isLoading: loading, error } = useReservations();
+  const [page, setPage] = React.useState(0);
+  const [itemsPerPage, setItemsPerPage] = React.useState(50);
+
+  const { data: reservationsData, isLoading: loading, error } = useReservations(itemsPerPage, page * itemsPerPage);
   const reservations = reservationsData?.reservations || [];
+  const totalCount = reservationsData?.count || 0;
+  const hasMore = reservationsData?.hasMore || false;
 
   const filteredReservations = reservations.filter(reservation => {
     const matchesSearch = searchTerm === '' || 
@@ -55,11 +63,12 @@ export default function ReservationList({
   };
 
   if (loading) {
-    return <div className="p-6">Loading reservations...</div>;
+    return <SkeletonList count={5} />;
   }
 
   return (
-    <Card>
+    <ErrorBoundary>
+      <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>Reservations List</span>
@@ -185,6 +194,19 @@ export default function ReservationList({
           )}
         </div>
       </CardContent>
+
+      {/* Pagination Controls */}
+      {totalCount > itemsPerPage && (
+        <PaginationControls
+          currentPage={page + 1}
+          totalPages={Math.ceil(totalCount / itemsPerPage)}
+          totalItems={totalCount}
+          itemsPerPage={itemsPerPage}
+          onPageChange={(newPage) => setPage(newPage - 1)}
+          onItemsPerPageChange={setItemsPerPage}
+        />
+      )}
     </Card>
+    </ErrorBoundary>
   );
 }

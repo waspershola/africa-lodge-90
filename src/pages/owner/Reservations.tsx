@@ -13,6 +13,8 @@ import NewReservationDialog from '@/components/owner/reservations/NewReservation
 import GroupBookingDialog from '@/components/owner/reservations/GroupBookingDialog';
 import EnhancedReservationDetails from '@/components/owner/reservations/EnhancedReservationDetails';
 import { useReservations } from '@/hooks/useRooms';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { LoadingState } from '@/components/common/LoadingState';
 
 export default function ReservationsPage() {
   const [view, setView] = useState('calendar');
@@ -21,6 +23,8 @@ export default function ReservationsPage() {
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [showGroupDialog, setShowGroupDialog] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState(null);
+  const [page, setPage] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(50);
 
   const handleReservationSelect = useCallback((reservation: any) => {
     setSelectedReservation(reservation);
@@ -30,8 +34,10 @@ export default function ReservationsPage() {
     setSelectedReservation(null);
   }, []);
 
-  const { data: reservationsData, isLoading: loading, error } = useReservations();
+  const { data: reservationsData, isLoading: loading, error } = useReservations(itemsPerPage, page * itemsPerPage);
   const reservations = reservationsData?.reservations || [];
+  const totalCount = reservationsData?.count || 0;
+  const hasMore = reservationsData?.hasMore || false;
 
   // Calculate stats from API data
   const reservationStats = {
@@ -80,17 +86,26 @@ export default function ReservationsPage() {
     })
     .filter(Boolean);
 
-      if (loading) {
-    return <div className="p-6">Loading reservations...</div>;
+  if (loading) {
+    return <LoadingState message="Loading reservations..." />;
   }
 
   if (error) {
-    return <div className="p-6 text-red-500">Error loading reservations</div>;
+    return (
+      <div className="p-6">
+        <Card className="border-destructive">
+          <CardContent className="pt-6">
+            <p className="text-destructive">Error loading reservations. Please try again.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <ErrorBoundary>
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Reservations</h1>
           <p className="text-muted-foreground">
@@ -324,6 +339,7 @@ export default function ReservationsPage() {
           onOpenChange={handleReservationClose}
         />
       )}
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }

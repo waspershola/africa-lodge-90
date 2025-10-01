@@ -6018,6 +6018,14 @@ export type Database = {
           tenant_id: string
         }[]
       }
+      validate_payment_method: {
+        Args: {
+          p_payment_method: string
+          p_payment_method_id?: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       validate_qr_token_public: {
         Args: { token_input: string }
         Returns: {

@@ -187,6 +187,25 @@ export const useCheckout = (roomId?: string) => {
 
     setLoading(true);
     try {
+      // Phase 4: Validate payment data before processing
+      const { validatePaymentData, parsePaymentError } = await import('@/lib/payment-validation');
+      
+      const validation = validatePaymentData({
+        amount,
+        paymentMethod,
+      });
+
+      if (!validation.valid) {
+        setError(validation.error || 'Payment validation failed');
+        return false;
+      }
+
+      console.log('[Checkout Payment] Starting payment processing:', {
+        amount,
+        method: paymentMethod,
+        roomId: checkoutSession.room_id,
+      });
+
       // Get the reservation
       const { data: reservations } = await supabase
         .from('reservations')
@@ -208,7 +227,9 @@ export const useCheckout = (roomId?: string) => {
 
       if (folioError || !folioId) throw new Error('Failed to get or create folio');
 
-      // Create payment record (triggers will auto-update folio balance)
+      console.log('[Checkout Payment] Creating payment for folio:', folioId);
+
+      // Create payment record (triggers will auto-update folio balance and validate)
       const { data: payment, error: paymentError } = await supabase
         .from('payments')
         .insert([{
@@ -222,7 +243,13 @@ export const useCheckout = (roomId?: string) => {
         .select()
         .single();
 
-      if (paymentError) throw paymentError;
+      if (paymentError) {
+        const userMessage = parsePaymentError(paymentError);
+        console.error('[Checkout Payment] Payment error:', paymentError);
+        throw new Error(userMessage);
+      }
+
+      console.log('[Checkout Payment] Payment created successfully:', payment.id);
 
       // Create audit log
       await supabase

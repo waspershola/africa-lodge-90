@@ -253,6 +253,26 @@ export function useBilling() {
     if (!tenant?.tenant_id) return null;
 
     try {
+      // Phase 4: Client-side validation before server call
+      const { validatePaymentData, parsePaymentError } = await import('@/lib/payment-validation');
+      
+      const validation = validatePaymentData({
+        amount: paymentData.amount,
+        paymentMethod: paymentData.payment_method,
+        paymentMethodId: paymentData.payment_method_id,
+        folioId: paymentData.folio_id,
+      });
+
+      if (!validation.valid) {
+        throw new Error(validation.error || 'Payment validation failed');
+      }
+
+      console.log('[Payment] Creating payment with validation:', {
+        amount: paymentData.amount,
+        method: paymentData.payment_method,
+        methodId: paymentData.payment_method_id,
+      });
+
       const { data, error } = await supabase
         .from('payments')
         .insert({
@@ -263,14 +283,20 @@ export function useBilling() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        const userMessage = parsePaymentError(error);
+        console.error('[Payment] Server error:', error);
+        throw new Error(userMessage);
+      }
+
+      console.log('[Payment] Payment created successfully:', data?.id);
 
       // Refresh data
       await Promise.all([loadBillingStats(), loadFolioBalances(), loadPayments()]);
       
       return data;
     } catch (err) {
-      console.error('Error creating payment:', err);
+      console.error('[Payment] Error creating payment:', err);
       throw err;
     }
   };

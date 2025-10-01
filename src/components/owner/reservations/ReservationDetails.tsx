@@ -140,7 +140,10 @@ export default function ReservationDetails({ reservation, open, onOpenChange, on
 
   const handleCancelReservation = useCallback(() => {
     if (window.confirm('Are you sure you want to cancel this reservation?')) {
-      cancelReservation.mutate(reservationId);
+      cancelReservation.mutate({ 
+        reservationId,
+        reason: 'Manual cancellation by staff'
+      });
       onOpenChange(false); // Close dialog after action
     }
   }, [reservationId, cancelReservation, onOpenChange]);

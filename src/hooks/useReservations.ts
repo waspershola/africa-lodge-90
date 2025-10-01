@@ -293,18 +293,31 @@ export const useUpdateReservation = () => {
   });
 };
 
-// Hook to cancel a reservation
+// Hook to cancel a reservation using atomic DB function
 export const useCancelReservation = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (reservationId: string) => {
+    mutationFn: async ({ 
+      reservationId, 
+      reason, 
+      refundAmount = 0, 
+      notes 
+    }: { 
+      reservationId: string; 
+      reason?: string; 
+      refundAmount?: number; 
+      notes?: string;
+    }) => {
       // Get current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) throw new Error('Not authenticated');
 
-      // Get reservation details for notification
+      const tenantId = user.user_metadata?.tenant_id;
+      if (!tenantId) throw new Error('Tenant ID not found');
+
+      // Get reservation details for notification before canceling
       const { data: reservation, error: resError } = await supabase
         .from('reservations')
         .select('*')
@@ -313,19 +326,26 @@ export const useCancelReservation = () => {
 
       if (resError) throw resError;
 
-      const { data, error } = await supabase
-        .from('reservations')
-        .update({ 
-          status: 'cancelled',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', reservationId)
-        .select()
-        .single();
+      // Call atomic cancel function
+      const { data, error } = await supabase.rpc('cancel_reservation_atomic', {
+        p_tenant_id: tenantId,
+        p_reservation_id: reservationId,
+        p_cancelled_by: user.id,
+        p_reason: reason || null,
+        p_refund_amount: refundAmount || 0,
+        p_notes: notes || null,
+      });
 
       if (error) throw error;
 
-      // Create cancellation notification event
+      // RPC returns array of rows for RETURNS TABLE
+      const result = Array.isArray(data) ? data[0] : data;
+      
+      if (!result || result.success !== true) {
+        throw new Error(result?.message || 'Failed to cancel reservation');
+      }
+
+      // Create cancellation notification event (only on success)
       const notificationEvent = {
         event_type: 'reservation_cancelled',
         event_source: 'reservation',
@@ -334,7 +354,7 @@ export const useCancelReservation = () => {
           guest_name: reservation.guest_name,
           reservation_number: reservation.reservation_number,
           check_in_date: reservation.check_in_date,
-          cancellation_reason: 'Guest cancellation'
+          cancellation_reason: reason || 'Reservation cancelled'
         },
         recipients: [
           {

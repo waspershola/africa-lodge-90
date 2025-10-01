@@ -113,6 +113,16 @@ export const ReleaseReservationDialog = ({
         description: `Room ${room.number || room.room_number} reservation has been cancelled${refundAmount > 0 ? ` with ₦${refundAmount.toLocaleString()} refund` : ''}.`,
       });
 
+      // Invalidate relevant queries for real-time UI updates
+      const { useQueryClient } = await import('@tanstack/react-query');
+      const queryClient = useQueryClient();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['reservations', tenantId] }),
+        queryClient.invalidateQueries({ queryKey: ['rooms', tenantId] }),
+        queryClient.invalidateQueries({ queryKey: ['folios', tenantId] }),
+        queryClient.invalidateQueries({ queryKey: ['room-availability', tenantId] }),
+      ]);
+
       const updatedRoom: Room = {
         ...room,
         status: 'available',

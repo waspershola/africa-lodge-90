@@ -159,7 +159,10 @@ export default function EnhancedReservationDetails({
 
   const handleCancelReservation = useCallback(() => {
     if (window.confirm('Are you sure you want to cancel this reservation?')) {
-      cancelReservation.mutate(reservationId);
+      cancelReservation.mutate({ 
+        reservationId,
+        reason: 'Manual cancellation by staff'
+      });
       onOpenChange(false);
     }
   }, [reservationId, cancelReservation, onOpenChange]);

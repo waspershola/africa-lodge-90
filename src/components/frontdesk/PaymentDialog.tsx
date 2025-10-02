@@ -126,14 +126,6 @@ export const PaymentDialog = ({
     
     const mappedMethod = typeMapping[method.type.toLowerCase()] || method.type.toLowerCase();
     
-    // Enhanced: Use dynamic validation from payment-validation utility
-    const validation = validatePaymentMethod(mappedMethod, method.id);
-    
-    if (!validation.valid) {
-      console.error('[Payment Mapping] Validation failed:', validation.error);
-      throw new Error(validation.error || `Unsupported payment method: ${mappedMethod}`);
-    }
-    
     console.log('[Payment Mapping] Output:', { mappedMethod });
     return mappedMethod;
   };

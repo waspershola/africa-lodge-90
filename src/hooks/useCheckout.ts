@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { GuestBill, CheckoutSession, ServiceCharge, PaymentRecord } from '@/types/billing';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
+import { mapToCanonicalPaymentMethod } from '@/lib/payment-method-mapper';
 
 export const useCheckout = (roomId?: string) => {
   const [checkoutSession, setCheckoutSession] = useState<CheckoutSession | null>(null);
@@ -233,13 +234,17 @@ export const useCheckout = (roomId?: string) => {
 
       console.log('[Checkout Payment] Creating payment for folio:', folioId);
 
+      // Map payment method to canonical database value
+      const canonicalMethod = mapToCanonicalPaymentMethod(paymentMethod);
+      console.log('[Checkout Payment] Mapped payment method:', { original: paymentMethod, canonical: canonicalMethod });
+
       // Create payment record (triggers will auto-update folio balance and validate)
       const { data: payment, error: paymentError } = await supabase
         .from('payments')
         .insert([{
           folio_id: folioId,
           amount,
-          payment_method: paymentMethod,
+          payment_method: canonicalMethod,
           status: 'completed',
           processed_by: user.id,
           tenant_id: user.tenant_id

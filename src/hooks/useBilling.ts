@@ -287,21 +287,25 @@ export function useBilling() {
         }
       }
 
-      // CRITICAL: Ensure payment_method matches database constraint
-      // Allowed: cash, card, transfer, pos, credit, digital, complimentary
-      const allowedMethods = ['cash', 'card', 'transfer', 'pos', 'credit', 'digital', 'complimentary'];
-      const normalizedMethod = paymentData.payment_method.toLowerCase().trim();
+      // CRITICAL: Map payment method to canonical value
+      const { mapToCanonicalPaymentMethod } = await import('@/lib/payment-method-mapper');
       
-      if (!allowedMethods.includes(normalizedMethod)) {
-        console.error('[Payment] Invalid payment method:', {
-          provided: paymentData.payment_method,
-          normalized: normalizedMethod,
-          allowed: allowedMethods
+      let normalizedMethod: string;
+      try {
+        normalizedMethod = mapToCanonicalPaymentMethod(paymentData.payment_method);
+        console.log('[Payment] Mapped payment method:', {
+          original: paymentData.payment_method,
+          canonical: normalizedMethod
         });
-        throw new Error(`Invalid payment method: ${paymentData.payment_method}. Must be one of: ${allowedMethods.join(', ')}`);
+      } catch (mappingError) {
+        console.error('[Payment] Mapping error:', {
+          provided: paymentData.payment_method,
+          error: mappingError
+        });
+        throw mappingError;
       }
 
-      console.log('[Payment] Creating payment with validation:', {
+      console.log('[Payment] Creating payment with validated canonical method:', {
         amount: paymentData.amount,
         method: normalizedMethod,
         methodId: paymentData.payment_method_id,

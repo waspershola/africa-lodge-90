@@ -108,23 +108,15 @@ export const PaymentDialog = ({
     setAmount(payment.balance.toString());
   };
 
-  // Phase 1: Dynamic payment method mapping using DB configuration
+  // Phase 1: Dynamic payment method mapping using centralized utility
   const mapPaymentMethod = (method: any): string => {
     console.log('[Payment Mapping] Input:', { methodId: method.id, methodName: method.name, methodType: method.type });
     
-    // Map from payment_methods.type to database constraint values
-    // Database supports: cash, card, transfer, pos, credit, digital, complimentary
-    const typeMapping: Record<string, string> = {
-      'pos': 'pos',
-      'digital': 'digital', 
-      'transfer': 'transfer',
-      'cash': 'cash',
-      'card': 'card',
-      'credit': 'credit',
-      'complimentary': 'complimentary'
-    };
+    const { mapPaymentMethodWithLogging } = require('@/lib/payment-method-mapper');
     
-    const mappedMethod = typeMapping[method.type.toLowerCase()] || method.type.toLowerCase();
+    // Try to map from type first, fallback to name
+    const inputToMap = method.type || method.name;
+    const mappedMethod = mapPaymentMethodWithLogging(inputToMap, 'PaymentDialog');
     
     console.log('[Payment Mapping] Output:', { mappedMethod });
     return mappedMethod;

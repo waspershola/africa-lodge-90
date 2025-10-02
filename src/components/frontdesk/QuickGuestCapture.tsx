@@ -492,13 +492,17 @@ export const QuickGuestCapture = ({
         // Record deposit payment if made
         const depositAmount = parseFloat(formData.depositAmount) || 0;
         if (depositAmount > 0) {
+          const selectedMethod = enabledMethods.find(m => m.id === formData.paymentMode);
+          const paymentMethodType = selectedMethod?.type || 'cash';
+          
           const { error: paymentError } = await supabase
             .from('payments')
             .insert([{
               tenant_id: user.user_metadata?.tenant_id,
               folio_id: folio.id,
               amount: depositAmount,
-              payment_method: formData.paymentMode,
+              payment_method: paymentMethodType,
+              payment_method_id: formData.paymentMode,
               status: 'completed',
               processed_by: user.id,
               reference: `Deposit for ${reservationNumber}`
@@ -625,12 +629,16 @@ export const QuickGuestCapture = ({
             const additionalPayment = parseFloat(formData.depositAmount) || 0;
             if (formData.paymentMode !== 'pay_later' && additionalPayment > 0 && result.folio_id) {
               console.log('[Check-in] Processing additional payment:', additionalPayment);
+              const selectedMethod = enabledMethods.find(m => m.id === formData.paymentMode);
+              const paymentMethodType = selectedMethod?.type || 'cash';
+              
               const { error: paymentError } = await supabase
                 .from('payments')
                 .insert({
                   folio_id: result.folio_id,
                   amount: additionalPayment,
-                  payment_method: formData.paymentMode,
+                  payment_method: paymentMethodType,
+                  payment_method_id: formData.paymentMode,
                   status: 'completed',
                   processed_by: user.id,
                   reference: `Additional payment on check-in`,
@@ -732,12 +740,16 @@ export const QuickGuestCapture = ({
 
             // Process payment if not pay later
             if (formData.paymentMode !== 'pay_later' && parseFloat(formData.depositAmount) > 0 && result.folio_id) {
+              const selectedMethod = enabledMethods.find(m => m.id === formData.paymentMode);
+              const paymentMethodType = selectedMethod?.type || 'cash';
+              
               const { error: paymentError } = await supabase
                 .from('payments')
                 .insert({
                   folio_id: result.folio_id,
                   amount: parseFloat(formData.depositAmount),
-                  payment_method: formData.paymentMode,
+                  payment_method: paymentMethodType,
+                  payment_method_id: formData.paymentMode,
                   status: 'completed',
                   tenant_id: user.user_metadata?.tenant_id
                 });

@@ -5571,21 +5571,13 @@ export type Database = {
         Returns: number
       }
       atomic_checkin_guest: {
-        Args:
-          | {
-              p_charges?: Json
-              p_guest_data: Json
-              p_reservation_data: Json
-              p_room_id: string
-              p_tenant_id: string
-            }
-          | {
-              p_guest_data?: Json
-              p_initial_charges?: Json
-              p_reservation_id: string
-              p_room_id: string
-              p_tenant_id: string
-            }
+        Args: {
+          p_guest_data?: Json
+          p_initial_charges?: Json
+          p_reservation_id: string
+          p_room_id: string
+          p_tenant_id: string
+        }
         Returns: Json
       }
       atomic_checkout: {

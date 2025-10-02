@@ -197,13 +197,13 @@ export const useGuestContactManager = () => {
         vip_status,
         preferences,
         is_blacklisted,
-        reservations!left(
+        reservations(
           id,
           status,
           check_in_date,
           check_out_date,
           room_id,
-          rooms!inner(room_number)
+          rooms!reservations_room_id_fkey(room_number)
         )
       `)
       .eq('tenant_id', user.user_metadata?.tenant_id);

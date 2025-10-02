@@ -40,11 +40,11 @@ export const useGuestSearch = (searchTerm: string) => {
           last_stay_date,
           total_stays,
           vip_status,
-          reservations!left(
+          reservations(
             id,
             room_id,
             status,
-            rooms!inner(room_number)
+            rooms!reservations_room_id_fkey(room_number)
           )
         `)
         .or(

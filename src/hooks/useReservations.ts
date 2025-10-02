@@ -331,9 +331,9 @@ export const useCancelReservation = () => {
         p_tenant_id: tenantId,
         p_reservation_id: reservationId,
         p_cancelled_by: user.id,
-        p_reason: reason || null,
+        p_cancellation_reason: reason || null,
         p_refund_amount: refundAmount || 0,
-        p_notes: notes || null,
+        p_cancellation_notes: notes || null,
       });
 
       if (error) throw error;
@@ -341,8 +341,8 @@ export const useCancelReservation = () => {
       // RPC returns array of rows for RETURNS TABLE
       const result = Array.isArray(data) ? data[0] : data;
       
-      if (!result || result.success !== true) {
-        throw new Error(result?.message || 'Failed to cancel reservation');
+      if (!result || (result as any).success !== true) {
+        throw new Error((result as any)?.message || 'Failed to cancel reservation');
       }
 
       // Create cancellation notification event (only on success)

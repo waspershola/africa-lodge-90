@@ -71,9 +71,9 @@ export const ReleaseReservationDialog = ({
         p_tenant_id: tenantId,
         p_reservation_id: currentReservation.id,
         p_cancelled_by: user.id,
-        p_reason: releaseReason || null,
+        p_cancellation_reason: releaseReason || null,
         p_refund_amount: refundAmount || 0,
-        p_notes: notes || null,
+        p_cancellation_notes: notes || null,
       });
 
       if (error) {
@@ -83,11 +83,11 @@ export const ReleaseReservationDialog = ({
       // RPC returns array of rows for RETURNS TABLE
       const result = Array.isArray(data) ? data[0] : data;
       
-      if (!result || result.success !== true) {
+      if (!result || (result as any).success !== true) {
         // Show returned error message (e.g., already cancelled, not found)
         toast({
           title: "Cannot Release Room",
-          description: result?.message || 'Failed to cancel reservation',
+          description: (result as any)?.message || 'Failed to cancel reservation',
           variant: "destructive"
         });
         return;

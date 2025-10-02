@@ -64,7 +64,7 @@ export function useAtomicCheckIn() {
         p_tenant_id: tenant.tenant_id,
         p_reservation_id: params.reservationId,
         p_room_id: params.roomId,
-        p_guest_payload: params.guestData || null,
+        p_guest_data: params.guestData || null,
         p_initial_charges: params.initialCharges || []
       });
 
@@ -73,7 +73,7 @@ export function useAtomicCheckIn() {
         throw new Error(rpcError.message || 'Check-in failed');
       }
 
-      if (!data || data.length === 0) {
+      if (!data || (data as any[]).length === 0) {
         throw new Error('No response from check-in function');
       }
 

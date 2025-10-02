@@ -106,7 +106,7 @@ export const useRooms = () => {
         .select(`
           *,
           room_type:room_type_id (*),
-          reservations!left(
+          reservations!reservations_room_id_fkey(
             id,
             guest_name,
             guest_email,
@@ -221,7 +221,7 @@ export const usePaginatedRooms = (limit: number = 100, offset: number = 0) => {
         .select(`
           *,
           room_type:room_type_id (*),
-          reservations!left(
+          reservations!reservations_room_id_fkey(
             id, guest_name, guest_email, guest_phone,
             check_in_date, check_out_date, status, total_amount,
             reservation_number,
@@ -307,7 +307,7 @@ export const useReservations = (limit: number = 100, offset: number = 0) => {
         .from('reservations')
         .select(`
           *,
-          rooms:room_id (room_number, room_types:room_type_id (name)),
+          rooms!reservations_room_id_fkey (room_number, room_types:room_type_id (name)),
           guests:guest_id (first_name, last_name, email, phone, vip_status)
         `, { count: 'exact' })
         .eq('tenant_id', tenant.tenant_id)

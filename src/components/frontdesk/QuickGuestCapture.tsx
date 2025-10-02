@@ -516,37 +516,44 @@ export const QuickGuestCapture = ({
         }
 
         // Add initial room charge to folio WITH TAX CALCULATION
-        if (configuration) {
-          const taxCalc = calculateTaxesAndCharges({
-            baseAmount: formData.totalAmount,
-            chargeType: 'room',
-            isTaxable: true,
-            isServiceChargeable: true,
-            guestTaxExempt: false,
-            configuration
-          });
+        const taxCalc = calculateTaxesAndCharges({
+          baseAmount: formData.totalAmount,
+          chargeType: 'room',
+          isTaxable: true,
+          isServiceChargeable: true,
+          guestTaxExempt: false,
+          configuration: configuration || {
+            tax: {
+              vat_rate: 7.5,
+              service_charge_rate: 10,
+              tax_inclusive: false,
+              service_charge_inclusive: false,
+              vat_applicable_to: ['room', 'food', 'beverage', 'laundry', 'spa'],
+              service_applicable_to: ['room', 'food', 'beverage', 'spa']
+            }
+          } as any
+        });
 
-          console.log('[Assign] Tax calculation:', taxCalc);
+        console.log('[Assign] Tax calculation:', taxCalc);
 
-          const { error: chargeError } = await supabase
-            .from('folio_charges')
-            .insert([{
-              tenant_id: user.user_metadata?.tenant_id,
-              folio_id: folio.id,
-              charge_type: 'room',
-              description: `Room charges for ${formData.numberOfNights} night(s)`,
-              base_amount: taxCalc.baseAmount,
-              vat_amount: taxCalc.vatAmount,
-              service_charge_amount: taxCalc.serviceChargeAmount,
-              amount: taxCalc.totalAmount,
-              is_taxable: true,
-              is_service_chargeable: true,
-              posted_by: user.id
-            }]);
+        const { error: chargeError } = await supabase
+          .from('folio_charges')
+          .insert([{
+            tenant_id: user.user_metadata?.tenant_id,
+            folio_id: folio.id,
+            charge_type: 'room',
+            description: `Room charges for ${formData.numberOfNights} night(s)`,
+            base_amount: taxCalc.baseAmount,
+            vat_amount: taxCalc.vatAmount,
+            service_charge_amount: taxCalc.serviceChargeAmount,
+            amount: taxCalc.totalAmount,
+            is_taxable: true,
+            is_service_chargeable: true,
+            posted_by: user.id
+          }]);
 
-          if (chargeError) {
-            console.error('Charge posting error:', chargeError);
-          }
+        if (chargeError) {
+          console.error('Charge posting error:', chargeError);
         }
 
         // Update room status to reserved with validation

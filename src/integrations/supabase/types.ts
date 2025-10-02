@@ -1475,9 +1475,11 @@ export type Database = {
           late_checkout_fee: number | null
           notification_preferences: Json | null
           service_applicable_to: string[] | null
+          service_charge_inclusive: boolean | null
           service_charge_rate: number | null
           show_tax_breakdown: boolean | null
           system_provider_id: string | null
+          tax_inclusive: boolean | null
           tax_rate: number | null
           tenant_id: string
           timezone: string | null
@@ -1503,9 +1505,11 @@ export type Database = {
           late_checkout_fee?: number | null
           notification_preferences?: Json | null
           service_applicable_to?: string[] | null
+          service_charge_inclusive?: boolean | null
           service_charge_rate?: number | null
           show_tax_breakdown?: boolean | null
           system_provider_id?: string | null
+          tax_inclusive?: boolean | null
           tax_rate?: number | null
           tenant_id: string
           timezone?: string | null
@@ -1531,9 +1535,11 @@ export type Database = {
           late_checkout_fee?: number | null
           notification_preferences?: Json | null
           service_applicable_to?: string[] | null
+          service_charge_inclusive?: boolean | null
           service_charge_rate?: number | null
           show_tax_breakdown?: boolean | null
           system_provider_id?: string | null
+          tax_inclusive?: boolean | null
           tax_rate?: number | null
           tenant_id?: string
           timezone?: string | null

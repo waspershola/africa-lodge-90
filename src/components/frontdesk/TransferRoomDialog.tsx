@@ -122,36 +122,37 @@ export const TransferRoomDialog = ({
           });
 
         if (!folioIdError && folioId) {
-          // Calculate taxes for transfer fee
-          let chargeData: any = {
-            folio_id: folioId,
-            charge_type: 'service',
-            description: `Room transfer fee: ${sourceRoom.number} → ${targetRoom.number}`,
-            tenant_id: user.user_metadata?.tenant_id
-          };
+        // Calculate taxes for transfer fee
+        const taxCalc = calculateTaxesAndCharges({
+          baseAmount: transferFee,
+          chargeType: 'room',
+          isTaxable: true,
+          isServiceChargeable: true,
+          guestTaxExempt: false,
+          configuration: configuration || {
+            tax: {
+              vat_rate: 7.5,
+              service_charge_rate: 10,
+              tax_inclusive: false,
+              service_charge_inclusive: false,
+              vat_applicable_to: ['room', 'food', 'beverage', 'laundry', 'spa'],
+              service_applicable_to: ['room', 'food', 'beverage', 'spa']
+            }
+          } as any
+        });
 
-          if (configuration) {
-            const taxCalc = calculateTaxesAndCharges({
-              baseAmount: transferFee,
-              chargeType: 'room',
-              isTaxable: true,
-              isServiceChargeable: true,
-              guestTaxExempt: false,
-              configuration
-            });
-
-            chargeData = {
-              ...chargeData,
-              base_amount: taxCalc.baseAmount,
-              vat_amount: taxCalc.vatAmount,
-              service_charge_amount: taxCalc.serviceChargeAmount,
-              amount: taxCalc.totalAmount,
-              is_taxable: true,
-              is_service_chargeable: true
-            };
-          } else {
-            chargeData.amount = transferFee;
-          }
+        const chargeData = {
+          folio_id: folioId,
+          charge_type: 'service',
+          description: `Room transfer fee: ${sourceRoom.number} → ${targetRoom.number}`,
+          tenant_id: user.user_metadata?.tenant_id,
+          base_amount: taxCalc.baseAmount,
+          vat_amount: taxCalc.vatAmount,
+          service_charge_amount: taxCalc.serviceChargeAmount,
+          amount: taxCalc.totalAmount,
+          is_taxable: true,
+          is_service_chargeable: true
+        };
 
           const { error: chargeError } = await supabase
             .from('folio_charges')

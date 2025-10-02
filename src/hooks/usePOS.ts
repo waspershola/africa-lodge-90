@@ -503,23 +503,14 @@ export function usePOSApi() {
             baseAmount: amount,
             chargeType: 'food',
             guestTaxExempt: guest?.tax_exempt || false,
-            configuration: hotelSettings ? {
+            configuration: {
               tax: {
-                vat_rate: hotelSettings.tax_rate || 7.5,
-                service_charge_rate: hotelSettings.service_charge_rate || 10.0,
-                vat_applicable_to: hotelSettings.vat_applicable_to || ['room', 'food', 'beverage'],
-                service_applicable_to: hotelSettings.service_applicable_to || ['room', 'food', 'beverage'],
-                tax_inclusive: false,
-                service_charge_inclusive: false
-              }
-            } as any : {
-              tax: {
-                vat_rate: 7.5,
-                service_charge_rate: 10.0,
-                vat_applicable_to: ['room', 'food', 'beverage'],
-                service_applicable_to: ['room', 'food', 'beverage'],
-                tax_inclusive: false,
-                service_charge_inclusive: false
+                vat_rate: hotelSettings?.tax_rate || 7.5,
+                service_charge_rate: hotelSettings?.service_charge_rate || 10.0,
+                tax_inclusive: hotelSettings?.tax_inclusive || false,
+                service_charge_inclusive: hotelSettings?.service_charge_inclusive || false,
+                vat_applicable_to: hotelSettings?.vat_applicable_to || ['room', 'food', 'beverage', 'laundry', 'spa'],
+                service_applicable_to: hotelSettings?.service_applicable_to || ['room', 'food', 'beverage', 'spa']
               }
             } as any
           });

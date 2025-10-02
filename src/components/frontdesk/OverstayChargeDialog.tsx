@@ -192,35 +192,36 @@ export const OverstayChargeDialog = ({
 
           if (folios && folios.length > 0) {
             // Calculate taxes for overstay charge
-            let chargeData: any = {
+            const taxCalc = calculateTaxesAndCharges({
+              baseAmount: parseFloat(formData.chargeAmount),
+              chargeType: 'room',
+              isTaxable: true,
+              isServiceChargeable: true,
+              guestTaxExempt: false,
+              configuration: configuration || {
+                tax: {
+                  vat_rate: 7.5,
+                  service_charge_rate: 10,
+                  tax_inclusive: false,
+                  service_charge_inclusive: false,
+                  vat_applicable_to: ['room', 'food', 'beverage', 'laundry', 'spa'],
+                  service_applicable_to: ['room', 'food', 'beverage', 'spa']
+                }
+              } as any
+            });
+
+            const chargeData = {
               folio_id: folios[0].id,
               charge_type: 'overstay',
               description: `Overstay charge for Room ${room.number} - ${overstayHours} hours late`,
-              tenant_id: user.user_metadata?.tenant_id
+              tenant_id: user.user_metadata?.tenant_id,
+              base_amount: taxCalc.baseAmount,
+              vat_amount: taxCalc.vatAmount,
+              service_charge_amount: taxCalc.serviceChargeAmount,
+              amount: taxCalc.totalAmount,
+              is_taxable: true,
+              is_service_chargeable: true
             };
-
-            if (configuration) {
-              const taxCalc = calculateTaxesAndCharges({
-                baseAmount: parseFloat(formData.chargeAmount),
-                chargeType: 'room',
-                isTaxable: true,
-                isServiceChargeable: true,
-                guestTaxExempt: false,
-                configuration
-              });
-
-              chargeData = {
-                ...chargeData,
-                base_amount: taxCalc.baseAmount,
-                vat_amount: taxCalc.vatAmount,
-                service_charge_amount: taxCalc.serviceChargeAmount,
-                amount: taxCalc.totalAmount,
-                is_taxable: true,
-                is_service_chargeable: true
-              };
-            } else {
-              chargeData.amount = parseFloat(formData.chargeAmount);
-            }
 
             // Add overstay charge
             const { error: chargeError } = await supabase

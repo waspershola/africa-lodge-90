@@ -152,6 +152,34 @@ export const useConfiguration = () => {
 
       if (tenantError) throw tenantError;
 
+      // Get hotel settings for tax configuration
+      const { data: hotelSettings, error: settingsError } = await supabase
+        .from('hotel_settings')
+        .select('*')
+        .eq('tenant_id', user.tenant_id)
+        .single();
+
+      // Use hotel_settings data if available, otherwise use defaults
+      const taxConfig = hotelSettings ? {
+        vat_rate: hotelSettings.tax_rate || 7.5,
+        service_charge_rate: hotelSettings.service_charge_rate || 10,
+        tax_inclusive: hotelSettings.tax_inclusive || false,
+        service_charge_inclusive: hotelSettings.service_charge_inclusive || false,
+        vat_applicable_to: hotelSettings.vat_applicable_to || ['room', 'food', 'beverage', 'laundry', 'spa'],
+        service_applicable_to: hotelSettings.service_applicable_to || ['room', 'food', 'beverage', 'spa'],
+        show_tax_breakdown: hotelSettings.show_tax_breakdown !== false,
+        zero_rate_hidden: hotelSettings.zero_rate_hidden !== false
+      } : {
+        vat_rate: 7.5,
+        service_charge_rate: 10,
+        tax_inclusive: false,
+        service_charge_inclusive: false,
+        vat_applicable_to: ['room', 'food', 'beverage', 'laundry', 'spa'],
+        service_applicable_to: ['room', 'food', 'beverage', 'spa'],
+        show_tax_breakdown: true,
+        zero_rate_hidden: true
+      };
+
       // Transform tenant data to HotelConfiguration format
       const config: HotelConfiguration = {
         general: {
@@ -180,12 +208,7 @@ export const useConfiguration = () => {
           thousand_separator: ',',
           decimal_separator: '.'
         },
-        tax: {
-          vat_rate: 7.5,
-          service_charge_rate: 10,
-          tax_inclusive: false,
-          service_charge_inclusive: false
-        },
+        tax: taxConfig,
         branding: {
           primary_color: (tenant.brand_colors as any)?.primary || '#2563eb',
           secondary_color: (tenant.brand_colors as any)?.secondary || '#64748b',

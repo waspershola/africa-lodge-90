@@ -288,41 +288,37 @@ export const AddServiceDialog = ({
         // Determine charge type based on category
         const chargeType = service.category.toLowerCase().replace(/\s+/g, '_');
         
-        // Calculate taxes if configuration is available
-        if (configuration) {
-          const taxCalc = calculateTaxesAndCharges({
-            baseAmount: service.totalPrice,
-            chargeType: chargeType,
-            isTaxable: true,
-            isServiceChargeable: true,
-            guestTaxExempt: false,
-            configuration
-          });
+        // Calculate taxes
+        const taxCalc = calculateTaxesAndCharges({
+          baseAmount: service.totalPrice,
+          chargeType: chargeType,
+          isTaxable: true,
+          isServiceChargeable: true,
+          guestTaxExempt: false,
+          configuration: configuration || {
+            tax: {
+              vat_rate: 7.5,
+              service_charge_rate: 10,
+              tax_inclusive: false,
+              service_charge_inclusive: false,
+              vat_applicable_to: ['room', 'food', 'beverage', 'laundry', 'spa'],
+              service_applicable_to: ['room', 'food', 'beverage', 'spa']
+            }
+          } as any
+        });
 
-          return {
-            tenant_id: tenantId,
-            folio_id: folio.id,
-            description: `${service.category} - ${service.service}${service.quantity > 1 ? ` (x${service.quantity})` : ''}`,
-            base_amount: taxCalc.baseAmount,
-            vat_amount: taxCalc.vatAmount,
-            service_charge_amount: taxCalc.serviceChargeAmount,
-            amount: taxCalc.totalAmount,
-            charge_type: 'service',
-            reference_type: 'add_service',
-            is_taxable: true,
-            is_service_chargeable: true,
-            posted_by: user.id,
-          };
-        }
-
-        // Fallback without tax calculation
         return {
           tenant_id: tenantId,
           folio_id: folio.id,
           description: `${service.category} - ${service.service}${service.quantity > 1 ? ` (x${service.quantity})` : ''}`,
-          amount: service.totalPrice,
+          base_amount: taxCalc.baseAmount,
+          vat_amount: taxCalc.vatAmount,
+          service_charge_amount: taxCalc.serviceChargeAmount,
+          amount: taxCalc.totalAmount,
           charge_type: 'service',
           reference_type: 'add_service',
+          is_taxable: true,
+          is_service_chargeable: true,
           posted_by: user.id,
         };
       });

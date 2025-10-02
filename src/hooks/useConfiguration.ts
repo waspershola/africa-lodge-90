@@ -35,7 +35,11 @@ const defaultConfiguration: HotelConfiguration = {
     vat_rate: 7.5,
     service_charge_rate: 10,
     tax_inclusive: false,
-    service_charge_inclusive: false
+    service_charge_inclusive: false,
+    vat_applicable_to: ['room', 'food', 'beverage', 'laundry', 'spa'],
+    service_applicable_to: ['room', 'food', 'beverage', 'spa'],
+    show_tax_breakdown: true,
+    zero_rate_hidden: true
   },
   branding: {
     primary_color: '#2563eb',

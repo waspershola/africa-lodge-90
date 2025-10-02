@@ -23,6 +23,8 @@ import { AlertTriangle, Clock, CreditCard, MessageSquare, Phone } from "lucide-r
 import { useToast } from "@/hooks/use-toast";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useConfiguration } from "@/hooks/useConfiguration";
+import { calculateTaxesAndCharges } from "@/lib/tax-calculator";
 import type { Room } from "./RoomGrid";
 
 interface OverstayChargeDialogProps {
@@ -51,6 +53,7 @@ export const OverstayChargeDialog = ({
   const { toast } = useToast();
   const { enabledMethods, getMethodIcon } = usePaymentMethods();
   const { formatPrice } = useCurrency();
+  const { configuration } = useConfiguration();
   const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
   const [formData, setFormData] = useState({
@@ -188,16 +191,41 @@ export const OverstayChargeDialog = ({
           if (folioError) throw folioError;
 
           if (folios && folios.length > 0) {
+            // Calculate taxes for overstay charge
+            let chargeData: any = {
+              folio_id: folios[0].id,
+              charge_type: 'overstay',
+              description: `Overstay charge for Room ${room.number} - ${overstayHours} hours late`,
+              tenant_id: user.user_metadata?.tenant_id
+            };
+
+            if (configuration) {
+              const taxCalc = calculateTaxesAndCharges({
+                baseAmount: parseFloat(formData.chargeAmount),
+                chargeType: 'room',
+                isTaxable: true,
+                isServiceChargeable: true,
+                guestTaxExempt: false,
+                configuration
+              });
+
+              chargeData = {
+                ...chargeData,
+                base_amount: taxCalc.baseAmount,
+                vat_amount: taxCalc.vatAmount,
+                service_charge_amount: taxCalc.serviceChargeAmount,
+                amount: taxCalc.totalAmount,
+                is_taxable: true,
+                is_service_chargeable: true
+              };
+            } else {
+              chargeData.amount = parseFloat(formData.chargeAmount);
+            }
+
             // Add overstay charge
             const { error: chargeError } = await supabase
               .from('folio_charges')
-              .insert({
-                folio_id: folios[0].id,
-                charge_type: 'overstay',
-                description: `Overstay charge for Room ${room.number} - ${overstayHours} hours late`,
-                amount: parseFloat(formData.chargeAmount),
-                tenant_id: user.user_metadata?.tenant_id
-              });
+              .insert(chargeData);
 
             if (chargeError) throw chargeError;
 

@@ -22,6 +22,8 @@ import { Plus, Sparkles, CreditCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useConfiguration } from "@/hooks/useConfiguration";
+import { calculateTaxesAndCharges } from "@/lib/tax-calculator";
 import type { Room } from "./RoomGrid";
 
 interface AddServiceDialogProps {
@@ -122,6 +124,7 @@ export const AddServiceDialog = ({
   const { toast } = useToast();
   const { enabledMethods, getMethodIcon } = usePaymentMethods();
   const { formatPrice } = useCurrency();
+  const { configuration } = useConfiguration();
   const [isProcessing, setIsProcessing] = useState(false);
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [formData, setFormData] = useState({
@@ -280,16 +283,49 @@ export const AddServiceDialog = ({
         throw new Error('No open folio found for this reservation');
       }
 
-      // Insert all service charges
-      const charges = services.map(service => ({
-        tenant_id: tenantId,
-        folio_id: folio.id,
-        description: `${service.category} - ${service.service}${service.quantity > 1 ? ` (x${service.quantity})` : ''}`,
-        amount: service.totalPrice,
-        charge_type: 'service',
-        reference_type: 'add_service',
-        posted_by: user.id,
-      }));
+      // Insert all service charges WITH TAX CALCULATION
+      const charges = services.map(service => {
+        // Determine charge type based on category
+        const chargeType = service.category.toLowerCase().replace(/\s+/g, '_');
+        
+        // Calculate taxes if configuration is available
+        if (configuration) {
+          const taxCalc = calculateTaxesAndCharges({
+            baseAmount: service.totalPrice,
+            chargeType: chargeType,
+            isTaxable: true,
+            isServiceChargeable: true,
+            guestTaxExempt: false,
+            configuration
+          });
+
+          return {
+            tenant_id: tenantId,
+            folio_id: folio.id,
+            description: `${service.category} - ${service.service}${service.quantity > 1 ? ` (x${service.quantity})` : ''}`,
+            base_amount: taxCalc.baseAmount,
+            vat_amount: taxCalc.vatAmount,
+            service_charge_amount: taxCalc.serviceChargeAmount,
+            amount: taxCalc.totalAmount,
+            charge_type: 'service',
+            reference_type: 'add_service',
+            is_taxable: true,
+            is_service_chargeable: true,
+            posted_by: user.id,
+          };
+        }
+
+        // Fallback without tax calculation
+        return {
+          tenant_id: tenantId,
+          folio_id: folio.id,
+          description: `${service.category} - ${service.service}${service.quantity > 1 ? ` (x${service.quantity})` : ''}`,
+          amount: service.totalPrice,
+          charge_type: 'service',
+          reference_type: 'add_service',
+          posted_by: user.id,
+        };
+      });
 
       const { error: chargesError } = await supabase
         .from('folio_charges')

@@ -9,6 +9,8 @@ import { AlertTriangle, ArrowRight, Bed, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useShiftIntegratedAction } from "./ShiftIntegratedAction";
 import { useReceiptPrinter } from "@/hooks/useReceiptPrinter";
+import { useConfiguration } from "@/hooks/useConfiguration";
+import { calculateTaxesAndCharges } from "@/lib/tax-calculator";
 import type { Room } from "./RoomGrid";
 
 interface TransferRoomDialogProps {
@@ -32,6 +34,7 @@ export const TransferRoomDialog = ({
   const { toast } = useToast();
   const { logShiftAction } = useShiftIntegratedAction();
   const { printServiceReceipt } = useReceiptPrinter();
+  const { configuration } = useConfiguration();
 
   // Reset form when dialog opens
   useEffect(() => {
@@ -119,15 +122,40 @@ export const TransferRoomDialog = ({
           });
 
         if (!folioIdError && folioId) {
+          // Calculate taxes for transfer fee
+          let chargeData: any = {
+            folio_id: folioId,
+            charge_type: 'service',
+            description: `Room transfer fee: ${sourceRoom.number} → ${targetRoom.number}`,
+            tenant_id: user.user_metadata?.tenant_id
+          };
+
+          if (configuration) {
+            const taxCalc = calculateTaxesAndCharges({
+              baseAmount: transferFee,
+              chargeType: 'room',
+              isTaxable: true,
+              isServiceChargeable: true,
+              guestTaxExempt: false,
+              configuration
+            });
+
+            chargeData = {
+              ...chargeData,
+              base_amount: taxCalc.baseAmount,
+              vat_amount: taxCalc.vatAmount,
+              service_charge_amount: taxCalc.serviceChargeAmount,
+              amount: taxCalc.totalAmount,
+              is_taxable: true,
+              is_service_chargeable: true
+            };
+          } else {
+            chargeData.amount = transferFee;
+          }
+
           const { error: chargeError } = await supabase
             .from('folio_charges')
-            .insert({
-              folio_id: folioId,
-              charge_type: 'service',
-              description: `Room transfer fee: ${sourceRoom.number} → ${targetRoom.number}`,
-              amount: transferFee,
-              tenant_id: user.user_metadata?.tenant_id
-            });
+            .insert(chargeData);
 
           if (chargeError) console.warn('Failed to add transfer fee charge:', chargeError);
         }

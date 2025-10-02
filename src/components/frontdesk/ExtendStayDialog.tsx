@@ -21,6 +21,8 @@ import { Calendar, Clock, CreditCard, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useConfiguration } from "@/hooks/useConfiguration";
+import { calculateTaxesAndCharges } from "@/lib/tax-calculator";
 import type { Room } from "./RoomGrid";
 
 interface ExtendStayDialogProps {
@@ -39,6 +41,7 @@ export const ExtendStayDialog = ({
   const { toast } = useToast();
   const { enabledMethods, getMethodIcon } = usePaymentMethods();
   const { formatPrice } = useCurrency();
+  const { configuration } = useConfiguration();
   const [isProcessing, setIsProcessing] = useState(false);
   const [formData, setFormData] = useState({
     newCheckOutDate: '',
@@ -135,16 +138,41 @@ export const ExtendStayDialog = ({
 
         if (folioIdError || !folioId) throw folioIdError || new Error('Failed to get or create folio');
 
+        // Calculate taxes for extension charge
+        let chargeData: any = {
+          folio_id: folioId,
+          charge_type: 'extension',
+          description: `Stay extension - ${additionalNights} additional night(s)`,
+          tenant_id: user.user_metadata?.tenant_id
+        };
+
+        if (configuration) {
+          const taxCalc = calculateTaxesAndCharges({
+            baseAmount: additionalAmount,
+            chargeType: 'room',
+            isTaxable: true,
+            isServiceChargeable: true,
+            guestTaxExempt: false,
+            configuration
+          });
+
+          chargeData = {
+            ...chargeData,
+            base_amount: taxCalc.baseAmount,
+            vat_amount: taxCalc.vatAmount,
+            service_charge_amount: taxCalc.serviceChargeAmount,
+            amount: taxCalc.totalAmount,
+            is_taxable: true,
+            is_service_chargeable: true
+          };
+        } else {
+          chargeData.amount = additionalAmount;
+        }
+
         // Add extension charge to folio
         const { error: chargeError } = await supabase
           .from('folio_charges')
-          .insert({
-          folio_id: folioId,
-            charge_type: 'extension',
-            description: `Stay extension - ${additionalNights} additional night(s)`,
-            amount: additionalAmount,
-            tenant_id: user.user_metadata?.tenant_id
-          });
+          .insert(chargeData);
 
         if (chargeError) throw chargeError;
 

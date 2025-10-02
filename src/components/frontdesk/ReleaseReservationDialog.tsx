@@ -66,14 +66,16 @@ export const ReleaseReservationDialog = ({
         throw new Error('No active reservation found for this room');
       }
 
-      // Call the atomic cancel function
+      // Call the atomic cancel function with refund in notes
+      const notesWithRefund = refundAmount > 0 
+        ? `Refund: ₦${refundAmount}. ${notes || ''}`
+        : notes || null;
+        
       const { data, error } = await supabase.rpc('cancel_reservation_atomic', {
         p_tenant_id: tenantId,
         p_reservation_id: currentReservation.id,
         p_cancelled_by: user.id,
-        p_cancellation_reason: releaseReason || null,
-        p_refund_amount: refundAmount || 0,
-        p_cancellation_notes: notes || null,
+        p_reason: releaseReason || null
       });
 
       if (error) {

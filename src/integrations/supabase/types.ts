@@ -5553,6 +5553,16 @@ export type Database = {
           success: boolean
         }[]
       }
+      atomic_checkout_v3: {
+        Args: { p_reservation_id: string; p_tenant_id: string }
+        Returns: {
+          final_balance: number
+          folio_id: string
+          message: string
+          room_id: string
+          success: boolean
+        }[]
+      }
       auto_expire_reservations: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -5591,8 +5601,8 @@ export type Database = {
               p_tenant_id: string
             }
           | {
-              p_cancellation_reason?: string
-              p_cancelled_by: string
+              p_cancelled_by?: string
+              p_reason?: string
               p_reservation_id: string
               p_tenant_id: string
             }
@@ -6044,6 +6054,10 @@ export type Database = {
       log_security_event: {
         Args: { event_description: string; event_type: string; metadata?: Json }
         Returns: undefined
+      }
+      map_payment_method_canonical: {
+        Args: { p_method_type: string }
+        Returns: string
       }
       monitor_sms_credits: {
         Args: Record<PropertyKey, never>

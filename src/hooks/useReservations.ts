@@ -326,14 +326,12 @@ export const useCancelReservation = () => {
 
       if (resError) throw resError;
 
-      // Call atomic cancel function
+      // Call atomic cancel function with correct parameters
       const { data, error } = await supabase.rpc('cancel_reservation_atomic', {
         p_tenant_id: tenantId,
         p_reservation_id: reservationId,
         p_cancelled_by: user.id,
-        p_cancellation_reason: reason || null,
-        p_refund_amount: refundAmount || 0,
-        p_cancellation_notes: notes || null,
+        p_reason: reason || null
       });
 
       if (error) throw error;

@@ -438,7 +438,8 @@ export const RoomActionDrawer = ({
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="w-full sm:w-[500px] sm:max-w-[500px]">
+        <SheetContent className="w-full sm:w-[500px] sm:max-w-[500px] h-full flex flex-col overflow-hidden p-0">
+          <div className="flex-shrink-0 px-6 pt-6">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-3">
             <span>Room {room.number}</span>
@@ -449,9 +450,11 @@ export const RoomActionDrawer = ({
           <SheetDescription>
             {room.name} • {room.type}
           </SheetDescription>
-        </SheetHeader>
+         </SheetHeader>
+         </div>
 
-        <div className="space-y-6 mt-6">
+         <div className="flex-1 overflow-y-auto px-6 pb-6">
+         <div className="space-y-6 mt-6">
           {/* Guest Information */}
           {room.guest && (
             <Card>
@@ -620,7 +623,8 @@ export const RoomActionDrawer = ({
           <div className="pt-4 border-t text-xs text-muted-foreground">
             <AuditTrailDisplay roomId={room.id} />
           </div>
-        </div>
+          </div>
+          </div>
         </SheetContent>
       </Sheet>
 

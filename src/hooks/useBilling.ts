@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
+import { useQueryClient } from '@tanstack/react-query';
 
 export interface BillingStats {
   totalRevenue: number;
@@ -271,7 +272,7 @@ export function useBilling() {
       if (paymentData.payment_method_id) {
         const { data: method } = await supabase
           .from('payment_methods')
-          .select('enabled, name')
+          .select('enabled, name, type')
           .eq('id', paymentData.payment_method_id)
           .eq('tenant_id', tenant.tenant_id)
           .single();
@@ -285,16 +286,32 @@ export function useBilling() {
         }
       }
 
+      // CRITICAL: Ensure payment_method matches database constraint
+      // Allowed: cash, card, transfer, pos, credit, digital, complimentary
+      const allowedMethods = ['cash', 'card', 'transfer', 'pos', 'credit', 'digital', 'complimentary'];
+      const normalizedMethod = paymentData.payment_method.toLowerCase().trim();
+      
+      if (!allowedMethods.includes(normalizedMethod)) {
+        console.error('[Payment] Invalid payment method:', {
+          provided: paymentData.payment_method,
+          normalized: normalizedMethod,
+          allowed: allowedMethods
+        });
+        throw new Error(`Invalid payment method: ${paymentData.payment_method}. Must be one of: ${allowedMethods.join(', ')}`);
+      }
+
       console.log('[Payment] Creating payment with validation:', {
         amount: paymentData.amount,
-        method: paymentData.payment_method,
+        method: normalizedMethod,
         methodId: paymentData.payment_method_id,
+        folioId: paymentData.folio_id,
       });
 
       const { data, error } = await supabase
         .from('payments')
         .insert({
           ...paymentData,
+          payment_method: normalizedMethod,
           tenant_id: tenant.tenant_id,
           status: 'completed'
         })
@@ -309,8 +326,17 @@ export function useBilling() {
 
       console.log('[Payment] Payment created successfully:', data?.id);
 
-      // Refresh data
-      await Promise.all([loadBillingStats(), loadFolioBalances(), loadPayments()]);
+      // Aggressive refresh to ensure UI updates
+      await Promise.all([
+        loadBillingStats(), 
+        loadFolioBalances(), 
+        loadPayments(),
+        queryClient.invalidateQueries({ queryKey: ['folios', tenant.tenant_id] }),
+        queryClient.invalidateQueries({ queryKey: ['folio-balances', tenant.tenant_id] }),
+        queryClient.invalidateQueries({ queryKey: ['payments', tenant.tenant_id] }),
+        queryClient.invalidateQueries({ queryKey: ['billing', tenant.tenant_id] }),
+        queryClient.invalidateQueries({ queryKey: ['rooms', tenant.tenant_id] })
+      ]);
       
       return data;
     } catch (err) {

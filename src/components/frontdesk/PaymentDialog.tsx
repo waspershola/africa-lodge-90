@@ -194,19 +194,22 @@ export const PaymentDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] w-[95vw] sm:w-full overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
-            {/* Phase 5: Dynamic modal title based on context */}
-            {folioId && roomNumber && guestName 
-              ? `Collect Payment for Room ${roomNumber} (${guestName})`
-              : 'Pending Guest Payments'
-            }
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="max-w-3xl h-[90vh] w-[95vw] sm:w-full flex flex-col overflow-hidden">
+        <div className="flex-shrink-0">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              {/* Phase 5: Dynamic modal title based on context */}
+              {folioId && roomNumber && guestName 
+                ? `Collect Payment for Room ${roomNumber} (${guestName})`
+                : 'Pending Guest Payments'
+              }
+            </DialogTitle>
+          </DialogHeader>
+        </div>
         
-        <div className="grid grid-cols-2 gap-6">
+        <div className="flex-1 overflow-y-auto px-1">
+        <div className="grid grid-cols-2 gap-6 h-full">
           {/* Pending Payments List */}
           <div className="space-y-4">
             <h3 className="font-medium flex items-center gap-2">
@@ -350,6 +353,7 @@ export const PaymentDialog = ({
               </div>
             )}
           </div>
+        </div>
         </div>
       </DialogContent>
     </Dialog>

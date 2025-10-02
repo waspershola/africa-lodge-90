@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCheckout } from '@/hooks/useCheckout';
-import { useAtomicCheckout } from '@/hooks/useAtomicCheckout';
+import { useAtomicCheckoutV3 } from '@/hooks/useAtomicCheckoutV3';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,7 +34,7 @@ interface CheckoutDialogProps {
 
 export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogProps) => {
   const { checkoutSession, loading, error, fetchGuestBill, processPayment } = useCheckout(roomId);
-  const { checkout, isLoading: isCheckingOut } = useAtomicCheckout();
+  const { checkout, isLoading: isCheckingOut } = useAtomicCheckoutV3();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -232,14 +232,17 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogPro
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl">
-              <User className="h-5 w-5" />
-              Room {guest_bill.room_number} Checkout
-            </DialogTitle>
-          </DialogHeader>
+        <DialogContent className="max-w-5xl h-[90vh] flex flex-col overflow-hidden">
+          <div className="flex-shrink-0">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-xl">
+                <User className="h-5 w-5" />
+                Room {guest_bill.room_number} Checkout
+              </DialogTitle>
+            </DialogHeader>
+          </div>
 
+          <div className="flex-1 overflow-y-auto px-1">
           {/* Guest Info Header */}
           <Card className="mb-6">
             <CardHeader className="pb-3">
@@ -354,6 +357,7 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogPro
               </CardContent>
             </Card>
           )}
+          </div>
         </DialogContent>
       </Dialog>
 

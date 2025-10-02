@@ -3358,6 +3358,10 @@ export type Database = {
           adults: number | null
           balance_due: number | null
           booking_source: string | null
+          cancellation_notes: string | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
           check_in_date: string
           check_out_date: string
           checked_in_at: string | null
@@ -3384,6 +3388,7 @@ export type Database = {
           payment_due_date: string | null
           payment_policy_id: string | null
           payment_status: string
+          refund_amount: number | null
           requires_verification: boolean | null
           reservation_number: string
           room_assignment_at: string | null
@@ -3401,6 +3406,10 @@ export type Database = {
           adults?: number | null
           balance_due?: number | null
           booking_source?: string | null
+          cancellation_notes?: string | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           check_in_date: string
           check_out_date: string
           checked_in_at?: string | null
@@ -3427,6 +3436,7 @@ export type Database = {
           payment_due_date?: string | null
           payment_policy_id?: string | null
           payment_status?: string
+          refund_amount?: number | null
           requires_verification?: boolean | null
           reservation_number: string
           room_assignment_at?: string | null
@@ -3444,6 +3454,10 @@ export type Database = {
           adults?: number | null
           balance_due?: number | null
           booking_source?: string | null
+          cancellation_notes?: string | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           check_in_date?: string
           check_out_date?: string
           checked_in_at?: string | null
@@ -3470,6 +3484,7 @@ export type Database = {
           payment_due_date?: string | null
           payment_policy_id?: string | null
           payment_status?: string
+          refund_amount?: number | null
           requires_verification?: boolean | null
           reservation_number?: string
           room_assignment_at?: string | null
@@ -3725,6 +3740,7 @@ export type Database = {
           id: string
           last_cleaned: string | null
           notes: string | null
+          reservation_id: string | null
           room_number: string
           room_type_id: string
           status: string
@@ -3737,6 +3753,7 @@ export type Database = {
           id?: string
           last_cleaned?: string | null
           notes?: string | null
+          reservation_id?: string | null
           room_number: string
           room_type_id: string
           status?: string
@@ -3749,6 +3766,7 @@ export type Database = {
           id?: string
           last_cleaned?: string | null
           notes?: string | null
+          reservation_id?: string | null
           room_number?: string
           room_type_id?: string
           status?: string
@@ -3756,6 +3774,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "rooms_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "rooms_room_type_id_fkey"
             columns: ["room_type_id"]
@@ -5502,20 +5527,13 @@ export type Database = {
       }
       atomic_checkin_guest: {
         Args: {
-          p_guest_payload?: Json
+          p_guest_data?: Json
           p_initial_charges?: Json
           p_reservation_id: string
           p_room_id: string
           p_tenant_id: string
         }
-        Returns: {
-          folio_id: string
-          guest_id: string
-          message: string
-          reservation_id: string
-          room_id: string
-          success: boolean
-        }[]
+        Returns: Json
       }
       atomic_checkout: {
         Args: { p_reservation_id: string; p_tenant_id: string }
@@ -5557,18 +5575,14 @@ export type Database = {
       }
       cancel_reservation_atomic: {
         Args: {
-          p_cancelled_by: string
-          p_notes?: string
-          p_reason?: string
+          p_cancellation_notes?: string
+          p_cancellation_reason?: string
+          p_cancelled_by?: string
           p_refund_amount?: number
           p_reservation_id: string
           p_tenant_id: string
         }
-        Returns: {
-          message: string
-          reservation_id: string
-          success: boolean
-        }[]
+        Returns: Json
       }
       check_reservation_conflict: {
         Args: {

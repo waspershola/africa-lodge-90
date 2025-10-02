@@ -80,18 +80,27 @@ export const ReleaseReservationDialog = ({
         throw error;
       }
 
-      // RPC returns array of rows for RETURNS TABLE
+      // Phase 3: Enhanced RPC result validation
       const result = Array.isArray(data) ? data[0] : data;
       
-      if (!result || (result as any).success !== true) {
-        // Show returned error message (e.g., already cancelled, not found)
+      // Verify RPC returned success
+      if (!result) {
+        throw new Error('No response from cancellation service');
+      }
+      
+      if ((result as any).success !== true) {
+        // Show specific error message from RPC
+        const errorMsg = (result as any)?.message || 'Failed to cancel reservation';
         toast({
           title: "Cannot Release Room",
-          description: (result as any)?.message || 'Failed to cancel reservation',
+          description: errorMsg,
           variant: "destructive"
         });
+        setIsProcessing(false);
         return;
       }
+
+      console.log('[Release] Cancellation successful:', result);
 
       // Log shift action after successful cancellation
       await logShiftAction({

@@ -12,6 +12,7 @@ export interface PaymentValidationResult {
 
 /**
  * Validates payment method on client-side before sending to server
+ * Phase 1: Enhanced with dynamic validation support
  */
 export function validatePaymentMethod(
   paymentMethod: string,
@@ -22,13 +23,17 @@ export function validatePaymentMethod(
     return { valid: true };
   }
 
-  // Validate against supported legacy methods
+  // Enhanced: Support both database constraint values and legacy methods
+  // Database constraint: cash, card, transfer, pos, credit, digital, complimentary
   const supportedMethods = [
     'cash',
     'card',
     'pos',
     'transfer',
     'credit',
+    'digital',
+    'complimentary',
+    // Legacy compatibility
     'mobile_money',
     'paystack',
     'flutterwave',

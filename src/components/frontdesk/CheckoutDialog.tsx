@@ -64,24 +64,40 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogPro
     }
   };
 
-  // Phase 2: Atomic checkout with proper error handling and single toast
+  // Phase 2: Atomic checkout with proper FK-based reservation lookup
   const handleCompleteCheckout = async () => {
     if (!checkoutSession?.guest_bill?.room_id) return;
     
-    // Get reservation ID from the current checkout session
-    const { data: reservations } = await supabase
-      .from('reservations')
-      .select('id')
-      .eq('room_id', checkoutSession.guest_bill.room_id)
-      .eq('status', 'checked_in')
-      .order('check_in_date', { ascending: false })
-      .limit(1);
+    // Phase 2: Use proper FK relationship to find active reservation
+    const { data: room } = await supabase
+      .from('rooms')
+      .select(`
+        id,
+        reservation_id,
+        current_reservation:reservations!rooms_reservation_id_fkey(id, status)
+      `)
+      .eq('id', checkoutSession.guest_bill.room_id)
+      .single();
 
-    const reservation = reservations?.[0];
+    let reservation = (room as any)?.current_reservation;
+    
+    // Fallback: Query by room_id if FK is null
+    if (!reservation || reservation.status !== 'checked_in') {
+      const { data: reservations } = await supabase
+        .from('reservations')
+        .select('id, status')
+        .eq('room_id', checkoutSession.guest_bill.room_id)
+        .eq('status', 'checked_in')
+        .order('check_in_date', { ascending: false })
+        .limit(1);
+      
+      reservation = reservations?.[0];
+    }
+
     if (!reservation) {
       toast({
         title: "Error",
-        description: "No active reservation found",
+        description: "No active reservation found for this room",
         variant: "destructive"
       });
       return;

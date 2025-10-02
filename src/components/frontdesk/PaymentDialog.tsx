@@ -112,7 +112,7 @@ export const PaymentDialog = ({
     console.log('[Payment Mapping] Input:', { methodId: method.id, methodName: method.name, methodType: method.type });
     
     // Map from payment_methods.type to database constraint values
-    // Database now supports: cash, card, transfer, pos, credit, digital, complimentary
+    // Database supports: cash, card, transfer, pos, credit, digital, complimentary
     const typeMapping: Record<string, string> = {
       'pos': 'pos',
       'digital': 'digital', 
@@ -123,13 +123,15 @@ export const PaymentDialog = ({
       'complimentary': 'complimentary'
     };
     
-    const mappedMethod = typeMapping[method.type] || 'cash';
+    const mappedMethod = typeMapping[method.type.toLowerCase()] || method.type.toLowerCase();
     
-    // Validate against updated database constraint
-    const validMethods = ['cash', 'card', 'transfer', 'pos', 'credit', 'digital', 'complimentary'];
-    if (!validMethods.includes(mappedMethod)) {
-      console.error('[Payment Mapping] Invalid method after mapping:', mappedMethod);
-      throw new Error(`Unsupported payment method: ${mappedMethod}`);
+    // Enhanced: Use dynamic validation from payment-validation utility
+    const { validatePaymentMethod } = require('@/lib/payment-validation');
+    const validation = validatePaymentMethod(mappedMethod, method.id);
+    
+    if (!validation.valid) {
+      console.error('[Payment Mapping] Validation failed:', validation.error);
+      throw new Error(validation.error || `Unsupported payment method: ${mappedMethod}`);
     }
     
     console.log('[Payment Mapping] Output:', { mappedMethod });

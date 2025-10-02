@@ -51,33 +51,37 @@ export const useCheckout = (roomId?: string) => {
     setError(null);
     
     try {
-      // PERFORMANCE FIX: Optimized parallel queries
-      // Get room info and current reservation in parallel
-      const [
-        { data: room, error: roomError },
-        { data: reservations, error: reservationError }
-      ] = await Promise.all([
-        supabase
-          .from('rooms')
-          .select(`
-            *,
-            room_types:room_type_id (*)
-          `)
-          .eq('id', roomId)
-          .single(),
-        supabase
+      // Phase 2: Optimized reservation lookup using proper FK relationship
+      // Get room with current reservation via rooms.reservation_id FK
+      const { data: room, error: roomError } = await supabase
+        .from('rooms')
+        .select(`
+          *,
+          room_types:room_type_id (*),
+          current_reservation:reservations!rooms_reservation_id_fkey(*)
+        `)
+        .eq('id', roomId)
+        .single();
+
+      if (roomError) throw roomError;
+
+      // Check if room has active reservation via FK
+      let reservation = (room as any).current_reservation;
+      
+      // Fallback: If no current_reservation via FK, query by room_id for checked-in status
+      if (!reservation || reservation.status !== 'checked_in') {
+        const { data: reservations, error: reservationError } = await supabase
           .from('reservations')
           .select('*')
           .eq('room_id', roomId)
           .eq('status', 'checked_in')
           .order('check_in_date', { ascending: false })
-          .limit(1)
-      ]);
+          .limit(1);
 
-      if (roomError) throw roomError;
-      if (reservationError) throw reservationError;
+        if (reservationError) throw reservationError;
+        reservation = reservations?.[0];
+      }
 
-      const reservation = reservations?.[0];
       if (!reservation) {
         throw new Error('No active reservation found for this room');
       }
@@ -298,18 +302,36 @@ export const useCheckout = (roomId?: string) => {
     }, 30000); // 30 seconds timeout
 
     try {
-      // Use transaction-like approach by batching operations (get most recent if multiple)
-      const { data: reservations, error: reservationError } = await supabase
-        .from('reservations')
-        .select('id')
-        .eq('room_id', checkoutSession.room_id)
-        .eq('status', 'checked_in')
-        .order('check_in_date', { ascending: false })
-        .limit(1);
+      // Phase 2: Use proper FK relationship for active reservation lookup
+      // First try rooms.reservation_id (current active reservation FK)
+      const { data: room, error: roomError } = await supabase
+        .from('rooms')
+        .select(`
+          id,
+          reservation_id,
+          current_reservation:reservations!rooms_reservation_id_fkey(id, status)
+        `)
+        .eq('id', checkoutSession.room_id)
+        .single();
 
-      if (reservationError) throw reservationError;
+      if (roomError) throw roomError;
 
-      const reservation = reservations?.[0];
+      let reservation = (room as any).current_reservation;
+      
+      // Fallback: Query by room_id if FK is null or not checked-in
+      if (!reservation || reservation.status !== 'checked_in') {
+        const { data: reservations, error: reservationError } = await supabase
+          .from('reservations')
+          .select('id, status')
+          .eq('room_id', checkoutSession.room_id)
+          .eq('status', 'checked_in')
+          .order('check_in_date', { ascending: false })
+          .limit(1);
+
+        if (reservationError) throw reservationError;
+        reservation = reservations?.[0];
+      }
+
       if (!reservation) {
         throw new Error('No active reservation found');
       }

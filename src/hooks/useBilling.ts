@@ -253,7 +253,7 @@ export function useBilling() {
     if (!tenant?.tenant_id) return null;
 
     try {
-      // Phase 4: Client-side validation before server call
+      // Phase 1: Enhanced client-side validation
       const { validatePaymentData, parsePaymentError } = await import('@/lib/payment-validation');
       
       const validation = validatePaymentData({
@@ -265,6 +265,24 @@ export function useBilling() {
 
       if (!validation.valid) {
         throw new Error(validation.error || 'Payment validation failed');
+      }
+
+      // Additional check: Verify payment method is enabled if payment_method_id provided
+      if (paymentData.payment_method_id) {
+        const { data: method } = await supabase
+          .from('payment_methods')
+          .select('enabled, name')
+          .eq('id', paymentData.payment_method_id)
+          .eq('tenant_id', tenant.tenant_id)
+          .single();
+
+        if (!method) {
+          throw new Error('Payment method not found');
+        }
+
+        if (!method.enabled) {
+          throw new Error(`${method.name} is currently disabled. Please select another payment method.`);
+        }
       }
 
       console.log('[Payment] Creating payment with validation:', {

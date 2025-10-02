@@ -8,6 +8,7 @@ import { ConfigurationErrorBoundary } from './ErrorBoundary';
 import { ConfirmationDialog } from './ConfirmationDialog';
 import { GeneralSettings } from './GeneralSettings';
 import { CurrencyFinancials } from './CurrencyFinancials';
+import { TaxServiceChargeSettings } from './TaxServiceChargeSettings';
 import { BrandingIdentity } from './BrandingIdentity';
 import { ReceiptDocuments } from './ReceiptDocuments';
 import { GuestExperience } from './GuestExperience';
@@ -16,7 +17,8 @@ import { AuditLogs } from './AuditLogs';
 import EmailSettings from '../settings/EmailSettings';
 import { 
   Settings, 
-  DollarSign, 
+  DollarSign,
+  Percent,
   Palette, 
   FileText, 
   Users, 
@@ -167,7 +169,7 @@ export const ConfigurationCenter = () => {
           <CardContent className="p-0">
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
               <div className="border-b">
-                <TabsList className="grid w-full grid-cols-8 h-auto p-1">
+                <TabsList className="grid w-full grid-cols-3 lg:grid-cols-9 h-auto p-1">
                   <TabsTrigger value="general" className="flex items-center gap-2 py-3 px-2">
                     <Settings className="h-4 w-4" />
                     <span className="hidden sm:inline">General</span>
@@ -175,6 +177,10 @@ export const ConfigurationCenter = () => {
                   <TabsTrigger value="currency" className="flex items-center gap-2 py-3 px-2">
                     <DollarSign className="h-4 w-4" />
                     <span className="hidden sm:inline">Currency</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="tax" className="flex items-center gap-2 py-3 px-2">
+                    <Percent className="h-4 w-4" />
+                    <span className="hidden sm:inline">Tax & Service</span>
                   </TabsTrigger>
                   <TabsTrigger value="branding" className="flex items-center gap-2 py-3 px-2">
                     <Palette className="h-4 w-4" />
@@ -231,6 +237,16 @@ export const ConfigurationCenter = () => {
                       return true;
                     }}
                     loading={loading}
+                  />
+                </TabsContent>
+
+                <TabsContent value="tax" className="mt-0">
+                  <TaxServiceChargeSettings
+                    config={configuration}
+                    onUpdate={async (section, updates) => {
+                      await updateConfiguration(section, updates);
+                      setHasUnsavedChanges(true);
+                    }}
                   />
                 </TabsContent>
 

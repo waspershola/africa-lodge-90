@@ -15,6 +15,7 @@ import { validatePaymentMethod } from '@/lib/payment-validation';
 import { TaxBreakdownDisplay } from './TaxBreakdownDisplay';
 import { TaxBreakdownItem } from '@/lib/tax-calculator';
 import { supabase } from '@/integrations/supabase/client';
+import { mapPaymentMethodWithLogging } from '@/lib/payment-method-mapper';
 
 // Phase 1: Enhanced props interface with security context
 interface PaymentDialogProps {
@@ -142,8 +143,6 @@ export const PaymentDialog = ({
   // Phase 1: Dynamic payment method mapping using centralized utility
   const mapPaymentMethod = (method: any): string => {
     console.log('[Payment Mapping] Input:', { methodId: method.id, methodName: method.name, methodType: method.type });
-    
-    const { mapPaymentMethodWithLogging } = require('@/lib/payment-method-mapper');
     
     // Try to map from type first, fallback to name
     const inputToMap = method.type || method.name;

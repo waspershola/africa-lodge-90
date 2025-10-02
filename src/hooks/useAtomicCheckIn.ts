@@ -73,11 +73,12 @@ export function useAtomicCheckIn() {
         throw new Error(rpcError.message || 'Check-in failed');
       }
 
-      if (!data || (data as any[]).length === 0) {
+      if (!data) {
         throw new Error('No response from check-in function');
       }
 
-      const result = data[0] as AtomicCheckInResult;
+      // Handle both array and object responses from RPC
+      const result = (Array.isArray(data) ? data[0] : data) as AtomicCheckInResult;
       
       const duration = Date.now() - startTime;
       console.log('[Atomic Check-in] Result:', {

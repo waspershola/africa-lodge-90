@@ -41,7 +41,9 @@ interface ReceiptData {
   paymentMethod: string;
   subtotal: number;
   tax?: number;
+  taxRate?: number;
   serviceCharge?: number;
+  serviceChargeRate?: number;
   totalAmount: number;
   amountPaid: number;
   changeAmount?: number;
@@ -194,14 +196,14 @@ export const ReceiptTemplate = forwardRef<HTMLDivElement, ReceiptTemplateProps>(
                 
                 {receiptData.tax && receiptData.tax > 0 && (
                   <div className="flex justify-between text-xs">
-                    <span>VAT (7.5%):</span>
+                    <span>VAT {receiptData.taxRate ? `(${receiptData.taxRate}%)` : ''}:</span>
                     <span>{formatPrice(receiptData.tax)}</span>
                   </div>
                 )}
                 
                 {receiptData.serviceCharge && receiptData.serviceCharge > 0 && (
                   <div className="flex justify-between text-xs">
-                    <span>Service Charge:</span>
+                    <span>Service Charge {receiptData.serviceChargeRate ? `(${receiptData.serviceChargeRate}%)` : ''}:</span>
                     <span>{formatPrice(receiptData.serviceCharge)}</span>
                   </div>
                 )}

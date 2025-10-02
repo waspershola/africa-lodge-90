@@ -12,6 +12,9 @@ import { useBilling } from '@/hooks/useBilling';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { toast } from 'sonner';
 import { validatePaymentMethod } from '@/lib/payment-validation';
+import { TaxBreakdownDisplay } from './TaxBreakdownDisplay';
+import { TaxBreakdownItem } from '@/lib/tax-calculator';
+import { supabase } from '@/integrations/supabase/client';
 
 // Phase 1: Enhanced props interface with security context
 interface PaymentDialogProps {
@@ -50,6 +53,7 @@ export const PaymentDialog = ({
   const [loadingScoped, setLoadingScoped] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
+  const [taxBreakdown, setTaxBreakdown] = useState<TaxBreakdownItem[]>([]);
 
   // Memoized function to load scoped folio - prevents dependency issues
   const loadScopedFolio = useCallback(async () => {
@@ -76,6 +80,32 @@ export const PaymentDialog = ({
         setScopedFolio(folio);
         setSelectedPayment(folio);
         setAmount(folio.balance.toString());
+        
+        // Fetch tax breakdown from folio charges
+        const { data: charges } = await supabase
+          .from('folio_charges')
+          .select('base_amount, vat_amount, service_charge_amount, amount')
+          .eq('folio_id', folioId);
+        
+        if (charges && charges.length > 0) {
+          const totalBase = charges.reduce((sum, c) => sum + (c.base_amount || c.amount), 0);
+          const totalVat = charges.reduce((sum, c) => sum + (c.vat_amount || 0), 0);
+          const totalService = charges.reduce((sum, c) => sum + (c.service_charge_amount || 0), 0);
+          
+          const breakdown: TaxBreakdownItem[] = [
+            { type: 'base', label: 'Subtotal', amount: totalBase }
+          ];
+          
+          if (totalVat > 0) {
+            breakdown.push({ type: 'vat', label: 'VAT', amount: totalVat });
+          }
+          
+          if (totalService > 0) {
+            breakdown.push({ type: 'service', label: 'Service Charge', amount: totalService });
+          }
+          
+          setTaxBreakdown(breakdown);
+        }
       } else {
         setValidationError('Folio not found');
         toast.error('Folio not found or access denied');
@@ -260,14 +290,26 @@ export const PaymentDialog = ({
             {selectedPayment ? (
               <div className="space-y-4">
                 <Card>
-                  <CardContent className="p-4">
+                  <CardContent className="p-4 space-y-3">
                     <div className="text-sm font-medium">Selected Payment</div>
-                    <div className="mt-2">
+                    <div>
                       <div>Room {selectedPayment.room_number} • {selectedPayment.guest_name}</div>
                       <div className="text-lg font-bold text-primary">
                         ₦{selectedPayment.balance.toLocaleString()}
                       </div>
                     </div>
+                    
+                    {taxBreakdown.length > 1 && (
+                      <div className="pt-2">
+                        <TaxBreakdownDisplay
+                          breakdown={taxBreakdown}
+                          totalAmount={selectedPayment.balance}
+                          currency="NGN"
+                          showZeroRates={false}
+                          className="border-0 shadow-none"
+                        />
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 

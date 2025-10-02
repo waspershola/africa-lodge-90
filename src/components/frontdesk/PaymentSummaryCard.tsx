@@ -1,19 +1,25 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, CreditCard, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { TaxBreakdownDisplay } from "./TaxBreakdownDisplay";
+import { TaxBreakdownItem } from "@/lib/tax-calculator";
 
 interface PaymentSummaryCardProps {
   totalCharges: number;
   totalPaid: number;
   balance: number;
   className?: string;
+  taxBreakdown?: TaxBreakdownItem[];
+  showBreakdown?: boolean;
 }
 
 export const PaymentSummaryCard = ({ 
   totalCharges, 
   totalPaid, 
   balance,
-  className = ""
+  className = "",
+  taxBreakdown,
+  showBreakdown = false
 }: PaymentSummaryCardProps) => {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-NG', {
@@ -43,10 +49,20 @@ export const PaymentSummaryCard = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-muted-foreground">Total Charges:</span>
-          <span className="font-medium">{formatCurrency(totalCharges)}</span>
-        </div>
+        {showBreakdown && taxBreakdown && taxBreakdown.length > 0 ? (
+          <TaxBreakdownDisplay
+            breakdown={taxBreakdown}
+            totalAmount={totalCharges}
+            currency="NGN"
+            showZeroRates={false}
+            className="mb-4"
+          />
+        ) : (
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Total Charges:</span>
+            <span className="font-medium">{formatCurrency(totalCharges)}</span>
+          </div>
+        )}
         
         <div className="flex justify-between items-center">
           <span className="text-sm text-muted-foreground">Amount Paid:</span>

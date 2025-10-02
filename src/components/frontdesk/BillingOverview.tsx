@@ -1,6 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { GuestBill, ServiceCharge } from '@/types/billing';
+import { TaxBreakdownDisplay } from './TaxBreakdownDisplay';
+import { TaxBreakdownItem } from '@/lib/tax-calculator';
 import { 
   Bed, 
   UtensilsCrossed, 
@@ -49,22 +52,64 @@ const getServiceLabel = (type: ServiceCharge['service_type']) => {
 };
 
 export const BillingOverview = ({ bill }: BillingOverviewProps) => {
-  // Group charges by service type
+  // Group charges by service type and extract tax breakdown
   const serviceGroups = bill.service_charges.reduce((acc, charge) => {
     if (!acc[charge.service_type]) {
       acc[charge.service_type] = {
         total: 0,
         pending: 0,
-        charges: []
+        charges: [],
+        baseAmount: 0,
+        vatAmount: 0,
+        serviceChargeAmount: 0
       };
     }
     acc[charge.service_type].total += charge.amount;
+    // @ts-ignore - these properties might not exist on old charges
+    acc[charge.service_type].baseAmount += charge.base_amount || charge.amount;
+    // @ts-ignore
+    acc[charge.service_type].vatAmount += charge.vat_amount || 0;
+    // @ts-ignore
+    acc[charge.service_type].serviceChargeAmount += charge.service_charge_amount || 0;
+    
     if (charge.status === 'pending') {
       acc[charge.service_type].pending += charge.amount;
     }
     acc[charge.service_type].charges.push(charge);
     return acc;
-  }, {} as Record<string, { total: number; pending: number; charges: ServiceCharge[] }>);
+  }, {} as Record<string, { 
+    total: number; 
+    pending: number; 
+    charges: ServiceCharge[];
+    baseAmount: number;
+    vatAmount: number;
+    serviceChargeAmount: number;
+  }>);
+
+  // Build overall tax breakdown
+  const totalBaseAmount = Object.values(serviceGroups).reduce((sum, group) => sum + group.baseAmount, 0);
+  const totalVatAmount = Object.values(serviceGroups).reduce((sum, group) => sum + group.vatAmount, 0);
+  const totalServiceChargeAmount = Object.values(serviceGroups).reduce((sum, group) => sum + group.serviceChargeAmount, 0);
+
+  const taxBreakdown: TaxBreakdownItem[] = [
+    { type: 'base', label: 'Subtotal', amount: totalBaseAmount }
+  ];
+
+  if (totalVatAmount > 0) {
+    taxBreakdown.push({
+      type: 'vat',
+      label: 'VAT',
+      amount: totalVatAmount
+    });
+  }
+
+  if (totalServiceChargeAmount > 0) {
+    taxBreakdown.push({
+      type: 'service',
+      label: 'Service Charge',
+      amount: totalServiceChargeAmount
+    });
+  }
 
   return (
     <Card>
@@ -108,26 +153,39 @@ export const BillingOverview = ({ bill }: BillingOverviewProps) => {
         </div>
 
         {/* Totals Summary */}
-        <div className="border-t pt-4 space-y-2">
-          <div className="flex justify-between text-sm">
-            <span>Subtotal:</span>
-            <span>₦{bill.subtotal.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span>Tax (10%):</span>
-            <span>₦{bill.tax_amount.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between font-semibold text-lg border-t pt-2">
-            <span>Total Amount:</span>
-            <span>₦{bill.total_amount.toLocaleString()}</span>
-          </div>
-          {bill.pending_balance > 0 && (
-            <div className="flex justify-between text-lg font-bold text-destructive">
-              <span>Pending Balance:</span>
-              <span>₦{bill.pending_balance.toLocaleString()}</span>
+        <Separator className="my-4" />
+        
+        {taxBreakdown.length > 1 ? (
+          <TaxBreakdownDisplay
+            breakdown={taxBreakdown}
+            totalAmount={bill.total_amount}
+            currency="NGN"
+            showZeroRates={false}
+          />
+        ) : (
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>Subtotal:</span>
+              <span>₦{bill.subtotal.toLocaleString()}</span>
             </div>
-          )}
-        </div>
+            <div className="flex justify-between text-sm">
+              <span>Tax:</span>
+              <span>₦{bill.tax_amount.toLocaleString()}</span>
+            </div>
+            <Separator className="my-2" />
+            <div className="flex justify-between font-semibold text-lg">
+              <span>Total Amount:</span>
+              <span>₦{bill.total_amount.toLocaleString()}</span>
+            </div>
+          </div>
+        )}
+        
+        {bill.pending_balance > 0 && (
+          <div className="flex justify-between text-lg font-bold text-destructive pt-2 border-t mt-2">
+            <span>Pending Balance:</span>
+            <span>₦{bill.pending_balance.toLocaleString()}</span>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -367,6 +367,8 @@ export type Database = {
           phone: string | null
           postal_code: string | null
           status: string | null
+          tax_exempt: boolean | null
+          tax_exempt_reason: string | null
           tax_id: string | null
           tenant_id: string
           updated_at: string | null
@@ -389,6 +391,8 @@ export type Database = {
           phone?: string | null
           postal_code?: string | null
           status?: string | null
+          tax_exempt?: boolean | null
+          tax_exempt_reason?: string | null
           tax_id?: string | null
           tenant_id: string
           updated_at?: string | null
@@ -411,6 +415,8 @@ export type Database = {
           phone?: string | null
           postal_code?: string | null
           status?: string | null
+          tax_exempt?: boolean | null
+          tax_exempt_reason?: string | null
           tax_id?: string | null
           tenant_id?: string
           updated_at?: string | null
@@ -878,39 +884,54 @@ export type Database = {
       folio_charges: {
         Row: {
           amount: number
+          base_amount: number | null
           charge_type: string
           created_at: string | null
           description: string
           folio_id: string
           id: string
+          is_service_chargeable: boolean | null
+          is_taxable: boolean | null
           posted_by: string | null
           reference_id: string | null
           reference_type: string | null
+          service_charge_amount: number | null
           tenant_id: string
+          vat_amount: number | null
         }
         Insert: {
           amount: number
+          base_amount?: number | null
           charge_type: string
           created_at?: string | null
           description: string
           folio_id: string
           id?: string
+          is_service_chargeable?: boolean | null
+          is_taxable?: boolean | null
           posted_by?: string | null
           reference_id?: string | null
           reference_type?: string | null
+          service_charge_amount?: number | null
           tenant_id: string
+          vat_amount?: number | null
         }
         Update: {
           amount?: number
+          base_amount?: number | null
           charge_type?: string
           created_at?: string | null
           description?: string
           folio_id?: string
           id?: string
+          is_service_chargeable?: boolean | null
+          is_taxable?: boolean | null
           posted_by?: string | null
           reference_id?: string | null
           reference_type?: string | null
+          service_charge_amount?: number | null
           tenant_id?: string
+          vat_amount?: number | null
         }
         Relationships: [
           {
@@ -1358,6 +1379,8 @@ export type Database = {
           reliability_score: number | null
           requires_verification: boolean | null
           successful_stays: number | null
+          tax_exempt: boolean | null
+          tax_exempt_reason: string | null
           tenant_id: string
           total_spent: number | null
           total_stays: number | null
@@ -1390,6 +1413,8 @@ export type Database = {
           reliability_score?: number | null
           requires_verification?: boolean | null
           successful_stays?: number | null
+          tax_exempt?: boolean | null
+          tax_exempt_reason?: string | null
           tenant_id: string
           total_spent?: number | null
           total_stays?: number | null
@@ -1422,6 +1447,8 @@ export type Database = {
           reliability_score?: number | null
           requires_verification?: boolean | null
           successful_stays?: number | null
+          tax_exempt?: boolean | null
+          tax_exempt_reason?: string | null
           tenant_id?: string
           total_spent?: number | null
           total_stays?: number | null
@@ -1447,13 +1474,17 @@ export type Database = {
           id: string
           late_checkout_fee: number | null
           notification_preferences: Json | null
+          service_applicable_to: string[] | null
           service_charge_rate: number | null
+          show_tax_breakdown: boolean | null
           system_provider_id: string | null
           tax_rate: number | null
           tenant_id: string
           timezone: string | null
           updated_at: string | null
           use_system_email: boolean | null
+          vat_applicable_to: string[] | null
+          zero_rate_hidden: boolean | null
         }
         Insert: {
           amenities?: Json | null
@@ -1471,13 +1502,17 @@ export type Database = {
           id?: string
           late_checkout_fee?: number | null
           notification_preferences?: Json | null
+          service_applicable_to?: string[] | null
           service_charge_rate?: number | null
+          show_tax_breakdown?: boolean | null
           system_provider_id?: string | null
           tax_rate?: number | null
           tenant_id: string
           timezone?: string | null
           updated_at?: string | null
           use_system_email?: boolean | null
+          vat_applicable_to?: string[] | null
+          zero_rate_hidden?: boolean | null
         }
         Update: {
           amenities?: Json | null
@@ -1495,13 +1530,17 @@ export type Database = {
           id?: string
           late_checkout_fee?: number | null
           notification_preferences?: Json | null
+          service_applicable_to?: string[] | null
           service_charge_rate?: number | null
+          show_tax_breakdown?: boolean | null
           system_provider_id?: string | null
           tax_rate?: number | null
           tenant_id?: string
           timezone?: string | null
           updated_at?: string | null
           use_system_email?: boolean | null
+          vat_applicable_to?: string[] | null
+          zero_rate_hidden?: boolean | null
         }
         Relationships: [
           {
@@ -5526,13 +5565,21 @@ export type Database = {
         Returns: number
       }
       atomic_checkin_guest: {
-        Args: {
-          p_guest_data?: Json
-          p_initial_charges?: Json
-          p_reservation_id: string
-          p_room_id: string
-          p_tenant_id: string
-        }
+        Args:
+          | {
+              p_charges?: Json
+              p_guest_data: Json
+              p_reservation_data: Json
+              p_room_id: string
+              p_tenant_id: string
+            }
+          | {
+              p_guest_data?: Json
+              p_initial_charges?: Json
+              p_reservation_id: string
+              p_room_id: string
+              p_tenant_id: string
+            }
         Returns: Json
       }
       atomic_checkout: {
@@ -5573,6 +5620,22 @@ export type Database = {
           seeded_count: number
           tenant_id: string
           tenant_name: string
+        }[]
+      }
+      calculate_charge_with_taxes: {
+        Args: {
+          p_base_amount: number
+          p_charge_type: string
+          p_guest_tax_exempt?: boolean
+          p_is_service_chargeable?: boolean
+          p_is_taxable?: boolean
+          p_tenant_id: string
+        }
+        Returns: {
+          base_amount: number
+          service_charge_amount: number
+          total_amount: number
+          vat_amount: number
         }[]
       }
       calculate_reservation_overstay: {

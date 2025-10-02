@@ -55,8 +55,10 @@ import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { useGuestSearch, useRecentGuests } from "@/hooks/useGuestSearch";
 import { useGuestContactManager } from "@/hooks/useGuestContactManager";
 import { useAtomicCheckIn } from "@/hooks/useAtomicCheckIn";
+import { useConfiguration } from "@/hooks/useConfiguration";
 import { RateSelectionComponent } from "./RateSelectionComponent";
 import { ProcessingStateManager } from "./ProcessingStateManager";
+import { calculateTaxesAndCharges } from "@/lib/tax-calculator";
 import type { Room } from "./RoomGrid";
 import { PaymentSummaryCard } from "./PaymentSummaryCard";
 
@@ -132,6 +134,7 @@ export const QuickGuestCapture = ({
   const { data: recentGuests } = useRecentGuests();
   const { saveGuestContactAsync, searchGuestContacts, quickContactLookup } = useGuestContactManager();
   const { checkIn: atomicCheckIn, isLoading: isAtomicCheckInLoading, error: checkInError } = useAtomicCheckIn();
+  const { configuration } = useConfiguration();
   const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStartTime, setProcessingStartTime] = useState<number | undefined>();
@@ -512,20 +515,38 @@ export const QuickGuestCapture = ({
           }
         }
 
-        // Add initial room charge to folio
-        const { error: chargeError } = await supabase
-          .from('folio_charges')
-          .insert([{
-            tenant_id: user.user_metadata?.tenant_id,
-            folio_id: folio.id,
-            charge_type: 'room',
-            description: `Room charges for ${formData.numberOfNights} night(s)`,
-            amount: formData.totalAmount,
-            posted_by: user.id
-          }]);
+        // Add initial room charge to folio WITH TAX CALCULATION
+        if (configuration) {
+          const taxCalc = calculateTaxesAndCharges({
+            baseAmount: formData.totalAmount,
+            chargeType: 'room',
+            isTaxable: true,
+            isServiceChargeable: true,
+            guestTaxExempt: false,
+            configuration
+          });
 
-        if (chargeError) {
-          console.error('Charge posting error:', chargeError);
+          console.log('[Assign] Tax calculation:', taxCalc);
+
+          const { error: chargeError } = await supabase
+            .from('folio_charges')
+            .insert([{
+              tenant_id: user.user_metadata?.tenant_id,
+              folio_id: folio.id,
+              charge_type: 'room',
+              description: `Room charges for ${formData.numberOfNights} night(s)`,
+              base_amount: taxCalc.baseAmount,
+              vat_amount: taxCalc.vatAmount,
+              service_charge_amount: taxCalc.serviceChargeAmount,
+              amount: taxCalc.totalAmount,
+              is_taxable: true,
+              is_service_chargeable: true,
+              posted_by: user.id
+            }]);
+
+          if (chargeError) {
+            console.error('Charge posting error:', chargeError);
+          }
         }
 
         // Update room status to reserved with validation

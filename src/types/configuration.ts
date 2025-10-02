@@ -34,6 +34,10 @@ export interface HotelConfiguration {
     service_charge_rate: number;
     tax_inclusive: boolean;
     service_charge_inclusive: boolean;
+    vat_applicable_to?: string[];
+    service_applicable_to?: string[];
+    show_tax_breakdown?: boolean;
+    zero_rate_hidden?: boolean;
   };
 
   // Branding & Identity

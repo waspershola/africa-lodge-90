@@ -64,6 +64,26 @@ export const OverstayChargeDialog = ({
     escalationReason: '',
     forceReason: '',
   });
+  
+  // Calculate tax breakdown for preview (after formData is declared)
+  const chargeAmount = parseFloat(formData.chargeAmount) || 0;
+  const taxCalculation = calculateTaxesAndCharges({
+    baseAmount: chargeAmount,
+    chargeType: 'room',
+    isTaxable: true,
+    isServiceChargeable: true,
+    guestTaxExempt: false,
+    configuration: configuration || {
+      tax: {
+        vat_rate: 7.5,
+        service_charge_rate: 10,
+        tax_inclusive: false,
+        service_charge_inclusive: false,
+        vat_applicable_to: ['room', 'food', 'beverage', 'laundry', 'spa'],
+        service_applicable_to: ['room', 'food', 'beverage', 'spa']
+      }
+    } as any
+  });
 
   if (!room) return null;
 
@@ -452,6 +472,28 @@ export const OverstayChargeDialog = ({
                     className="mt-1"
                   />
                 </div>
+
+                {/* Tax Breakdown Preview */}
+                {chargeAmount > 0 && (
+                  <div className="p-3 bg-primary/5 rounded-lg space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Base Amount:</span>
+                      <span className="font-medium">{formatPrice(taxCalculation.baseAmount)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>VAT (7.5%):</span>
+                      <span>{formatPrice(taxCalculation.vatAmount)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>Service Charge (10%):</span>
+                      <span>{formatPrice(taxCalculation.serviceChargeAmount)}</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-2 font-semibold">
+                      <span>Total Charge:</span>
+                      <span className="text-primary">{formatPrice(taxCalculation.totalAmount)}</span>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <Label>Payment Method *</Label>

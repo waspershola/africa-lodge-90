@@ -52,12 +52,40 @@ export const ExtendStayDialog = ({
 
   if (!room) return null;
 
+  // Calculate extension details
+  const currentRate = (room as any).current_reservation?.room_rate || (room as any).rate || 0;
+  const additionalNights = formData.newCheckOutDate && room.checkOut
+    ? Math.max(0, Math.ceil((new Date(formData.newCheckOutDate).getTime() - new Date(room.checkOut).getTime()) / (1000 * 60 * 60 * 24)))
+    : 0;
+  
+  const baseAdditionalAmount = formData.additionalRate 
+    ? parseFloat(formData.additionalRate) * additionalNights
+    : currentRate * additionalNights;
+
+  // Calculate taxes for extension charges
+  const taxCalculation = calculateTaxesAndCharges({
+    baseAmount: baseAdditionalAmount,
+    chargeType: 'room',
+    isTaxable: true,
+    isServiceChargeable: true,
+    guestTaxExempt: false,
+    configuration: configuration || {
+      tax: {
+        vat_rate: 7.5,
+        service_charge_rate: 10,
+        tax_inclusive: false,
+        service_charge_inclusive: false,
+        vat_applicable_to: ['room', 'food', 'beverage', 'laundry', 'spa'],
+        service_applicable_to: ['room', 'food', 'beverage', 'spa']
+      }
+    } as any
+  });
+
+  const additionalAmount = taxCalculation.totalAmount;
+
   // Calculate additional nights and charges
   const currentCheckOut = room.checkOut ? new Date(room.checkOut) : new Date();
   const newCheckOut = formData.newCheckOutDate ? new Date(formData.newCheckOutDate) : null;
-  const additionalNights = newCheckOut ? 
-    Math.max(0, Math.ceil((newCheckOut.getTime() - currentCheckOut.getTime()) / (1000 * 60 * 60 * 24))) : 0;
-  const additionalAmount = additionalNights * parseFloat(formData.additionalRate || '0');
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({

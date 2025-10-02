@@ -7,6 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, DollarSign } from 'lucide-react';
 import { useRooms } from '@/hooks/useRooms';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useConfiguration } from '@/hooks/useConfiguration';
+import { calculateTaxesAndCharges } from '@/lib/tax-calculator';
+import { TaxBreakdownDisplay } from './TaxBreakdownDisplay';
 
 interface RateSelectionComponentProps {
   checkInDate: string;
@@ -25,6 +28,7 @@ export const RateSelectionComponent = ({
 }: RateSelectionComponentProps) => {
   const { data: roomsData } = useRooms();
   const { formatPrice } = useCurrency();
+  const { configuration } = useConfiguration();
   const [customRate, setCustomRate] = useState(defaultRate?.toString() || '');
   const [selectedRoomType, setSelectedRoomType] = useState(selectedRoomTypeId || '');
 
@@ -45,8 +49,27 @@ export const RateSelectionComponent = ({
   const roomTypeDetails = roomTypes.find(rt => rt.id === selectedRoomType);
   const baseRate = roomTypeDetails ? roomTypeDetails.base_rate : parseFloat(customRate) || 0;
 
-  // Calculate total
-  const totalAmount = baseRate * nights;
+  // Calculate tax breakdown for room charges
+  const taxCalculation = calculateTaxesAndCharges({
+    baseAmount: baseRate * nights,
+    chargeType: 'room',
+    isTaxable: true,
+    isServiceChargeable: true,
+    guestTaxExempt: false,
+    configuration: configuration || {
+      tax: {
+        vat_rate: 7.5,
+        service_charge_rate: 10,
+        tax_inclusive: false,
+        service_charge_inclusive: false,
+        vat_applicable_to: ['room', 'food', 'beverage', 'laundry', 'spa'],
+        service_applicable_to: ['room', 'food', 'beverage', 'spa']
+      }
+    } as any
+  });
+
+  // Calculate total with taxes
+  const totalAmount = taxCalculation.totalAmount;
 
   // Update parent when values change
   useEffect(() => {
@@ -143,26 +166,30 @@ export const RateSelectionComponent = ({
           />
         </div>
 
-        {/* Rate Summary */}
+        {/* Rate Summary with Tax Breakdown */}
         {baseRate > 0 && (
-          <div className="p-3 bg-primary/5 rounded-lg space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Rate per night:</span>
-              <span className="font-medium">{formatPrice(baseRate)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span>Number of nights:</span>
-              <span className="font-medium">{nights}</span>
-            </div>
-            <div className="flex justify-between border-t pt-2 font-semibold">
-              <span>Total Amount:</span>
-              <span className="text-primary">{formatPrice(totalAmount)}</span>
-            </div>
-            {roomTypeDetails && (
-              <div className="text-xs text-muted-foreground">
-                Max occupancy: {roomTypeDetails.max_occupancy} guest{roomTypeDetails.max_occupancy !== 1 ? 's' : ''}
+          <div className="space-y-3">
+            <div className="p-3 bg-primary/5 rounded-lg space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Rate per night:</span>
+                <span className="font-medium">{formatPrice(baseRate)}</span>
               </div>
-            )}
+              <div className="flex justify-between text-sm">
+                <span>Number of nights:</span>
+                <span className="font-medium">{nights}</span>
+              </div>
+              {roomTypeDetails && (
+                <div className="text-xs text-muted-foreground">
+                  Max occupancy: {roomTypeDetails.max_occupancy} guest{roomTypeDetails.max_occupancy !== 1 ? 's' : ''}
+                </div>
+              )}
+            </div>
+
+            <TaxBreakdownDisplay
+              breakdown={taxCalculation.breakdown}
+              totalAmount={taxCalculation.totalAmount}
+              showZeroRates={false}
+            />
           </div>
         )}
       </CardContent>

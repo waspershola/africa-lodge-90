@@ -112,6 +112,9 @@ interface ServiceItem {
   service: string;
   quantity: number;
   unitPrice: number;
+  baseAmount: number;
+  vatAmount: number;
+  serviceChargeAmount: number;
   totalPrice: number;
 }
 
@@ -192,12 +195,48 @@ export const AddServiceDialog = ({
     }
 
     const quantity = parseInt(formData.quantity) || 1;
+    const baseAmount = unitPrice * quantity;
+
+    // Map service category to charge type
+    const chargeTypeMap: Record<string, 'room' | 'food' | 'beverage' | 'laundry' | 'spa' | 'other'> = {
+      'minibar': 'food',
+      'room-service': 'food',
+      'laundry': 'laundry',
+      'spa': 'spa',
+      'transport': 'other',
+      'other': 'other'
+    };
+
+    const chargeType = chargeTypeMap[formData.category] || 'other';
+
+    // Calculate taxes for this service
+    const taxCalc = calculateTaxesAndCharges({
+      baseAmount,
+      chargeType,
+      isTaxable: true,
+      isServiceChargeable: true,
+      guestTaxExempt: false,
+      configuration: configuration || {
+        tax: {
+          vat_rate: 7.5,
+          service_charge_rate: 10,
+          tax_inclusive: false,
+          service_charge_inclusive: false,
+          vat_applicable_to: ['room', 'food', 'beverage', 'laundry', 'spa'],
+          service_applicable_to: ['room', 'food', 'beverage', 'spa']
+        }
+      } as any
+    });
+
     const newService: ServiceItem = {
       category: selectedCategory?.name || 'Other',
       service: serviceName,
       quantity,
       unitPrice,
-      totalPrice: unitPrice * quantity,
+      baseAmount: taxCalc.baseAmount,
+      vatAmount: taxCalc.vatAmount,
+      serviceChargeAmount: taxCalc.serviceChargeAmount,
+      totalPrice: taxCalc.totalAmount,
     };
 
     setServices(prev => [...prev, newService]);
@@ -554,9 +593,23 @@ export const AddServiceDialog = ({
                     </div>
                   </div>
                 ))}
-                <div className="border-t pt-2 flex justify-between font-semibold">
-                  <span>Total Amount:</span>
-                  <span className="text-primary">{formatPrice(totalAmount)}</span>
+                <div className="border-t pt-2 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Subtotal (Base):</span>
+                    <span className="font-medium">{formatPrice(services.reduce((sum, s) => sum + s.baseAmount, 0))}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>VAT (7.5%):</span>
+                    <span>{formatPrice(services.reduce((sum, s) => sum + s.vatAmount, 0))}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Service Charge (10%):</span>
+                    <span>{formatPrice(services.reduce((sum, s) => sum + s.serviceChargeAmount, 0))}</span>
+                  </div>
+                  <div className="flex justify-between border-t pt-2 font-semibold">
+                    <span>Total Amount:</span>
+                    <span className="text-primary">{formatPrice(totalAmount)}</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>

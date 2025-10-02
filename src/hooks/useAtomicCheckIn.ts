@@ -78,7 +78,7 @@ export function useAtomicCheckIn() {
       }
 
       // Handle both array and object responses from RPC
-      const result = (Array.isArray(data) ? data[0] : data) as AtomicCheckInResult;
+      const result = (Array.isArray(data) ? data[0] : data) as unknown as AtomicCheckInResult;
       
       const duration = Date.now() - startTime;
       console.log('[Atomic Check-in] Result:', {

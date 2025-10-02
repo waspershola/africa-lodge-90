@@ -11,6 +11,7 @@ import { usePaymentMethodsContext } from '@/contexts/PaymentMethodsContext';
 import { useBilling } from '@/hooks/useBilling';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { toast } from 'sonner';
+import { validatePaymentMethod } from '@/lib/payment-validation';
 
 // Phase 1: Enhanced props interface with security context
 interface PaymentDialogProps {
@@ -126,7 +127,6 @@ export const PaymentDialog = ({
     const mappedMethod = typeMapping[method.type.toLowerCase()] || method.type.toLowerCase();
     
     // Enhanced: Use dynamic validation from payment-validation utility
-    const { validatePaymentMethod } = require('@/lib/payment-validation');
     const validation = validatePaymentMethod(mappedMethod, method.id);
     
     if (!validation.valid) {

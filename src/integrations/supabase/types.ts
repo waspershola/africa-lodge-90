@@ -5574,14 +5574,22 @@ export type Database = {
         Returns: boolean
       }
       cancel_reservation_atomic: {
-        Args: {
-          p_cancellation_notes?: string
-          p_cancellation_reason?: string
-          p_cancelled_by?: string
-          p_refund_amount?: number
-          p_reservation_id: string
-          p_tenant_id: string
-        }
+        Args:
+          | {
+              p_cancel_reason?: string
+              p_notes?: string
+              p_refund_amount?: number
+              p_reservation_id: string
+              p_tenant_id: string
+            }
+          | {
+              p_cancellation_notes?: string
+              p_cancellation_reason?: string
+              p_cancelled_by?: string
+              p_refund_amount?: number
+              p_reservation_id: string
+              p_tenant_id: string
+            }
         Returns: Json
       }
       check_reservation_conflict: {

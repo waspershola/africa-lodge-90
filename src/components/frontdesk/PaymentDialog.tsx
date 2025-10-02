@@ -156,6 +156,9 @@ export const PaymentDialog = ({
   const handleProcessPayment = async () => {
     if (isProcessing) return; // Prevent double-clicks
     
+    // Set processing state immediately to prevent race conditions
+    setIsProcessing(true);
+    
     console.log('[Payment Process] Starting payment:', { 
       paymentMethodId, 
       amount, 
@@ -165,6 +168,7 @@ export const PaymentDialog = ({
 
     if (!paymentMethodId || !amount || !selectedPayment) {
       toast.error("Please select a payment method and enter an amount");
+      setIsProcessing(false);
       return;
     }
 
@@ -174,11 +178,13 @@ export const PaymentDialog = ({
     if (!method) {
       console.error('[Payment Process] Method not found:', paymentMethodId);
       toast.error("Invalid payment method");
+      setIsProcessing(false);
       return;
     }
 
     if (!method.enabled) {
       toast.error(`${method.name} is currently disabled`);
+      setIsProcessing(false);
       return;
     }
 
@@ -191,8 +197,6 @@ export const PaymentDialog = ({
       payment_method: dbPaymentMethod,
       payment_method_id: paymentMethodId
     });
-
-    setIsProcessing(true);
     try {
       await createPayment({
         folio_id: selectedPayment.folio_id,

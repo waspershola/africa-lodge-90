@@ -149,7 +149,7 @@ export const reservationApi = {
       .from('reservations')
       .select(`
         *,
-        rooms:room_id (*)
+        rooms!reservations_room_id_fkey (*)
       `)
       .order('created_at', { ascending: false });
     
@@ -162,7 +162,7 @@ export const reservationApi = {
       .from('reservations')
       .select(`
         *,
-        rooms:room_id (*)
+        rooms!reservations_room_id_fkey (*)
       `)
       .eq('id', id)
       .single();

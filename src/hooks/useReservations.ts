@@ -35,7 +35,7 @@ export const usePaginatedReservations = (limit: number = 50, offset: number = 0)
         .from('reservations')
         .select(`
           *,
-          rooms:room_id (room_number, room_types:room_type_id (name)),
+          rooms!reservations_room_id_fkey (room_number, room_types:room_type_id (name)),
           guests:guest_id (first_name, last_name, email, phone, vip_status)
         `, { count: 'exact' })
         .order('created_at', { ascending: false })

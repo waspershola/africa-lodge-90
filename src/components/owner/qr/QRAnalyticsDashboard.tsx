@@ -79,7 +79,7 @@ export const QRAnalyticsDashboard: React.FC = () => {
           *,
           qr_code:qr_codes(
             room_id,
-            rooms(room_number)
+            rooms!qr_codes_room_id_fkey(room_number)
           )
         `)
         .eq('tenant_id', user.tenant_id)

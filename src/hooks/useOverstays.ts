@@ -30,7 +30,7 @@ export const useOverstays = () => {
           guest_phone,
           check_out_date,
           status,
-          rooms!inner (
+          rooms!reservations_room_id_fkey (
             room_number
           )
         `)

@@ -29,7 +29,7 @@ export const useTodayArrivals = () => {
           guest_phone,
           check_in_date,
           status,
-          rooms!inner (
+          rooms!reservations_room_id_fkey (
             room_number
           )
         `)

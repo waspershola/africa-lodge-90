@@ -75,7 +75,7 @@ export function useBilling() {
           *,
           reservations!inner(
             guest_name,
-            rooms!inner(room_number)
+            rooms!reservations_room_id_fkey(room_number)
           )
         `)
         .eq('tenant_id', tenant.tenant_id)
@@ -227,7 +227,7 @@ export function useBilling() {
             folio_number,
             reservations!inner(
               guest_name,
-              rooms!inner(room_number)
+              rooms!reservations_room_id_fkey(room_number)
             )
           )
         `)

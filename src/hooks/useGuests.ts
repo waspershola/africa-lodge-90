@@ -229,7 +229,7 @@ export const useGuestReservations = (guestId: string) => {
         .from('reservations')
         .select(`
           *,
-          rooms:room_id (room_number, room_types:room_type_id (name))
+          rooms!reservations_room_id_fkey (room_number, room_types:room_type_id (name))
         `)
         .eq('guest_id', guestId)
         .order('created_at', { ascending: false });

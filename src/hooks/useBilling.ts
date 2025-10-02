@@ -37,6 +37,7 @@ export interface PaymentRecord {
 
 export function useBilling() {
   const { tenant } = useAuth();
+  const queryClient = useQueryClient();
   const [billingStats, setBillingStats] = useState<BillingStats | null>(null);
   const [folioBalances, setFolioBalances] = useState<FolioBalance[]>([]);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);

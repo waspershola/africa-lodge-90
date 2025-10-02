@@ -5587,6 +5587,7 @@ export type Database = {
         Args: {
           p_cancelled_by?: string
           p_notes?: string
+          p_payment_action?: string
           p_reason?: string
           p_refund_amount?: number
           p_reservation_id: string

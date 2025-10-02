@@ -34,7 +34,7 @@ import { ExtendStayDialog } from "./ExtendStayDialog";
 import { OverstayChargeDialog } from "./OverstayChargeDialog";
 import { AddServiceDialog } from "./AddServiceDialog";
 import { TransferRoomDialog } from "./TransferRoomDialog";
-import { ReleaseReservationDialog } from "./ReleaseReservationDialog";
+import { CancelReservationDialog } from "./CancelReservationDialog";
 import { useShiftIntegratedAction } from "./ShiftIntegratedAction";
 import { useReceiptPrinter } from "@/hooks/useReceiptPrinter";
 import { AuditTrailDisplay } from "./AuditTrailDisplay";
@@ -74,6 +74,7 @@ export const RoomActionDrawer = ({
   const [showOverstay, setShowOverstay] = useState(false);
   const [overstayAction, setOverstayAction] = useState<'overstay-charge' | 'send-reminder' | 'escalate-manager' | 'force-checkout'>('overstay-charge');
   const [showAddService, setShowAddService] = useState(false);
+  const [showCancelReservation, setShowCancelReservation] = useState(false);
 
   if (!room) return null;
 
@@ -94,6 +95,12 @@ export const RoomActionDrawer = ({
     if (action === 'Check-In') {
       setCaptureAction('check-in');
       setShowQuickCapture(true);
+      return;
+    }
+
+    // Handle cancel reservation action
+    if (action === 'Cancel Reservation') {
+      setShowCancelReservation(true);
       return;
     }
 
@@ -701,6 +708,18 @@ export const RoomActionDrawer = ({
         onComplete={(updatedRoom) => {
           setShowAddService(false);
           onRoomUpdate?.(updatedRoom);
+        }}
+      />
+
+      {/* Cancel Reservation Dialog */}
+      <CancelReservationDialog
+        room={room}
+        open={showCancelReservation}
+        onOpenChange={setShowCancelReservation}
+        onComplete={(updatedRoom) => {
+          setShowCancelReservation(false);
+          onRoomUpdate?.(updatedRoom);
+          onClose();
         }}
       />
     </>

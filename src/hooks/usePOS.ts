@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
+import { calculateTaxesAndCharges } from '@/lib/tax-calculator';
 
 export interface MenuItem {
   id: string;
@@ -477,12 +478,52 @@ export function usePOSApi() {
         // Get active reservation and folio
         const { data: reservation } = await supabase
           .from('reservations')
-          .select('id')
+          .select('id, guest_id')
           .eq('room_id', order.room_id)
           .eq('status', 'checked_in')
           .single();
 
         if (reservation) {
+          // Fetch hotel configuration for tax calculation
+          const { data: hotelSettings } = await supabase
+            .from('hotel_settings')
+            .select('*')
+            .eq('tenant_id', user.tenant_id)
+            .single();
+
+          // Check if guest is tax exempt
+          const { data: guest } = await supabase
+            .from('guests')
+            .select('tax_exempt')
+            .eq('id', reservation.guest_id)
+            .single();
+
+          // Calculate tax breakdown for food/beverage charges
+          const taxCalculation = calculateTaxesAndCharges({
+            baseAmount: amount,
+            chargeType: 'food',
+            guestTaxExempt: guest?.tax_exempt || false,
+            configuration: hotelSettings ? {
+              tax: {
+                vat_rate: hotelSettings.tax_rate || 7.5,
+                service_charge_rate: hotelSettings.service_charge_rate || 10.0,
+                vat_applicable_to: hotelSettings.vat_applicable_to || ['room', 'food', 'beverage'],
+                service_applicable_to: hotelSettings.service_applicable_to || ['room', 'food', 'beverage'],
+                tax_inclusive: false,
+                service_charge_inclusive: false
+              }
+            } as any : {
+              tax: {
+                vat_rate: 7.5,
+                service_charge_rate: 10.0,
+                vat_applicable_to: ['room', 'food', 'beverage'],
+                service_applicable_to: ['room', 'food', 'beverage'],
+                tax_inclusive: false,
+                service_charge_inclusive: false
+              }
+            } as any
+          });
+
           // Use safe folio handler
           const { data: folioId } = await supabase
             .rpc('handle_multiple_folios', {
@@ -494,9 +535,14 @@ export function usePOSApi() {
               .from('folio_charges')
               .insert([{
                 folio_id: folioId,
-                charge_type: 'restaurant',
+                charge_type: 'food',
                 description: `POS Order ${order.order_number}`,
-                amount,
+                amount: taxCalculation.totalAmount,
+                base_amount: taxCalculation.baseAmount,
+                vat_amount: taxCalculation.vatAmount,
+                service_charge_amount: taxCalculation.serviceChargeAmount,
+                is_taxable: true,
+                is_service_chargeable: true,
                 posted_by: user.id,
                 tenant_id: user.tenant_id
               }]);

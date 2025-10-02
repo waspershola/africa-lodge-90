@@ -60,6 +60,13 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogPro
         title: "Payment Processed",
         description: `₦${amount.toLocaleString()} payment successful`,
       });
+      
+      // Refresh checkout session to show updated balance
+      if (roomId) {
+        await fetchGuestBill(roomId);
+      }
+      
+      // Auto-close payment dialog
       setShowPayment(false);
     }
   };

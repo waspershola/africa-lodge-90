@@ -54,6 +54,7 @@ export const PaymentDialog = ({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [taxBreakdown, setTaxBreakdown] = useState<TaxBreakdownItem[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Memoized function to load scoped folio - prevents dependency issues
   const loadScopedFolio = useCallback(async () => {
@@ -153,6 +154,8 @@ export const PaymentDialog = ({
   };
 
   const handleProcessPayment = async () => {
+    if (isProcessing) return; // Prevent double-clicks
+    
     console.log('[Payment Process] Starting payment:', { 
       paymentMethodId, 
       amount, 
@@ -189,6 +192,7 @@ export const PaymentDialog = ({
       payment_method_id: paymentMethodId
     });
 
+    setIsProcessing(true);
     try {
       await createPayment({
         folio_id: selectedPayment.folio_id,
@@ -201,16 +205,21 @@ export const PaymentDialog = ({
       toast.success(`Payment of ₦${paymentAmount.toLocaleString()} recorded via ${method.name}`);
       
       if (onPaymentSuccess) {
-        onPaymentSuccess(paymentAmount, method.name);
+        await onPaymentSuccess(paymentAmount, method.name);
       }
       
-      onOpenChange(false);
-      setSelectedPayment(null);
-      setPaymentMethodId("");
-      setAmount("");
+      // Auto-close after brief delay for toast visibility
+      setTimeout(() => {
+        onOpenChange(false);
+        setSelectedPayment(null);
+        setPaymentMethodId("");
+        setAmount("");
+      }, 500);
     } catch (error: any) {
       console.error('[Payment Process] Error:', error);
       toast.error(error.message || "Failed to process payment");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -369,15 +378,23 @@ export const PaymentDialog = ({
                     variant="outline" 
                     onClick={() => onOpenChange(false)}
                     className="flex-1"
+                    disabled={isProcessing}
                   >
                     Cancel
                   </Button>
                   <Button 
                     onClick={handleProcessPayment}
-                    disabled={!paymentMethodId || !amount}
+                    disabled={!paymentMethodId || !amount || isProcessing}
                     className="flex-1"
                   >
-                    Process Payment
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Processing...
+                      </>
+                    ) : (
+                      'Process Payment'
+                    )}
                   </Button>
                 </div>
               </div>

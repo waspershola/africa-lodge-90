@@ -58,6 +58,7 @@ import { useAtomicCheckIn } from "@/hooks/useAtomicCheckIn";
 import { RateSelectionComponent } from "./RateSelectionComponent";
 import { ProcessingStateManager } from "./ProcessingStateManager";
 import type { Room } from "./RoomGrid";
+import { PaymentSummaryCard } from "./PaymentSummaryCard";
 
 interface QuickGuestCaptureProps {
   room?: Room | null;
@@ -140,6 +141,11 @@ export const QuickGuestCapture = ({
   const [guestSearchOpen, setGuestSearchOpen] = useState(false);
   const [guestSearchValue, setGuestSearchValue] = useState("");
   const { data: searchResults } = useGuestSearch(guestSearchValue);
+  const [existingPayments, setExistingPayments] = useState<{
+    totalPaid: number;
+    totalCharges: number;
+    balance: number;
+  } | null>(null);
   
   const [formData, setFormData] = useState<GuestFormData>(() => {
     const currentDate = new Date().toISOString().split('T')[0];
@@ -170,45 +176,72 @@ export const QuickGuestCapture = ({
 
   // Detect reserved room and auto-set to existing guest mode ONLY for reserved rooms during check-in
   useEffect(() => {
-    if (room?.status === 'reserved' && (room as any).current_reservation && action === 'check-in') {
-      setGuestMode('existing');
-      const reservation = (room as any).current_reservation;
-      const guestData = {
-        id: reservation.id,
-        name: reservation.guest_name,
-        phone: reservation.guest_phone || '',
-        email: reservation.guest_email || '',
-        nationality: '',
-        sex: '',
-        occupation: '',
-        id_type: '',
-        id_number: '',
-        last_stay_date: '',
-        total_stays: 0,
-        vip_status: ''
-      };
-      setSelectedGuest(guestData);
-      setGuestSearchValue(reservation.guest_name);
-      
-      // Update form data with reservation info
-      setFormData(prev => ({
-        ...prev,
-        guestName: reservation.guest_name || '',
-        phone: reservation.guest_phone || '',
-        email: reservation.guest_email || '',
-        checkInDate: reservation.check_in_date || prev.checkInDate,
-        checkOutDate: reservation.check_out_date || prev.checkOutDate,
-        roomRate: room.room_type?.base_rate || 0,
-        totalAmount: reservation.total_amount || 0,
-        numberOfNights: Math.ceil((new Date(reservation.check_out_date || '').getTime() - new Date(reservation.check_in_date || '').getTime()) / (1000 * 60 * 60 * 24)) || 1,
-        depositAmount: reservation.total_amount?.toString() || '0'
-      }));
-    } else {
-      // For non-reserved rooms or other actions, ensure form is clean
-      setGuestMode('new');
-      setSelectedGuest(null);
-      setGuestSearchValue('');
-    }
+    const fetchExistingPayments = async () => {
+      if (room?.status === 'reserved' && (room as any).current_reservation && action === 'check-in') {
+        setGuestMode('existing');
+        const reservation = (room as any).current_reservation;
+        const guestData = {
+          id: reservation.id,
+          name: reservation.guest_name,
+          phone: reservation.guest_phone || '',
+          email: reservation.guest_email || '',
+          nationality: '',
+          sex: '',
+          occupation: '',
+          id_type: '',
+          id_number: '',
+          last_stay_date: '',
+          total_stays: 0,
+          vip_status: ''
+        };
+        setSelectedGuest(guestData);
+        setGuestSearchValue(reservation.guest_name);
+        
+        // Fetch existing folio and payments
+        const { supabase } = await import('@/integrations/supabase/client');
+        const { data: folios } = await supabase
+          .from('folios')
+          .select(`
+            id,
+            total_charges,
+            total_payments,
+            balance
+          `)
+          .eq('reservation_id', reservation.id)
+          .eq('status', 'open')
+          .single();
+
+        if (folios) {
+          setExistingPayments({
+            totalPaid: folios.total_payments || 0,
+            totalCharges: folios.total_charges || 0,
+            balance: folios.balance || 0
+          });
+        }
+        
+        // Update form data with reservation info
+        setFormData(prev => ({
+          ...prev,
+          guestName: reservation.guest_name || '',
+          phone: reservation.guest_phone || '',
+          email: reservation.guest_email || '',
+          checkInDate: reservation.check_in_date || prev.checkInDate,
+          checkOutDate: reservation.check_out_date || prev.checkOutDate,
+          roomRate: room.room_type?.base_rate || 0,
+          totalAmount: reservation.total_amount || 0,
+          numberOfNights: Math.ceil((new Date(reservation.check_out_date || '').getTime() - new Date(reservation.check_in_date || '').getTime()) / (1000 * 60 * 60 * 24)) || 1,
+          depositAmount: folios ? Math.max(0, (folios.balance || 0)).toString() : (reservation.total_amount?.toString() || '0')
+        }));
+      } else {
+        // For non-reserved rooms or other actions, ensure form is clean
+        setGuestMode('new');
+        setSelectedGuest(null);
+        setGuestSearchValue('');
+        setExistingPayments(null);
+      }
+    };
+
+    fetchExistingPayments();
   }, [room, action]);
 
   // Combine search results with recent guests
@@ -438,6 +471,63 @@ export const QuickGuestCapture = ({
 
         if (reservationError) throw reservationError;
 
+        // Create folio for the reservation
+        const folioNumber = `FOL-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+        const { data: folio, error: folioError } = await supabase
+          .from('folios')
+          .insert([{
+            tenant_id: user.user_metadata?.tenant_id,
+            reservation_id: reservation.id,
+            folio_number: folioNumber,
+            status: 'open'
+          }])
+          .select()
+          .single();
+
+        if (folioError) throw folioError;
+
+        // Record deposit payment if made
+        const depositAmount = parseFloat(formData.depositAmount) || 0;
+        if (depositAmount > 0) {
+          const { error: paymentError } = await supabase
+            .from('payments')
+            .insert([{
+              tenant_id: user.user_metadata?.tenant_id,
+              folio_id: folio.id,
+              amount: depositAmount,
+              payment_method: formData.paymentMode,
+              status: 'completed',
+              processed_by: user.id,
+              reference: `Deposit for ${reservationNumber}`
+            }]);
+
+          if (paymentError) {
+            console.error('Payment recording error:', paymentError);
+            // Don't throw - room is assigned, just log the payment error
+            toast({
+              title: "Warning",
+              description: "Room assigned but payment recording failed. Please verify in folio.",
+              variant: "default"
+            });
+          }
+        }
+
+        // Add initial room charge to folio
+        const { error: chargeError } = await supabase
+          .from('folio_charges')
+          .insert([{
+            tenant_id: user.user_metadata?.tenant_id,
+            folio_id: folio.id,
+            charge_type: 'room',
+            description: `Room charges for ${formData.numberOfNights} night(s)`,
+            amount: formData.totalAmount,
+            posted_by: user.id
+          }]);
+
+        if (chargeError) {
+          console.error('Charge posting error:', chargeError);
+        }
+
         // Update room status to reserved with validation
         const validStatuses = ['available', 'occupied', 'reserved', 'out_of_service', 'oos', 'overstay', 'dirty', 'clean', 'maintenance', 'checkout'];
         const newStatus = 'reserved';
@@ -502,6 +592,34 @@ export const QuickGuestCapture = ({
             }
 
             console.log('[Atomic Check-in] Success:', result);
+            
+            // Process additional payment if needed
+            const additionalPayment = parseFloat(formData.depositAmount) || 0;
+            if (formData.paymentMode !== 'pay_later' && additionalPayment > 0 && result.folio_id) {
+              console.log('[Check-in] Processing additional payment:', additionalPayment);
+              const { error: paymentError } = await supabase
+                .from('payments')
+                .insert({
+                  folio_id: result.folio_id,
+                  amount: additionalPayment,
+                  payment_method: formData.paymentMode,
+                  status: 'completed',
+                  processed_by: user.id,
+                  reference: `Additional payment on check-in`,
+                  tenant_id: user.user_metadata?.tenant_id
+                });
+
+              if (paymentError) {
+                console.error('[Check-in] Payment recording error:', paymentError);
+                toast({
+                  title: "Warning",
+                  description: "Check-in successful but payment recording failed. Please add payment manually.",
+                  variant: "default"
+                });
+              } else {
+                console.log('[Check-in] Payment recorded successfully');
+              }
+            }
             
             // SINGLE TOAST: Show success immediately after atomic operation
             toast({
@@ -1041,6 +1159,15 @@ export const QuickGuestCapture = ({
           )}
 
           {/* Payment Information */}
+          {existingPayments && action === 'check-in' && (
+            <PaymentSummaryCard
+              totalCharges={existingPayments.totalCharges}
+              totalPaid={existingPayments.totalPaid}
+              balance={existingPayments.balance}
+              className="border-primary/20"
+            />
+          )}
+
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
@@ -1067,8 +1194,17 @@ export const QuickGuestCapture = ({
 
               <div>
                 <Label htmlFor="depositAmount">
-                  {action === 'walkin' ? 'Total Amount' : 'Deposit Amount'} (₦)
+                  {existingPayments && action === 'check-in' 
+                    ? 'Additional Payment (if any)' 
+                    : action === 'walkin' 
+                    ? 'Total Amount' 
+                    : 'Deposit Amount'} (₦)
                 </Label>
+                {existingPayments && action === 'check-in' && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Balance due: ₦{existingPayments.balance.toLocaleString()}
+                  </p>
+                )}
                 <div className="relative mt-1">
                   <Input
                     id="depositAmount"

@@ -247,6 +247,21 @@ export const CancelReservationDialog = ({
         }
       });
 
+      // Aggressively invalidate and refetch queries for immediate UI update
+      console.log('[Cancel] Invalidating queries for immediate room update');
+      await queryClient.invalidateQueries({ queryKey: ['rooms', tenantId] });
+      await queryClient.invalidateQueries({ queryKey: ['room-availability', tenantId] });
+      await queryClient.invalidateQueries({ queryKey: ['reservations', tenantId] });
+      await queryClient.invalidateQueries({ queryKey: ['folios', tenantId] });
+      
+      // Force immediate refetch to update UI - wait for completion
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ['rooms', tenantId], type: 'active' }),
+        queryClient.refetchQueries({ queryKey: ['reservations', tenantId], type: 'active' })
+      ]);
+      
+      console.log('[Cancel] Queries refetched, closing dialog');
+
       // Build success message
       let successMessage = `Room ${room.room_number || room.number} reservation has been cancelled.`;
       if (paymentAction === 'refund' && refundAmount > 0) {

@@ -133,16 +133,18 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogPro
       const result = await checkout({ reservationId: reservation.id });
       
       if (result.success) {
-        toast({
-          title: "✓ Checkout Complete",
-          description: `${checkoutSession.guest_bill.guest_name} checked out successfully`,
-        });
+        console.log('[Checkout Dialog] Checkout successful, closing modal immediately');
         
-        // Small delay for visual feedback, then close
+        // Close dialog immediately to prevent refetch issues
+        onOpenChange(false);
+        
+        // Show toast after closing to ensure it's visible
         setTimeout(() => {
-          console.log('[Checkout Dialog] Closing modal');
-          onOpenChange(false);
-        }, 500);
+          toast({
+            title: "✓ Checkout Complete",
+            description: `${checkoutSession.guest_bill.guest_name} checked out successfully`,
+          });
+        }, 100);
       } else {
         toast({
           title: "Checkout Failed",

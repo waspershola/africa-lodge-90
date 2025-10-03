@@ -31,12 +31,13 @@ export const PaymentSummaryCard = ({
   };
 
   const getBalanceBadge = () => {
-    if (balance === 0) {
+    // Phase 1 Fix: Proper handling of negative balances with tolerance
+    if (Math.abs(balance) < 0.01) {
       return <Badge variant="default" className="bg-success text-success-foreground">Paid in Full</Badge>;
     } else if (balance > 0) {
       return <Badge variant="destructive">Outstanding</Badge>;
     } else {
-      return <Badge variant="secondary">Credit Balance</Badge>;
+      return <Badge variant="default" className="bg-success text-success-foreground">Overpaid</Badge>;
     }
   };
 
@@ -71,9 +72,11 @@ export const PaymentSummaryCard = ({
         
         <div className="border-t pt-3">
           <div className="flex justify-between items-center">
-            <span className="text-sm font-medium">Balance:</span>
+            <span className="text-sm font-medium">
+              {balance < -0.01 ? 'Credit Available:' : 'Balance:'}
+            </span>
             <div className="flex items-center gap-2">
-              <span className={`font-bold ${balance > 0 ? 'text-destructive' : balance < 0 ? 'text-success' : ''}`}>
+              <span className={`font-bold ${balance > 0.01 ? 'text-destructive' : balance < -0.01 ? 'text-success' : ''}`}>
                 {formatCurrency(Math.abs(balance))}
               </span>
               {getBalanceBadge()}
@@ -81,7 +84,7 @@ export const PaymentSummaryCard = ({
           </div>
         </div>
 
-        {balance > 0 && (
+        {balance > 0.01 && (
           <div className="flex items-start gap-2 p-2 bg-warning/10 border border-warning/20 rounded-md">
             <AlertCircle className="h-4 w-4 text-warning mt-0.5 flex-shrink-0" />
             <p className="text-xs text-warning">
@@ -90,11 +93,11 @@ export const PaymentSummaryCard = ({
           </div>
         )}
 
-        {balance < 0 && (
+        {balance < -0.01 && (
           <div className="flex items-start gap-2 p-2 bg-success/10 border border-success/20 rounded-md">
             <DollarSign className="h-4 w-4 text-success mt-0.5 flex-shrink-0" />
             <p className="text-xs text-success">
-              Credit balance available for future use or refund.
+              Credit balance of {formatCurrency(Math.abs(balance))} available for future use or refund.
             </p>
           </div>
         )}

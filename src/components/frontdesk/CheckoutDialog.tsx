@@ -41,6 +41,7 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogPro
   const [showServiceSummary, setShowServiceSummary] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [processingPayment, setProcessingPayment] = useState(false);
 
   // Fetch bill data when dialog opens
   React.useEffect(() => {
@@ -57,6 +58,7 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogPro
 
   const handlePaymentSuccess = async (amount: number, method: string) => {
     setIsRefreshing(true);
+    setProcessingPayment(true);
     try {
       const success = await processPayment(amount, method);
       if (success) {
@@ -82,6 +84,7 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogPro
       });
     } finally {
       setIsRefreshing(false);
+      setProcessingPayment(false);
     }
   };
 
@@ -287,10 +290,19 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogPro
                   </div>
                 </div>
                 <Badge 
-                  variant={guest_bill.payment_status === 'paid' ? 'default' : 'destructive'}
-                  className="text-sm"
+                  variant={
+                    guest_bill.payment_status === 'paid' ? 'default' : 
+                    guest_bill.payment_status === 'overpaid' ? 'default' :
+                    'destructive'
+                  }
+                  className={
+                    guest_bill.payment_status === 'paid' ? 'bg-success text-success-foreground' :
+                    guest_bill.payment_status === 'overpaid' ? 'bg-success text-success-foreground' :
+                    ''
+                  }
                 >
                   {guest_bill.payment_status === 'paid' ? 'Fully Paid' : 
+                   guest_bill.payment_status === 'overpaid' ? 'Overpaid' :
                    guest_bill.payment_status === 'partial' ? 'Partial Payment' : 'Unpaid'}
                 </Badge>
               </div>
@@ -315,11 +327,11 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogPro
 
             <Button 
               onClick={handleSettleBills}
-              disabled={guest_bill.pending_balance <= 0}
+              disabled={guest_bill.pending_balance <= 0 || processingPayment}
               className="flex items-center gap-2"
             >
               <CreditCard className="h-4 w-4" />
-              Settle Bills
+              {processingPayment ? 'Processing...' : 'Settle Bills'}
             </Button>
 
             <Button 
@@ -333,11 +345,11 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogPro
 
             <Button 
               onClick={handleCompleteCheckout}
-              disabled={!canCheckout || isCheckingOut || isRefreshing}
+              disabled={!canCheckout || isCheckingOut || isRefreshing || processingPayment}
               className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
             >
               <CheckCircle className="h-4 w-4" />
-              {isCheckingOut ? 'Processing...' : isRefreshing ? 'Refreshing...' : 'Complete Checkout'}
+              {isCheckingOut || processingPayment ? 'Processing...' : isRefreshing ? 'Refreshing...' : 'Complete Checkout'}
             </Button>
           </div>
 

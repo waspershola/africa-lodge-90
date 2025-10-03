@@ -105,10 +105,12 @@ export const useCheckout = (roomId?: string) => {
       const balance = Number(folio.balance) || 0;
       const pendingBalance = Math.max(0, balance);
       
-      // Determine payment status
-      let paymentStatus: 'paid' | 'partial' | 'unpaid';
-      if (balance <= 0) {
+      // PHASE 1 FIX: Determine payment status with proper negative balance handling
+      let paymentStatus: 'paid' | 'partial' | 'unpaid' | 'overpaid';
+      if (Math.abs(balance) < 0.01) { // ₦0.01 tolerance for rounding
         paymentStatus = 'paid';
+      } else if (balance < 0) {
+        paymentStatus = 'overpaid';
       } else if (totalPaid > 0) {
         paymentStatus = 'partial';
       } else {
@@ -192,6 +194,22 @@ export const useCheckout = (roomId?: string) => {
 
     setLoading(true);
     try {
+      // PHASE 1 FIX: Check for duplicate payments within last 60 seconds
+      const checkoutFolioId = checkoutSession.guest_bill.folio_id;
+      const { data: recentPayments } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('folio_id', checkoutFolioId)
+        .eq('amount', amount)
+        .gte('created_at', new Date(Date.now() - 60000).toISOString())
+        .eq('status', 'completed');
+
+      if (recentPayments && recentPayments.length > 0) {
+        setError('Duplicate payment detected. A payment of this amount was just processed.');
+        setLoading(false);
+        return false;
+      }
+
       // Phase 4: Validate payment data before processing
       const { validatePaymentData, parsePaymentError } = await import('@/lib/payment-validation');
       
@@ -224,15 +242,15 @@ export const useCheckout = (roomId?: string) => {
       if (!reservation) throw new Error('No active reservation found');
 
       // Get or create folio
-      const { data: folioId, error: folioError } = await supabase
+      const { data: paymentFolioId, error: folioError } = await supabase
         .rpc('get_or_create_folio', {
           p_reservation_id: reservation.id,
           p_tenant_id: user.tenant_id
         });
 
-      if (folioError || !folioId) throw new Error('Failed to get or create folio');
+      if (folioError || !paymentFolioId) throw new Error('Failed to get or create folio');
 
-      console.log('[Checkout Payment] Creating payment for folio:', folioId);
+      console.log('[Checkout Payment] Creating payment for folio:', paymentFolioId);
 
       // Map payment method to canonical database value
       const canonicalMethod = mapToCanonicalPaymentMethod(paymentMethod);
@@ -242,7 +260,7 @@ export const useCheckout = (roomId?: string) => {
       const { data: payment, error: paymentError } = await supabase
         .from('payments')
         .insert([{
-          folio_id: folioId,
+          folio_id: paymentFolioId,
           amount,
           payment_method: canonicalMethod,
           status: 'completed',
@@ -271,7 +289,7 @@ export const useCheckout = (roomId?: string) => {
           actor_email: user.email,
           actor_role: user.role,
           tenant_id: user.tenant_id,
-          description: `Processed ${paymentMethod} payment of ${amount} for folio ${folioId}`,
+          description: `Processed ${paymentMethod} payment of ${amount} for folio ${paymentFolioId}`,
           new_values: { amount, payment_method: paymentMethod }
         }]);
 

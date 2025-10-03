@@ -23,7 +23,7 @@ export interface GuestBill {
   tax_amount: number;
   total_amount: number;
   pending_balance: number;
-  payment_status: 'unpaid' | 'partial' | 'paid';
+  payment_status: 'unpaid' | 'partial' | 'paid' | 'overpaid';
 }
 
 export interface PaymentRecord {

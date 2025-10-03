@@ -255,6 +255,19 @@ export function useBilling() {
     if (!tenant?.tenant_id) return null;
 
     try {
+      // PHASE 1 FIX: Check for duplicate payments within last 60 seconds
+      const { data: recentPayments } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('folio_id', paymentData.folio_id)
+        .eq('amount', paymentData.amount)
+        .gte('created_at', new Date(Date.now() - 60000).toISOString())
+        .eq('status', 'completed');
+
+      if (recentPayments && recentPayments.length > 0) {
+        throw new Error('Duplicate payment detected. A payment of this amount was just processed.');
+      }
+
       // Phase 1: Enhanced client-side validation
       const { validatePaymentData, parsePaymentError } = await import('@/lib/payment-validation');
       

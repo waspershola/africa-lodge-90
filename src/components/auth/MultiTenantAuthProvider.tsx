@@ -1,6 +1,7 @@
 import { createContext, useContext, ReactNode } from 'react';
 import { useMultiTenantAuth, UseMultiTenantAuthReturn } from '@/hooks/useMultiTenantAuth';
 import { useSessionHeartbeat } from '@/hooks/useSessionHeartbeat';
+import { useSessionRegistration } from '@/hooks/useSessionRegistration';
 import { supabase } from '@/integrations/supabase/client';
 import { ForcePasswordResetDialog } from '@/components/auth/ForcePasswordResetDialog';
 import { ImpersonationBanner } from '@/components/auth/ImpersonationBanner';
@@ -30,6 +31,13 @@ export function MultiTenantAuthProvider({ children }: MultiTenantAuthProviderPro
         }
       });
     }
+  });
+
+  // Multi-device session registration and tracking
+  useSessionRegistration({
+    heartbeatInterval: 5 * 60 * 1000, // 5 minutes
+    enableDeviceTracking: true,
+    verbose: false
   });
 
   // Create audit logging function without circular dependency

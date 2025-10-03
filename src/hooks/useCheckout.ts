@@ -77,16 +77,6 @@ export const useCheckout = (roomId?: string) => {
       if (chargesError) throw chargesError;
       if (paymentsError) throw paymentsError;
 
-      const serviceCharges: ServiceCharge[] = charges?.map(charge => ({
-        id: charge.id,
-        service_type: charge.charge_type as ServiceCharge['service_type'],
-        description: charge.description,
-        amount: Number(charge.amount),
-        status: 'pending' as const,
-        created_at: charge.created_at || '',
-        staff_name: charge.posted_by || undefined
-      })) || [];
-
       const paymentRecords: PaymentRecord[] = payments?.map(payment => ({
         id: payment.id,
         bill_id: folio.id,
@@ -116,6 +106,20 @@ export const useCheckout = (roomId?: string) => {
       } else {
         paymentStatus = 'unpaid';
       }
+
+      // Determine charge status based on payment status
+      const chargeStatus: ServiceCharge['status'] = 
+        (paymentStatus === 'paid' || paymentStatus === 'overpaid') ? 'paid' : 'pending';
+
+      const serviceCharges: ServiceCharge[] = charges?.map(charge => ({
+        id: charge.id,
+        service_type: charge.charge_type as ServiceCharge['service_type'],
+        description: charge.description,
+        amount: Number(charge.amount),
+        status: chargeStatus,
+        created_at: charge.created_at || '',
+        staff_name: charge.posted_by || undefined
+      })) || [];
 
       const guestBill: GuestBill = {
         folio_id: folio.id,

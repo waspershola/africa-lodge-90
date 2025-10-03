@@ -52,6 +52,7 @@ import { CheckoutDialog } from "./frontdesk/CheckoutDialog";
 import { QRRequestsPanel } from "./frontdesk/QRRequestsPanel";
 import { useUnifiedRealtime } from '@/hooks/useUnifiedRealtime';
 import DashboardNotificationBar from '@/components/layout/DashboardNotificationBar';
+import { NetworkStatusIndicator } from '@/components/common/NetworkStatusBanner';
 import type { Room } from "./frontdesk/RoomGrid";
 import { useTenantInfo } from "@/hooks/useTenantInfo";
 import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
@@ -112,8 +113,6 @@ const FrontDeskDashboard = () => {
   // Phase 1: Enable unified real-time updates with role-based filtering
   useUnifiedRealtime({ verbose: false });
   
-  const [isOffline, setIsOffline] = useState(false);
-  const [offlineTimeRemaining, setOfflineTimeRemaining] = useState(22); // hours
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<string | undefined>(undefined);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
@@ -135,21 +134,6 @@ const FrontDeskDashboard = () => {
   const [captureAction, setCaptureAction] = useState<"assign" | "walkin" | "check-in" | "check-out" | "assign-room" | "extend-stay" | "transfer-room" | "add-service" | "work-order" | "housekeeping" | "">("");
   const [rooms, setRooms] = useState<Room[]>([]);
   const [activePanel, setActivePanel] = useState<'overview' | 'qr-requests' | 'staff-ops' | 'billing' | 'handover' | 'qr-manager'>('overview');
-
-
-  // Simulate online/offline status
-  useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
 
 
   const handleCardClick = (filterKey: string) => {
@@ -315,21 +299,6 @@ const FrontDeskDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Offline Banner */}
-      {isOffline && (
-        <div className="offline-banner p-3 text-center">
-          <div className="flex items-center justify-center gap-2">
-            <WifiOff className="h-5 w-5" />
-            <span className="font-medium">
-              Offline Mode Active - {offlineTimeRemaining}h remaining
-            </span>
-          </div>
-          <p className="text-sm mt-1">
-            All actions are queued and will sync when connection is restored
-          </p>
-        </div>
-      )}
-
       {/* Header */}
       <div className="border-b bg-card">
         <div className="p-6">
@@ -359,12 +328,8 @@ const FrontDeskDashboard = () => {
                 />
               </div>
               <DashboardNotificationBar />
-              <Button 
-                variant="outline"
-                onClick={() => setIsOffline(!isOffline)}
-              >
-                {isOffline ? 'Go Online' : 'Simulate Offline'}
-              </Button>
+              {/* Phase 2: Network status indicator */}
+              <NetworkStatusIndicator />
             </div>
           </div>
         </div>
@@ -372,9 +337,9 @@ const FrontDeskDashboard = () => {
 
       {/* Main Content */}
       <div className="p-6 space-y-6">
-        {/* Action Queue (when offline) */}
+        {/* Action Queue */}
         {showActionQueue && (
-          <ActionQueue isVisible={showActionQueue} isOnline={!isOffline} />
+          <ActionQueue isVisible={showActionQueue} isOnline={true} />
         )}
 
         {/* Room Status Overview - Priority #1 */}

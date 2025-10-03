@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -39,6 +40,7 @@ export const ReleaseReservationDialog = ({
   const [notes, setNotes] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { logShiftAction } = useShiftIntegratedAction();
 
   const handleRelease = async () => {
@@ -144,6 +146,11 @@ export const ReleaseReservationDialog = ({
 
       onComplete?.(updatedRoom);
       onOpenChange(false);
+
+      // Navigate back to front desk
+      setTimeout(() => {
+        navigate('/front-desk');
+      }, 500);
 
       // Reset form
       setReleaseReason("");

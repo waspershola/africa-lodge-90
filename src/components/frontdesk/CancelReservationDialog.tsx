@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -61,6 +62,7 @@ export const CancelReservationDialog = ({
   });
   
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { logShiftAction } = useShiftIntegratedAction();
   const queryClient = useQueryClient();
   const { formatPrice } = useCurrency();
@@ -304,6 +306,11 @@ export const CancelReservationDialog = ({
       onComplete?.(updatedRoom);
       onOpenChange(false);
       setShowConfirmation(false);
+
+      // Navigate back to front desk
+      setTimeout(() => {
+        navigate('/front-desk');
+      }, 500);
 
       // Reset form
       setCancellationReason("");

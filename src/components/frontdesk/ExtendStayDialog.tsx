@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,6 +40,7 @@ export const ExtendStayDialog = ({
   onComplete,
 }: ExtendStayDialogProps) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { enabledMethods, getMethodIcon } = usePaymentMethods();
   const { formatPrice } = useCurrency();
   const { configuration } = useConfiguration();
@@ -266,6 +268,11 @@ export const ExtendStayDialog = ({
       });
 
       onOpenChange(false);
+      
+      // Navigate back to front desk
+      setTimeout(() => {
+        navigate('/front-desk');
+      }, 500);
     } catch (error) {
       console.error('Error extending stay:', error);
       toast({

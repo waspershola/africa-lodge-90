@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,6 +51,7 @@ export const MaintenanceTaskDialog = ({
   onComplete,
 }: MaintenanceTaskDialogProps) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
   const [formData, setFormData] = useState({
     taskType: '',
@@ -204,6 +206,11 @@ export const MaintenanceTaskDialog = ({
       });
 
       onOpenChange(false);
+      
+      // Navigate back to front desk
+      setTimeout(() => {
+        navigate('/front-desk');
+      }, 500);
     } catch (error) {
       toast({
         title: "Error",

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -32,6 +33,7 @@ export const TransferRoomDialog = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [transferFee, setTransferFee] = useState(0);
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { logShiftAction } = useShiftIntegratedAction();
   const { printServiceReceipt } = useReceiptPrinter();
   const { configuration } = useConfiguration();
@@ -203,6 +205,11 @@ export const TransferRoomDialog = ({
 
       onComplete?.(sourceRoom, targetRoom);
       onOpenChange(false);
+      
+      // Navigate back to front desk
+      setTimeout(() => {
+        navigate('/front-desk');
+      }, 500);
     } catch (error) {
       toast({
         title: "Transfer Failed",

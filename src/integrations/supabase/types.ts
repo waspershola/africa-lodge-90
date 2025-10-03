@@ -172,13 +172,6 @@ export type Database = {
             foreignKeyName: "audit_log_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "audit_log_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["tenant_id"]
           },
@@ -324,24 +317,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "billing_ledger_folio_id_fkey"
-            columns: ["folio_id"]
-            isOneToOne: false
-            referencedRelation: "secure_folio_balances"
-            referencedColumns: ["folio_id"]
-          },
-          {
             foreignKeyName: "billing_ledger_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "billing_ledger_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
             referencedColumns: ["tenant_id"]
           },
           {
@@ -1048,13 +1027,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "folio_charges_folio_id_fkey"
-            columns: ["folio_id"]
-            isOneToOne: false
-            referencedRelation: "secure_folio_balances"
-            referencedColumns: ["folio_id"]
-          },
-          {
             foreignKeyName: "folio_charges_posted_by_fkey"
             columns: ["posted_by"]
             isOneToOne: false
@@ -1066,13 +1038,6 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "folio_charges_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
             referencedColumns: ["tenant_id"]
           },
           {
@@ -1147,13 +1112,6 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "folios_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
             referencedColumns: ["tenant_id"]
           },
           {
@@ -1455,13 +1413,6 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "fk_guest_sessions_tenant"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
             referencedColumns: ["tenant_id"]
           },
           {
@@ -1783,13 +1734,6 @@ export type Database = {
             foreignKeyName: "housekeeping_tasks_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "housekeeping_tasks_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["tenant_id"]
           },
@@ -1913,13 +1857,6 @@ export type Database = {
             foreignKeyName: "menu_categories_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "menu_categories_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["tenant_id"]
           },
@@ -1984,13 +1921,6 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "menu_items_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
             referencedColumns: ["tenant_id"]
           },
           {
@@ -2198,13 +2128,6 @@ export type Database = {
             foreignKeyName: "offline_actions_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "offline_actions_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["tenant_id"]
           },
@@ -2256,13 +2179,6 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "payment_methods_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
             referencedColumns: ["tenant_id"]
           },
           {
@@ -2375,13 +2291,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "payments_folio_id_fkey"
-            columns: ["folio_id"]
-            isOneToOne: false
-            referencedRelation: "secure_folio_balances"
-            referencedColumns: ["folio_id"]
-          },
-          {
             foreignKeyName: "payments_payment_method_id_fkey"
             columns: ["payment_method_id"]
             isOneToOne: false
@@ -2400,13 +2309,6 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "payments_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
             referencedColumns: ["tenant_id"]
           },
           {
@@ -2601,13 +2503,6 @@ export type Database = {
             foreignKeyName: "pos_order_items_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "pos_order_items_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["tenant_id"]
           },
@@ -2696,13 +2591,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "pos_orders_folio_id_fkey"
-            columns: ["folio_id"]
-            isOneToOne: false
-            referencedRelation: "secure_folio_balances"
-            referencedColumns: ["folio_id"]
-          },
-          {
             foreignKeyName: "pos_orders_prepared_by_fkey"
             columns: ["prepared_by"]
             isOneToOne: false
@@ -2735,13 +2623,6 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "pos_orders_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
             referencedColumns: ["tenant_id"]
           },
           {
@@ -2968,13 +2849,6 @@ export type Database = {
             foreignKeyName: "qr_codes_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "qr_codes_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["tenant_id"]
           },
@@ -3078,13 +2952,6 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "qr_orders_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
             referencedColumns: ["tenant_id"]
           },
           {
@@ -3294,13 +3161,6 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "qr_templates_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
             referencedColumns: ["tenant_id"]
           },
           {
@@ -3802,13 +3662,6 @@ export type Database = {
             foreignKeyName: "reservations_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "reservations_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["tenant_id"]
           },
@@ -3887,13 +3740,6 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "roles_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
             referencedColumns: ["tenant_id"]
           },
           {
@@ -3999,13 +3845,6 @@ export type Database = {
             foreignKeyName: "room_types_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "room_types_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["tenant_id"]
           },
@@ -4071,13 +3910,6 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "rooms_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
             referencedColumns: ["tenant_id"]
           },
           {
@@ -4279,13 +4111,6 @@ export type Database = {
             foreignKeyName: "sms_credits_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: true
-            referencedRelation: "secure_occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "sms_credits_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: true
             referencedRelation: "tenants"
             referencedColumns: ["tenant_id"]
           },
@@ -4375,13 +4200,6 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "sms_logs_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
             referencedColumns: ["tenant_id"]
           },
           {
@@ -5036,13 +4854,6 @@ export type Database = {
             foreignKeyName: "supplies_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "supplies_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["tenant_id"]
           },
@@ -5106,13 +4917,6 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "supply_usage_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
             referencedColumns: ["tenant_id"]
           },
           {
@@ -5261,13 +5065,6 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "tenant_addons_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
             referencedColumns: ["tenant_id"]
           },
           {
@@ -5453,13 +5250,6 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "user_sessions_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
             referencedColumns: ["tenant_id"]
           },
           {
@@ -5660,13 +5450,6 @@ export type Database = {
             foreignKeyName: "users_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "users_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["tenant_id"]
           },
@@ -5830,13 +5613,6 @@ export type Database = {
             foreignKeyName: "work_orders_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "work_orders_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["tenant_id"]
           },
@@ -5872,13 +5648,6 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "folios_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
             referencedColumns: ["tenant_id"]
           },
           {
@@ -5921,13 +5690,6 @@ export type Database = {
             foreignKeyName: "reservations_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "reservations_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["tenant_id"]
           },
@@ -5954,153 +5716,12 @@ export type Database = {
             foreignKeyName: "reservations_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "reservations_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["tenant_id"]
           },
         ]
       }
       occupancy_stats: {
-        Row: {
-          month_year: string | null
-          occupancy_rate: number | null
-          occupied_rooms: number | null
-          stat_date: string | null
-          tenant_id: string | null
-          total_rooms: number | null
-          week_start: string | null
-        }
-        Relationships: []
-      }
-      secure_daily_revenue: {
-        Row: {
-          avg_revenue_per_reservation: number | null
-          reservation_count: number | null
-          revenue_date: string | null
-          tenant_id: string | null
-          total_revenue: number | null
-          unique_guests: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "reservations_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "reservations_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "reservations_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["tenant_id"]
-          },
-        ]
-      }
-      secure_folio_balances: {
-        Row: {
-          balance: number | null
-          check_in_date: string | null
-          check_out_date: string | null
-          folio_id: string | null
-          folio_number: string | null
-          guest_name: string | null
-          reservation_id: string | null
-          room_id: string | null
-          status: string | null
-          tenant_id: string | null
-          total_charges: number | null
-          total_payments: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "folios_reservation_id_fkey"
-            columns: ["reservation_id"]
-            isOneToOne: false
-            referencedRelation: "reservations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "folios_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "folios_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "folios_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "reservations_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "rooms"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      secure_guest_stats_monthly: {
-        Row: {
-          avg_reservation_value: number | null
-          avg_stay_length: number | null
-          month_year: string | null
-          repeat_guests: number | null
-          retention_rate: number | null
-          tenant_id: string | null
-          total_reservations: number | null
-          total_revenue: number | null
-          unique_guests: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "reservations_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "reservations_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "secure_occupancy_stats"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "reservations_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["tenant_id"]
-          },
-        ]
-      }
-      secure_occupancy_stats: {
         Row: {
           month_year: string | null
           occupancy_rate: number | null
@@ -6581,6 +6202,22 @@ export type Database = {
           total_amount: number
           transaction_count: number
         }[]
+      }
+      get_secure_daily_revenue: {
+        Args: Record<PropertyKey, never>
+        Returns: unknown[]
+      }
+      get_secure_folio_balances: {
+        Args: Record<PropertyKey, never>
+        Returns: unknown[]
+      }
+      get_secure_guest_stats_monthly: {
+        Args: Record<PropertyKey, never>
+        Returns: unknown[]
+      }
+      get_secure_occupancy_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: unknown[]
       }
       get_sms_credits_balance: {
         Args: { p_tenant_id: string }

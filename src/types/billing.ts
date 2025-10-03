@@ -7,6 +7,10 @@ export interface ServiceCharge {
   created_at: string;
   staff_id?: string;
   staff_name?: string;
+  // Tax breakdown components
+  base_amount?: number;
+  vat_amount?: number;
+  service_charge_amount?: number;
 }
 
 export interface GuestBill {
@@ -21,6 +25,8 @@ export interface GuestBill {
   service_charges: ServiceCharge[];
   subtotal: number;
   tax_amount: number;
+  vat_amount?: number;
+  service_charge_amount?: number;
   total_amount: number;
   pending_balance: number;
   payment_status: 'unpaid' | 'partial' | 'paid' | 'overpaid';

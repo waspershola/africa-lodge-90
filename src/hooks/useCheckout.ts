@@ -87,13 +87,23 @@ export const useCheckout = (roomId?: string) => {
         processed_at: payment.created_at || ''
       })) || [];
 
-      // Use folio balance directly from database (includes tax calculation via triggers)
-      const totalCharges = Number(folio.total_charges) || 0;
-      const taxAmount = Number(folio.tax_amount) || 0;
-      const totalAmount = totalCharges + taxAmount;
+      // BILLING LOGIC FIX Phase 3: folio.total_charges already includes ALL components
+      // Calculate tax breakdown from individual charge components
+      const totalBaseAmount = charges?.reduce((sum, charge) => 
+        sum + Number((charge as any).base_amount || charge.amount), 0) || 0;
+      const totalVatAmount = charges?.reduce((sum, charge) => 
+        sum + Number((charge as any).vat_amount || 0), 0) || 0;
+      const totalServiceChargeAmount = charges?.reduce((sum, charge) => 
+        sum + Number((charge as any).service_charge_amount || 0), 0) || 0;
+      
+      // Use folio.total_charges directly - it already includes base + VAT + service charge
+      const totalCharges = Number(folio.total_charges || 0);
       const totalPaid = Number(folio.total_payments) || 0;
       const balance = Number(folio.balance) || 0;
       const pendingBalance = Math.max(0, balance);
+      
+      // For display purposes, calculate what the subtotal should be (base only)
+      const subtotal = totalBaseAmount;
       
       // PHASE 1 FIX: Determine payment status with proper negative balance handling
       let paymentStatus: 'paid' | 'partial' | 'unpaid' | 'overpaid';
@@ -118,7 +128,10 @@ export const useCheckout = (roomId?: string) => {
         amount: Number(charge.amount),
         status: chargeStatus,
         created_at: charge.created_at || '',
-        staff_name: charge.posted_by || undefined
+        staff_name: charge.posted_by || undefined,
+        base_amount: Number((charge as any).base_amount || 0),
+        vat_amount: Number((charge as any).vat_amount || 0),
+        service_charge_amount: Number((charge as any).service_charge_amount || 0)
       })) || [];
 
       const guestBill: GuestBill = {
@@ -134,9 +147,11 @@ export const useCheckout = (roomId?: string) => {
            new Date(reservation.check_in_date).getTime()) / (1000 * 60 * 60 * 24)
         ),
         service_charges: serviceCharges,
-        subtotal: totalCharges,
-        tax_amount: taxAmount,
-        total_amount: totalAmount,
+        subtotal: subtotal,
+        tax_amount: totalVatAmount + totalServiceChargeAmount,
+        vat_amount: totalVatAmount,
+        service_charge_amount: totalServiceChargeAmount,
+        total_amount: totalCharges,
         pending_balance: pendingBalance,
         payment_status: paymentStatus
       };

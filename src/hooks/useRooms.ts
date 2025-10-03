@@ -137,7 +137,6 @@ export const useRooms = () => {
           id,
           total_charges,
           total_payments,
-          tax_amount,
           status,
           reservations!inner(room_id, status)
         `)
@@ -171,8 +170,7 @@ export const useRooms = () => {
             status,
             creditAmount: balance < -0.01 ? Math.abs(balance) : 0,
             total_charges: folio.total_charges || 0,
-            total_payments: folio.total_payments || 0,
-            tax_amount: folio.tax_amount || 0
+            total_payments: folio.total_payments || 0
           });
         }
       });
@@ -260,7 +258,7 @@ export const usePaginatedRooms = (limit: number = 100, offset: number = 0) => {
       // PHASE 3.1: Real-time balance calculation (paginated)
       const { data: folioData, error: folioError } = await supabase
         .from('folios')
-        .select('id, total_charges, total_payments, tax_amount, status, reservations!inner(room_id, status)')
+        .select('id, total_charges, total_payments, status, reservations!inner(room_id, status)')
         .eq('status', 'open')
         .in('reservations.status', ['confirmed', 'checked_in'])
         .limit(1000);
@@ -290,8 +288,7 @@ export const usePaginatedRooms = (limit: number = 100, offset: number = 0) => {
             status,
             creditAmount: balance < -0.01 ? Math.abs(balance) : 0,
             total_charges: folio.total_charges || 0,
-            total_payments: folio.total_payments || 0,
-            tax_amount: folio.tax_amount || 0
+            total_payments: folio.total_payments || 0
           });
         }
       });

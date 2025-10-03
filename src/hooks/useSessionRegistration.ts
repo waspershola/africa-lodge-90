@@ -179,8 +179,8 @@ export function useSessionRegistration(config: SessionConfig = {}) {
     if (!sessionIdRef.current) return;
 
     try {
-      // Use raw SQL to increment heartbeat_count
-      const { error } = await supabase.rpc('increment_session_heartbeat', {
+      // Use RPC to increment heartbeat_count (types will regenerate)
+      const { error } = await (supabase as any).rpc('increment_session_heartbeat', {
         p_session_id: sessionIdRef.current
       });
 

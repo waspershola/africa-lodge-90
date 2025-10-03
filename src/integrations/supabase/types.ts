@@ -6190,6 +6190,10 @@ export type Database = {
         Args: { p_reservation_id: string }
         Returns: string
       }
+      increment_session_heartbeat: {
+        Args: { p_session_id: string }
+        Returns: undefined
+      }
       is_background_jobs_enabled: {
         Args: Record<PropertyKey, never>
         Returns: boolean

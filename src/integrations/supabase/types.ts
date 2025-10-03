@@ -5735,6 +5735,19 @@ export type Database = {
           vat_amount: number
         }[]
       }
+      calculate_charges_with_tax: {
+        Args: {
+          p_base_amount: number
+          p_charge_type: string
+          p_tenant_id: string
+        }
+        Returns: {
+          base_amount: number
+          service_charge_amount: number
+          total_amount: number
+          vat_amount: number
+        }[]
+      }
       calculate_reservation_overstay: {
         Args: { p_reservation_id: string }
         Returns: boolean
@@ -6243,6 +6256,28 @@ export type Database = {
           p_tenant_id: string
         }
         Returns: undefined
+      }
+      recalculate_all_folios: {
+        Args: { p_tenant_id?: string }
+        Returns: {
+          folios_checked: number
+          folios_corrected: number
+          total_charge_diff: number
+          total_payment_diff: number
+        }[]
+      }
+      recalculate_folio_balance: {
+        Args: { p_folio_id: string }
+        Returns: {
+          folio_id: string
+          new_balance: number
+          new_total_charges: number
+          new_total_payments: number
+          old_balance: number
+          old_total_charges: number
+          old_total_payments: number
+          was_corrected: boolean
+        }[]
       }
       refresh_reporting_views: {
         Args: Record<PropertyKey, never>

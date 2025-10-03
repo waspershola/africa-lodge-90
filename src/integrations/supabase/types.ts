@@ -261,6 +261,84 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_ledger: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string
+          folio_id: string
+          id: string
+          metadata: Json | null
+          reference_id: string | null
+          reference_type: string | null
+          tenant_id: string
+          transaction_type: string
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description: string
+          folio_id: string
+          id?: string
+          metadata?: Json | null
+          reference_id?: string | null
+          reference_type?: string | null
+          tenant_id: string
+          transaction_type: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string
+          folio_id?: string
+          id?: string
+          metadata?: Json | null
+          reference_id?: string | null
+          reference_type?: string | null
+          tenant_id?: string
+          transaction_type?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_ledger_folio_id_fkey"
+            columns: ["folio_id"]
+            isOneToOne: false
+            referencedRelation: "folio_balances"
+            referencedColumns: ["folio_id"]
+          },
+          {
+            foreignKeyName: "billing_ledger_folio_id_fkey"
+            columns: ["folio_id"]
+            isOneToOne: false
+            referencedRelation: "folios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_ledger_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "occupancy_stats"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "billing_ledger_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "billing_ledger_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_verification: {
         Row: {
           attempts_count: number | null
@@ -5551,20 +5629,17 @@ export type Database = {
       folio_balances: {
         Row: {
           balance: number | null
-          balance_status: string | null
-          created_at: string | null
-          days_old: number | null
+          check_in_date: string | null
+          check_out_date: string | null
           folio_id: string | null
           folio_number: string | null
-          folio_status: string | null
           guest_name: string | null
           reservation_id: string | null
-          reservation_status: string | null
-          room_number: string | null
+          room_id: string | null
+          status: string | null
           tenant_id: string | null
           total_charges: number | null
           total_payments: number | null
-          updated_at: string | null
         }
         Relationships: [
           {
@@ -5587,6 +5662,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "reservations_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
           },
         ]
       }

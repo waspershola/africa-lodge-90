@@ -40,6 +40,48 @@ export function useAtomicCheckoutV3() {
       tenantId: tenant.tenant_id
     });
 
+    // PHASE 5: Pre-Checkout Validation (CRITICAL)
+    // Validate balance before allowing checkout
+    const { data: folio, error: folioError } = await supabase
+      .from('folios')
+      .select('total_charges, total_payments, folio_number')
+      .eq('reservation_id', params.reservationId)
+      .eq('status', 'open')
+      .single();
+
+    if (folioError || !folio) {
+      const errorMsg = 'No active folio found for this reservation';
+      console.error('[Atomic Checkout V3] Validation error:', errorMsg);
+      setError(errorMsg);
+      setIsLoading(false);
+      throw new Error(errorMsg);
+    }
+
+    const balance = (folio.total_charges || 0) - (folio.total_payments || 0);
+    console.log('[Atomic Checkout V3] Folio validation:', {
+      folioNumber: folio.folio_number,
+      totalCharges: folio.total_charges,
+      totalPayments: folio.total_payments,
+      balance
+    });
+
+    // Block checkout if balance > ₦0.01
+    if (balance > 0.01) {
+      const errorMsg = `Cannot checkout with outstanding balance of ₦${balance.toFixed(2)}. Please settle payment before checkout.`;
+      console.error('[Atomic Checkout V3] Checkout blocked:', errorMsg);
+      setError(errorMsg);
+      setIsLoading(false);
+      throw new Error(errorMsg);
+    }
+
+    // Log if guest has credit (overpaid)
+    if (balance < -0.01) {
+      console.log('[Atomic Checkout V3] Guest has credit:', {
+        creditAmount: Math.abs(balance).toFixed(2),
+        note: 'Consider refund or store as credit for future stay'
+      });
+    }
+
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => reject(new Error('Checkout timeout after 30 seconds')), 30000);
     });

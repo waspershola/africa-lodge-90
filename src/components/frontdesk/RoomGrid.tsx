@@ -41,6 +41,11 @@ export interface Room {
   folio?: {
     balance: number;
     isPaid: boolean;
+    status?: 'paid' | 'unpaid' | 'partial' | 'overpaid';
+    creditAmount?: number;
+    total_charges?: number;
+    total_payments?: number;
+    tax_amount?: number;
   };
 }
 

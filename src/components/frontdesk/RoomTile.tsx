@@ -165,17 +165,32 @@ export const RoomTile = ({ room, isSelected, onClick }: RoomTileProps) => {
             </>
           )}
           
-          {/* Folio Balance */}
-          {room.folio && room.folio.balance > 0 && (
-            <div 
-              className={cn(
-                "text-[9px] font-medium px-1 rounded",
-                room.folio.isPaid ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"
+          {/* PHASE 3.2: 4-State Folio Balance Display */}
+          {room.folio && (
+            <>
+              {/* Show balance badge for unpaid/partial */}
+              {(room.folio.status === 'unpaid' || room.folio.status === 'partial') && room.folio.balance > 0 && (
+                <Badge variant="destructive" className="text-[9px] px-1.5 py-0.5">
+                  ₦{room.folio.balance >= 1000 
+                    ? `${(room.folio.balance/1000).toFixed(1)}k` 
+                    : room.folio.balance.toFixed(0)}
+                </Badge>
               )}
-              title={`₦${room.folio.balance.toLocaleString()}`}
-            >
-              ₦{room.folio.balance >= 1000 ? `${(room.folio.balance/1000).toFixed(0)}k` : room.folio.balance}
-            </div>
+              
+              {/* Show credit badge for overpaid */}
+              {room.folio.status === 'overpaid' && room.folio.creditAmount > 0 && (
+                <Badge variant="default" className="text-[9px] px-1.5 py-0.5 bg-green-500 hover:bg-green-600 text-white">
+                  Credit: ₦{room.folio.creditAmount.toFixed(0)}
+                </Badge>
+              )}
+              
+              {/* Show checkmark for fully paid */}
+              {room.folio.status === 'paid' && (
+                <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 border-green-500 text-green-700">
+                  Paid ✓
+                </Badge>
+              )}
+            </>
           )}
         </div>
 

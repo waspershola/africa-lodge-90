@@ -61,6 +61,7 @@ import { ProcessingStateManager } from "./ProcessingStateManager";
 import { calculateTaxesAndCharges } from "@/lib/tax-calculator";
 import type { Room } from "./RoomGrid";
 import { PaymentSummaryCard } from "./PaymentSummaryCard";
+import { TaxBreakdownCard } from "@/components/billing/TaxBreakdownCard";
 
 interface QuickGuestCaptureProps {
   room?: Room | null;
@@ -1199,6 +1200,16 @@ export const QuickGuestCapture = ({
                 }}
                 defaultRate={room?.room_type?.base_rate || formData.roomRate}
               />
+
+              {/* PHASE 2: Tax Breakdown Display */}
+              {formData.numberOfNights > 0 && formData.roomRate > 0 && (
+                <TaxBreakdownCard
+                  baseAmount={formData.roomRate * formData.numberOfNights}
+                  serviceChargeRate={10}
+                  vatRate={7.5}
+                  nights={formData.numberOfNights}
+                />
+              )}
             </>
           )}
 

@@ -129,29 +129,47 @@ export const useRooms = () => {
 
       if (allRoomsError) throw allRoomsError;
 
-      // Get folio balances for occupied rooms
+      // PHASE 3.1: Real-time balance calculation (CRITICAL FIX)
+      // Calculate balance client-side from charges - payments
       const { data: folioData, error: folioError } = await supabase
         .from('folios')
         .select(`
           id,
-          balance,
           total_charges,
           total_payments,
           tax_amount,
           status,
-          reservations!inner(room_id)
+          reservations!inner(room_id, status)
         `)
-        .eq('status', 'open');
+        .eq('status', 'open')
+        .in('reservations.status', ['confirmed', 'checked_in']);
 
       if (folioError && folioError.code !== 'PGRST116') throw folioError;
 
-      // Create folio map for quick lookup
+      // Create folio map with CALCULATED balance (not from DB)
       const folioMap = new Map();
       folioData?.forEach(folio => {
         if (folio.reservations?.room_id) {
+          // Calculate balance: charges - payments
+          const balance = (folio.total_charges || 0) - (folio.total_payments || 0);
+          
+          // Determine 4-state payment status
+          let status: 'paid' | 'unpaid' | 'partial' | 'overpaid';
+          if (balance <= -0.01) {
+            status = 'overpaid';
+          } else if (Math.abs(balance) < 0.01) {
+            status = 'paid';
+          } else if (folio.total_payments > 0) {
+            status = 'partial';
+          } else {
+            status = 'unpaid';
+          }
+          
           folioMap.set(folio.reservations.room_id, {
-            balance: folio.balance || 0,
-            isPaid: (folio.balance || 0) <= 0,
+            balance: Math.max(0, balance), // Don't show negative as balance
+            isPaid: balance <= 0.01,
+            status,
+            creditAmount: balance < -0.01 ? Math.abs(balance) : 0,
             total_charges: folio.total_charges || 0,
             total_payments: folio.total_payments || 0,
             tax_amount: folio.tax_amount || 0
@@ -239,22 +257,38 @@ export const usePaginatedRooms = (limit: number = 100, offset: number = 0) => {
 
       if (allRoomsError) throw allRoomsError;
 
-      // Get folio balances for occupied rooms
+      // PHASE 3.1: Real-time balance calculation (paginated)
       const { data: folioData, error: folioError } = await supabase
         .from('folios')
-        .select('id, balance, total_charges, total_payments, tax_amount, status, reservations!inner(room_id)')
+        .select('id, total_charges, total_payments, tax_amount, status, reservations!inner(room_id, status)')
         .eq('status', 'open')
+        .in('reservations.status', ['confirmed', 'checked_in'])
         .limit(1000);
 
       if (folioError && folioError.code !== 'PGRST116') throw folioError;
 
-      // Create folio map
+      // Create folio map with calculated balance
       const folioMap = new Map();
       folioData?.forEach(folio => {
         if (folio.reservations?.room_id) {
+          const balance = (folio.total_charges || 0) - (folio.total_payments || 0);
+          
+          let status: 'paid' | 'unpaid' | 'partial' | 'overpaid';
+          if (balance <= -0.01) {
+            status = 'overpaid';
+          } else if (Math.abs(balance) < 0.01) {
+            status = 'paid';
+          } else if (folio.total_payments > 0) {
+            status = 'partial';
+          } else {
+            status = 'unpaid';
+          }
+          
           folioMap.set(folio.reservations.room_id, {
-            balance: folio.balance || 0,
-            isPaid: (folio.balance || 0) <= 0,
+            balance: Math.max(0, balance),
+            isPaid: balance <= 0.01,
+            status,
+            creditAmount: balance < -0.01 ? Math.abs(balance) : 0,
             total_charges: folio.total_charges || 0,
             total_payments: folio.total_payments || 0,
             tax_amount: folio.tax_amount || 0

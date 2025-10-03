@@ -53,21 +53,35 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogPro
     setShowPayment(true);
   };
 
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   const handlePaymentSuccess = async (amount: number, method: string) => {
-    const success = await processPayment(amount, method);
-    if (success) {
-      toast({
-        title: "Payment Processed",
-        description: `₦${amount.toLocaleString()} payment successful`,
-      });
-      
-      // Refresh checkout session to show updated balance
-      if (roomId) {
-        await fetchGuestBill(roomId);
+    setIsRefreshing(true);
+    try {
+      const success = await processPayment(amount, method);
+      if (success) {
+        toast({
+          title: "Payment Processed",
+          description: `₦${amount.toLocaleString()} payment successful`,
+        });
+        
+        // Refresh checkout session to show updated balance
+        if (roomId) {
+          await fetchGuestBill(roomId);
+        }
+        
+        // Close payment dialog only after refresh completes
+        setShowPayment(false);
       }
-      
-      // Auto-close payment dialog
-      setShowPayment(false);
+    } catch (error: any) {
+      console.error('[Checkout Dialog] Payment refresh error:', error);
+      toast({
+        title: "Warning",
+        description: "Payment recorded but display may need refresh",
+        variant: "destructive"
+      });
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -314,11 +328,11 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogPro
 
             <Button 
               onClick={handleCompleteCheckout}
-              disabled={!canCheckout || isCheckingOut}
+              disabled={!canCheckout || isCheckingOut || isRefreshing}
               className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
             >
               <CheckCircle className="h-4 w-4" />
-              {isCheckingOut ? 'Processing...' : 'Complete Checkout'}
+              {isCheckingOut ? 'Processing...' : isRefreshing ? 'Refreshing...' : 'Complete Checkout'}
             </Button>
           </div>
 
@@ -335,19 +349,6 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogPro
                 <p className="text-sm text-amber-700 mt-1">
                   All bills must be settled before checkout can be completed.
                 </p>
-              </CardContent>
-            </Card>
-          )}
-          {/* Show success message for paid guests */}
-          {canCheckout && (
-            <Card className="mt-4 border-green-200 bg-green-50">
-              <CardContent className="pt-4">
-                <div className="flex items-center gap-2 text-green-800">
-                  <CheckCircle className="h-4 w-4" />
-                  <span className="font-medium">
-                    All bills settled - Ready for checkout
-                  </span>
-                </div>
               </CardContent>
             </Card>
           )}

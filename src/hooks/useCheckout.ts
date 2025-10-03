@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { GuestBill, CheckoutSession, ServiceCharge, PaymentRecord } from '@/types/billing';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
@@ -10,44 +10,7 @@ export const useCheckout = (roomId?: string) => {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
-  // Set up real-time subscription for folio updates
-  useEffect(() => {
-    if (!checkoutSession?.room_id) return;
-
-    const channel = supabase
-      .channel(`checkout-${checkoutSession.room_id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'folios'
-        },
-        () => {
-          // Refetch data when folio changes
-          fetchGuestBill(checkoutSession.room_id);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'payments'
-        },
-        () => {
-          // Refetch data when payments change
-          fetchGuestBill(checkoutSession.room_id);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [checkoutSession?.room_id]);
-
-  const fetchGuestBill = async (roomId: string) => {
+  const fetchGuestBill = useCallback(async (roomId: string) => {
     setLoading(true);
     setError(null);
     
@@ -185,7 +148,44 @@ export const useCheckout = (roomId?: string) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  // Set up real-time subscription for folio updates
+  useEffect(() => {
+    if (!checkoutSession?.room_id) return;
+
+    const channel = supabase
+      .channel(`checkout-${checkoutSession.room_id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'folios'
+        },
+        () => {
+          // Refetch data when folio changes
+          fetchGuestBill(checkoutSession.room_id);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'payments'
+        },
+        () => {
+          // Refetch data when payments change
+          fetchGuestBill(checkoutSession.room_id);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [checkoutSession?.room_id, fetchGuestBill]);
 
   const processPayment = async (amount: number, paymentMethod: string) => {
     if (!checkoutSession || !user) return false;

@@ -211,13 +211,13 @@ export const PaymentDialog = ({
         await onPaymentSuccess(paymentAmount, method.name);
       }
       
-      // Auto-close after brief delay for toast visibility
+      // Auto-close after longer delay to allow parent refresh to complete
       setTimeout(() => {
         onOpenChange(false);
         setSelectedPayment(null);
         setPaymentMethodId("");
         setAmount("");
-      }, 500);
+      }, 1000);
     } catch (error: any) {
       console.error('[Payment Process] Error:', error);
       toast.error(error.message || "Failed to process payment");

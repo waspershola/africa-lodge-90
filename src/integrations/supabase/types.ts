@@ -5090,6 +5090,105 @@ export type Database = {
           },
         ]
       }
+      user_sessions: {
+        Row: {
+          browser_name: string | null
+          browser_version: string | null
+          created_at: string
+          device_fingerprint: Json | null
+          device_name: string | null
+          device_type: string | null
+          expires_at: string
+          heartbeat_count: number
+          id: string
+          ip_address: unknown | null
+          is_active: boolean
+          last_activity_at: string
+          max_idle_hours: number
+          metadata: Json | null
+          os_name: string | null
+          os_version: string | null
+          refresh_token_id: string | null
+          revocation_reason: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          session_token: string
+          tenant_id: string | null
+          user_agent: string | null
+          user_id: string
+          user_role: string
+        }
+        Insert: {
+          browser_name?: string | null
+          browser_version?: string | null
+          created_at?: string
+          device_fingerprint?: Json | null
+          device_name?: string | null
+          device_type?: string | null
+          expires_at: string
+          heartbeat_count?: number
+          id?: string
+          ip_address?: unknown | null
+          is_active?: boolean
+          last_activity_at?: string
+          max_idle_hours?: number
+          metadata?: Json | null
+          os_name?: string | null
+          os_version?: string | null
+          refresh_token_id?: string | null
+          revocation_reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          session_token: string
+          tenant_id?: string | null
+          user_agent?: string | null
+          user_id: string
+          user_role: string
+        }
+        Update: {
+          browser_name?: string | null
+          browser_version?: string | null
+          created_at?: string
+          device_fingerprint?: Json | null
+          device_name?: string | null
+          device_type?: string | null
+          expires_at?: string
+          heartbeat_count?: number
+          id?: string
+          ip_address?: unknown | null
+          is_active?: boolean
+          last_activity_at?: string
+          max_idle_hours?: number
+          metadata?: Json | null
+          os_name?: string | null
+          os_version?: string | null
+          refresh_token_id?: string | null
+          revocation_reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          session_token?: string
+          tenant_id?: string | null
+          user_agent?: string | null
+          user_id?: string
+          user_role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "occupancy_stats"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "user_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
       users: {
         Row: {
           account_number: string | null
@@ -5690,6 +5789,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      cleanup_old_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       consume_sms_credits: {
         Args: {
           p_credits: number
@@ -5761,6 +5864,10 @@ export type Database = {
         }
         Returns: string
       }
+      expire_stale_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       fn_adr: {
         Args: { end_date?: string; start_date?: string; tenant_uuid: string }
         Returns: number
@@ -5801,6 +5908,10 @@ export type Database = {
       generate_recovery_codes: {
         Args: { user_uuid: string }
         Returns: string[]
+      }
+      get_active_session_count: {
+        Args: { p_user_id: string }
+        Returns: number
       }
       get_available_rooms: {
         Args: {
@@ -6140,6 +6251,10 @@ export type Database = {
       refresh_revenue_views_safe: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      revoke_all_user_sessions: {
+        Args: { p_reason?: string; p_user_id: string }
+        Returns: number
       }
       seed_tenant_sms_templates: {
         Args: { p_tenant_id: string }

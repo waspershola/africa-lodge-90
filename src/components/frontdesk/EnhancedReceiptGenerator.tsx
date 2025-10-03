@@ -204,10 +204,18 @@ export const EnhancedReceiptGenerator = ({ open, onOpenChange, guestBill }: Enha
                       <span>Subtotal:</span>
                       <span>₦{guestBill.subtotal.toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Tax (10%):</span>
-                      <span>₦{guestBill.tax_amount.toLocaleString()}</span>
-                    </div>
+                    {guestBill.vat_amount > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span>VAT (7.5%):</span>
+                        <span>₦{guestBill.vat_amount.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {guestBill.service_charge_amount > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span>Service Charge (10%):</span>
+                        <span>₦{guestBill.service_charge_amount.toLocaleString()}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between font-bold border-t pt-2">
                       <span>Total:</span>
                       <span>₦{guestBill.total_amount.toLocaleString()}</span>

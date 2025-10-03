@@ -6048,10 +6048,11 @@ export type Database = {
           folio_number: string
           guest_name: string
           room_number: string
+          service_charge_amount: number
           status: string
-          tax_amount: number
           total_charges: number
           total_payments: number
+          vat_amount: number
         }[]
       }
       get_folio_balances: {

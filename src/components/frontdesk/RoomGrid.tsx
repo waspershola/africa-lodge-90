@@ -45,7 +45,8 @@ export interface Room {
     creditAmount?: number;
     total_charges?: number;
     total_payments?: number;
-    tax_amount?: number;
+    vat_amount?: number;
+    service_charge_amount?: number;
   };
 }
 

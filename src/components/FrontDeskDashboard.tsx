@@ -30,7 +30,8 @@ import {
   Bell,
   FileText,
   UserPlus,
-  User
+  User,
+  CheckCircle
 } from "lucide-react";
 import { RoomGrid } from "./frontdesk/RoomGrid";
 import { ActionQueue } from "./frontdesk/ActionQueue";
@@ -134,6 +135,7 @@ const FrontDeskDashboard = () => {
   const [captureAction, setCaptureAction] = useState<"assign" | "walkin" | "check-in" | "check-out" | "assign-room" | "extend-stay" | "transfer-room" | "add-service" | "work-order" | "housekeeping" | "">("");
   const [rooms, setRooms] = useState<Room[]>([]);
   const [activePanel, setActivePanel] = useState<'overview' | 'qr-requests' | 'staff-ops' | 'billing' | 'handover' | 'qr-manager'>('overview');
+  const [recentCheckout, setRecentCheckout] = useState<string | null>(null);
 
 
   const handleCardClick = (filterKey: string) => {
@@ -337,6 +339,20 @@ const FrontDeskDashboard = () => {
 
       {/* Main Content */}
       <div className="p-6 space-y-6">
+        {/* Success Banner */}
+        {recentCheckout && (
+          <Card className="border-green-500 bg-green-50 dark:bg-green-950/20">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                <CheckCircle className="h-5 w-5" />
+                <span className="font-medium">
+                  ✓ Room checkout completed successfully
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Action Queue */}
         {showActionQueue && (
           <ActionQueue isVisible={showActionQueue} isOnline={true} />
@@ -515,7 +531,21 @@ const FrontDeskDashboard = () => {
       
       <CheckoutDialog
         open={showCheckout}
-        onOpenChange={setShowCheckout}
+        onOpenChange={(open) => {
+          setShowCheckout(open);
+          if (!open) {
+            // Reset states when dialog closes
+            const wasCheckout = checkoutRoomId;
+            setCheckoutRoomId(undefined);
+            setSelectedRoom(null);
+            
+            // Show brief success message if checkout was successful
+            if (wasCheckout) {
+              setRecentCheckout(wasCheckout);
+              setTimeout(() => setRecentCheckout(null), 3000);
+            }
+          }
+        }}
         roomId={checkoutRoomId}
       />
 

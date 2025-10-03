@@ -66,11 +66,18 @@ export const BillingOverview = ({ bill }: BillingOverviewProps) => {
     }
     acc[charge.service_type].total += charge.amount;
     // @ts-ignore - these properties might not exist on old charges
-    acc[charge.service_type].baseAmount += charge.base_amount || charge.amount;
-    // @ts-ignore
-    acc[charge.service_type].vatAmount += charge.vat_amount || 0;
-    // @ts-ignore
-    acc[charge.service_type].serviceChargeAmount += charge.service_charge_amount || 0;
+    const baseAmount = charge.base_amount ?? 0;
+    const vatAmount = charge.vat_amount ?? 0;
+    const serviceChargeAmount = charge.service_charge_amount ?? 0;
+    
+    // For legacy charges without breakdown, treat entire amount as base
+    if (baseAmount === 0 && vatAmount === 0 && serviceChargeAmount === 0) {
+      acc[charge.service_type].baseAmount += charge.amount;
+    } else {
+      acc[charge.service_type].baseAmount += baseAmount;
+      acc[charge.service_type].vatAmount += vatAmount;
+      acc[charge.service_type].serviceChargeAmount += serviceChargeAmount;
+    }
     
     if (charge.status === 'pending') {
       acc[charge.service_type].pending += charge.amount;
@@ -155,30 +162,12 @@ export const BillingOverview = ({ bill }: BillingOverviewProps) => {
         {/* Totals Summary */}
         <Separator className="my-4" />
         
-        {taxBreakdown.length > 1 ? (
-          <TaxBreakdownDisplay
-            breakdown={taxBreakdown}
-            totalAmount={bill.total_amount}
-            currency="NGN"
-            showZeroRates={false}
-          />
-        ) : (
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Subtotal:</span>
-              <span>₦{bill.subtotal.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span>Tax:</span>
-              <span>₦{bill.tax_amount.toLocaleString()}</span>
-            </div>
-            <Separator className="my-2" />
-            <div className="flex justify-between font-semibold text-lg">
-              <span>Total Amount:</span>
-              <span>₦{bill.total_amount.toLocaleString()}</span>
-            </div>
-          </div>
-        )}
+        <TaxBreakdownDisplay
+          breakdown={taxBreakdown}
+          totalAmount={bill.total_amount}
+          currency="NGN"
+          showZeroRates={false}
+        />
         
         {bill.pending_balance > 0 && (
           <div className="flex justify-between text-lg font-bold text-destructive pt-2 border-t mt-2">

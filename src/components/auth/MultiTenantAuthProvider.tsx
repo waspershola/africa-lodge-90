@@ -2,6 +2,7 @@ import { createContext, useContext, ReactNode } from 'react';
 import { useMultiTenantAuth, UseMultiTenantAuthReturn } from '@/hooks/useMultiTenantAuth';
 import { useSessionHeartbeat } from '@/hooks/useSessionHeartbeat';
 import { useSessionRegistration } from '@/hooks/useSessionRegistration';
+import { useSessionMonitor } from '@/hooks/useSessionMonitor';
 import { supabase } from '@/integrations/supabase/client';
 import { ForcePasswordResetDialog } from '@/components/auth/ForcePasswordResetDialog';
 import { ImpersonationBanner } from '@/components/auth/ImpersonationBanner';
@@ -39,6 +40,9 @@ export function MultiTenantAuthProvider({ children }: MultiTenantAuthProviderPro
     enableDeviceTracking: true,
     verbose: false
   });
+
+  // Monitor for admin session revocation
+  useSessionMonitor();
 
   // Create audit logging function without circular dependency
   const logAuditEvent = async (action: string, description: string, metadata?: Record<string, any>) => {

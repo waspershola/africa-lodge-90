@@ -706,10 +706,14 @@ export const QuickGuestCapture = ({
               nationality: formData.nationality || undefined,
             };
 
+            // Calculate base amount (without taxes) for initial charge
+            // The database function will apply taxes to this base amount
+            const baseAmount = formData.roomRate * formData.numberOfNights;
+            
             const initialCharges = [{
               charge_type: 'room',
               description: `Room ${room?.number} - ${formData.numberOfNights} night(s)`,
-              amount: formData.totalAmount
+              amount: baseAmount  // Pass base amount only, taxes will be calculated by DB
             }];
 
             // Call atomic check-in function

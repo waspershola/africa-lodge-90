@@ -5997,6 +5997,22 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_folio_with_breakdown: {
+        Args: { p_folio_id: string }
+        Returns: {
+          balance: number
+          charges: Json
+          credit_amount: number
+          folio_id: string
+          folio_number: string
+          payment_status: string
+          payments: Json
+          reservation_id: string
+          tax_breakdown: Json
+          total_charges: number
+          total_payments: number
+        }[]
+      }
       get_guest_analytics: {
         Args: {
           p_end_date?: string

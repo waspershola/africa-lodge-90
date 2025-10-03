@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useMaintenanceApi } from '@/hooks/useMaintenanceApi';
 import { useToast } from '@/hooks/use-toast';
-import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
+import { useUnifiedRealtime } from '@/hooks/useUnifiedRealtime';
 
 export default function MaintenanceDashboard() {
   const { workOrders, stats, isLoading, refreshWorkOrders } = useMaintenanceApi();
@@ -30,8 +30,8 @@ export default function MaintenanceDashboard() {
   const supplies: any[] = [];
   const [activeShift, setActiveShift] = useState(false);
 
-  // Enable real-time updates for maintenance
-  useRealtimeUpdates();
+  // Phase 1: Enable unified real-time updates for maintenance role
+  useUnifiedRealtime({ verbose: false });
 
   // Get critical alerts
   const criticalWorkOrders = workOrders.filter(wo => wo.priority === 'critical' && wo.status !== 'completed');

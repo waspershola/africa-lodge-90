@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useMultiTenantAuth } from '@/hooks/useMultiTenantAuth';
-import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
+import { useUnifiedRealtime } from '@/hooks/useUnifiedRealtime';
 import { formatDistanceToNow } from 'date-fns';
 
 interface Notification {
@@ -25,8 +25,8 @@ export default function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false);
   const { user, tenant } = useMultiTenantAuth();
 
-  // Real-time notification updates
-  useRealtimeUpdates();
+  // Phase 1: Enable unified real-time updates
+  useUnifiedRealtime({ verbose: false });
 
   const addNotification = (notificationData: Omit<Notification, 'id' | 'read' | 'created_at'>) => {
     const notification: Notification = {

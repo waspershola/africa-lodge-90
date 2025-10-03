@@ -23,7 +23,7 @@ import {
 import { format } from 'date-fns';
 import { useHousekeepingTasks, useAmenityRequests, useHousekeepingSupplies } from '@/hooks/useHousekeepingApi';
 import { useToast } from '@/hooks/use-toast';
-import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
+import { useUnifiedRealtime } from '@/hooks/useUnifiedRealtime';
 
 export default function ProductionDashboard() {
   const { tasks, loading: tasksLoading, error: tasksError, refreshTasks } = useHousekeepingTasks();
@@ -34,8 +34,8 @@ export default function ProductionDashboard() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Enable real-time updates for housekeeping
-  useRealtimeUpdates();
+  // Phase 1: Enable unified real-time updates for housekeeping role
+  useUnifiedRealtime({ verbose: false });
 
   // Mock current staff member (replace with auth context)
   const currentStaff = {

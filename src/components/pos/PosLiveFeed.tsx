@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { usePOSApi, type Order } from '@/hooks/usePOS';
 import { useToast } from '@/hooks/use-toast';
-import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
+import { useUnifiedRealtime } from '@/hooks/useUnifiedRealtime';
 import OrderModal from './OrderModal';
 import PaymentDrawer from './PaymentDrawer';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
@@ -36,8 +36,8 @@ export default function PosLiveFeed() {
   const [activeTab, setActiveTab] = useState('pending');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
-  // Enable real-time updates for POS orders
-  useRealtimeUpdates();
+  // Phase 1: Enable unified real-time updates for POS role
+  useUnifiedRealtime({ verbose: false });
 
   const getFilteredOrders = (status: string) => {
     let filtered = orders;

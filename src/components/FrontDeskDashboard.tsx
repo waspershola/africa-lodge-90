@@ -50,7 +50,7 @@ import { BillingOverviewFD } from "./frontdesk/BillingOverviewFD";
 import { HandoverPanel } from "./frontdesk/HandoverPanel";
 import { CheckoutDialog } from "./frontdesk/CheckoutDialog";
 import { QRRequestsPanel } from "./frontdesk/QRRequestsPanel";
-import { useTenantRealtime } from '@/hooks/useTenantRealtime';
+import { useUnifiedRealtime } from '@/hooks/useUnifiedRealtime';
 import DashboardNotificationBar from '@/components/layout/DashboardNotificationBar';
 import type { Room } from "./frontdesk/RoomGrid";
 import { useTenantInfo } from "@/hooks/useTenantInfo";
@@ -109,8 +109,8 @@ const FrontDeskDashboard = () => {
   const { data: pendingPayments = [], isLoading: paymentsLoading } = usePendingPayments();
   const { data: fuelLevel = 65, isLoading: fuelLoading } = useFuelLevel();
   
-  // Enable centralized real-time updates for all tenant data
-  useTenantRealtime();
+  // Phase 1: Enable unified real-time updates with role-based filtering
+  useUnifiedRealtime({ verbose: false });
   
   const [isOffline, setIsOffline] = useState(false);
   const [offlineTimeRemaining, setOfflineTimeRemaining] = useState(22); // hours

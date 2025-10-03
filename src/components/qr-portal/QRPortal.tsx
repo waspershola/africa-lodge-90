@@ -8,7 +8,7 @@ import { HousekeepingFlow } from './services/HousekeepingFlow';
 import { MaintenanceFlow } from './services/MaintenanceFlow';
 import { WifiFlow } from './services/WifiFlow';
 import { useQRSession } from '@/hooks/useQRSession';
-import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
+import { useUnifiedRealtime } from '@/hooks/useUnifiedRealtime';
 import { QRSecurity } from '@/lib/qr-security';
 import { QRPortalErrorBoundary } from './ErrorBoundary';
 

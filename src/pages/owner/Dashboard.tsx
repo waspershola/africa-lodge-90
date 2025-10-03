@@ -26,7 +26,7 @@ import { useOwnerOverview } from "@/hooks/useApi";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { WelcomeBanner } from '@/components/onboarding/WelcomeBanner';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
-import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
+import { useUnifiedRealtime } from '@/hooks/useUnifiedRealtime';
 import { useDashboardAlerts } from '@/hooks/useDashboardAlerts';
 import { useDashboardTasks } from '@/hooks/useDashboardTasks';
 import { useEffect } from 'react';
@@ -39,8 +39,8 @@ export default function OwnerDashboardPage() {
   const { data: pendingTasks = [] } = useDashboardTasks();
   const { user } = useAuth();
   
-  // Set up real-time updates
-  useRealtimeUpdates();
+  // Phase 1: Enable unified real-time updates for owner role
+  useUnifiedRealtime({ verbose: false });
 
   // Check if user just completed onboarding
   useEffect(() => {

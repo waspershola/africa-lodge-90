@@ -4,8 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 
 /**
- * Centralized real-time subscription hook for tenant-scoped updates
- * Manages all database changes for rooms, reservations, folios, payments, etc.
+ * @deprecated Phase 1: This hook is deprecated. Use useUnifiedRealtime() instead.
+ * 
+ * This hook will be removed in Phase 2 after all components have been migrated.
+ * The new unified hook provides better performance and conflict resolution.
  */
 export function useTenantRealtime() {
   const queryClient = useQueryClient();

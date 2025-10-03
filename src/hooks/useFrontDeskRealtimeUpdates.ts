@@ -3,6 +3,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 
+/**
+ * @deprecated Phase 1: This hook is deprecated. Use useUnifiedRealtime() instead.
+ * 
+ * This hook will be removed in Phase 2 after all components have been migrated.
+ * The debouncing logic has been incorporated into useUnifiedRealtime.
+ */
 export function useFrontDeskRealtimeUpdates() {
   const queryClient = useQueryClient();
   const { user, tenant } = useAuth();

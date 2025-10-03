@@ -36,13 +36,18 @@ export function MultiTenantAuthProvider({ children }: MultiTenantAuthProviderPro
 
   // Multi-device session registration and tracking
   useSessionRegistration({
+    user: auth.user,
+    logout: auth.logout,
     heartbeatInterval: 5 * 60 * 1000, // 5 minutes
     enableDeviceTracking: true,
     verbose: false
   });
 
   // Monitor for admin session revocation
-  useSessionMonitor();
+  useSessionMonitor({
+    user: auth.user,
+    logout: auth.logout
+  });
 
   // Create audit logging function without circular dependency
   const logAuditEvent = async (action: string, description: string, metadata?: Record<string, any>) => {

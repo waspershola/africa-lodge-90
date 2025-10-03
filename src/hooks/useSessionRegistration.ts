@@ -1,6 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 
 /**
  * Phase 3: Session Registration & Heartbeat
@@ -14,6 +13,10 @@ import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
  */
 
 interface SessionConfig {
+  /** The authenticated user object */
+  user: any;
+  /** Logout function */
+  logout: () => Promise<void>;
   /** Heartbeat interval in milliseconds (default: 5 minutes) */
   heartbeatInterval?: number;
   /** Enable device fingerprinting (default: true) */
@@ -33,14 +36,16 @@ const ROLE_IDLE_HOURS: Record<string, number> = {
   SUPER_ADMIN: 6
 };
 
-export function useSessionRegistration(config: SessionConfig = {}) {
+export function useSessionRegistration(config: SessionConfig) {
   const {
+    user,
+    logout,
     heartbeatInterval = 5 * 60 * 1000, // 5 minutes
     enableDeviceTracking = true,
     verbose = false
   } = config;
 
-  const { user, tenant } = useAuth();
+  const tenant = user?.tenant;
   const sessionIdRef = useRef<string | null>(null);
   const heartbeatTimerRef = useRef<NodeJS.Timeout | null>(null);
 

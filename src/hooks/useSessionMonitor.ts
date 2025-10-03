@@ -1,14 +1,17 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { toast } from 'sonner';
+
+interface SessionMonitorProps {
+  user: any;
+  logout: () => Promise<void>;
+}
 
 /**
  * Hook to monitor if the current session has been revoked by admin
  * and automatically log out the user if detected
  */
-export function useSessionMonitor() {
-  const { user, logout } = useAuth();
+export function useSessionMonitor({ user, logout }: SessionMonitorProps) {
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const currentSessionIdRef = useRef<string | null>(null);
 

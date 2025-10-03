@@ -96,12 +96,15 @@ export function calculateTaxesAndCharges(input: TaxCalculationInput): TaxCalcula
   } else {
     // EXCLUSIVE MODE: Add taxes on top of base amount
     
-    if (shouldApplyVat) {
-      calculatedVat = calculatedBase * vatRate / 100;
-    }
-
+    // PHASE 4 FIX: Service charge applied to base
     if (shouldApplyService) {
       calculatedService = calculatedBase * serviceRate / 100;
+    }
+
+    // CRITICAL FIX: VAT applies to (base + service), not just base
+    if (shouldApplyVat) {
+      const taxableAmount = calculatedBase + calculatedService;
+      calculatedVat = taxableAmount * vatRate / 100;
     }
   }
 

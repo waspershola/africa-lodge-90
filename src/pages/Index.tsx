@@ -62,13 +62,16 @@ const Index = () => {
       case 'Platform Admin': return '/support-admin/dashboard';
       case 'Support Admin': return '/support-admin/dashboard';
       case 'Support Staff': return '/support-staff/dashboard';
-      case 'OWNER': return '/owner-dashboard'; 
-      case 'MANAGER': return '/manager-dashboard';
+      // All staff roles use unified dashboard
+      case 'OWNER': 
+      case 'MANAGER':
+      case 'ACCOUNTANT':
+      case 'HOUSEKEEPING':
+      case 'MAINTENANCE':
+      case 'POS':
+        return '/dashboard';
       case 'FRONT_DESK': return '/front-desk';
-      case 'HOUSEKEEPING': return '/housekeeping-dashboard';
-      case 'MAINTENANCE': return '/maintenance-dashboard';
-      case 'POS': return '/pos';
-      default: return '/owner-dashboard';
+      default: return '/dashboard';
     }
   };
 
@@ -591,7 +594,7 @@ const Index = () => {
                   className="bg-yellow-500 hover:bg-red-700 text-black hover:text-white text-lg px-8 py-6 font-semibold shadow-2xl hover:shadow-red-500/50 transition-all duration-300 w-full h-auto flex flex-col gap-3"
                   asChild
                 >
-                  <Link to="/owner-dashboard">
+                  <Link to="/dashboard">
                     <BarChart3 className="h-8 w-8" />
                     <div className="text-center">
                       <div className="font-bold text-lg mb-1">Owner Dashboard</div>
@@ -607,7 +610,7 @@ const Index = () => {
                   className="bg-yellow-500 hover:bg-red-700 text-black hover:text-white text-lg px-8 py-6 font-semibold shadow-2xl hover:shadow-red-500/50 transition-all duration-300 w-full h-auto flex flex-col gap-3"
                   asChild
                 >
-                  <Link to="/manager-dashboard">
+                  <Link to="/dashboard">
                     <Activity className="h-8 w-8" />
                     <div className="text-center">
                       <div className="font-bold text-lg mb-1">Manager Dashboard</div>
@@ -623,7 +626,7 @@ const Index = () => {
                   className="bg-yellow-500 hover:bg-red-700 text-black hover:text-white text-lg px-8 py-6 font-semibold shadow-2xl hover:shadow-red-500/50 transition-all duration-300 w-full h-auto flex flex-col gap-3"
                   asChild
                 >
-                  <Link to="/housekeeping-dashboard">
+                  <Link to="/dashboard">
                     <CheckCircle className="h-8 w-8" />
                     <div className="text-center">
                       <div className="font-bold text-lg mb-1">Housekeeping</div>

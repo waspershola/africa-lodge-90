@@ -61,23 +61,21 @@ function getUserDashboardPath(role: string): string {
     case 'SUPPORT_STAFF':
     case 'Support Staff':
       return '/support-staff/dashboard';
-    case 'OWNER':
-      return '/owner-dashboard';
-    case 'MANAGER':
-      return '/manager-dashboard';
     case 'FRONT_DESK':
       return '/front-desk';
+    // All staff roles use unified dashboard
+    case 'OWNER':
+    case 'MANAGER':
+    case 'ACCOUNTANT':
     case 'HOUSEKEEPING':
-      return '/housekeeping-dashboard';
     case 'MAINTENANCE':
-      return '/maintenance-dashboard';
     case 'POS':
-      return '/pos';
+      return '/dashboard';
     default:
       // For unknown roles, check if it's a global role
       if (['PLATFORM_ADMIN', 'SUPPORT_ADMIN', 'SUPPORT_STAFF', 'Support Admin', 'Platform Admin', 'Support Staff'].includes(role)) {
-        return '/support-admin/dashboard'; // Default global role dashboard
+        return '/support-admin/dashboard';
       }
-      return '/owner-dashboard';
+      return '/dashboard';
   }
 }

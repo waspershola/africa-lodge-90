@@ -20,7 +20,6 @@ interface NetworkState {
 }
 
 interface UseNetworkStatusReturn extends NetworkState {
-  setStatus: (status: NetworkStatus) => void;
   setSyncing: (syncing: boolean) => void;
   setError: (error: string | null) => void;
   updateLastSync: () => void;
@@ -73,10 +72,7 @@ export function useNetworkStatus(): UseNetworkStatusReturn {
     };
   }, []);
 
-  // Manual status setter (for Supabase connection events)
-  const setStatus = useCallback((status: NetworkStatus) => {
-    setState(prev => ({ ...prev, status }));
-  }, []);
+  // Removed manual status setter to prevent offline simulation
 
   // Toggle syncing state
   const setSyncing = useCallback((syncing: boolean) => {
@@ -106,7 +102,6 @@ export function useNetworkStatus(): UseNetworkStatusReturn {
 
   return {
     ...state,
-    setStatus,
     setSyncing,
     setError,
     updateLastSync

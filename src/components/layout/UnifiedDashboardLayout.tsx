@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { ConnectionStatusIndicator } from '@/components/shared/ConnectionStatusIndicator';
 import {
   Sidebar,
   SidebarContent,
@@ -159,13 +160,16 @@ export default function UnifiedDashboardLayout({
               </div>
 
               <div className="ml-auto flex items-center gap-4">
-                <div className="text-sm text-muted-foreground">
+                {/* Connection Status */}
+                <ConnectionStatusIndicator className="hidden sm:flex" />
+                
+                <div className="text-sm text-muted-foreground hidden lg:block">
                   {subtitle}
                 </div>
                 
                 {user && (
                   <div className="flex items-center gap-3">
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-xs text-muted-foreground hidden md:block">
                       {user.email}
                     </div>
                     <Button

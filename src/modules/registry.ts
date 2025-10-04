@@ -1,5 +1,6 @@
 import { lazy, ComponentType } from 'react';
 import { UserRole } from '@/config/dashboardConfig';
+import { getAllModulesForRole, getRoleConfig } from '@/lib/roleUtils';
 
 /**
  * Enhanced Module Registry with lazy loading
@@ -98,13 +99,43 @@ export const moduleRegistry: Record<string, Record<string, ReturnType<typeof laz
 };
 
 /**
+ * Find which role in the inheritance chain provides a specific module
+ */
+const findModuleSourceRole = (
+  role: UserRole,
+  moduleName: string
+): UserRole | null => {
+  // Check if current role has the module directly
+  if (moduleRegistry[role]?.[moduleName]) {
+    return role;
+  }
+
+  // Check inherited roles
+  const roleConfig = getRoleConfig(role);
+  if (!roleConfig?.inherits) return null;
+
+  for (const inheritedRole of roleConfig.inherits) {
+    const sourceRole = findModuleSourceRole(inheritedRole as UserRole, moduleName);
+    if (sourceRole) return sourceRole;
+  }
+
+  return null;
+};
+
+/**
  * Get module component for a specific role and module name
+ * Searches through role inheritance chain to find the module
  */
 export const getModuleComponent = (
   role: UserRole,
   moduleName: string
 ): ReturnType<typeof lazy> | null => {
-  const roleModules = moduleRegistry[role];
+  // Find which role provides this module (including inherited roles)
+  const sourceRole = findModuleSourceRole(role, moduleName);
+  
+  if (!sourceRole) return null;
+  
+  const roleModules = moduleRegistry[sourceRole];
   return roleModules?.[moduleName] || null;
 };
 

@@ -175,11 +175,67 @@
           "icon": "CheckCircle"
         },
         {
+          "id": "rooms",
+          "label": "Room Status",
+          "path": "/dashboard/rooms",
+          "component": "@/pages/manager/RoomStatus",
+          "icon": "Bed"
+        },
+        {
+          "id": "requests",
+          "label": "Service Requests",
+          "path": "/dashboard/requests",
+          "component": "@/pages/manager/ServiceRequests",
+          "icon": "Bell"
+        },
+        {
           "id": "staff",
           "label": "Staff Management",
           "path": "/dashboard/staff",
           "component": "@/pages/manager/StaffManagement",
           "icon": "Users"
+        },
+        {
+          "id": "qr-codes",
+          "label": "QR Management",
+          "path": "/dashboard/qr-codes",
+          "component": "@/pages/manager/QRManagement",
+          "icon": "QrCode"
+        },
+        {
+          "id": "financials",
+          "label": "Department Finance",
+          "path": "/dashboard/financials",
+          "component": "@/pages/manager/DepartmentFinance",
+          "icon": "DollarSign"
+        },
+        {
+          "id": "receipts",
+          "label": "Receipt Control",
+          "path": "/dashboard/receipts",
+          "component": "@/pages/manager/ReceiptControl",
+          "icon": "Receipt"
+        },
+        {
+          "id": "events",
+          "label": "Events & Packages",
+          "path": "/dashboard/events",
+          "component": "@/pages/manager/EventsPackages",
+          "icon": "Calendar"
+        },
+        {
+          "id": "compliance",
+          "label": "Compliance",
+          "path": "/dashboard/compliance",
+          "component": "@/pages/manager/Compliance",
+          "icon": "Shield"
+        },
+        {
+          "id": "sms",
+          "label": "SMS Center",
+          "path": "/dashboard/sms",
+          "component": "@/pages/hotel/SMSCenter",
+          "icon": "MessageSquare"
         }
       ]
     },
@@ -203,13 +259,6 @@
           "icon": "Settings"
         },
         {
-          "id": "qr-manager",
-          "label": "QR Manager",
-          "path": "/dashboard/qr-manager",
-          "component": "@/pages/owner/QRManager",
-          "icon": "QrCode"
-        },
-        {
           "id": "staff",
           "label": "Staff & Roles",
           "path": "/dashboard/staff",
@@ -224,11 +273,88 @@
           "icon": "DollarSign"
         },
         {
+          "id": "billing",
+          "label": "Billing",
+          "path": "/dashboard/billing",
+          "component": "@/pages/owner/EnhancedBilling",
+          "icon": "CreditCard"
+        },
+        {
+          "id": "qr-manager",
+          "label": "QR Manager",
+          "path": "/dashboard/qr-manager",
+          "component": "@/pages/owner/QRManager",
+          "icon": "QrCode"
+        },
+        {
+          "id": "qr-settings",
+          "label": "QR Settings",
+          "path": "/dashboard/qr-settings",
+          "component": "@/pages/owner/QRSettings",
+          "icon": "Settings"
+        },
+        {
+          "id": "qr-analytics",
+          "label": "QR Analytics",
+          "path": "/dashboard/qr-analytics",
+          "component": "@/pages/owner/QRAnalytics",
+          "icon": "BarChart"
+        },
+        {
+          "id": "reports",
+          "label": "Reports",
+          "path": "/dashboard/reports",
+          "component": "@/pages/owner/Reports",
+          "icon": "FileText"
+        },
+        {
+          "id": "reservations",
+          "label": "Reservations",
+          "path": "/dashboard/reservations",
+          "component": "@/pages/owner/Reservations",
+          "icon": "Calendar"
+        },
+        {
+          "id": "guests",
+          "label": "Guests",
+          "path": "/dashboard/guests",
+          "component": "@/pages/owner/Guests",
+          "icon": "Users"
+        },
+        {
+          "id": "rooms",
+          "label": "Rooms",
+          "path": "/dashboard/rooms",
+          "component": "@/pages/owner/Rooms",
+          "icon": "Bed"
+        },
+        {
           "id": "utilities",
           "label": "Power & Fuel",
           "path": "/dashboard/utilities",
           "component": "@/pages/owner/Utilities",
           "icon": "Battery"
+        },
+        {
+          "id": "housekeeping",
+          "label": "Housekeeping",
+          "path": "/dashboard/housekeeping",
+          "component": "@/pages/owner/Housekeeping",
+          "icon": "Sparkles"
+        },
+        {
+          "id": "sms",
+          "label": "SMS Center",
+          "path": "/dashboard/sms",
+          "component": "@/pages/hotel/SMSCenter",
+          "icon": "MessageSquare"
+        },
+        {
+          "id": "monitoring",
+          "label": "Monitoring",
+          "path": "/dashboard/monitoring",
+          "component": "@/pages/owner/Monitoring",
+          "icon": "Activity"
         }
       ]
     }

@@ -1,3 +1,4 @@
+// Staff Directory Component
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Plus, Search, MoreHorizontal, Edit, Trash2, UserCheck, UserX, Loader2 } from "lucide-react";

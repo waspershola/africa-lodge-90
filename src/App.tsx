@@ -79,6 +79,8 @@ import POSReports from "./pages/pos/Reports";
 import POSSettings from "./pages/pos/Settings";
 import HotelDashboard from "./pages/hotel/Dashboard";
 import SuperAdminLayout from "./components/layout/SuperAdminLayout";
+import DynamicDashboardShell from "./components/layout/DynamicDashboardShell";
+import ModuleLoader from "./components/layout/ModuleLoader";
 import Dashboard from "./pages/sa/Dashboard";
 import Tenants from "./pages/sa/Tenants";
 import Services from "./pages/sa/Services";
@@ -166,7 +168,16 @@ const App = () => (
           } />
           <Route path="/reports" element={<ReportsInterface />} />
           
-          {/* Owner Dashboard Routes */}
+          {/* UNIFIED STAFF DASHBOARD - NEW ARCHITECTURE */}
+          <Route path="/staff-dashboard" element={
+            <TenantAwareLayout allowedRoles={['OWNER', 'MANAGER', 'HOUSEKEEPING', 'MAINTENANCE', 'POS']}>
+              <DynamicDashboardShell />
+            </TenantAwareLayout>
+          }>
+            <Route path=":module" element={<ModuleLoader />} />
+          </Route>
+          
+          {/* Owner Dashboard Routes - LEGACY (will be deprecated) */}
           <Route path="/owner-dashboard" element={
             <TenantAwareLayout requiredRole="OWNER">
               <OwnerLayout />

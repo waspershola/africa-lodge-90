@@ -8,6 +8,7 @@ import { UserRole, getDashboardConfig, getDefaultRouteForRole, usesUnifiedDashbo
 const LEGACY_ROUTE_MAP: Record<string, string> = {
   '/owner-dashboard': '/staff-dashboard',
   '/manager-dashboard': '/staff-dashboard',
+  '/accountant-dashboard': '/staff-dashboard',
   '/housekeeping-dashboard': '/staff-dashboard',
   '/maintenance-dashboard': '/staff-dashboard',
   '/pos': '/staff-dashboard',
@@ -72,6 +73,7 @@ export const extractModuleFromPath = (path: string): string | null => {
   const legacyPatterns = [
     /\/owner-dashboard\/([^/]+)/,
     /\/manager-dashboard\/([^/]+)/,
+    /\/accountant-dashboard\/([^/]+)/,
     /\/housekeeping-dashboard\/([^/]+)/,
     /\/maintenance-dashboard\/([^/]+)/,
     /\/pos\/([^/]+)/,
@@ -118,6 +120,8 @@ export const getBaseDashboardPath = (role: UserRole): string => {
       return '/owner-dashboard';
     case 'MANAGER':
       return '/manager-dashboard';
+    case 'ACCOUNTANT':
+      return '/accountant-dashboard';
     case 'HOUSEKEEPING':
       return '/housekeeping-dashboard';
     case 'MAINTENANCE':

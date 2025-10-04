@@ -1,0 +1,236 @@
+{
+  "$schema": "https://hotel.waspschema.io/menu-config-v1.json",
+  "roles": {
+    "HOUSEKEEPING": {
+      "title": "Housekeeping",
+      "icon": "Sparkles",
+      "inherits": [],
+      "modules": [
+        {
+          "id": "dashboard",
+          "label": "Dashboard",
+          "path": "/housekeeping-dashboard/dashboard",
+          "component": "@/pages/housekeeping/Dashboard",
+          "icon": "Home"
+        },
+        {
+          "id": "tasks",
+          "label": "Tasks Board",
+          "path": "/housekeeping-dashboard/tasks",
+          "component": "@/pages/housekeeping/TasksBoard",
+          "icon": "ClipboardList"
+        },
+        {
+          "id": "amenities",
+          "label": "Amenity Requests",
+          "path": "/housekeeping-dashboard/amenities",
+          "component": "@/pages/housekeeping/AmenityRequests",
+          "icon": "Clock"
+        },
+        {
+          "id": "supplies",
+          "label": "Supplies",
+          "path": "/housekeeping-dashboard/supplies",
+          "component": "@/pages/housekeeping/Supplies",
+          "icon": "Package"
+        },
+        {
+          "id": "staff",
+          "label": "Staff Assignments",
+          "path": "/housekeeping-dashboard/staff",
+          "component": "@/pages/housekeeping/StaffAssignments",
+          "icon": "Users"
+        }
+      ]
+    },
+    "MAINTENANCE": {
+      "title": "Maintenance",
+      "icon": "Wrench",
+      "inherits": [],
+      "modules": [
+        {
+          "id": "dashboard",
+          "label": "Dashboard",
+          "path": "/maintenance-dashboard/dashboard",
+          "component": "@/pages/maintenance/Dashboard",
+          "icon": "Home"
+        },
+        {
+          "id": "work-orders",
+          "label": "Work Orders",
+          "path": "/maintenance-dashboard/work-orders",
+          "component": "@/pages/maintenance/WorkOrders",
+          "icon": "ClipboardList"
+        },
+        {
+          "id": "preventive",
+          "label": "Preventive Schedule",
+          "path": "/maintenance-dashboard/preventive",
+          "component": "@/pages/maintenance/PreventiveMaintenance",
+          "icon": "Calendar"
+        },
+        {
+          "id": "supplies",
+          "label": "Supplies & Parts",
+          "path": "/maintenance-dashboard/supplies",
+          "component": "@/pages/maintenance/Supplies",
+          "icon": "Package"
+        }
+      ]
+    },
+    "POS": {
+      "title": "Restaurant / POS",
+      "icon": "UtensilsCrossed",
+      "inherits": [],
+      "modules": [
+        {
+          "id": "dashboard",
+          "label": "Live Orders",
+          "path": "/pos/dashboard",
+          "component": "@/pages/pos/Dashboard",
+          "icon": "Home"
+        },
+        {
+          "id": "kds",
+          "label": "Kitchen Display",
+          "path": "/pos/kds",
+          "component": "@/pages/pos/KitchenDisplay",
+          "icon": "ChefHat"
+        },
+        {
+          "id": "menu",
+          "label": "Menu Management",
+          "path": "/pos/menu",
+          "component": "@/pages/pos/MenuManagement",
+          "icon": "Menu"
+        },
+        {
+          "id": "payment",
+          "label": "Payment & Billing",
+          "path": "/pos/payment",
+          "component": "@/pages/pos/PaymentBilling",
+          "icon": "CreditCard"
+        }
+      ]
+    },
+    "ACCOUNTANT": {
+      "title": "Accounting & Finance",
+      "icon": "DollarSign",
+      "inherits": [],
+      "modules": [
+        {
+          "id": "dashboard",
+          "label": "Dashboard",
+          "path": "/accountant-dashboard/dashboard",
+          "component": "@/pages/accountant/Dashboard",
+          "icon": "BarChart3"
+        },
+        {
+          "id": "payments",
+          "label": "Payment Logs",
+          "path": "/accountant-dashboard/payments",
+          "component": "@/pages/accountant/Payments",
+          "icon": "CreditCard"
+        },
+        {
+          "id": "reports",
+          "label": "Financial Reports",
+          "path": "/accountant-dashboard/reports",
+          "component": "@/pages/accountant/Reports",
+          "icon": "FileText"
+        },
+        {
+          "id": "payroll",
+          "label": "Payroll",
+          "path": "/accountant-dashboard/payroll",
+          "component": "@/pages/accountant/Payroll",
+          "icon": "Users"
+        }
+      ]
+    },
+    "MANAGER": {
+      "title": "Hotel Manager",
+      "icon": "UserCog",
+      "inherits": ["ACCOUNTANT", "HOUSEKEEPING", "POS"],
+      "modules": [
+        {
+          "id": "dashboard",
+          "label": "Manager Overview",
+          "path": "/manager-dashboard/dashboard",
+          "component": "@/pages/manager/Dashboard",
+          "icon": "LayoutDashboard"
+        },
+        {
+          "id": "operations",
+          "label": "Operations",
+          "path": "/manager-dashboard/operations",
+          "component": "@/pages/manager/Operations",
+          "icon": "Activity"
+        },
+        {
+          "id": "approvals",
+          "label": "Approvals",
+          "path": "/manager-dashboard/approvals",
+          "component": "@/pages/manager/Approvals",
+          "icon": "CheckCircle"
+        },
+        {
+          "id": "staff",
+          "label": "Staff Management",
+          "path": "/manager-dashboard/staff",
+          "component": "@/pages/manager/StaffManagement",
+          "icon": "Users"
+        }
+      ]
+    },
+    "OWNER": {
+      "title": "Hotel Owner / Director",
+      "icon": "Crown",
+      "inherits": ["MANAGER", "ACCOUNTANT", "HOUSEKEEPING", "MAINTENANCE", "POS"],
+      "modules": [
+        {
+          "id": "dashboard",
+          "label": "Enterprise Overview",
+          "path": "/owner-dashboard/dashboard",
+          "component": "@/pages/owner/Dashboard",
+          "icon": "Building2"
+        },
+        {
+          "id": "configuration",
+          "label": "Hotel Configuration",
+          "path": "/owner-dashboard/configuration",
+          "component": "@/pages/owner/Configuration",
+          "icon": "Settings"
+        },
+        {
+          "id": "qr-manager",
+          "label": "QR Manager",
+          "path": "/owner-dashboard/qr-manager",
+          "component": "@/pages/owner/QRManager",
+          "icon": "QrCode"
+        },
+        {
+          "id": "staff",
+          "label": "Staff & Roles",
+          "path": "/owner-dashboard/staff",
+          "component": "@/pages/owner/StaffRoles",
+          "icon": "UserCircle"
+        },
+        {
+          "id": "financials",
+          "label": "Financials",
+          "path": "/owner-dashboard/financials",
+          "component": "@/pages/owner/Financials",
+          "icon": "DollarSign"
+        },
+        {
+          "id": "utilities",
+          "label": "Power & Fuel",
+          "path": "/owner-dashboard/utilities",
+          "component": "@/pages/owner/Utilities",
+          "icon": "Battery"
+        }
+      ]
+    }
+  }
+}

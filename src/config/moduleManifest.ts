@@ -222,12 +222,33 @@ const posModules: Record<string, ModuleDefinition> = {
   }
 };
 
+// Accountant modules
+const accountantModules: Record<string, ModuleDefinition> = {
+  dashboard: {
+    component: () => import('@/pages/accountant/Dashboard'),
+    metadata: { title: 'Dashboard', requiredRole: ['ACCOUNTANT' as UserRole] }
+  },
+  payments: {
+    component: () => import('@/pages/accountant/Payments'),
+    metadata: { title: 'Payments', requiredRole: ['ACCOUNTANT' as UserRole] }
+  },
+  reports: {
+    component: () => import('@/pages/accountant/Reports'),
+    metadata: { title: 'Financial Reports', requiredRole: ['ACCOUNTANT' as UserRole] }
+  },
+  payroll: {
+    component: () => import('@/pages/accountant/Payroll'),
+    metadata: { title: 'Payroll', requiredRole: ['ACCOUNTANT' as UserRole] }
+  }
+};
+
 /**
  * Main module registry - maps role and module name to component
  */
 export const MODULE_REGISTRY: Record<UserRole, Record<string, ModuleDefinition>> = {
   OWNER: ownerModules,
   MANAGER: managerModules,
+  ACCOUNTANT: accountantModules,
   HOUSEKEEPING: housekeepingModules,
   MAINTENANCE: maintenanceModules,
   POS: posModules,

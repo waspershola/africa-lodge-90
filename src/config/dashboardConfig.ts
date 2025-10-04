@@ -31,7 +31,7 @@ import {
   UtensilsCrossed
 } from 'lucide-react';
 
-export type UserRole = 'OWNER' | 'MANAGER' | 'HOUSEKEEPING' | 'MAINTENANCE' | 'POS' | 'FRONT_DESK' | 'SUPER_ADMIN';
+export type UserRole = 'OWNER' | 'MANAGER' | 'ACCOUNTANT' | 'HOUSEKEEPING' | 'MAINTENANCE' | 'POS' | 'FRONT_DESK' | 'SUPER_ADMIN';
 
 export interface NavigationItem {
   name: string;
@@ -109,6 +109,25 @@ export const DASHBOARD_CONFIG: Record<UserRole, RoleDashboardConfig> = {
     headerBadge: {
       icon: Settings,
       label: 'Manager'
+    },
+    layoutConfig: {
+      backToSiteUrl: '/'
+    }
+  },
+
+  ACCOUNTANT: {
+    displayName: 'Accountant',
+    subtitle: 'Financial Management',
+    navigation: [
+      { name: 'Dashboard', href: '/accountant-dashboard/dashboard', icon: BarChart3, module: 'dashboard' },
+      { name: 'Payments', href: '/accountant-dashboard/payments', icon: CreditCard, module: 'payments' },
+      { name: 'Financial Reports', href: '/accountant-dashboard/reports', icon: FileText, module: 'reports' },
+      { name: 'Payroll', href: '/accountant-dashboard/payroll', icon: Users, module: 'payroll' },
+    ],
+    defaultRoute: '/accountant-dashboard/dashboard',
+    headerBadge: {
+      icon: DollarSign,
+      label: 'Accountant'
     },
     layoutConfig: {
       backToSiteUrl: '/'
@@ -208,6 +227,7 @@ export const DASHBOARD_CONFIG: Record<UserRole, RoleDashboardConfig> = {
 export const UNIFIED_DASHBOARD_ROLES: UserRole[] = [
   'OWNER',
   'MANAGER',
+  'ACCOUNTANT',
   'HOUSEKEEPING',
   'MAINTENANCE',
   'POS'

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import UnifiedDashboardLayout from './UnifiedDashboardLayout';
 import { TrialBanner } from '@/components/trial/TrialBanner';
@@ -7,26 +7,73 @@ import { useTenantInfo } from '@/hooks/useTenantInfo';
 import { 
   getDashboardConfig, 
   usesUnifiedDashboard, 
-  UserRole 
+  UserRole,
+  NavigationItem 
 } from '@/config/dashboardConfig';
 import { getBaseDashboardPath } from '@/utils/roleRouter';
+import { useMenuLoader } from '@/hooks/useMenuLoader';
+import * as Icons from 'lucide-react';
 
 interface DynamicDashboardShellProps {
   role?: UserRole;
+  useJsonConfig?: boolean; // Toggle between TypeScript and JSON config
 }
 
-export default function DynamicDashboardShell({ role: propRole }: DynamicDashboardShellProps) {
+export default function DynamicDashboardShell({ 
+  role: propRole, 
+  useJsonConfig = false 
+}: DynamicDashboardShellProps) {
   const { user } = useAuth();
   const { data: tenantInfo } = useTenantInfo();
 
   // Determine the role to use (prop takes precedence, then user role)
   const userRole = propRole || (user?.role as UserRole);
 
-  // Get dashboard configuration for this role
-  const config = useMemo(() => {
+  // Load JSON config if enabled (with inheritance)
+  const { modules: jsonModules, roleConfig: jsonRoleConfig } = useMenuLoader(
+    useJsonConfig ? userRole : undefined
+  );
+
+  // Convert JSON modules to NavigationItem format
+  const jsonNavigation = useMemo((): NavigationItem[] => {
+    if (!useJsonConfig || !jsonModules) return [];
+    
+    return jsonModules.map(module => {
+      // Dynamically resolve icon component
+      const IconComponent = (Icons as any)[module.icon] || Icons.Circle;
+      
+      return {
+        name: module.label,
+        href: module.path,
+        icon: IconComponent,
+        module: module.id
+      };
+    });
+  }, [useJsonConfig, jsonModules]);
+
+  // Get TypeScript dashboard configuration
+  const tsConfig = useMemo(() => {
     if (!userRole) return null;
     return getDashboardConfig(userRole);
   }, [userRole]);
+
+  // Select active config based on mode
+  const config = useJsonConfig 
+    ? (jsonRoleConfig ? {
+        displayName: jsonRoleConfig.title,
+        subtitle: jsonRoleConfig.title,
+        navigation: jsonNavigation,
+        defaultRoute: jsonNavigation[0]?.href || '/',
+        headerBadge: {
+          icon: (Icons as any)[jsonRoleConfig.icon] || Icons.Settings,
+          label: jsonRoleConfig.title
+        },
+        layoutConfig: {
+          backToSiteUrl: '/',
+          showTrialBanner: userRole === 'OWNER' // Add trial banner for owner in JSON mode
+        }
+      } : null)
+    : tsConfig;
 
   // Check if this role should use the unified dashboard
   const shouldUseUnified = useMemo(() => {

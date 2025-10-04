@@ -110,6 +110,7 @@ import SupportAdminLayout from "./components/layout/SupportAdminLayout";
 import SupportStaffLayout from "./components/layout/SupportStaffLayout";
 import SupportAdminDashboard from "./pages/support-admin/Dashboard";
 import SupportStaffDashboard from "./pages/support-staff/Dashboard";
+import MenuPreview from "./pages/debug/MenuPreview";
 
 const queryClient = new QueryClient();
 
@@ -170,12 +171,19 @@ const App = () => (
           
           {/* UNIFIED STAFF DASHBOARD - NEW ARCHITECTURE */}
           <Route path="/staff-dashboard" element={
-            <TenantAwareLayout allowedRoles={['OWNER', 'MANAGER', 'HOUSEKEEPING', 'MAINTENANCE', 'POS']}>
+            <TenantAwareLayout allowedRoles={['OWNER', 'MANAGER', 'ACCOUNTANT', 'HOUSEKEEPING', 'MAINTENANCE', 'POS']}>
               <DynamicDashboardShell />
             </TenantAwareLayout>
           }>
             <Route path=":module" element={<ModuleLoader />} />
           </Route>
+          
+          {/* Debug Tools */}
+          <Route path="/debug/menu-preview" element={
+            <TenantAwareLayout allowedRoles={['OWNER', 'SUPER_ADMIN']}>
+              <MenuPreview />
+            </TenantAwareLayout>
+          } />
           
           {/* Owner Dashboard Routes - LEGACY (will be deprecated) */}
           <Route path="/owner-dashboard" element={

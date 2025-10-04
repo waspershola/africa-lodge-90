@@ -1,7 +1,7 @@
 // Staff Directory Component
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, MoreHorizontal, Edit, Trash2, UserCheck, UserX, Loader2 } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Eye, Trash2, UserCheck, UserX, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useStaff, useDeleteStaffMember, useUpdateStaffMember } from "@/hooks/useApi";
 import { toast } from "sonner";
 import { EnhancedStaffInvitationDialog } from "./EnhancedStaffInvitationDialog";
+import { StaffProfileDrawer } from "./StaffProfileDrawer";
 
 // Use the safe staff type from RPC function
 type StaffMember = {
@@ -28,9 +29,35 @@ type StaffMember = {
   last_login: string | null;
 };
 
+// Extended type for profile drawer (includes all fields)
+type StaffMemberExtended = StaffMember & {
+  status: 'active' | 'invited' | 'suspended';
+  invitedAt: string;
+  lastLogin?: string;
+  phone?: string;
+  address?: string;
+  nin?: string;
+  date_of_birth?: string;
+  nationality?: string;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  emergency_contact_relationship?: string;
+  next_of_kin_name?: string;
+  next_of_kin_phone?: string;
+  next_of_kin_relationship?: string;
+  bank_name?: string;
+  account_number?: string;
+  passport_number?: string;
+  drivers_license?: string;
+  force_reset?: boolean;
+  temp_expires?: string;
+};
+
 export default function StaffDirectory() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState<StaffMemberExtended | null>(null);
+  const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: staffData, isLoading, error } = useStaff();
@@ -38,6 +65,14 @@ export default function StaffDirectory() {
   const updateStaffMutation = useUpdateStaffMember();
 
   const staff: StaffMember[] = staffData || [];
+
+  // Convert staff member to extended type for profile drawer
+  const convertToExtended = (member: StaffMember): StaffMemberExtended => ({
+    ...member,
+    status: member.is_active ? 'active' : 'suspended',
+    invitedAt: member.hire_date || new Date().toISOString(),
+    lastLogin: member.last_login || undefined,
+  });
 
   const filteredStaff = staff.filter((member) =>
     member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -246,9 +281,12 @@ export default function StaffDirectory() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit Details
+                          <DropdownMenuItem onClick={() => {
+                            setSelectedStaff(convertToExtended(member));
+                            setIsProfileDrawerOpen(true);
+                          }}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Details
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             onClick={() => handleStatusToggle(member.id, member.is_active)}
@@ -300,6 +338,13 @@ export default function StaffDirectory() {
           queryClient.invalidateQueries({ queryKey: ['staff'] });
           setIsAddDialogOpen(false);
         }}
+      />
+
+      {/* Staff Profile Drawer */}
+      <StaffProfileDrawer 
+        open={isProfileDrawerOpen}
+        onOpenChange={setIsProfileDrawerOpen}
+        staff={selectedStaff}
       />
     </div>
   );

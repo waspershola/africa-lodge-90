@@ -11,24 +11,19 @@ import { useStaff, useDeleteStaffMember, useUpdateStaffMember } from "@/hooks/us
 import { toast } from "sonner";
 import AddStaffDialog from "./AddStaffDialog";
 
-// Use the actual Supabase schema type
+// Use the safe staff type from RPC function
 type StaffMember = {
   id: string;
   name: string;
   email: string;
-  phone: string | null;
   role: string;
   department: string | null;
   is_active: boolean;
-  created_at: string;
+  employee_id: string | null;
+  hire_date: string | null;
+  employment_type: string | null;
+  invitation_status: string | null;
   last_login: string | null;
-  tenant_id: string;
-  updated_at: string;
-  force_reset: boolean;
-  shift_end: string | null;
-  shift_start: string | null;
-  temp_expires: string | null;
-  temp_password_hash: string | null;
 };
 
 export default function StaffDirectory() {

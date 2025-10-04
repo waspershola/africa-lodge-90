@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { supabaseApi } from '@/lib/supabase-api';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 
 // Global Users API
 export const useGlobalUsers = () => {
@@ -459,10 +460,80 @@ export const useRoomAvailability = () => {
 };
 
 export const useUsers = () => useQuery({ queryKey: ['users'], queryFn: () => Promise.resolve([]) });
-export const useStaff = () => useQuery({ queryKey: ['staff'], queryFn: () => Promise.resolve([]) });
+
+// Staff API using secure RPC function
+export const useStaff = () => {
+  const { tenant } = useAuth();
+  
+  return useQuery({
+    queryKey: ['staff', tenant?.tenant_id],
+    queryFn: async () => {
+      if (!tenant?.tenant_id) {
+        throw new Error('No tenant context');
+      }
+
+      const { data, error } = await supabase.rpc('get_tenant_staff_safe', {
+        target_tenant_id: tenant.tenant_id
+      });
+
+      if (error) {
+        console.error('Failed to fetch staff:', error);
+        throw new Error(error.message);
+      }
+
+      return data || [];
+    },
+    enabled: !!tenant?.tenant_id,
+  });
+};
+
 export const useCreateStaff = () => useMutation({ mutationFn: (data: any) => Promise.resolve(data) });
-export const useUpdateStaffMember = () => useMutation({ mutationFn: ({ id, updates }: any) => Promise.resolve({ id, updates }) });
-export const useDeleteStaffMember = () => useMutation({ mutationFn: ({ id }: { id: string }) => Promise.resolve(id) });
+
+export const useUpdateStaffMember = () => {
+  const queryClient = useQueryClient();
+  const { tenant } = useAuth();
+  
+  return useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
+      const { data, error } = await supabase
+        .from('users')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff', tenant?.tenant_id] });
+    },
+  });
+};
+
+export const useDeleteStaffMember = () => {
+  const queryClient = useQueryClient();
+  const { tenant } = useAuth();
+  
+  return useMutation({
+    mutationFn: async ({ id }: { id: string }) => {
+      // Soft delete by setting is_active to false
+      const { data, error } = await supabase
+        .from('users')
+        .update({ is_active: false })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff', tenant?.tenant_id] });
+    },
+  });
+};
+
 export const useInviteStaff = () => useMutation({ mutationFn: (data: any) => Promise.resolve(data) });
 
 // Guests API with real Supabase integration

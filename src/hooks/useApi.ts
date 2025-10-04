@@ -534,8 +534,6 @@ export const useDeleteStaffMember = () => {
   });
 };
 
-export const useInviteStaff = () => useMutation({ mutationFn: (data: any) => Promise.resolve(data) });
-
 // Guests API with real Supabase integration
 export const useGuests = () => {
   return useQuery({

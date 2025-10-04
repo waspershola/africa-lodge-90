@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Plus, Search, MoreHorizontal, Edit, Trash2, UserCheck, UserX, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useStaff, useDeleteStaffMember, useUpdateStaffMember } from "@/hooks/useApi";
 import { toast } from "sonner";
-import AddStaffDialog from "./AddStaffDialog";
+import { EnhancedStaffInvitationDialog } from "./EnhancedStaffInvitationDialog";
 
 // Use the safe staff type from RPC function
 type StaffMember = {
@@ -29,6 +30,7 @@ type StaffMember = {
 export default function StaffDirectory() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: staffData, isLoading, error } = useStaff();
   const deleteStaffMutation = useDeleteStaffMember();
@@ -290,11 +292,11 @@ export default function StaffDirectory() {
       </Card>
 
       {/* Add Staff Dialog */}
-      <AddStaffDialog 
+      <EnhancedStaffInvitationDialog 
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
-        onStaffAdded={() => {
-          // Refresh staff list - handled by react-query
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['staff'] });
           setIsAddDialogOpen(false);
         }}
       />

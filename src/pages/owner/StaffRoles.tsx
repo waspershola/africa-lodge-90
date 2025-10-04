@@ -12,7 +12,7 @@ import { CreateRoleDialog } from '@/components/sa/CreateRoleDialog';
 import { EditRoleDialog } from '@/components/sa/EditRoleDialog';
 import { PermissionsMatrixDialog } from '@/components/sa/PermissionsMatrixDialog';
 import StaffDirectory from "@/components/owner/staff/StaffDirectory";
-import StaffInviteModal from "@/components/owner/staff/StaffInviteModal";
+import { EnhancedStaffInvitationDialog } from "@/components/owner/staff/EnhancedStaffInvitationDialog";
 
 export default function StaffRoles() {
   const { user } = useMultiTenantAuth();
@@ -205,7 +205,7 @@ export default function StaffRoles() {
         </TabsContent>
       </Tabs>
 
-      <StaffInviteModal 
+      <EnhancedStaffInvitationDialog 
         open={showInviteModal}
         onOpenChange={setShowInviteModal}
       />

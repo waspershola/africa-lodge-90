@@ -151,6 +151,11 @@ export const isRouteAccessible = (role: UserRole, path: string): boolean => {
 };
 
 /**
+ * Export getDefaultRouteForRole for external use
+ */
+export { getDefaultRouteForRole } from '@/config/dashboardConfig';
+
+/**
  * Get redirect path when user doesn't have access to current route
  * @param role - User role
  * @returns Safe redirect path

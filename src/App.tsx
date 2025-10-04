@@ -17,7 +17,6 @@ import FrontDeskDashboard from "./components/FrontDeskDashboard";
 import OwnerDashboard from "./components/OwnerDashboard";
 import { MultiTenantAuthProvider } from "./components/auth/MultiTenantAuthProvider";
 import TenantAwareLayout from "./components/layout/TenantAwareLayout";
-import OwnerLayout from "./components/layout/OwnerLayout";
 import OwnerDashboardPage from "./pages/owner/Dashboard";
 import Configuration from "./pages/owner/Configuration";
 import StaffRoles from "./pages/owner/StaffRoles";
@@ -41,7 +40,6 @@ import QRAnalytics from "./pages/owner/QRAnalytics";
 import QRExportPage from "./components/QRExportPage";
 import ReportsInterface from "./components/ReportsInterface";
 import MonitoringPage from "./pages/owner/Monitoring";
-import ManagerLayout from "./components/layout/ManagerLayout";
 import ManagerDashboard from "./pages/manager/Dashboard";
 import ManagerOperations from "./pages/manager/Operations";
 import ManagerApprovals from "./pages/manager/Approvals";
@@ -55,7 +53,6 @@ import ManagerEventsPackages from "./pages/manager/EventsPackages";
 import ManagerCompliance from "./pages/manager/Compliance";
 import SMSCenter from '@/pages/hotel/SMSCenter';
 import QRSettings from "./pages/owner/QRSettings";
-import HousekeepingLayout from "./components/layout/HousekeepingLayout";
 import HousekeepingDashboard from "./pages/housekeeping/Dashboard";
 import HousekeepingTasks from "./pages/housekeeping/Tasks";
 import HousekeepingAmenities from "./pages/housekeeping/Amenities";
@@ -63,13 +60,11 @@ import HousekeepingSupplies from "./pages/housekeeping/Supplies";
 import HousekeepingOOSRooms from "./pages/housekeeping/OOSRooms";
 import HousekeepingStaffAssignments from "./pages/housekeeping/StaffAssignments";
 import HousekeepingAuditLogs from "./pages/housekeeping/AuditLogs";
-import MaintenanceLayout from "./components/layout/MaintenanceLayout";
 import MaintenanceDashboard from "./pages/maintenance/Dashboard";
 import MaintenanceWorkOrders from "./pages/maintenance/WorkOrders";
 import MaintenancePreventive from "./pages/maintenance/Preventive";
 import MaintenanceSupplies from "./pages/maintenance/Supplies";
 import MaintenanceAudit from "./pages/maintenance/Audit";
-import POSLayout from "./components/layout/POSLayout";
 import POSDashboard from "./pages/pos/Dashboard";
 import POSKds from "./pages/pos/KDS";
 import POSMenu from "./pages/pos/Menu";
@@ -169,14 +164,25 @@ const App = () => (
           } />
           <Route path="/reports" element={<ReportsInterface />} />
           
-          {/* UNIFIED STAFF DASHBOARD - NEW ARCHITECTURE */}
-          <Route path="/staff-dashboard" element={
+          {/* UNIFIED STAFF DASHBOARD - ALL ROLES */}
+          <Route path="/dashboard/*" element={
             <TenantAwareLayout allowedRoles={['OWNER', 'MANAGER', 'ACCOUNTANT', 'HOUSEKEEPING', 'MAINTENANCE', 'POS']}>
-              <DynamicDashboardShell />
+              <DynamicDashboardShell useJsonConfig={true} />
             </TenantAwareLayout>
-          }>
-            <Route path=":module" element={<ModuleLoader />} />
-          </Route>
+          } />
+          
+          {/* Legacy Routes - Redirect to Unified Dashboard */}
+          <Route path="/owner-dashboard/*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/manager-dashboard/*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/accountant-dashboard/*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/housekeeping-dashboard/*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/maintenance-dashboard/*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/pos/*" element={<Navigate to="/dashboard" replace />} />
+          
+          {/* Legacy Staff Dashboard Route */}
+          <Route path="/staff-dashboard" element={
+            <Navigate to="/dashboard" replace />
+          } />
           
           {/* Debug Tools */}
           <Route path="/debug/menu-preview" element={
@@ -185,100 +191,9 @@ const App = () => (
             </TenantAwareLayout>
           } />
           
-          {/* Owner Dashboard Routes - LEGACY (will be deprecated) */}
-          <Route path="/owner-dashboard" element={
-            <TenantAwareLayout requiredRole="OWNER">
-              <OwnerLayout />
-            </TenantAwareLayout>
-          }>
-            <Route index element={<OwnerDashboardPage />} />
-            <Route path="dashboard" element={<OwnerDashboardPage />} />
-            <Route path="configuration" element={<Configuration />} />
-            <Route path="staff" element={<StaffManagement />} />
-            <Route path="financials" element={<Financials />} />
-            <Route path="billing" element={<EnhancedBilling />} />
-            <Route path="qr-manager" element={<QRManager />} />
-            <Route path="qr-settings" element={<QRSettings />} />
-            <Route path="qr-analytics" element={<QRAnalytics />} />
-            <Route path="reports" element={<Reports />} />
-            <Route path="reservations" element={<Reservations />} />
-            <Route path="guests" element={<Guests />} />
-            <Route path="rooms" element={<Rooms />} />
-            <Route path="utilities" element={<Utilities />} />
-            <Route path="housekeeping" element={<Housekeeping />} />
-            <Route path="sms" element={<SMSCenter />} />
-            <Route path="profile" element={<OwnerProfileSettings />} />
-            <Route path="monitoring" element={<MonitoringPage />} />
-          </Route>
+          {/* QR Export - Public route */}
           <Route path="/qr-export" element={<QRExportPage />} />
           
-          {/* Manager Dashboard Routes */}
-          <Route path="/manager-dashboard" element={
-            <TenantAwareLayout requiredRole="MANAGER">
-              <ManagerLayout />
-            </TenantAwareLayout>
-          }>
-            <Route index element={<ManagerDashboard />} />
-            <Route path="dashboard" element={<ManagerDashboard />} />
-            <Route path="operations" element={<ManagerOperations />} />
-            <Route path="approvals" element={<ManagerApprovals />} />
-            <Route path="rooms" element={<ManagerRoomStatus />} />
-            <Route path="requests" element={<ManagerServiceRequests />} />
-            <Route path="staff" element={<ManagerStaffManagement />} />
-            <Route path="qr-codes" element={<ManagerQRManagement />} />
-            <Route path="financials" element={<ManagerDepartmentFinance />} />
-            <Route path="receipts" element={<ManagerReceiptControl />} />
-            <Route path="events" element={<ManagerEventsPackages />} />
-            <Route path="compliance" element={<ManagerCompliance />} />
-            <Route path="sms" element={<SMSCenter />} />
-          </Route>
-
-          {/* Housekeeping Dashboard Routes */}
-          <Route path="/housekeeping-dashboard" element={
-            <TenantAwareLayout requiredRole="HOUSEKEEPING">
-              <HousekeepingLayout />
-            </TenantAwareLayout>
-          }>
-            <Route index element={<HousekeepingDashboard />} />
-            <Route path="dashboard" element={<HousekeepingDashboard />} />
-            <Route path="tasks" element={<HousekeepingTasks />} />
-            <Route path="amenities" element={<HousekeepingAmenities />} />
-            <Route path="supplies" element={<HousekeepingSupplies />} />
-            <Route path="oos-rooms" element={<HousekeepingOOSRooms />} />
-            <Route path="staff" element={<HousekeepingStaffAssignments />} />
-            <Route path="audit" element={<HousekeepingAuditLogs />} />
-          </Route>
-
-          {/* Maintenance Dashboard Routes */}
-          <Route path="/maintenance-dashboard" element={
-            <TenantAwareLayout requiredRole="MAINTENANCE">
-              <MaintenanceLayout />
-            </TenantAwareLayout>
-          }>
-            <Route index element={<MaintenanceDashboard />} />
-            <Route path="dashboard" element={<MaintenanceDashboard />} />
-            <Route path="work-orders" element={<MaintenanceWorkOrders />} />
-            <Route path="preventive" element={<MaintenancePreventive />} />
-            <Route path="supplies" element={<MaintenanceSupplies />} />
-            <Route path="audit" element={<MaintenanceAudit />} />
-          </Route>
-
-          {/* POS Dashboard Routes */}
-          <Route path="/pos" element={
-            <TenantAwareLayout requiredRole="POS">
-              <POSLayout />
-            </TenantAwareLayout>
-          }>
-            <Route index element={<POSDashboard />} />
-            <Route path="dashboard" element={<POSDashboard />} />
-            <Route path="kds" element={<POSKds />} />
-            <Route path="menu" element={<POSMenu />} />
-            <Route path="payment" element={<POSPayment />} />
-            <Route path="approvals" element={<POSApprovals />} />
-            <Route path="reports" element={<POSReports />} />
-            <Route path="settings" element={<POSSettings />} />
-          </Route>
-
           {/* Hotel Dashboard Routes */}
           <Route path="/hotel/:tenantId/dashboard" element={<HotelDashboard />} />
           

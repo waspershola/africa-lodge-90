@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { useMemo } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import UnifiedDashboardLayout from './UnifiedDashboardLayout';
+import ProtectedModule from './ProtectedModule';
 import { TrialBanner } from '@/components/trial/TrialBanner';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useTenantInfo } from '@/hooks/useTenantInfo';
@@ -12,6 +13,7 @@ import {
 } from '@/config/dashboardConfig';
 import { getBaseDashboardPath } from '@/utils/roleRouter';
 import { useMenuLoader } from '@/hooks/useMenuLoader';
+import { getSafeRedirectPath } from '@/lib/accessControl';
 import * as Icons from 'lucide-react';
 
 interface DynamicDashboardShellProps {
@@ -87,9 +89,14 @@ export default function DynamicDashboardShell({
     window.location.href = `${basePath}/billing`;
   };
 
-  // If no config or shouldn't use unified dashboard, render outlet directly
+  // If no config or shouldn't use unified dashboard, render basic outlet
   if (!config || !shouldUseUnified) {
-    return <Outlet />;
+    return (
+      <Routes>
+        <Route index element={<Navigate to={getSafeRedirectPath(userRole)} replace />} />
+        <Route path=":module" element={<ProtectedModule role={userRole} />} />
+      </Routes>
+    );
   }
 
   const showTrialBanner = config.layoutConfig?.showTrialBanner && userRole === 'OWNER';
@@ -114,7 +121,22 @@ export default function DynamicDashboardShell({
         backToSiteUrl={config.layoutConfig?.backToSiteUrl || '/'}
         headerBadge={config.headerBadge}
       >
-        <Outlet />
+        <Routes>
+          {/* Default redirect to first module */}
+          <Route index element={<Navigate to={jsonNavigation[0]?.href.replace('/dashboard/', '') || 'dashboard'} replace />} />
+          
+          {/* Dynamic module routes */}
+          {jsonNavigation.map((navItem) => {
+            const moduleKey = navItem.module || navItem.href.split('/').pop();
+            return (
+              <Route
+                key={moduleKey}
+                path={moduleKey}
+                element={<ProtectedModule moduleKey={moduleKey} role={userRole} />}
+              />
+            );
+          })}
+        </Routes>
       </UnifiedDashboardLayout>
     </>
   );

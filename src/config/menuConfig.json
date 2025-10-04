@@ -17,14 +17,14 @@
           "id": "tasks",
           "label": "Tasks Board",
           "path": "/dashboard/tasks",
-          "component": "@/pages/housekeeping/TasksBoard",
+          "component": "@/pages/housekeeping/Tasks",
           "icon": "ClipboardList"
         },
         {
           "id": "amenities",
           "label": "Amenity Requests",
           "path": "/dashboard/amenities",
-          "component": "@/pages/housekeeping/AmenityRequests",
+          "component": "@/pages/housekeeping/Amenities",
           "icon": "Clock"
         },
         {
@@ -66,7 +66,7 @@
           "id": "preventive",
           "label": "Preventive Schedule",
           "path": "/dashboard/preventive",
-          "component": "@/pages/maintenance/PreventiveMaintenance",
+          "component": "@/pages/maintenance/Preventive",
           "icon": "Calendar"
         },
         {
@@ -94,21 +94,21 @@
           "id": "kds",
           "label": "Kitchen Display",
           "path": "/dashboard/kds",
-          "component": "@/pages/pos/KitchenDisplay",
+          "component": "@/pages/pos/KDS",
           "icon": "ChefHat"
         },
         {
           "id": "menu",
           "label": "Menu Management",
           "path": "/dashboard/menu",
-          "component": "@/pages/pos/MenuManagement",
+          "component": "@/pages/pos/Menu",
           "icon": "Menu"
         },
         {
           "id": "payment",
           "label": "Payment & Billing",
           "path": "/dashboard/payment",
-          "component": "@/pages/pos/PaymentBilling",
+          "component": "@/pages/pos/Payment",
           "icon": "CreditCard"
         }
       ]

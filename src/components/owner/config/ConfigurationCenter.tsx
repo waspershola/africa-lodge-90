@@ -14,6 +14,7 @@ import { ReceiptDocuments } from './ReceiptDocuments';
 import { GuestExperience } from './GuestExperience';
 import { StaffPermissions } from './StaffPermissions';
 import { AuditLogs } from './AuditLogs';
+import { DatabaseCleanup } from './DatabaseCleanup';
 import EmailSettings from '../settings/EmailSettings';
 import { 
   Settings, 
@@ -25,6 +26,7 @@ import {
   Shield, 
   History,
   Mail,
+  Database,
   RotateCcw,
   Save,
   CheckCircle,
@@ -169,7 +171,7 @@ export const ConfigurationCenter = () => {
           <CardContent className="p-0">
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
               <div className="border-b">
-                <TabsList className="grid w-full grid-cols-3 lg:grid-cols-9 h-auto p-1">
+                <TabsList className="grid w-full grid-cols-3 lg:grid-cols-10 h-auto p-1">
                   <TabsTrigger value="general" className="flex items-center gap-2 py-3 px-2">
                     <Settings className="h-4 w-4" />
                     <span className="hidden sm:inline">General</span>
@@ -205,6 +207,10 @@ export const ConfigurationCenter = () => {
                   <TabsTrigger value="email" className="flex items-center gap-2 py-3 px-2">
                     <Mail className="h-4 w-4" />
                     <span className="hidden sm:inline">Email</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="cleanup" className="flex items-center gap-2 py-3 px-2">
+                    <Database className="h-4 w-4" />
+                    <span className="hidden sm:inline">Cleanup</span>
                   </TabsTrigger>
                 </TabsList>
               </div>
@@ -304,6 +310,10 @@ export const ConfigurationCenter = () => {
 
                 <TabsContent value="email" className="mt-0">
                   <EmailSettings />
+                </TabsContent>
+
+                <TabsContent value="cleanup" className="mt-0">
+                  <DatabaseCleanup />
                 </TabsContent>
               </div>
             </Tabs>

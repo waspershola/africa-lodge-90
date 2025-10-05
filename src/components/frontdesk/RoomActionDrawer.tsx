@@ -120,7 +120,7 @@ export const RoomActionDrawer = ({
       console.log('[RoomActionDrawer] Found folio:', folio);
       return folio;
     },
-    enabled: !!room?.id && (room?.status === 'occupied' || room?.status === 'overstay'),
+    enabled: !!room?.id && (room?.status === 'occupied' || room?.status === 'overstay' || room?.status === 'reserved'), // PHASE 3: Enable for reserved
   });
 
   if (!room) return null;

@@ -279,7 +279,35 @@ export const useHardAssignReservation = () => {
         throw new Error(`Room type mismatch: Room is ${room.room_type_id}, reservation is for ${reservation.room_type_id}`);
       }
 
-      // Update reservation with hard assignment
+      // Step 1: Get all reservations for this room to find folios to close
+      const { data: roomReservations } = await supabase
+        .from('reservations')
+        .select('id')
+        .eq('room_id', assignmentData.room_id);
+
+      const reservationIds = roomReservations?.map(r => r.id) || [];
+
+      // Close any existing open folios for this room
+      if (reservationIds.length > 0) {
+        const { data: existingFolios } = await supabase
+          .from('folios')
+          .select('id, reservation_id')
+          .eq('status', 'open')
+          .in('reservation_id', reservationIds);
+
+        if (existingFolios && existingFolios.length > 0) {
+          await supabase
+            .from('folios')
+            .update({ 
+              status: 'closed',
+              closed_at: new Date().toISOString(),
+              closed_by: user.id 
+            })
+            .in('id', existingFolios.map(f => f.id));
+        }
+      }
+
+      // Step 2: Update reservation with hard assignment
       const { data: updatedReservation, error: updateError } = await supabase
         .from('reservations')
         .update({
@@ -295,11 +323,41 @@ export const useHardAssignReservation = () => {
 
       if (updateError) throw updateError;
 
-      // Update room status to occupied
+      // Step 3: Create new folio for the new reservation
+      const folioNumber = `FOL-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+      const { data: newFolio, error: folioError } = await supabase
+        .from('folios')
+        .insert({
+          tenant_id,
+          reservation_id: assignmentData.reservation_id,
+          folio_number: folioNumber,
+          status: 'open'
+        })
+        .select()
+        .single();
+
+      if (folioError) throw folioError;
+
+      // Step 4: Add initial room charges based on reservation
+      const nights = Math.ceil((new Date(reservation.check_out_date).getTime() - new Date(reservation.check_in_date).getTime()) / (1000 * 60 * 60 * 24));
+      const totalAmount = reservation.room_rate * nights;
+
+      await supabase
+        .from('folio_charges')
+        .insert({
+          tenant_id,
+          folio_id: newFolio.id,
+          charge_type: 'room',
+          description: `Room charges for ${nights} night(s) at ${room.room_number}`,
+          amount: totalAmount,
+          posted_by: user.id
+        });
+
+      // Step 5: Update room status to reserved (not occupied - that happens at check-in)
       await supabase
         .from('rooms')
         .update({
-          status: 'occupied',
+          status: 'reserved',
           updated_at: new Date().toISOString()
         })
         .eq('id', assignmentData.room_id);

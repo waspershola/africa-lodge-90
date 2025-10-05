@@ -259,17 +259,30 @@ export function useBilling() {
     if (!tenant?.tenant_id) return null;
 
     try {
-      // PHASE 1 FIX: Check for duplicate payments within last 60 seconds
+      // Get current user ID for duplicate check
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const userId = currentUser?.id;
+
+      // PHASE 2: Improved duplicate detection - 10 second window with method and user check
       const { data: recentPayments } = await supabase
         .from('payments')
         .select('*')
         .eq('folio_id', paymentData.folio_id)
         .eq('amount', paymentData.amount)
-        .gte('created_at', new Date(Date.now() - 60000).toISOString())
+        .gte('created_at', new Date(Date.now() - 10000).toISOString()) // 10 seconds
         .eq('status', 'completed');
 
       if (recentPayments && recentPayments.length > 0) {
-        throw new Error('Duplicate payment detected. A payment of this amount was just processed.');
+        // Additional intelligent checks
+        const isDuplicate = recentPayments.some(p => 
+          Math.abs(p.amount - paymentData.amount) < 0.01 &&
+          (paymentData.payment_method_id ? p.payment_method_id === paymentData.payment_method_id : true) &&
+          (userId ? p.processed_by === userId : true)
+        );
+        
+        if (isDuplicate) {
+          throw new Error('Duplicate payment detected. A payment of this amount was just processed.');
+        }
       }
 
       // Phase 1: Enhanced client-side validation

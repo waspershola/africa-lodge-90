@@ -213,20 +213,28 @@ export const useCheckout = (roomId?: string) => {
 
     setLoading(true);
     try {
-      // PHASE 1 FIX: Check for duplicate payments within last 60 seconds
+      // PHASE 2: Improved duplicate detection - 10 second window with intelligent checks
       const checkoutFolioId = checkoutSession.guest_bill.folio_id;
       const { data: recentPayments } = await supabase
         .from('payments')
         .select('*')
         .eq('folio_id', checkoutFolioId)
         .eq('amount', amount)
-        .gte('created_at', new Date(Date.now() - 60000).toISOString())
+        .gte('created_at', new Date(Date.now() - 10000).toISOString()) // 10 seconds
         .eq('status', 'completed');
 
       if (recentPayments && recentPayments.length > 0) {
-        setError('Duplicate payment detected. A payment of this amount was just processed.');
-        setLoading(false);
-        return false;
+        // Additional intelligent checks
+        const isDuplicate = recentPayments.some(p => 
+          Math.abs(p.amount - amount) < 0.01 &&
+          (user?.id ? p.processed_by === user.id : true)
+        );
+        
+        if (isDuplicate) {
+          setError('Duplicate payment detected. A payment of this amount was just processed.');
+          setLoading(false);
+          return false;
+        }
       }
 
       // Phase 4: Validate payment data before processing

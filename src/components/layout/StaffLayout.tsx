@@ -5,7 +5,8 @@ import {
   Settings,
   User,
   Wrench,
-  Sparkles
+  Sparkles,
+  CreditCard
 } from 'lucide-react';
 import UnifiedDashboardLayout from './UnifiedDashboardLayout';
 import { useTenantInfo } from '@/hooks/useTenantInfo';
@@ -15,6 +16,7 @@ const getNavigationForRole = (role: string) => {
   const baseNavigation = [
     { name: 'Dashboard', href: '/staff-dashboard/dashboard', icon: BarChart3 },
     { name: 'QR Requests', href: '/staff-dashboard/qr-requests', icon: QrCode },
+    { name: 'Payment Verification', href: '/staff-dashboard/payment-verification', icon: CreditCard },
   ];
 
   const roleSpecificNavigation = {

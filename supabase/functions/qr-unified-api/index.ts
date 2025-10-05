@@ -159,6 +159,122 @@ serve(async (req) => {
         }
       }
 
+      // Route: POST /payment/charge - Record payment (pending verification)
+      if (path === '/payment/charge' && req.method === 'POST') {
+        const rateCheck = checkRateLimit(clientIp, 'request');
+        if (!rateCheck.allowed) {
+          return new Response(
+            JSON.stringify({ error: 'Rate limit exceeded', resetAt: rateCheck.resetAt }),
+            { 
+              status: 429, 
+              headers: { 
+                ...corsHeaders, 
+                'Content-Type': 'application/json',
+                'Retry-After': String(Math.ceil((rateCheck.resetAt! - Date.now()) / 1000))
+              } 
+            }
+          );
+        }
+
+        const sessionToken = req.headers.get('x-session-token');
+        if (!sessionToken) {
+          return new Response(
+            JSON.stringify({ error: 'Session token required' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Verify session token
+        let sessionData;
+        try {
+          sessionData = await verifyJWT(sessionToken);
+        } catch (error) {
+          console.error('JWT verification failed:', error);
+          return new Response(
+            JSON.stringify({ error: 'Invalid or expired session' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const body = await req.json();
+        const { amount, paymentMethod, reference, notes } = body;
+
+        // Validate input
+        if (!amount || amount <= 0 || amount > 1000000) {
+          return new Response(
+            JSON.stringify({ error: 'Invalid amount' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (!['cash', 'card', 'wallet'].includes(paymentMethod)) {
+          return new Response(
+            JSON.stringify({ error: 'Invalid payment method' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Get payment method ID
+        const { data: paymentMethodRecord } = await supabaseClient
+          .from('payment_methods')
+          .select('id')
+          .eq('tenant_id', sessionData.tenantId)
+          .eq('type', paymentMethod)
+          .eq('enabled', true)
+          .maybeSingle();
+
+        if (!paymentMethodRecord) {
+          return new Response(
+            JSON.stringify({ error: 'Payment method not available' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Create payment record (pending verification)
+        const receiptId = `QR-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+        
+        const { data: payment, error: paymentError } = await supabaseClient
+          .from('payments')
+          .insert({
+            tenant_id: sessionData.tenantId,
+            folio_id: null,
+            amount: amount,
+            payment_method_id: paymentMethodRecord.id,
+            reference_number: reference?.substring(0, 100) || receiptId,
+            notes: notes?.substring(0, 500) || null,
+            status: 'pending',
+            payment_status: 'pending',
+            is_verified: false,
+          })
+          .select('id, reference_number')
+          .single();
+
+        if (paymentError) {
+          console.error('Payment creation error:', paymentError);
+          return new Response(
+            JSON.stringify({ error: 'Failed to record payment' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log('Payment recorded (pending verification):', {
+          paymentId: payment.id,
+          amount,
+          method: paymentMethod,
+          tenantId: sessionData.tenantId,
+        });
+
+        return new Response(
+          JSON.stringify({ 
+            success: true,
+            receiptId: payment.reference_number || payment.id,
+            message: 'Payment submitted for verification',
+            requiresVerification: true,
+          }),
+          { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       const body = await req.json();
       
       // Input validation

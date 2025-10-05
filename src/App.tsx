@@ -107,6 +107,8 @@ import SupportStaffLayout from "./components/layout/SupportStaffLayout";
 import SupportAdminDashboard from "./pages/support-admin/Dashboard";
 import SupportStaffDashboard from "./pages/support-staff/Dashboard";
 import MenuPreview from "./pages/debug/MenuPreview";
+import PaymentVerification from "./pages/staff/PaymentVerification";
+import QRRequests from "./pages/staff/QRRequests";
 
 // Font manager component to apply global font styles
 const FontManager = () => {
@@ -165,8 +167,20 @@ const App = () => (
           
           {/* UNIFIED STAFF DASHBOARD - ALL ROLES */}
           <Route path="/dashboard/*" element={
-            <TenantAwareLayout allowedRoles={['OWNER', 'MANAGER', 'ACCOUNTANT', 'HOUSEKEEPING', 'MAINTENANCE', 'POS']}>
+            <TenantAwareLayout allowedRoles={['OWNER', 'MANAGER', 'ACCOUNTANT', 'HOUSEKEEPING', 'MAINTENANCE', 'POS', 'FRONT_DESK']}>
               <DynamicDashboardShell useJsonConfig={true} />
+            </TenantAwareLayout>
+          } />
+          
+          {/* Staff-specific routes */}
+          <Route path="/staff-dashboard/qr-requests" element={
+            <TenantAwareLayout allowedRoles={['OWNER', 'MANAGER', 'FRONT_DESK', 'HOUSEKEEPING', 'MAINTENANCE', 'POS']}>
+              <QRRequests />
+            </TenantAwareLayout>
+          } />
+          <Route path="/staff-dashboard/payment-verification" element={
+            <TenantAwareLayout allowedRoles={['OWNER', 'MANAGER', 'FRONT_DESK']}>
+              <PaymentVerification />
             </TenantAwareLayout>
           } />
           

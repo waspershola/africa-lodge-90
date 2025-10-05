@@ -356,6 +356,15 @@ export const useHardAssignReservation = () => {
       const nights = Math.ceil((new Date(reservation.check_out_date).getTime() - new Date(reservation.check_in_date).getTime()) / (1000 * 60 * 60 * 24));
       const baseAmount = reservation.room_rate * nights;
 
+      console.log('🔍 [DEBUG] Hard Assignment - Before Tax Calculation:', {
+        reservation_id: reservation.id,
+        room_rate: reservation.room_rate,
+        nights,
+        calculated_baseAmount: baseAmount,
+        reservation_total_amount: reservation.total_amount,
+        guest_tax_exempt: guest?.tax_exempt
+      });
+
       // Import calculateTaxesAndCharges at the top of the file
       const { calculateTaxesAndCharges } = await import('@/lib/tax-calculator');
       
@@ -386,22 +395,47 @@ export const useHardAssignReservation = () => {
         configuration
       });
 
+      console.log('🔍 [DEBUG] Tax Calculation Result:', {
+        input_baseAmount: baseAmount,
+        returned_baseAmount: taxCalculation.baseAmount,
+        returned_serviceCharge: taxCalculation.serviceChargeAmount,
+        returned_vat: taxCalculation.vatAmount,
+        returned_total: taxCalculation.totalAmount,
+        breakdown: taxCalculation.breakdown
+      });
+
       // Insert charge with proper breakdown (prevents double tax)
-      await supabase
+      const chargeToInsert = {
+        tenant_id,
+        folio_id: newFolio.id,
+        charge_type: 'room',
+        description: `Room charges for ${nights} night(s) at ${room.room_number}`,
+        amount: taxCalculation.totalAmount,
+        base_amount: taxCalculation.baseAmount,
+        vat_amount: taxCalculation.vatAmount,
+        service_charge_amount: taxCalculation.serviceChargeAmount,
+        is_taxable: !guest?.tax_exempt,
+        is_service_chargeable: !guest?.tax_exempt,
+        posted_by: user.id
+      };
+
+      console.log('🔍 [DEBUG] Inserting Folio Charge:', chargeToInsert);
+
+      const { data: insertedCharge, error: chargeError } = await supabase
         .from('folio_charges')
-        .insert({
-          tenant_id,
-          folio_id: newFolio.id,
-          charge_type: 'room',
-          description: `Room charges for ${nights} night(s) at ${room.room_number}`,
-          amount: taxCalculation.totalAmount,
-          base_amount: taxCalculation.baseAmount,
-          vat_amount: taxCalculation.vatAmount,
-          service_charge_amount: taxCalculation.serviceChargeAmount,
-          is_taxable: !guest?.tax_exempt,
-          is_service_chargeable: !guest?.tax_exempt,
-          posted_by: user.id
-        });
+        .insert(chargeToInsert)
+        .select()
+        .single();
+
+      if (chargeError) throw chargeError;
+
+      console.log('🔍 [DEBUG] Inserted Charge from DB:', {
+        id: insertedCharge?.id,
+        amount: insertedCharge?.amount,
+        base_amount: insertedCharge?.base_amount,
+        vat_amount: insertedCharge?.vat_amount,
+        service_charge_amount: insertedCharge?.service_charge_amount
+      });
 
       // Step 5: Update room status to reserved (not occupied - that happens at check-in)
       await supabase

@@ -38,6 +38,16 @@ export function calculateTaxesAndCharges(input: TaxCalculationInput): TaxCalcula
     configuration
   } = input;
 
+  console.log('🔍 [TAX CALC] Input received:', {
+    baseAmount,
+    chargeType,
+    isTaxable,
+    isServiceChargeable,
+    guestTaxExempt,
+    vat_rate: configuration.tax?.vat_rate,
+    service_rate: configuration.tax?.service_charge_rate
+  });
+
   // Get rates from configuration
   const vatRate = configuration.tax?.vat_rate || 7.5;
   const serviceRate = configuration.tax?.service_charge_rate || 10.0;
@@ -137,13 +147,17 @@ export function calculateTaxesAndCharges(input: TaxCalculationInput): TaxCalcula
     });
   }
 
-  return {
+  const result = {
     baseAmount: Number(calculatedBase.toFixed(2)),
     vatAmount: Number(calculatedVat.toFixed(2)),
     serviceChargeAmount: Number(calculatedService.toFixed(2)),
     totalAmount: Number(totalAmount.toFixed(2)),
     breakdown
   };
+
+  console.log('🔍 [TAX CALC] Result:', result);
+
+  return result;
 }
 
 /**

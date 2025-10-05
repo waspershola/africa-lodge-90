@@ -2080,6 +2080,63 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_delivery_log: {
+        Row: {
+          acknowledged_at: string | null
+          delivered_at: string | null
+          delivery_method: string
+          delivery_status: string
+          device_info: Json | null
+          error_message: string | null
+          id: string
+          notification_id: string
+          read_at: string | null
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          delivered_at?: string | null
+          delivery_method: string
+          delivery_status?: string
+          device_info?: Json | null
+          error_message?: string | null
+          id?: string
+          notification_id: string
+          read_at?: string | null
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          delivered_at?: string | null
+          delivery_method?: string
+          delivery_status?: string
+          device_info?: Json | null
+          error_message?: string | null
+          id?: string
+          notification_id?: string
+          read_at?: string | null
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_delivery_log_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "staff_notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_delivery_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_events: {
         Row: {
           channels: string[]
@@ -5116,6 +5173,106 @@ export type Database = {
           },
         ]
       }
+      staff_notifications: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          actions: Json | null
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string | null
+          department: string | null
+          escalate_after_minutes: number | null
+          escalated_at: string | null
+          escalated_to: string | null
+          expires_at: string | null
+          id: string
+          message: string
+          metadata: Json | null
+          notification_type: string
+          priority: string
+          recipients: Json | null
+          reference_id: string | null
+          reference_type: string | null
+          sound_type: string
+          status: string
+          tenant_id: string
+          title: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          actions?: Json | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string | null
+          department?: string | null
+          escalate_after_minutes?: number | null
+          escalated_at?: string | null
+          escalated_to?: string | null
+          expires_at?: string | null
+          id?: string
+          message: string
+          metadata?: Json | null
+          notification_type: string
+          priority?: string
+          recipients?: Json | null
+          reference_id?: string | null
+          reference_type?: string | null
+          sound_type?: string
+          status?: string
+          tenant_id: string
+          title: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          actions?: Json | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string | null
+          department?: string | null
+          escalate_after_minutes?: number | null
+          escalated_at?: string | null
+          escalated_to?: string | null
+          expires_at?: string | null
+          id?: string
+          message?: string
+          metadata?: Json | null
+          notification_type?: string
+          priority?: string
+          recipients?: Json | null
+          reference_id?: string | null
+          reference_type?: string | null
+          sound_type?: string
+          status?: string
+          tenant_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_notifications_acknowledged_by_fkey"
+            columns: ["acknowledged_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_notifications_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_notifications_escalated_to_fkey"
+            columns: ["escalated_to"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_salary_audit: {
         Row: {
           approval_stage: string | null
@@ -6554,6 +6711,10 @@ export type Database = {
           p_is_enabled?: boolean
         }
         Returns: string
+      }
+      escalate_unacknowledged_notifications: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       expire_stale_sessions: {
         Args: Record<PropertyKey, never>

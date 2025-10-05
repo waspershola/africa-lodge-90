@@ -103,3 +103,6 @@ verify_jwt = false
 
 [functions.qr-unified-api]
 verify_jwt = false
+
+[functions.notification-escalation]
+verify_jwt = false

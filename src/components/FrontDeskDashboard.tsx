@@ -42,7 +42,9 @@ import { RoomLegend } from "./frontdesk/RoomLegend";
 import { QuickFilters } from "./frontdesk/QuickFilters";
 import { NotificationBanner } from "./frontdesk/NotificationBanner";
 import { NewReservationDialog } from "./frontdesk/NewReservationDialog";
-import { SearchDialog } from "./frontdesk/SearchDialog"; 
+import { GuestDirectoryDialog } from "./frontdesk/GuestDirectoryDialog";
+import { GroupBookingDialog } from "./frontdesk/GroupBookingDialog";
+import { CorporateAccountDialog } from "./frontdesk/CorporateAccountDialog";
 import { PaymentDialog } from "./frontdesk/PaymentDialog";
 import { QuickGuestCapture } from "./frontdesk/QuickGuestCapture";
 import { QRDirectoryFD } from "./frontdesk/QRDirectoryFD";
@@ -99,10 +101,12 @@ const FrontDeskDashboard = () => {
   // Dialog states
   const [showNewReservation, setShowNewReservation] = useState(false);
   const [showReservations, setShowReservations] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
+  const [showGuestDirectory, setShowGuestDirectory] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [showQuickCapture, setShowQuickCapture] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [showGroupBooking, setShowGroupBooking] = useState(false);
+  const [showCorporateAccounts, setShowCorporateAccounts] = useState(false);
   const [checkoutRoomId, setCheckoutRoomId] = useState<string | undefined>(undefined);
   const [captureAction, setCaptureAction] = useState<"assign" | "walkin" | "check-in" | "check-out" | "assign-room" | "extend-stay" | "transfer-room" | "add-service" | "work-order" | "housekeeping" | "">("");
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -121,9 +125,8 @@ const FrontDeskDashboard = () => {
       case 'new-reservation':
         setShowNewReservation(true);
         break;
-      case 'assign-room':
-        setCaptureAction('assign-room');
-        setShowQuickCapture(true);
+      case 'group-booking':
+        setShowGroupBooking(true);
         break;
       case 'reservations':
         setShowReservations(true);
@@ -131,8 +134,8 @@ const FrontDeskDashboard = () => {
       case 'collect-payment':
         setShowPayment(true);
         break;
-      case 'search':
-        setShowSearch(true);
+      case 'guest-directory':
+        setShowGuestDirectory(true);
         break;
       case 'extend-stay':
       case 'transfer-room':
@@ -590,15 +593,37 @@ const FrontDeskDashboard = () => {
         onOpenChange={setShowNewReservation}
       />
       
-      <SearchDialog 
-        open={showSearch}
-        onOpenChange={setShowSearch}
-      />
+      <Dialog open={showGuestDirectory} onOpenChange={setShowGuestDirectory}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Guest Directory</DialogTitle>
+          </DialogHeader>
+          <GuestDirectoryDialog />
+        </DialogContent>
+      </Dialog>
       
       <PaymentDialog 
         open={showPayment}
         onOpenChange={setShowPayment}
       />
+
+      <Dialog open={showGroupBooking} onOpenChange={setShowGroupBooking}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Group Booking Management</DialogTitle>
+          </DialogHeader>
+          <GroupBookingDialog />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showCorporateAccounts} onOpenChange={setShowCorporateAccounts}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Corporate Account Management</DialogTitle>
+          </DialogHeader>
+          <CorporateAccountDialog />
+        </DialogContent>
+      </Dialog>
 
       <QuickGuestCapture
         open={showQuickCapture && captureAction !== ""}

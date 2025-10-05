@@ -7,8 +7,6 @@ export interface GuestSearchResult {
   phone: string;
   email: string;
   nationality?: string;
-  sex?: string;
-  occupation?: string;
   id_type?: string;
   id_number?: string;
   last_stay_date?: string;
@@ -117,7 +115,9 @@ export const useRecentGuests = () => {
         id_number: guest.id_number,
         last_stay_date: guest.last_stay_date,
         total_stays: guest.total_stays || 0,
-        vip_status: guest.vip_status
+        vip_status: guest.vip_status,
+        current_room: undefined,
+        reservation_status: undefined
       })) || [];
     },
   });

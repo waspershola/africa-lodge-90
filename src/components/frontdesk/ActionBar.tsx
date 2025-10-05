@@ -31,9 +31,9 @@ export const ActionBar = ({ onAction }: ActionBarProps) => {
           New Reservation
         </Button>
         
-        <Button variant="outline" onClick={() => onAction('assign-room')}>
+        <Button variant="outline" onClick={() => onAction('group-booking')}>
           <UserPlus className="h-4 w-4 mr-2" />
-          Assign Room
+          Group Booking
         </Button>
         
         <Button variant="outline" onClick={() => onAction('reservations')}>
@@ -46,9 +46,9 @@ export const ActionBar = ({ onAction }: ActionBarProps) => {
           Collect Payment
         </Button>
         
-        <Button variant="outline" onClick={() => onAction('search')}>
+        <Button variant="outline" onClick={() => onAction('guest-directory')}>
           <Search className="h-4 w-4 mr-2" />
-          Search Guest/Room
+          Guest Directory
         </Button>
 
         <DropdownMenu>

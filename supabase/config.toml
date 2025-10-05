@@ -100,3 +100,6 @@ verify_jwt = false
 
 [functions.sms-template-processor]
 verify_jwt = false
+
+[functions.qr-unified-api]
+verify_jwt = false

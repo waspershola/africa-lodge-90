@@ -2938,15 +2938,21 @@ export type Database = {
         Row: {
           created_at: string | null
           created_by: string | null
+          expires_at: string | null
           id: string
           is_active: boolean | null
           label: string | null
+          last_scanned_at: string | null
+          metadata: Json | null
           qr_code_url: string | null
           qr_token: string
+          qr_type: string | null
           room_id: string | null
+          scan_count: number | null
           scan_type: string | null
           services: string[]
           slug: string | null
+          target_id: string | null
           template_id: string | null
           tenant_id: string
           updated_at: string | null
@@ -2954,15 +2960,21 @@ export type Database = {
         Insert: {
           created_at?: string | null
           created_by?: string | null
+          expires_at?: string | null
           id?: string
           is_active?: boolean | null
           label?: string | null
+          last_scanned_at?: string | null
+          metadata?: Json | null
           qr_code_url?: string | null
           qr_token: string
+          qr_type?: string | null
           room_id?: string | null
+          scan_count?: number | null
           scan_type?: string | null
           services: string[]
           slug?: string | null
+          target_id?: string | null
           template_id?: string | null
           tenant_id: string
           updated_at?: string | null
@@ -2970,15 +2982,21 @@ export type Database = {
         Update: {
           created_at?: string | null
           created_by?: string | null
+          expires_at?: string | null
           id?: string
           is_active?: boolean | null
           label?: string | null
+          last_scanned_at?: string | null
+          metadata?: Json | null
           qr_code_url?: string | null
           qr_token?: string
+          qr_type?: string | null
           room_id?: string | null
+          scan_count?: number | null
           scan_type?: string | null
           services?: string[]
           slug?: string | null
+          target_id?: string | null
           template_id?: string | null
           tenant_id?: string
           updated_at?: string | null
@@ -3167,6 +3185,187 @@ export type Database = {
           },
         ]
       }
+      qr_requests: {
+        Row: {
+          assigned_to: string | null
+          cancelled_at: string | null
+          completed_at: string | null
+          created_at: string | null
+          guest_email: string | null
+          guest_name: string | null
+          guest_phone: string | null
+          id: string
+          notes: string | null
+          priority: string | null
+          qr_code_id: string | null
+          request_data: Json
+          request_type: string
+          room_id: string | null
+          session_id: string | null
+          status: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          cancelled_at?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          guest_email?: string | null
+          guest_name?: string | null
+          guest_phone?: string | null
+          id?: string
+          notes?: string | null
+          priority?: string | null
+          qr_code_id?: string | null
+          request_data?: Json
+          request_type: string
+          room_id?: string | null
+          session_id?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          cancelled_at?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          guest_email?: string | null
+          guest_name?: string | null
+          guest_phone?: string | null
+          id?: string
+          notes?: string | null
+          priority?: string | null
+          qr_code_id?: string | null
+          request_data?: Json
+          request_type?: string
+          room_id?: string | null
+          session_id?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qr_requests_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_requests_qr_code_id_fkey"
+            columns: ["qr_code_id"]
+            isOneToOne: false
+            referencedRelation: "qr_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_requests_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_requests_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "guest_sessions"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "qr_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "occupancy_stats"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "qr_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
+      qr_scan_logs: {
+        Row: {
+          device_info: Json | null
+          id: string
+          location_data: Json | null
+          qr_code_id: string
+          scan_type: string
+          scanned_at: string | null
+          scanned_by: string | null
+          session_id: string | null
+          source_ip: unknown | null
+          tenant_id: string
+        }
+        Insert: {
+          device_info?: Json | null
+          id?: string
+          location_data?: Json | null
+          qr_code_id: string
+          scan_type: string
+          scanned_at?: string | null
+          scanned_by?: string | null
+          session_id?: string | null
+          source_ip?: unknown | null
+          tenant_id: string
+        }
+        Update: {
+          device_info?: Json | null
+          id?: string
+          location_data?: Json | null
+          qr_code_id?: string
+          scan_type?: string
+          scanned_at?: string | null
+          scanned_by?: string | null
+          session_id?: string | null
+          source_ip?: unknown | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qr_scan_logs_qr_code_id_fkey"
+            columns: ["qr_code_id"]
+            isOneToOne: false
+            referencedRelation: "qr_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_scan_logs_scanned_by_fkey"
+            columns: ["scanned_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_scan_logs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "guest_sessions"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "qr_scan_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "occupancy_stats"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "qr_scan_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
       qr_services: {
         Row: {
           config: Json | null
@@ -3244,39 +3443,57 @@ export type Database = {
       }
       qr_settings: {
         Row: {
+          allowed_request_types: string[] | null
+          auto_expire_on_checkout: boolean | null
           created_at: string | null
           default_services: string[] | null
           front_desk_phone: string | null
           hotel_logo_url: string | null
           hotel_name: string
           id: string
+          max_requests_per_session: number | null
           primary_color: string | null
+          rate_limit_per_minute: number | null
+          require_guest_verification: boolean | null
+          session_lifetime_hours: number | null
           show_logo_on_qr: boolean | null
           tenant_id: string
           theme: string | null
           updated_at: string | null
         }
         Insert: {
+          allowed_request_types?: string[] | null
+          auto_expire_on_checkout?: boolean | null
           created_at?: string | null
           default_services?: string[] | null
           front_desk_phone?: string | null
           hotel_logo_url?: string | null
           hotel_name: string
           id?: string
+          max_requests_per_session?: number | null
           primary_color?: string | null
+          rate_limit_per_minute?: number | null
+          require_guest_verification?: boolean | null
+          session_lifetime_hours?: number | null
           show_logo_on_qr?: boolean | null
           tenant_id: string
           theme?: string | null
           updated_at?: string | null
         }
         Update: {
+          allowed_request_types?: string[] | null
+          auto_expire_on_checkout?: boolean | null
           created_at?: string | null
           default_services?: string[] | null
           front_desk_phone?: string | null
           hotel_logo_url?: string | null
           hotel_name?: string
           id?: string
+          max_requests_per_session?: number | null
           primary_color?: string | null
+          rate_limit_per_minute?: number | null
+          require_guest_verification?: boolean | null
+          session_lifetime_hours?: number | null
           show_logo_on_qr?: boolean | null
           tenant_id?: string
           theme?: string | null
@@ -6230,6 +6447,19 @@ export type Database = {
         }
         Returns: Json
       }
+      create_unified_qr_request: {
+        Args: {
+          p_priority?: string
+          p_request_data: Json
+          p_request_type: string
+          p_session_id: string
+        }
+        Returns: {
+          created_at: string
+          request_id: string
+          tracking_number: string
+        }[]
+      }
       debug_auth_context: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -6788,6 +7018,19 @@ export type Database = {
           p_tenant_id: string
         }
         Returns: Json
+      }
+      validate_qr_and_create_session: {
+        Args: { p_device_info?: Json; p_qr_token: string }
+        Returns: {
+          expires_at: string
+          hotel_name: string
+          is_valid: boolean
+          qr_code_id: string
+          room_number: string
+          services: string[]
+          session_id: string
+          tenant_id: string
+        }[]
       }
       validate_qr_token_public: {
         Args: { token_input: string }

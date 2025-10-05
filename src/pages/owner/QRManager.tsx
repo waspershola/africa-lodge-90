@@ -44,6 +44,7 @@ export default function QRManagerPage() {
   // Load QR codes from database
   const { data: qrCodes = [], isLoading, refetch } = useQuery({
     queryKey: ['qr-codes', user?.tenant_id],
+    staleTime: 0, // Always refetch when invalidated
     queryFn: async () => {
       if (!user?.tenant_id) return [];
       
@@ -76,8 +77,7 @@ export default function QRManagerPage() {
         createdBy: 'System'
       }));
     },
-    enabled: !!user?.tenant_id,
-    staleTime: 30000 // Cache for 30 seconds
+    enabled: !!user?.tenant_id
   });
 
   // Get branding settings from tenant info
@@ -149,10 +149,9 @@ export default function QRManagerPage() {
 
       if (error) throw error;
       
-      // Force refetch for immediate UI update
-      await queryClient.refetchQueries({ 
-        queryKey: ['qr-codes', user.tenant_id],
-        type: 'active' 
+      // Clear cache and force immediate refetch
+      queryClient.resetQueries({ 
+        queryKey: ['qr-codes', user.tenant_id]
       });
       toast({
         title: "QR Code Updated",
@@ -179,10 +178,9 @@ export default function QRManagerPage() {
 
       if (error) throw error;
       
-      // Force refetch for immediate UI update
-      await queryClient.refetchQueries({ 
-        queryKey: ['qr-codes', user.tenant_id],
-        type: 'active' 
+      // Clear cache and force immediate refetch
+      queryClient.resetQueries({ 
+        queryKey: ['qr-codes', user.tenant_id]
       });
       setShowDrawer(false);
       setSelectedQR(null);
@@ -257,10 +255,9 @@ export default function QRManagerPage() {
         throw error;
       }
       
-      // Force refetch for immediate UI update
-      await queryClient.refetchQueries({ 
-        queryKey: ['qr-codes', user.tenant_id],
-        type: 'active' 
+      // Clear cache and force immediate refetch
+      queryClient.resetQueries({ 
+        queryKey: ['qr-codes', user.tenant_id]
       });
       setShowWizard(false);
       toast({

@@ -252,7 +252,6 @@ export function useBilling() {
     payment_method: string;
     payment_method_id?: string;
     reference?: string;
-    payment_status?: string; // PHASE 2: Add payment_status support
     // Phase 3: Department/Terminal tracking
     department_id?: string;
     terminal_id?: string;
@@ -358,8 +357,7 @@ export function useBilling() {
           department_id: paymentData.department_id || null,
           terminal_id: paymentData.terminal_id || null,
           payment_source: paymentData.payment_source || 'frontdesk',
-          // PHASE 2: Use provided payment_status or default to 'paid'
-          payment_status: paymentData.payment_status || 'paid',
+          payment_status: 'paid',
           is_verified: true,
           verified_by: (await supabase.auth.getUser()).data.user?.id || null,
           verified_at: new Date().toISOString(),

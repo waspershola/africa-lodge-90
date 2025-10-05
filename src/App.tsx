@@ -30,6 +30,7 @@ import StaffManagement from "./pages/owner/StaffManagement";
 import { OnboardingWizard } from "./components/onboarding/OnboardingWizard";
 import QRManager from "./pages/owner/QRManager";
 import QRPortal from "./pages/guest/QRPortal";
+import QRGuestEntry from "./pages/guest/QRGuestEntry";
 import Reports from "./pages/owner/Reports";
 import Reservations from "./pages/owner/Reservations";
 import Guests from "./pages/owner/Guests";
@@ -142,6 +143,9 @@ const App = () => (
               <OnboardingWizard />
             </TenantAwareLayout>
           } />
+          {/* QR Code Entry Point - Validates token first */}
+          <Route path="/qr/:token" element={<QRGuestEntry />} />
+          {/* QR Guest Portal - After validation */}
           <Route path="/guest/qr/:qrToken" element={<QRPortal />} />
           
           <Route path="/front-desk" element={

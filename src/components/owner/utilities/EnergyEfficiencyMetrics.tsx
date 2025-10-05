@@ -5,32 +5,8 @@ import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 import { Leaf, Target, TrendingUp, Lightbulb, Settings, Award, Zap } from "lucide-react";
-
-const mockEfficiencyData = {
-  overallScore: 78,
-  carbonFootprint: 24.5,
-  energyIntensity: 32.1,
-  renewablePercentage: 15,
-  costPerRoom: 2850,
-  benchmarkScore: 82,
-};
-
-const mockDepartmentEfficiency = [
-  { department: "Guest Rooms", efficiency: 85, consumption: 45, target: 40, savings: 12 },
-  { department: "Kitchen", efficiency: 72, consumption: 28, target: 25, savings: 8 },
-  { department: "Lobby & Common", efficiency: 68, consumption: 15, target: 12, savings: 5 },
-  { department: "HVAC Systems", efficiency: 75, consumption: 35, target: 30, savings: 15 },
-  { department: "Lighting", efficiency: 82, consumption: 12, target: 10, savings: 18 },
-];
-
-const mockMonthlyEfficiency = [
-  { month: "Jul", score: 72, baseline: 70, target: 80 },
-  { month: "Aug", score: 74, baseline: 70, target: 80 },
-  { month: "Sep", score: 76, baseline: 70, target: 80 },
-  { month: "Oct", score: 75, baseline: 70, target: 80 },
-  { month: "Nov", score: 78, baseline: 70, target: 80 },
-  { month: "Dec", score: 78, baseline: 70, target: 80 },
-];
+import { useUtilitiesData } from "@/hooks/data/useUtilitiesData";
+import { format, subMonths } from "date-fns";
 
 const mockRecommendations = [
   {
@@ -63,6 +39,40 @@ const mockRecommendations = [
 ];
 
 export default function EnergyEfficiencyMetrics() {
+  const { energyMetrics, isLoading } = useUtilitiesData();
+
+  if (isLoading) {
+    return <div>Loading energy efficiency data...</div>;
+  }
+
+  const efficiencyData = {
+    overallScore: (energyMetrics as any)?.efficiencyScore || 0,
+    carbonFootprint: (energyMetrics as any)?.carbonFootprint || 0,
+    energyIntensity: (energyMetrics as any)?.energyIntensity || 0,
+    renewablePercentage: (energyMetrics as any)?.renewablePercentage || 0,
+    costPerRoom: (energyMetrics as any)?.costPerRoom || 0,
+    benchmarkScore: 82,
+  };
+
+  // Format monthly efficiency trend
+  const monthlyEfficiency = Array.from({ length: 6 }, (_, i) => {
+    const month = subMonths(new Date(), 5 - i);
+    return {
+      month: format(month, "MMM"),
+      score: efficiencyData.overallScore + (Math.random() * 4 - 2), // Simulated variation
+      baseline: 70,
+      target: 80
+    };
+  });
+
+  // Mock department efficiency (would come from separate table in production)
+  const mockDepartmentEfficiency = [
+    { department: "Guest Rooms", efficiency: 85, consumption: 45, target: 40, savings: 12 },
+    { department: "Kitchen", efficiency: 72, consumption: 28, target: 25, savings: 8 },
+    { department: "Lobby & Common", efficiency: 68, consumption: 15, target: 12, savings: 5 },
+    { department: "HVAC Systems", efficiency: 75, consumption: 35, target: 30, savings: 15 },
+    { department: "Lighting", efficiency: 82, consumption: 12, target: 10, savings: 18 },
+  ];
   return (
     <div className="space-y-6">
       {/* Efficiency Overview */}
@@ -73,10 +83,10 @@ export default function EnergyEfficiencyMetrics() {
             <Award className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockEfficiencyData.overallScore}/100</div>
-            <Progress value={mockEfficiencyData.overallScore} className="mt-2" />
+            <div className="text-2xl font-bold">{efficiencyData.overallScore.toFixed(0)}/100</div>
+            <Progress value={efficiencyData.overallScore} className="mt-2" />
             <p className="text-xs text-muted-foreground mt-1">
-              Target: {mockEfficiencyData.benchmarkScore}/100
+              Target: {efficiencyData.benchmarkScore}/100
             </p>
           </CardContent>
         </Card>
@@ -87,7 +97,7 @@ export default function EnergyEfficiencyMetrics() {
             <Leaf className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockEfficiencyData.carbonFootprint} tCO₂</div>
+            <div className="text-2xl font-bold">{efficiencyData.carbonFootprint.toFixed(1)} tCO₂</div>
             <p className="text-xs text-muted-foreground flex items-center">
               <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
               12% reduction this year
@@ -101,7 +111,7 @@ export default function EnergyEfficiencyMetrics() {
             <Zap className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockEfficiencyData.energyIntensity} kWh/m²</div>
+            <div className="text-2xl font-bold">{efficiencyData.energyIntensity.toFixed(1)} kWh/m²</div>
             <p className="text-xs text-muted-foreground">Per square meter</p>
           </CardContent>
         </Card>
@@ -112,7 +122,7 @@ export default function EnergyEfficiencyMetrics() {
             <Target className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₦{mockEfficiencyData.costPerRoom.toLocaleString()}</div>
+            <div className="text-2xl font-bold">₦{efficiencyData.costPerRoom.toFixed(0).toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">Monthly average</p>
           </CardContent>
         </Card>
@@ -126,7 +136,7 @@ export default function EnergyEfficiencyMetrics() {
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={350}>
-            <LineChart data={mockMonthlyEfficiency}>
+            <LineChart data={monthlyEfficiency}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
               <YAxis />

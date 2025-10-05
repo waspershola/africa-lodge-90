@@ -3,26 +3,36 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { Zap, TrendingUp, TrendingDown, AlertTriangle, Battery, Power } from "lucide-react";
-
-const mockConsumptionData = [
-  { time: "00:00", total: 45, hvac: 25, lighting: 8, kitchen: 7, other: 5 },
-  { time: "04:00", total: 38, hvac: 20, lighting: 6, kitchen: 6, other: 6 },
-  { time: "08:00", total: 65, hvac: 35, lighting: 12, kitchen: 12, other: 6 },
-  { time: "12:00", total: 78, hvac: 42, lighting: 15, kitchen: 15, other: 6 },
-  { time: "16:00", total: 72, hvac: 38, lighting: 14, kitchen: 14, other: 6 },
-  { time: "20:00", total: 68, hvac: 36, lighting: 13, kitchen: 13, other: 6 },
-];
-
-const mockCurrentStatus = {
-  totalConsumption: 72.5,
-  peakDemand: 85.2,
-  powerFactor: 0.92,
-  gridStatus: "stable",
-  generatorStatus: "standby",
-  backupLevel: 95,
-};
+import { useUtilitiesData } from "@/hooks/data/useUtilitiesData";
+import { format } from "date-fns";
 
 export default function PowerConsumptionMonitor() {
+  const { powerLogs, isLoading } = useUtilitiesData();
+
+  if (isLoading) {
+    return <div>Loading power consumption data...</div>;
+  }
+
+  // Calculate current status from latest power log
+  const latestLog = powerLogs[0];
+  const currentStatus = {
+    totalConsumption: latestLog?.consumption_kwh || 0,
+    peakDemand: Math.max(...powerLogs.map(log => log.consumption_kwh || 0)),
+    powerFactor: 0.92, // Would need separate power_factor column
+    gridStatus: "stable",
+    generatorStatus: "standby",
+    backupLevel: 95,
+  };
+
+  // Format consumption data for charts
+  const consumptionData = powerLogs.slice(0, 6).reverse().map(log => ({
+    time: format(new Date(log.reading_date), "HH:mm"),
+    total: log.consumption_kwh,
+    hvac: log.consumption_kwh * 0.4, // Simulated breakdown
+    lighting: log.consumption_kwh * 0.2,
+    kitchen: log.consumption_kwh * 0.25,
+    other: log.consumption_kwh * 0.15,
+  }));
   return (
     <div className="space-y-6">
       {/* Current Status Cards */}
@@ -33,7 +43,7 @@ export default function PowerConsumptionMonitor() {
             <Zap className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockCurrentStatus.totalConsumption} kW</div>
+            <div className="text-2xl font-bold">{currentStatus.totalConsumption.toFixed(1)} kW</div>
             <p className="text-xs text-muted-foreground flex items-center">
               <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
               12% from yesterday
@@ -47,7 +57,7 @@ export default function PowerConsumptionMonitor() {
             <TrendingUp className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockCurrentStatus.peakDemand} kW</div>
+            <div className="text-2xl font-bold">{currentStatus.peakDemand.toFixed(1)} kW</div>
             <p className="text-xs text-muted-foreground">Today's maximum</p>
           </CardContent>
         </Card>
@@ -58,7 +68,7 @@ export default function PowerConsumptionMonitor() {
             <Power className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockCurrentStatus.powerFactor}</div>
+            <div className="text-2xl font-bold">{currentStatus.powerFactor.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">Efficiency rating</p>
           </CardContent>
         </Card>
@@ -69,9 +79,9 @@ export default function PowerConsumptionMonitor() {
             <Battery className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockCurrentStatus.backupLevel}%</div>
-            <Badge variant={mockCurrentStatus.generatorStatus === "standby" ? "secondary" : "destructive"}>
-              {mockCurrentStatus.generatorStatus}
+            <div className="text-2xl font-bold">{currentStatus.backupLevel}%</div>
+            <Badge variant={currentStatus.generatorStatus === "standby" ? "secondary" : "destructive"}>
+              {currentStatus.generatorStatus}
             </Badge>
           </CardContent>
         </Card>
@@ -85,7 +95,7 @@ export default function PowerConsumptionMonitor() {
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={400}>
-            <LineChart data={mockConsumptionData}>
+            <LineChart data={consumptionData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="time" />
               <YAxis />
@@ -108,8 +118,8 @@ export default function PowerConsumptionMonitor() {
             <CardDescription>Power distribution by department</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={[mockConsumptionData[mockConsumptionData.length - 1]]}>
+          <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={consumptionData.slice(-1)}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="time" />
                 <YAxis />

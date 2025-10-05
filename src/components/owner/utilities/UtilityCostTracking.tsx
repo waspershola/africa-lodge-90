@@ -6,43 +6,57 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { DollarSign, TrendingUp, TrendingDown, Calendar, FileText, Download } from "lucide-react";
 import { useState } from "react";
-
-const mockCostData = {
-  totalMonthly: 450000,
-  powerCost: 280000,
-  fuelCost: 170000,
-  previousMonth: 420000,
-  yearToDate: 4800000,
-};
-
-const mockMonthlyTrend = [
-  { month: "Jul", power: 250000, fuel: 150000, total: 400000 },
-  { month: "Aug", power: 265000, fuel: 155000, total: 420000 },
-  { month: "Sep", power: 270000, fuel: 160000, total: 430000 },
-  { month: "Oct", power: 275000, fuel: 165000, total: 440000 },
-  { month: "Nov", power: 280000, fuel: 170000, total: 450000 },
-  { month: "Dec", power: 285000, fuel: 175000, total: 460000 },
-];
-
-const mockCostBreakdown = [
-  { name: "Grid Power", value: 180000, color: "hsl(var(--chart-1))" },
-  { name: "Generator Fuel", value: 170000, color: "hsl(var(--chart-2))" },
-  { name: "Generator Maintenance", value: 45000, color: "hsl(var(--chart-3))" },
-  { name: "Power Factor Penalty", value: 25000, color: "hsl(var(--chart-4))" },
-  { name: "Demand Charges", value: 30000, color: "hsl(var(--chart-5))" },
-];
-
-const mockBills = [
-  { id: 1, type: "Electricity", provider: "EKEDC", amount: 180000, dueDate: "2024-02-15", status: "paid", billNo: "EKD2024001" },
-  { id: 2, type: "Generator Fuel", provider: "Shell Nigeria", amount: 120000, dueDate: "2024-02-10", status: "paid", billNo: "SHL2024015" },
-  { id: 3, type: "Maintenance", provider: "PowerGen Services", amount: 45000, dueDate: "2024-02-20", status: "pending", billNo: "PGS2024005" },
-  { id: 4, type: "Gas Supply", provider: "Total Gas", amount: 35000, dueDate: "2024-02-25", status: "overdue", billNo: "TGL2024008" },
-];
+import { useUtilitiesData } from "@/hooks/data/useUtilitiesData";
+import { format, startOfMonth, subMonths } from "date-fns";
 
 export default function UtilityCostTracking() {
   const [selectedPeriod, setSelectedPeriod] = useState("monthly");
+  const { utilityCosts, isLoading } = useUtilitiesData();
 
-  const changeFromPrevious = ((mockCostData.totalMonthly - mockCostData.previousMonth) / mockCostData.previousMonth) * 100;
+  if (isLoading) {
+    return <div>Loading utility cost data...</div>;
+  }
+
+  // Calculate cost statistics
+  const currentMonth = utilityCosts.filter(cost => 
+    new Date(cost.cost_month).getMonth() === new Date().getMonth()
+  );
+  const previousMonth = utilityCosts.filter(cost =>
+    new Date(cost.cost_month).getMonth() === subMonths(new Date(), 1).getMonth()
+  );
+
+  const totalMonthly = currentMonth.reduce((sum, cost) => sum + Number(cost.total_cost), 0);
+  const previousMonthTotal = previousMonth.reduce((sum, cost) => sum + Number(cost.total_cost), 0);
+  const powerCost = currentMonth.reduce((sum, c) => sum + Number(c.electricity_cost), 0);
+  const fuelCost = currentMonth.reduce((sum, c) => sum + Number(c.fuel_cost), 0);
+  const yearToDate = utilityCosts.reduce((sum, cost) => sum + Number(cost.total_cost), 0);
+
+  const changeFromPrevious = previousMonthTotal > 0 
+    ? ((totalMonthly - previousMonthTotal) / previousMonthTotal) * 100 
+    : 0;
+
+  // Format monthly trend data (last 6 months)
+  const monthlyTrend = Array.from({ length: 6 }, (_, i) => {
+    const month = subMonths(new Date(), 5 - i);
+    const monthCosts = utilityCosts.filter(cost => 
+      new Date(cost.cost_month).getMonth() === month.getMonth()
+    );
+    const power = monthCosts.reduce((sum, c) => sum + Number(c.electricity_cost), 0);
+    const fuel = monthCosts.reduce((sum, c) => sum + Number(c.fuel_cost), 0);
+    
+    return {
+      month: format(month, "MMM"),
+      power,
+      fuel,
+      total: power + fuel
+    };
+  });
+
+  // Cost breakdown for pie chart
+  const costBreakdown = [
+    { name: "Grid Power", value: powerCost, color: "hsl(var(--chart-1))" },
+    { name: "Generator Fuel", value: fuelCost, color: "hsl(var(--chart-2))" },
+  ];
 
   return (
     <div className="space-y-6">
@@ -54,7 +68,7 @@ export default function UtilityCostTracking() {
             <DollarSign className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₦{mockCostData.totalMonthly.toLocaleString()}</div>
+            <div className="text-2xl font-bold">₦{totalMonthly.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground flex items-center">
               {changeFromPrevious > 0 ? (
                 <TrendingUp className="h-3 w-3 mr-1 text-red-500" />
@@ -72,7 +86,7 @@ export default function UtilityCostTracking() {
             <DollarSign className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₦{mockCostData.powerCost.toLocaleString()}</div>
+            <div className="text-2xl font-bold">₦{powerCost.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">62% of total cost</p>
           </CardContent>
         </Card>
@@ -83,7 +97,7 @@ export default function UtilityCostTracking() {
             <DollarSign className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₦{mockCostData.fuelCost.toLocaleString()}</div>
+            <div className="text-2xl font-bold">₦{fuelCost.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">38% of total cost</p>
           </CardContent>
         </Card>
@@ -94,7 +108,7 @@ export default function UtilityCostTracking() {
             <Calendar className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₦{(mockCostData.yearToDate / 1000000).toFixed(1)}M</div>
+            <div className="text-2xl font-bold">₦{(yearToDate / 1000000).toFixed(1)}M</div>
             <p className="text-xs text-muted-foreground">Total YTD spending</p>
           </CardContent>
         </Card>
@@ -120,8 +134,8 @@ export default function UtilityCostTracking() {
             </Select>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={350}>
-              <LineChart data={mockMonthlyTrend}>
+          <ResponsiveContainer width="100%" height={350}>
+              <LineChart data={monthlyTrend}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis />
@@ -159,7 +173,7 @@ export default function UtilityCostTracking() {
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
                 <Pie
-                  data={mockCostBreakdown}
+                  data={costBreakdown}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -168,7 +182,7 @@ export default function UtilityCostTracking() {
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {mockCostBreakdown.map((entry, index) => (
+                  {costBreakdown.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -211,29 +225,19 @@ export default function UtilityCostTracking() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockBills.map((bill) => (
-                <TableRow key={bill.id}>
-                  <TableCell className="font-medium">{bill.billNo}</TableCell>
-                  <TableCell>{bill.type}</TableCell>
-                  <TableCell>{bill.provider}</TableCell>
-                  <TableCell>₦{bill.amount.toLocaleString()}</TableCell>
-                  <TableCell>{bill.dueDate}</TableCell>
+              {utilityCosts.slice(0, 10).map((cost) => (
+                <TableRow key={cost.id}>
+                  <TableCell className="font-medium">UTIL-{cost.id.slice(0, 8)}</TableCell>
+                  <TableCell>Utilities</TableCell>
+                  <TableCell>Multiple</TableCell>
+                  <TableCell>₦{Number(cost.total_cost).toLocaleString()}</TableCell>
+                  <TableCell>{format(new Date(cost.cost_month), "yyyy-MM-dd")}</TableCell>
                   <TableCell>
-                    <Badge 
-                      variant={
-                        bill.status === "paid" ? "default" : 
-                        bill.status === "pending" ? "secondary" : "destructive"
-                      }
-                    >
-                      {bill.status}
-                    </Badge>
+                    <Badge variant="default">recorded</Badge>
                   </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <Button variant="ghost" size="sm">View</Button>
-                      {bill.status !== "paid" && (
-                        <Button variant="ghost" size="sm">Pay</Button>
-                      )}
                     </div>
                   </TableCell>
                 </TableRow>

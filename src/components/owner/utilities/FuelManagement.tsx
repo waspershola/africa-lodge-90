@@ -9,32 +9,29 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Fuel, TrendingDown, AlertCircle, Plus, Calendar, Truck } from "lucide-react";
 import { useState } from "react";
-
-const mockFuelData = {
-  dieselLevel: 75,
-  gasLevel: 60,
-  totalCapacity: 10000,
-  currentStock: 7500,
-  monthlyConsumption: 1200,
-  estimatedDays: 25,
-};
-
-const mockFuelHistory = [
-  { id: 1, date: "2024-01-15", type: "Diesel", quantity: 2000, cost: 180000, supplier: "Shell Nigeria", status: "delivered" },
-  { id: 2, date: "2024-01-10", type: "Gas", quantity: 500, cost: 45000, supplier: "Total Gas", status: "delivered" },
-  { id: 3, date: "2024-01-05", type: "Diesel", quantity: 1500, cost: 135000, supplier: "Mobil Oil", status: "delivered" },
-  { id: 4, date: "2024-01-02", type: "Gas", quantity: 300, cost: 27000, supplier: "Total Gas", status: "pending" },
-];
-
-const mockConsumptionPattern = [
-  { period: "Week 1", diesel: 280, gas: 120 },
-  { period: "Week 2", diesel: 320, gas: 140 },
-  { period: "Week 3", diesel: 300, gas: 135 },
-  { period: "Week 4", diesel: 300, gas: 125 },
-];
+import { useUtilitiesData } from "@/hooks/data/useUtilitiesData";
+import { format } from "date-fns";
 
 export default function FuelManagement() {
   const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
+  const { fuelLogs, isLoading } = useUtilitiesData();
+
+  if (isLoading) {
+    return <div>Loading fuel management data...</div>;
+  }
+
+  // Calculate fuel statistics
+  const dieselLogs = fuelLogs.filter(log => log.fuel_type === 'diesel');
+  const gasLogs = fuelLogs.filter(log => log.fuel_type === 'gas');
+  
+  const totalDiesel = dieselLogs.reduce((sum, log) => sum + Number(log.quantity_liters), 0);
+  const totalGas = gasLogs.reduce((sum, log) => sum + Number(log.quantity_liters), 0);
+  
+  const dieselLevel = Math.min(100, (totalDiesel / 7500) * 100); // Assume 7500L capacity
+  const gasLevel = Math.min(100, (totalGas / 3000) * 100); // Assume 3000L capacity
+  
+  const monthlyConsumption = totalDiesel + totalGas;
+  const estimatedDays = monthlyConsumption > 0 ? Math.floor((totalDiesel + totalGas) / (monthlyConsumption / 30)) : 0;
 
   return (
     <div className="space-y-6">
@@ -46,8 +43,8 @@ export default function FuelManagement() {
             <Fuel className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockFuelData.dieselLevel}%</div>
-            <Progress value={mockFuelData.dieselLevel} className="mt-2" />
+            <div className="text-2xl font-bold">{dieselLevel.toFixed(0)}%</div>
+            <Progress value={dieselLevel} className="mt-2" />
             <p className="text-xs text-muted-foreground mt-1">5,625L remaining</p>
           </CardContent>
         </Card>
@@ -58,8 +55,8 @@ export default function FuelManagement() {
             <Fuel className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockFuelData.gasLevel}%</div>
-            <Progress value={mockFuelData.gasLevel} className="mt-2" />
+            <div className="text-2xl font-bold">{gasLevel.toFixed(0)}%</div>
+            <Progress value={gasLevel} className="mt-2" />
             <p className="text-xs text-muted-foreground mt-1">1,800L remaining</p>
           </CardContent>
         </Card>
@@ -70,7 +67,7 @@ export default function FuelManagement() {
             <TrendingDown className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockFuelData.monthlyConsumption}L</div>
+            <div className="text-2xl font-bold">{monthlyConsumption.toFixed(0)}L</div>
             <p className="text-xs text-muted-foreground flex items-center">
               <TrendingDown className="h-3 w-3 mr-1 text-green-500" />
               8% less than last month
@@ -84,7 +81,7 @@ export default function FuelManagement() {
             <Calendar className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockFuelData.estimatedDays}</div>
+            <div className="text-2xl font-bold">{estimatedDays}</div>
             <p className="text-xs text-muted-foreground">At current usage rate</p>
           </CardContent>
         </Card>
@@ -169,17 +166,15 @@ export default function FuelManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mockFuelHistory.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell>{order.date}</TableCell>
-                    <TableCell>{order.type}</TableCell>
-                    <TableCell>{order.quantity}L</TableCell>
-                    <TableCell>₦{order.cost.toLocaleString()}</TableCell>
-                    <TableCell>{order.supplier}</TableCell>
+                {fuelLogs.slice(0, 10).map((log) => (
+                  <TableRow key={log.id}>
+                    <TableCell>{format(new Date(log.log_date), "yyyy-MM-dd")}</TableCell>
+                    <TableCell className="capitalize">{log.fuel_type}</TableCell>
+                    <TableCell>{log.quantity_liters}L</TableCell>
+                    <TableCell>₦{log.total_cost?.toLocaleString() || "N/A"}</TableCell>
+                    <TableCell>{log.purpose || "N/A"}</TableCell>
                     <TableCell>
-                      <Badge variant={order.status === "delivered" ? "default" : "secondary"}>
-                        {order.status}
-                      </Badge>
+                      <Badge variant="default">logged</Badge>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -216,17 +211,20 @@ export default function FuelManagement() {
             </div>
 
             <div className="pt-4">
-              <h4 className="text-sm font-medium mb-2">Weekly Consumption</h4>
+              <h4 className="text-sm font-medium mb-2">Recent Consumption</h4>
               <div className="space-y-2">
-                {mockConsumptionPattern.map((week, index) => (
-                  <div key={index} className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">{week.period}</span>
-                    <div className="space-x-2">
-                      <span>D: {week.diesel}L</span>
-                      <span>G: {week.gas}L</span>
-                    </div>
-                  </div>
-                ))}
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Diesel Total</span>
+                  <span>{totalDiesel.toFixed(0)}L</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Gas Total</span>
+                  <span>{totalGas.toFixed(0)}L</span>
+                </div>
+                <div className="flex justify-between text-xs font-medium">
+                  <span className="text-muted-foreground">Combined</span>
+                  <span>{(totalDiesel + totalGas).toFixed(0)}L</span>
+                </div>
               </div>
             </div>
           </CardContent>

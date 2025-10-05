@@ -173,3 +173,25 @@ export function useEnergyEfficiency() {
     enabled: !!tenantId && !!powerData && !!costData,
   });
 }
+
+// Combined hook for utility components
+export function useUtilitiesData() {
+  const powerLogsQuery = usePowerLogs('month');
+  const fuelLogsQuery = useFuelLogs(3);
+  const utilityCostsQuery = useUtilityCosts(12);
+  const energyEfficiencyQuery = useEnergyEfficiency();
+
+  return {
+    powerLogs: powerLogsQuery.data?.logs || [],
+    powerStats: powerLogsQuery.data?.stats,
+    fuelLogs: fuelLogsQuery.data?.logs || [],
+    fuelStats: fuelLogsQuery.data?.stats,
+    utilityCosts: utilityCostsQuery.data?.costs || [],
+    costStats: utilityCostsQuery.data?.stats,
+    energyMetrics: energyEfficiencyQuery.data || {},
+    isLoading: powerLogsQuery.isLoading || fuelLogsQuery.isLoading || 
+               utilityCostsQuery.isLoading || energyEfficiencyQuery.isLoading,
+    error: powerLogsQuery.error || fuelLogsQuery.error || 
+           utilityCostsQuery.error || energyEfficiencyQuery.error,
+  };
+}

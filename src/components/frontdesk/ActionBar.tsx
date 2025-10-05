@@ -2,8 +2,7 @@ import { Button } from "@/components/ui/button";
 import { 
   Plus,
   UserPlus,
-  LogIn,
-  LogOut,
+  Calendar,
   CreditCard,
   Search,
   MoreHorizontal,
@@ -37,14 +36,9 @@ export const ActionBar = ({ onAction }: ActionBarProps) => {
           Assign Room
         </Button>
         
-        <Button variant="outline" onClick={() => onAction('check-in')}>
-          <LogIn className="h-4 w-4 mr-2" />
-          Check-In
-        </Button>
-        
-        <Button variant="outline" onClick={() => onAction('check-out')}>
-          <LogOut className="h-4 w-4 mr-2" />
-          Check-Out
+        <Button variant="outline" onClick={() => onAction('reservations')}>
+          <Calendar className="h-4 w-4 mr-2" />
+          Reservations
         </Button>
         
         <Button variant="outline" onClick={() => onAction('collect-payment')}>

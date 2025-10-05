@@ -51,6 +51,13 @@ import { BillingOverviewFD } from "./frontdesk/BillingOverviewFD";
 import { HandoverPanel } from "./frontdesk/HandoverPanel";
 import { CheckoutDialog } from "./frontdesk/CheckoutDialog";
 import { QRRequestsPanel } from "./frontdesk/QRRequestsPanel";
+import { ReservationsDialogContent } from "./frontdesk/ReservationsDialogContent";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useUnifiedRealtime } from '@/hooks/useUnifiedRealtime';
 import DashboardNotificationBar from '@/components/layout/DashboardNotificationBar';
 import { NetworkStatusIndicator } from '@/components/common/NetworkStatusBanner';
@@ -85,6 +92,7 @@ const FrontDeskDashboard = () => {
   
   // Dialog states
   const [showNewReservation, setShowNewReservation] = useState(false);
+  const [showReservations, setShowReservations] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [showQuickCapture, setShowQuickCapture] = useState(false);
@@ -111,18 +119,8 @@ const FrontDeskDashboard = () => {
         setCaptureAction('assign-room');
         setShowQuickCapture(true);
         break;
-      case 'check-in':
-        setCaptureAction('check-in');
-        setShowQuickCapture(true);
-        break;
-      case 'check-out':
-        if (selectedRoom?.id) {
-          setCheckoutRoomId(selectedRoom.id);
-          setShowCheckout(true);
-        } else {
-          setCaptureAction('check-out');
-          setShowQuickCapture(true);
-        }
+      case 'reservations':
+        setShowReservations(true);
         break;
       case 'collect-payment':
         setShowPayment(true);
@@ -512,6 +510,15 @@ const FrontDeskDashboard = () => {
         }}
         roomId={checkoutRoomId}
       />
+
+      <Dialog open={showReservations} onOpenChange={setShowReservations}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Manage Reservations</DialogTitle>
+          </DialogHeader>
+          <ReservationsDialogContent />
+        </DialogContent>
+      </Dialog>
 
       {/* Footer */}
       <footer className="border-t bg-card mt-8">

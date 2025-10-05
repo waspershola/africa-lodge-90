@@ -8,7 +8,11 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
+import { useCreateReservation, useRoomAvailability } from "@/hooks/data/useReservationsData";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface NewReservationDialogProps {
   open: boolean;
@@ -16,22 +20,76 @@ interface NewReservationDialogProps {
 }
 
 export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialogProps) => {
-  const [checkIn, setCheckIn] = useState<Date>();
-  const [checkOut, setCheckOut] = useState<Date>();
+  const { user } = useAuth();
+  const tenantId = user?.tenant_id;
+  
+  const [checkIn, setCheckIn] = useState<Date>(new Date());
+  const [checkOut, setCheckOut] = useState<Date>(addDays(new Date(), 1));
   const [guestName, setGuestName] = useState("");
-  const [roomType, setRoomType] = useState("");
-  const [contact, setContact] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
+  const [roomTypeId, setRoomTypeId] = useState("");
+  const [adults, setAdults] = useState("1");
+  const [children, setChildren] = useState("0");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const createReservation = useCreateReservation();
+
+  // Fetch room types
+  const { data: roomTypes } = useQuery({
+    queryKey: ['room-types', tenantId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('room_types')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('name');
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!tenantId && open,
+  });
+
+  // Check availability when dates and room type change
+  const availability = useRoomAvailability(checkIn, checkOut, roomTypeId);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("New reservation:", { guestName, roomType, checkIn, checkOut, contact });
+    
+    if (!checkIn || !checkOut || !roomTypeId) {
+      return;
+    }
+
+    const selectedRoomType = roomTypes?.find(rt => rt.id === roomTypeId);
+    if (!selectedRoomType) return;
+
+    const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
+    const totalAmount = selectedRoomType.base_rate * nights;
+
+    await createReservation.mutateAsync({
+      guest_name: guestName,
+      guest_email: guestEmail,
+      guest_phone: guestPhone,
+      room_type_id: roomTypeId,
+      check_in_date: format(checkIn, 'yyyy-MM-dd'),
+      check_out_date: format(checkOut, 'yyyy-MM-dd'),
+      adults: parseInt(adults),
+      children: parseInt(children),
+      status: 'confirmed',
+      room_rate: selectedRoomType.base_rate,
+      total_amount: totalAmount,
+      reservation_number: `RES-${Date.now()}`,
+    });
+
     onOpenChange(false);
     // Reset form
     setGuestName("");
-    setRoomType("");
-    setContact("");
-    setCheckIn(undefined);
-    setCheckOut(undefined);
+    setGuestEmail("");
+    setGuestPhone("");
+    setRoomTypeId("");
+    setAdults("1");
+    setChildren("0");
+    setCheckIn(new Date());
+    setCheckOut(addDays(new Date(), 1));
   };
 
   return (
@@ -45,42 +103,85 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="guestName">Guest Name *</Label>
+            <Input
+              id="guestName"
+              value={guestName}
+              onChange={(e) => setGuestName(e.target.value)}
+              placeholder="Enter guest name"
+              required
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="guestName">Guest Name *</Label>
+              <Label htmlFor="guestEmail">Email</Label>
               <Input
-                id="guestName"
-                value={guestName}
-                onChange={(e) => setGuestName(e.target.value)}
-                placeholder="Enter guest name"
-                required
+                id="guestEmail"
+                type="email"
+                value={guestEmail}
+                onChange={(e) => setGuestEmail(e.target.value)}
+                placeholder="guest@example.com"
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="contact">Contact</Label>
+              <Label htmlFor="guestPhone">Phone *</Label>
               <Input
-                id="contact"
-                value={contact}
-                onChange={(e) => setContact(e.target.value)}
-                placeholder="Phone or Email"
+                id="guestPhone"
+                value={guestPhone}
+                onChange={(e) => setGuestPhone(e.target.value)}
+                placeholder="+234..."
+                required
               />
             </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="roomType">Room Type *</Label>
-            <Select value={roomType} onValueChange={setRoomType} required>
+            <Select value={roomTypeId} onValueChange={setRoomTypeId} required>
               <SelectTrigger>
                 <SelectValue placeholder="Select room type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="standard">Standard Room</SelectItem>
-                <SelectItem value="deluxe">Deluxe Room</SelectItem>
-                <SelectItem value="suite">Executive Suite</SelectItem>
-                <SelectItem value="presidential">Presidential Suite</SelectItem>
+                {roomTypes?.map((rt) => (
+                  <SelectItem key={rt.id} value={rt.id}>
+                    {rt.name} - ₦{rt.base_rate.toLocaleString()}/night
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
+            {availability.data && availability.data.length > 0 && (
+              <p className="text-sm text-muted-foreground">
+                {availability.data.length} room(s) available
+              </p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="adults">Adults *</Label>
+              <Input
+                id="adults"
+                type="number"
+                min="1"
+                value={adults}
+                onChange={(e) => setAdults(e.target.value)}
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="children">Children</Label>
+              <Input
+                id="children"
+                type="number"
+                min="0"
+                value={children}
+                onChange={(e) => setChildren(e.target.value)}
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -142,11 +243,12 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
               type="button" 
               variant="outline" 
               onClick={() => onOpenChange(false)}
+              disabled={createReservation.isPending}
             >
               Cancel
             </Button>
-            <Button type="submit">
-              Create Reservation
+            <Button type="submit" disabled={createReservation.isPending || !availability.data?.length}>
+              {createReservation.isPending ? "Creating..." : "Create Reservation"}
             </Button>
           </div>
         </form>

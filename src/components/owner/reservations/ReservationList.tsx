@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Calendar, Users, Phone, Mail, MapPin, MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
-import { useReservations } from '@/hooks/useRooms';
+import { useReservations } from '@/hooks/data/useReservationsData';
 import { PaginationControls } from '@/components/common/PaginationControls';
 import { LoadingState, SkeletonList } from '@/components/common/LoadingState';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
@@ -25,12 +25,23 @@ export default function ReservationList({
   const [page, setPage] = React.useState(0);
   const [itemsPerPage, setItemsPerPage] = React.useState(50);
 
-  const { data: reservationsData, isLoading: loading, error } = useReservations(itemsPerPage, page * itemsPerPage);
-  const reservations = reservationsData?.reservations || [];
-  const totalCount = reservationsData?.count || 0;
-  const hasMore = reservationsData?.hasMore || false;
+  // Use new reservations hook with filters
+  const filters = React.useMemo(() => ({
+    status: statusFilter && statusFilter !== 'all' ? [statusFilter as any] : undefined,
+    guestName: searchTerm || undefined,
+  }), [statusFilter, searchTerm]);
 
-  const filteredReservations = reservations.filter(reservation => {
+  const { data: reservations, isLoading: loading, error } = useReservations(filters);
+  const totalCount = reservations?.length || 0;
+
+  const paginatedReservations = React.useMemo(() => {
+    const start = page * itemsPerPage;
+    return reservations?.slice(start, start + itemsPerPage) || [];
+  }, [reservations, page, itemsPerPage]);
+
+  const hasMore = totalCount > (page + 1) * itemsPerPage;
+
+  const filteredReservations = paginatedReservations.filter(reservation => {
     const matchesSearch = searchTerm === '' || 
       reservation.guest_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       reservation.reservation_number?.includes(searchTerm) ||

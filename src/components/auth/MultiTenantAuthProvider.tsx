@@ -1,4 +1,5 @@
 import { createContext, useContext, ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useMultiTenantAuth, UseMultiTenantAuthReturn } from '@/hooks/useMultiTenantAuth';
 import { useSessionHeartbeat } from '@/hooks/useSessionHeartbeat';
 import { useSessionRegistration } from '@/hooks/useSessionRegistration';
@@ -16,6 +17,7 @@ interface MultiTenantAuthProviderProps {
 
 export function MultiTenantAuthProvider({ children }: MultiTenantAuthProviderProps) {
   const auth = useMultiTenantAuth();
+  const queryClient = useQueryClient();
 
   // Set up session heartbeat to prevent token expiry
   useSessionHeartbeat({
@@ -96,17 +98,29 @@ export function MultiTenantAuthProvider({ children }: MultiTenantAuthProviderPro
 
     // Override logout to add audit logging
     logout: async () => {
-      try {
-        // Try to log audit event but don't let it block logout
-        await logAuditEvent('LOGOUT', 'User logged out', {
-          session_end: new Date().toISOString()
-        });
-      } catch (auditError) {
-        console.warn('Failed to log logout audit event:', auditError);
-        // Continue with logout even if audit logging fails
-      }
+      // Fire-and-forget audit logging (non-blocking)
+      logAuditEvent('LOGOUT', 'User logged out', {
+        session_end: new Date().toISOString()
+      }).catch((err) => {
+        console.warn('Audit logging failed (non-critical):', err);
+      });
       
-      await auth.logout();
+      // Logout with timeout protection (5 seconds)
+      const logoutWithTimeout = Promise.race([
+        auth.logout(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Logout timeout')), 5000)
+        )
+      ]);
+
+      try {
+        await logoutWithTimeout;
+      } catch (error) {
+        console.error('Logout error:', error);
+        // Force clear client state even if logout fails
+        queryClient.clear();
+        window.location.href = '/login';
+      }
     }
   };
 

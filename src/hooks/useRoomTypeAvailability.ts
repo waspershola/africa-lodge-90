@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
+import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 
 export interface RoomTypeAvailability {
@@ -24,26 +24,27 @@ export const useRoomTypeAvailability = (
   checkInDate: Date | undefined,
   checkOutDate: Date | undefined
 ) => {
-  const { tenant } = useAuth();
+  const { user } = useAuth();
+  const tenantId = user?.tenant_id;
   
   return useQuery({
     queryKey: [
       'room-type-availability', 
-      tenant?.tenant_id, 
+      tenantId, 
       checkInDate ? format(checkInDate, 'yyyy-MM-dd') : null,
       checkOutDate ? format(checkOutDate, 'yyyy-MM-dd') : null
     ],
     queryFn: async () => {
-      if (!tenant?.tenant_id || !checkInDate || !checkOutDate) return [];
+      if (!tenantId || !checkInDate || !checkOutDate) return [];
       
       console.log('[Room Type Availability] Fetching availability:', {
-        tenantId: tenant.tenant_id,
+        tenantId: tenantId,
         checkIn: format(checkInDate, 'yyyy-MM-dd'),
         checkOut: format(checkOutDate, 'yyyy-MM-dd'),
       });
       
       const { data, error } = await supabase.rpc('get_room_type_availability', {
-        p_tenant_id: tenant.tenant_id,
+        p_tenant_id: tenantId,
         p_check_in_date: format(checkInDate, 'yyyy-MM-dd'),
         p_check_out_date: format(checkOutDate, 'yyyy-MM-dd')
       });
@@ -56,7 +57,7 @@ export const useRoomTypeAvailability = (
       console.log('[Room Type Availability] Results:', data);
       return (data || []) as RoomTypeAvailability[];
     },
-    enabled: !!tenant?.tenant_id && !!checkInDate && !!checkOutDate,
+    enabled: !!tenantId && !!checkInDate && !!checkOutDate,
     staleTime: 10000, // Cache for 10 seconds
   });
 };

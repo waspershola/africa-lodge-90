@@ -87,6 +87,9 @@ export function useTodayArrivals() {
       return data || [];
     },
     enabled: !!tenantId,
+    staleTime: 60000, // 1 minute - arrivals don't change often
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+    refetchInterval: 5 * 60 * 1000, // Auto-refresh every 5 minutes
   });
 }
 
@@ -117,6 +120,9 @@ export function useTodayDepartures() {
       return data || [];
     },
     enabled: !!tenantId,
+    staleTime: 60000, // 1 minute - departures don't change often
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+    refetchInterval: 5 * 60 * 1000, // Auto-refresh every 5 minutes
   });
 }
 

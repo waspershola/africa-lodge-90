@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { 
   LogIn, 
@@ -68,13 +69,33 @@ export const GuestQueuePanel = ({ onGuestAction }: GuestQueuePanelProps) => {
 
   if (arrivalsLoading || departuresLoading) {
     return (
-      <Card className="h-full">
-        <CardContent className="p-8 text-center">
-          <div className="text-muted-foreground">Loading guest queue...</div>
-        </CardContent>
-      </Card>
+      <div className="grid md:grid-cols-3 gap-4">
+        {[1, 2, 3].map((i) => (
+          <Card key={i} className="luxury-card">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-6 w-8 rounded-full" />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {[1, 2].map((j) => (
+                <div key={j} className="flex items-center gap-3 p-2 rounded-lg border border-border/50">
+                  <Skeleton className="h-2 w-2 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     );
   }
+  
   const renderGuestList = (guests: Guest[], type: 'arrivals' | 'departures' | 'overstays') => {
     const getStatusBadge = (guest: Guest) => {
       switch (type) {

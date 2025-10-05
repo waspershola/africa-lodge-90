@@ -1,7 +1,8 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useFontManager } from "@/hooks/useFontManager";
 import { useSentry } from "@/hooks/useSentry";
@@ -106,8 +107,6 @@ import SupportStaffLayout from "./components/layout/SupportStaffLayout";
 import SupportAdminDashboard from "./pages/support-admin/Dashboard";
 import SupportStaffDashboard from "./pages/support-staff/Dashboard";
 import MenuPreview from "./pages/debug/MenuPreview";
-
-const queryClient = new QueryClient();
 
 // Font manager component to apply global font styles
 const FontManager = () => {

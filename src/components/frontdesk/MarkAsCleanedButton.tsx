@@ -51,6 +51,12 @@ export const MarkAsCleanedButton = ({
 
     setIsProcessing(true);
     
+    // OPTIMISTIC UPDATE: Hide button immediately
+    setButtonVisible(false);
+
+    // Store previous room data for rollback
+    const previousRoomData = { ...room };
+    
     try {
       // Step 1: Transition from dirty to clean
       await updateRoomStatusAsync({
@@ -75,9 +81,6 @@ export const MarkAsCleanedButton = ({
           previous_status: 'clean'
         }
       });
-
-      // REAL-TIME UPDATE FIX: Trigger optimistic UI update immediately
-      setButtonVisible(false);
       
       // Update the room object if callback provided
       if (onRoomUpdate) {
@@ -88,9 +91,11 @@ export const MarkAsCleanedButton = ({
         onRoomUpdate(updatedRoom);
       }
 
-      // REAL-TIME UPDATE FIX: Invalidate queries to trigger UI refresh
-      queryClient.invalidateQueries({ queryKey: ['rooms'] });
-      queryClient.invalidateQueries({ queryKey: ['room-availability'] });
+      // Wait for query invalidation to complete
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['rooms'] }),
+        queryClient.invalidateQueries({ queryKey: ['room-availability'] }),
+      ]);
 
       toast({
         title: "Room Cleaned",
@@ -100,8 +105,15 @@ export const MarkAsCleanedButton = ({
       onComplete?.();
     } catch (error) {
       console.error('Mark as cleaned error:', error);
-      // REAL-TIME UPDATE FIX: Restore button visibility on error
+      
+      // ROLLBACK: Restore button visibility on error
       setButtonVisible(room.status === 'dirty' && canMarkAsCleaned);
+      
+      // ROLLBACK: Restore room data if callback provided
+      if (onRoomUpdate) {
+        onRoomUpdate(previousRoomData);
+      }
+      
       toast({
         title: "Error",
         description: `Failed to mark room as cleaned: ${error instanceof Error ? error.message : 'Unknown error'}`,

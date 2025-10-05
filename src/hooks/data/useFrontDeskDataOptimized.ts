@@ -44,8 +44,8 @@ export const useFrontDeskDataOptimized = () => {
           return { total, occupied, available, oos, dirty, maintenance };
         },
         enabled: !!tenant?.tenant_id,
-        staleTime: 30000, // 30 seconds
-        gcTime: 60000, // 1 minute cache
+        staleTime: 120000, // 2 minutes - room status doesn't change rapidly
+        gcTime: 300000, // 5 minutes cache
       },
 
       // Query 2: Pending payments

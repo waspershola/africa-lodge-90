@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +62,18 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
 
   // Professional room type availability
   const { data: roomTypeAvailability, isLoading: roomTypesLoading, error: roomTypesError } = useRoomTypeAvailability(checkIn, checkOut);
+
+  // Debug logging for room type errors
+  useEffect(() => {
+    if (roomTypesError) {
+      console.error('[Room Types Error]:', {
+        error: roomTypesError,
+        tenant: tenantId,
+        checkIn: checkIn ? format(checkIn, 'yyyy-MM-dd') : null,
+        checkOut: checkOut ? format(checkOut, 'yyyy-MM-dd') : null
+      });
+    }
+  }, [roomTypesError, tenantId, checkIn, checkOut]);
   
   // Fetch specific available rooms for selected room type
   const { data: availableRooms, isLoading: availabilityLoading } = useQuery({

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { CreditCard, Calculator, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useBillingData } from '@/hooks/data/useBillingData';
+import { useActiveDepartments, useDefaultDepartment } from '@/hooks/data/useDepartments';
+import { useActiveTerminals, useDefaultTerminal } from '@/hooks/data/useTerminals';
 
 interface RecordPaymentDialogProps {
   bill: any;
@@ -22,8 +24,31 @@ export default function RecordPaymentDialog({ bill, onClose }: RecordPaymentDial
     amount: bill.balance || bill.balancedue || 0,
     paymentMethod: '',
     reference: '',
-    notes: ''
+    notes: '',
+    departmentId: '',
+    terminalId: ''
   });
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Department & Terminal hooks
+  const { options: departmentOptions } = useActiveDepartments();
+  const { data: defaultDepartmentId } = useDefaultDepartment();
+  const { options: terminalOptions } = useActiveTerminals(paymentData.departmentId);
+  const { data: defaultTerminalId } = useDefaultTerminal(paymentData.departmentId);
+
+  // Auto-select default department on mount
+  useEffect(() => {
+    if (defaultDepartmentId && !paymentData.departmentId) {
+      setPaymentData(prev => ({ ...prev, departmentId: defaultDepartmentId }));
+    }
+  }, [defaultDepartmentId]);
+
+  // Auto-select default terminal when department changes
+  useEffect(() => {
+    if (defaultTerminalId && paymentData.departmentId) {
+      setPaymentData(prev => ({ ...prev, terminalId: defaultTerminalId }));
+    }
+  }, [defaultTerminalId, paymentData.departmentId]);
 
   const paymentMethods = [
     { value: 'cash', label: 'Cash', icon: '💵' },
@@ -45,6 +70,15 @@ export default function RecordPaymentDialog({ bill, onClose }: RecordPaymentDial
       return;
     }
 
+    if (!paymentData.departmentId || !paymentData.terminalId) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please select both department and terminal.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     const balance = bill.balance || bill.balancedue || 0;
     const isOverpayment = paymentData.amount > balance;
     
@@ -52,6 +86,7 @@ export default function RecordPaymentDialog({ bill, onClose }: RecordPaymentDial
       return;
     }
 
+    setIsProcessing(true);
     try {
       await recordPayment.mutateAsync({
         folioId: bill.id,
@@ -59,11 +94,15 @@ export default function RecordPaymentDialog({ bill, onClose }: RecordPaymentDial
         paymentMethod: paymentData.paymentMethod,
         reference: paymentData.reference,
         notes: paymentData.notes,
+        departmentId: paymentData.departmentId,
+        terminalId: paymentData.terminalId,
       });
 
       onClose();
     } catch (error) {
       // Error already handled by mutation
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -177,6 +216,55 @@ export default function RecordPaymentDialog({ bill, onClose }: RecordPaymentDial
               </Select>
             </div>
 
+            {/* Department Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="department">Department *</Label>
+              <Select 
+                value={paymentData.departmentId} 
+                onValueChange={(value) => setPaymentData({...paymentData, departmentId: value, terminalId: ''})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departmentOptions.map((dept) => (
+                    <SelectItem key={dept.value} value={dept.value}>
+                      {dept.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Terminal Selection */}
+            {paymentData.departmentId && (
+              <div className="space-y-2">
+                <Label htmlFor="terminal">Terminal / POS *</Label>
+                <Select 
+                  value={paymentData.terminalId} 
+                  onValueChange={(value) => setPaymentData({...paymentData, terminalId: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select terminal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {terminalOptions.map((terminal) => (
+                      <SelectItem key={terminal.value} value={terminal.value}>
+                        <div className="flex flex-col">
+                          <span>{terminal.label}</span>
+                          {terminal.location && (
+                            <span className="text-xs text-muted-foreground">
+                              {terminal.location}
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {/* Payment Reference */}
             <div className="space-y-2">
               <Label htmlFor="reference">Payment Reference</Label>
@@ -247,15 +335,21 @@ export default function RecordPaymentDialog({ bill, onClose }: RecordPaymentDial
 
             {/* Actions */}
             <div className="flex gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={onClose} 
+                className="flex-1"
+                disabled={isProcessing || recordPayment.isPending}
+              >
                 Cancel
               </Button>
               <Button 
                 type="submit" 
                 className="flex-1"
-                disabled={recordPayment.isPending}
+                disabled={isProcessing || recordPayment.isPending}
               >
-                {recordPayment.isPending ? 'Recording...' : 'Record Payment'}
+                {isProcessing || recordPayment.isPending ? 'Recording...' : 'Record Payment'}
               </Button>
             </div>
           </form>

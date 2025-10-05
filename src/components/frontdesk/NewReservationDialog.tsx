@@ -97,6 +97,11 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Duplicate prevention: Check if already processing
+    if (createReservation.isPending) {
+      return;
+    }
+    
     if (!checkIn || !checkOut || !selectedRoomId) {
       toast({
         title: "Error",
@@ -119,23 +124,28 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
     const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
     const totalAmount = selectedRoom.base_rate * nights;
 
-    await createReservation.mutateAsync({
-      guest_name: guestName,
-      guest_email: guestEmail,
-      guest_phone: guestPhone,
-      room_id: selectedRoomId,
-      check_in_date: format(checkIn, 'yyyy-MM-dd'),
-      check_out_date: format(checkOut, 'yyyy-MM-dd'),
-      adults: parseInt(adults),
-      children: parseInt(children),
-      status: 'confirmed',
-      room_rate: selectedRoom.base_rate,
-      total_amount: totalAmount,
-      reservation_number: `RES-${Date.now()}`,
-    });
+    try {
+      await createReservation.mutateAsync({
+        guest_name: guestName,
+        guest_email: guestEmail,
+        guest_phone: guestPhone,
+        room_id: selectedRoomId,
+        check_in_date: format(checkIn, 'yyyy-MM-dd'),
+        check_out_date: format(checkOut, 'yyyy-MM-dd'),
+        adults: parseInt(adults),
+        children: parseInt(children),
+        status: 'confirmed',
+        room_rate: selectedRoom.base_rate,
+        total_amount: totalAmount,
+        reservation_number: `RES-${Date.now()}`,
+      });
 
-    resetForm();
-    onOpenChange(false);
+      resetForm();
+      onOpenChange(false);
+    } catch (error) {
+      // Error already handled by mutation
+      console.error('Reservation creation failed:', error);
+    }
   };
 
   const handleGuestSelect = (guestId: string) => {

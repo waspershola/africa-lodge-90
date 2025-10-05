@@ -163,15 +163,22 @@ export function useBillingData() {
       amount, 
       paymentMethod, 
       reference,
-      notes 
+      notes,
+      departmentId,
+      terminalId
     }: { 
       folioId: string; 
       amount: number; 
       paymentMethod: string; 
       reference?: string;
       notes?: string;
+      departmentId?: string;
+      terminalId?: string;
     }) => {
       if (!tenant?.tenant_id) throw new Error('No tenant');
+
+      // Get current user ID for verification
+      const { data: { user } } = await supabase.auth.getUser();
 
       const { data, error } = await supabase
         .from('payments')
@@ -182,6 +189,16 @@ export function useBillingData() {
           payment_method: paymentMethod,
           reference: reference || `PAY-${Date.now()}`,
           status: 'completed',
+          department_id: departmentId || null,
+          terminal_id: terminalId || null,
+          payment_source: 'frontdesk',
+          payment_status: 'paid',
+          is_verified: true,
+          verified_at: new Date().toISOString(),
+          verified_by: user?.id || null,
+          gross_amount: amount,
+          fee_amount: 0,
+          net_amount: amount
         })
         .select()
         .single();

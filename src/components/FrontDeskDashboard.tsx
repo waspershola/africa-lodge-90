@@ -66,10 +66,16 @@ import type { Room } from "./frontdesk/RoomGrid";
 import { useTenantInfo } from "@/hooks/useTenantInfo";
 import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
 import { useFrontDeskDataOptimized } from "@/hooks/data/useFrontDeskDataOptimized";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRooms } from "@/hooks/useRooms";
+import { useToast } from "@/hooks/use-toast";
 
 const FrontDeskDashboard = () => {
   const { data: tenantInfo } = useTenantInfo();
   const { logout } = useAuth();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { data: roomsData } = useRooms();
   
   // Consolidated real-time data from unified hook (OPTIMIZED)
   const {
@@ -178,6 +184,60 @@ const FrontDeskDashboard = () => {
     }
   };
 
+  // PHASE 6: Manual refresh function
+  const handleManualRefresh = async () => {
+    toast({
+      title: "Refreshing data...",
+      description: "Fetching latest updates from server",
+    });
+    
+    await queryClient.invalidateQueries({ 
+      predicate: (query) => {
+        const key = query.queryKey[0] as string;
+        return ['rooms', 'today-arrivals', 'today-departures', 'overstays', 'front-desk', 'reservations'].some(k => key.includes(k));
+      }
+    });
+    
+    toast({
+      title: "Data refreshed",
+      description: "All dashboard data updated successfully",
+    });
+  };
+
+  // PHASE 6: Data validation checks
+  const dataValidation = {
+    roomStatusMismatch: 0,
+    missingFolios: 0,
+    inconsistentData: [] as string[],
+  };
+
+  // Check room status vs reservation status consistency
+  if (roomsData?.rooms) {
+    roomsData.rooms.forEach(room => {
+      const hasActiveReservation = room.current_reservation?.status === 'checked_in' || room.current_reservation?.status === 'confirmed';
+      
+      // Validation 1: Occupied room should have active reservation
+      if (room.status === 'occupied' && !hasActiveReservation) {
+        dataValidation.roomStatusMismatch++;
+        dataValidation.inconsistentData.push(`Room ${room.room_number}: Marked occupied but no active reservation`);
+      }
+      
+      // Validation 2: Active reservation should have room marked as occupied/reserved
+      if (hasActiveReservation && room.status === 'available') {
+        dataValidation.roomStatusMismatch++;
+        dataValidation.inconsistentData.push(`Room ${room.room_number}: Has active reservation but marked available`);
+      }
+      
+      // Validation 3: Check for missing folios on checked-in reservations
+      if (room.current_reservation?.status === 'checked_in' && !room.folio) {
+        dataValidation.missingFolios++;
+        dataValidation.inconsistentData.push(`Room ${room.room_number}: Checked-in guest missing folio`);
+      }
+    });
+  }
+
+  const hasDataIssues = dataValidation.roomStatusMismatch > 0 || dataValidation.missingFolios > 0;
+
   // Dashboard cards with real data from unified hook
   const dashboardCards = [
     {
@@ -284,6 +344,21 @@ const FrontDeskDashboard = () => {
                   className="pl-10 w-80"
                 />
               </div>
+              
+              {/* PHASE 6: Manual Refresh Button */}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleManualRefresh}
+                title="Refresh all data"
+                className="relative"
+              >
+                <TrendingUp className="h-4 w-4" />
+                {hasDataIssues && (
+                  <span className="absolute -top-1 -right-1 h-3 w-3 bg-yellow-500 rounded-full animate-pulse" />
+                )}
+              </Button>
+              
               <DashboardNotificationBar />
               <NetworkStatusIndicator />
             </div>
@@ -299,6 +374,47 @@ const FrontDeskDashboard = () => {
         {/* Main Dashboard Content */}
         {!dataLoading && (
           <>
+        {/* PHASE 6: Data Validation Warning Banner */}
+        {hasDataIssues && (
+          <Card className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                <div className="flex-1">
+                  <div className="font-medium text-yellow-700 dark:text-yellow-400 mb-2">
+                    Data Consistency Issues Detected
+                  </div>
+                  <div className="text-sm text-yellow-600 dark:text-yellow-500 space-y-1">
+                    {dataValidation.roomStatusMismatch > 0 && (
+                      <div>• {dataValidation.roomStatusMismatch} room(s) with status mismatch</div>
+                    )}
+                    {dataValidation.missingFolios > 0 && (
+                      <div>• {dataValidation.missingFolios} checked-in guest(s) missing folios</div>
+                    )}
+                    <div className="mt-2 text-xs max-h-32 overflow-y-auto space-y-1">
+                      {dataValidation.inconsistentData.slice(0, 5).map((issue, i) => (
+                        <div key={i} className="opacity-80">⚠ {issue}</div>
+                      ))}
+                      {dataValidation.inconsistentData.length > 5 && (
+                        <div className="italic">...and {dataValidation.inconsistentData.length - 5} more issues</div>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleManualRefresh}
+                    className="mt-3 border-yellow-600 text-yellow-700 hover:bg-yellow-100"
+                  >
+                    <TrendingUp className="h-3 w-3 mr-2" />
+                    Refresh to Sync
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Success Banner */}
         {recentCheckout && (
           <Card className="border-green-500 bg-green-50 dark:bg-green-950/20">

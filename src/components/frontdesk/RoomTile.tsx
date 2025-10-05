@@ -119,19 +119,29 @@ export const RoomTile = ({ room, isSelected, onClick }: RoomTileProps) => {
 
         {/* Guest Info - Regular weight, subtle */}
         {room.guest && (
-          <div className="text-center min-h-[2.5rem] space-y-1">
+          <div className="text-center min-h-[2.5rem] space-y-0.5">
             <div 
               className={cn("text-xs font-normal leading-tight text-muted-foreground")}
               title={room.guest}
             >
               {room.guest.length > 12 ? room.guest.substring(0, 12) + '...' : room.guest}
             </div>
+            {/* PHASE 4: Show check-in and expected checkout dates */}
             {room.checkIn && (
-              <div className={cn("text-xs text-muted-foreground")}>
-                {new Date(room.checkIn).toLocaleDateString('en-GB', { 
+              <div className={cn("text-[10px] text-muted-foreground flex items-center justify-center gap-1")}>
+                <span>In: {new Date(room.checkIn).toLocaleDateString('en-GB', { 
                   day: '2-digit', 
                   month: '2-digit' 
-                })}
+                })}</span>
+              </div>
+            )}
+            {room.checkOut && (
+              <div className={cn("text-[10px] text-muted-foreground flex items-center justify-center gap-1")}>
+                <Clock className="h-2.5 w-2.5" />
+                <span>Out: {new Date(room.checkOut).toLocaleDateString('en-GB', { 
+                  day: '2-digit', 
+                  month: '2-digit' 
+                })}</span>
               </div>
             )}
           </div>

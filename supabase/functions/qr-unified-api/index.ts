@@ -264,6 +264,33 @@ serve(async (req) => {
           tenantId: sessionData.tenantId,
         });
 
+        // 🔔 NOTIFICATION: Notify accounts/manager about payment
+        try {
+          await supabaseClient.from('staff_notifications').insert({
+            tenant_id: sessionData.tenantId,
+            title: 'Payment Received (Pending Verification)',
+            message: `₦${amount.toLocaleString()} via ${paymentMethod} - Ref: ${payment.reference_number}`,
+            notification_type: 'payment',
+            priority: 'high',
+            sound_type: 'alert-high',
+            department: 'ACCOUNTS',
+            recipients: ['ACCOUNTS', 'MANAGER'],
+            reference_type: 'payment',
+            reference_id: payment.id,
+            actions: ['acknowledge', 'view_details', 'verify'],
+            escalate_after_minutes: 5,
+            metadata: {
+              amount,
+              payment_method: paymentMethod,
+              reference: payment.reference_number,
+              requires_verification: true
+            }
+          });
+          console.log('✅ Payment notification sent:', payment.id);
+        } catch (notifError) {
+          console.error('⚠️ Failed to send payment notification (non-blocking):', notifError);
+        }
+
         return new Response(
           JSON.stringify({ 
             success: true,
@@ -306,6 +333,54 @@ serve(async (req) => {
       }
 
       const result = data[0];
+
+      // 🔔 NOTIFICATION: Send real-time notification to staff
+      // This notifies the appropriate department about the new guest request
+      try {
+        const { data: sessionData } = await supabaseClient
+          .from('guest_sessions')
+          .select('room_id, tenant_id')
+          .eq('session_id', sessionId)
+          .single();
+
+        if (sessionData) {
+          const { data: roomData } = await supabaseClient
+            .from('rooms')
+            .select('room_number')
+            .eq('id', sessionData.room_id)
+            .single();
+
+          const department = requestType === 'food' || requestType === 'beverage' 
+            ? 'RESTAURANT' 
+            : 'HOUSEKEEPING';
+
+          await supabaseClient.from('staff_notifications').insert({
+            tenant_id: sessionData.tenant_id,
+            title: `Guest Request - Room ${roomData?.room_number || 'Unknown'}`,
+            message: `${requestType}: ${JSON.stringify(requestData).substring(0, 200)}`,
+            notification_type: 'guest_request',
+            priority: priority === 'urgent' ? 'high' : 'medium',
+            sound_type: priority === 'urgent' ? 'alert-critical' : 'alert-high',
+            department: department,
+            recipients: [department],
+            reference_type: 'qr_request',
+            reference_id: result.request_id,
+            actions: ['acknowledge', 'view_details', 'assign'],
+            escalate_after_minutes: priority === 'urgent' ? 2 : 5,
+            metadata: {
+              request_type: requestType,
+              room_number: roomData?.room_number,
+              tracking_number: result.tracking_number
+            }
+          });
+
+          console.log('✅ Notification sent for request:', result.request_id);
+        }
+      } catch (notifError) {
+        console.error('⚠️ Failed to send notification (non-blocking):', notifError);
+        // Don't fail the main request if notification fails
+      }
+
       return new Response(
         JSON.stringify({
           success: true,

@@ -29,7 +29,7 @@ export function useReservations(filters?: ReservationFilters) {
         .select(`
           *,
           guest:guests(id, first_name, last_name, email, phone, vip_status),
-          room:rooms(id, room_number, room_type:room_types(name, base_rate))
+          room:rooms!reservations_room_id_fkey(id, room_number, room_type:room_types(name, base_rate))
         `)
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
@@ -76,7 +76,7 @@ export function useTodayArrivals() {
         .select(`
           *,
           guest:guests(first_name, last_name, phone, email),
-          room:rooms(room_number, room_type:room_types(name))
+          room:rooms!reservations_room_id_fkey(room_number, room_type:room_types(name))
         `)
         .eq('tenant_id', tenantId)
         .eq('check_in_date', today)
@@ -109,7 +109,7 @@ export function useTodayDepartures() {
         .select(`
           *,
           guest:guests(first_name, last_name, phone, email),
-          room:rooms(room_number, room_type:room_types(name))
+          room:rooms!reservations_room_id_fkey(room_number, room_type:room_types(name))
         `)
         .eq('tenant_id', tenantId)
         .eq('check_out_date', today)

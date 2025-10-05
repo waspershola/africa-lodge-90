@@ -346,6 +346,21 @@ export function useBilling() {
         paymentSource: paymentData.payment_source
       });
 
+      // Determine payment status based on method type
+      const { determinePaymentStatus } = await import('@/lib/payment-rules');
+      
+      let methodType: 'cash' | 'credit' | 'digital' | 'pos' | 'transfer' = 'cash';
+      if (paymentData.payment_method_id) {
+        const { data: methodData } = await supabase
+          .from('payment_methods')
+          .select('type')
+          .eq('id', paymentData.payment_method_id)
+          .single();
+        methodType = methodData?.type as typeof methodType || 'cash';
+      }
+      
+      const paymentStatus = determinePaymentStatus(methodType);
+
       const { data, error } = await supabase
         .from('payments')
         .insert({
@@ -357,7 +372,7 @@ export function useBilling() {
           department_id: paymentData.department_id || null,
           terminal_id: paymentData.terminal_id || null,
           payment_source: paymentData.payment_source || 'frontdesk',
-          payment_status: 'paid',
+          payment_status: paymentStatus, // Use determined status
           is_verified: true,
           verified_by: (await supabase.auth.getUser()).data.user?.id || null,
           verified_at: new Date().toISOString(),

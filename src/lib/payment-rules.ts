@@ -8,31 +8,28 @@ import type { PaymentMethod } from '@/contexts/PaymentMethodsContext';
 export type PaymentStatus = 'paid' | 'unpaid' | 'pending';
 
 /**
- * Determine payment status based on payment method type and verification state
+ * Determine payment status based on payment method type
  * 
  * Rules:
  * - Cash: Immediate payment (paid)
- * - POS/Digital/Transfer: Requires verification (pending → paid)
+ * - POS/Digital/Transfer: Immediate payment (paid)
  * - Credit/Pay Later: ALWAYS unpaid until real payment received
  */
 export function determinePaymentStatus(
-  methodType: PaymentMethod['type'],
-  isVerified: boolean = false
+  methodType: PaymentMethod['type']
 ): PaymentStatus {
   switch (methodType) {
     case 'cash':
-      return 'paid'; // Cash is immediate
-    
     case 'pos':
     case 'digital':
     case 'transfer':
-      return isVerified ? 'paid' : 'pending'; // Needs verification
+      return 'paid'; // Immediate payment
     
     case 'credit': // Pay Later / Invoice
       return 'unpaid'; // ALWAYS unpaid until real payment received
     
     default:
-      return 'pending';
+      return 'paid';
   }
 }
 
@@ -62,8 +59,9 @@ export function requiresTerminal(methodType: PaymentMethod['type']): boolean {
 }
 
 /**
- * Check if payment method requires verification
+ * Check if payment method requires verification (legacy - no longer used)
+ * All methods except credit are now paid immediately
  */
 export function requiresVerification(methodType: PaymentMethod['type']): boolean {
-  return ['pos', 'digital', 'transfer'].includes(methodType);
+  return false; // No longer requires verification - all immediate except credit
 }

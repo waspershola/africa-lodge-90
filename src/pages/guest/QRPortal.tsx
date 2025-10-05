@@ -10,6 +10,9 @@ import { useQuery } from '@tanstack/react-query';
 import { useUnifiedQR } from '@/hooks/useUnifiedQR';
 import { getThemeClassName } from '@/utils/themeUtils';
 import { useToast } from '@/hooks/use-toast';
+import { QRScanner } from '@/components/guest/QRScanner';
+import { OfflineIndicator } from '@/components/guest/OfflineIndicator';
+import { useOfflineSync } from '@/hooks/useOfflineSync';
 
 // Service Components
 import WiFiService from '@/components/guest/services/WiFiService';
@@ -59,6 +62,8 @@ export default function QRPortal() {
   const { validateQR } = useUnifiedQR();
   const { toast } = useToast();
   const [sessionData, setSessionData] = useState<any>(null);
+  const [showScanner, setShowScanner] = useState(!qrToken);
+  const { queueOfflineRequest } = useOfflineSync();
 
   // Get QR info using unified QR system
   const { data: qrInfo, isLoading } = useQuery({
@@ -157,6 +162,43 @@ export default function QRPortal() {
             <p className="text-amber-700/70">Preparing your luxury experience...</p>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  // Show QR Scanner if no token
+  if (showScanner && !qrInfo) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-amber-100 to-amber-200 flex items-center justify-center p-4">
+        <div className="w-full max-w-md space-y-4">
+          <Card className="shadow-2xl border-amber-200/50 bg-white/90 backdrop-blur-sm">
+            <CardContent className="p-8 text-center">
+              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center shadow-lg">
+                <Crown className="h-10 w-10 text-white" />
+              </div>
+              <h3 className="text-2xl font-serif text-amber-900 mb-2">Guest Portal</h3>
+              <p className="text-amber-700/70 mb-6">
+                Scan your QR code to access hotel services
+              </p>
+            </CardContent>
+          </Card>
+          
+          <QRScanner 
+            onScan={(token) => {
+              setShowScanner(false);
+              navigate(`/guest/qr/${token}`);
+            }}
+            onError={(error) => {
+              toast({
+                title: 'Scan Error',
+                description: error,
+                variant: 'destructive'
+              });
+            }}
+          />
+          
+          <OfflineIndicator />
+        </div>
       </div>
     );
   }
@@ -434,6 +476,9 @@ export default function QRPortal() {
           </p>
         </div>
       </div>
+      
+      {/* Offline Indicator */}
+      <OfflineIndicator />
     </div>
   );
 }

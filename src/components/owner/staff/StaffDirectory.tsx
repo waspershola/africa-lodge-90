@@ -1,7 +1,7 @@
 // Staff Directory Component
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, MoreHorizontal, Eye, Trash2, UserCheck, UserX, Loader2 } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Eye, Trash2, UserCheck, UserX, Loader2, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { useStaff, useDeleteStaffMember, useUpdateStaffMember } from "@/hooks/us
 import { toast } from "sonner";
 import { EnhancedStaffInvitationDialog } from "./EnhancedStaffInvitationDialog";
 import { StaffProfileDrawer } from "./StaffProfileDrawer";
+import { TemporaryPasswordResetDialog } from "@/components/auth/TemporaryPasswordResetDialog";
 
 // Use the safe staff type from RPC function
 type StaffMember = {
@@ -58,6 +59,7 @@ export default function StaffDirectory() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<StaffMemberExtended | null>(null);
   const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
+  const [isTempPasswordDialogOpen, setIsTempPasswordDialogOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: staffData, isLoading, error } = useStaff();
@@ -288,6 +290,14 @@ export default function StaffDirectory() {
                             <Eye className="mr-2 h-4 w-4" />
                             View Details
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            setSelectedStaff(convertToExtended(member));
+                            setIsTempPasswordDialogOpen(true);
+                          }}>
+                            <KeyRound className="mr-2 h-4 w-4" />
+                            Reset Temporary Password
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem 
                             onClick={() => handleStatusToggle(member.id, member.is_active)}
                             disabled={updateStaffMutation.isPending}
@@ -346,6 +356,18 @@ export default function StaffDirectory() {
         onOpenChange={setIsProfileDrawerOpen}
         staff={selectedStaff}
       />
+
+      {/* Temporary Password Reset Dialog */}
+      {selectedStaff && (
+        <TemporaryPasswordResetDialog
+          open={isTempPasswordDialogOpen}
+          onOpenChange={setIsTempPasswordDialogOpen}
+          userId={selectedStaff.id}
+          userEmail={selectedStaff.email}
+          userRole={selectedStaff.role}
+          userName={selectedStaff.name}
+        />
+      )}
     </div>
   );
 }

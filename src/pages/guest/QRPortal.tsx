@@ -7,8 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { useGuestSession } from '@/hooks/useGuestSession';
+import { useUnifiedQR } from '@/hooks/useUnifiedQR';
 import { getThemeClassName } from '@/utils/themeUtils';
+import { useToast } from '@/hooks/use-toast';
 
 // Service Components
 import WiFiService from '@/components/guest/services/WiFiService';
@@ -55,83 +56,67 @@ export default function QRPortal() {
   const { qrToken } = useParams<{ qrToken: string }>();
   const navigate = useNavigate();
   const [currentService, setCurrentService] = useState<string | null>(null);
-  const { session, createSession, isSessionValid } = useGuestSession();
+  const { validateQR } = useUnifiedQR();
+  const { toast } = useToast();
+  const [sessionData, setSessionData] = useState<any>(null);
 
-  // Get QR info - graceful handling
+  // Get QR info using unified QR system
   const { data: qrInfo, isLoading } = useQuery({
     queryKey: ['qr-portal', qrToken],
     queryFn: async () => {
       if (!qrToken) return null;
 
       try {
-        // Use the secure validation function
-        const { data: validationData, error: validationError } = await supabase
-          .rpc('validate_qr_token_public', { token_input: qrToken });
+        // Use unified QR validation which creates session and logs scan
+        const result = await validateQR.mutateAsync({
+          qrToken,
+          deviceInfo: {
+            userAgent: navigator.userAgent,
+            language: navigator.language,
+            timestamp: new Date().toISOString()
+          }
+        });
 
-        if (validationError || !validationData || !Array.isArray(validationData) || 
-            validationData.length === 0 || !validationData[0].is_valid) {
-          console.error('QR validation failed:', validationError);
+        if (!result.success || !result.session) {
+          console.error('QR validation failed');
           return null;
         }
 
-        const qrData = validationData[0];
+        // Store session data for request creation
+        setSessionData(result.session);
 
         // Get room number if room_id exists
         let roomNumber = null;
-        if (qrData.room_id) {
-          const { data: roomData } = await supabase
-            .from('rooms')
-            .select('room_number')
-            .eq('id', qrData.room_id)
-            .maybeSingle();
-          roomNumber = roomData?.room_number;
+        if (result.session.roomNumber) {
+          roomNumber = result.session.roomNumber;
         }
 
         // Get QR settings for hotel branding
-        const { data: qrSettings, error: settingsError } = await supabase
+        const { data: qrSettings } = await supabase
           .from('qr_settings')
           .select('hotel_name, hotel_logo_url, primary_color, show_logo_on_qr, front_desk_phone, theme')
-          .eq('tenant_id', qrData.tenant_id)
+          .eq('tenant_id', result.session.tenantId)
           .maybeSingle();
-
-        console.log('QR settings fetched:', qrSettings);
-        console.log('Settings error:', settingsError);
-
-        // Create or validate guest session
-        let sessionId = session?.session_id;
-        
-        if (!session || !session.is_valid) {
-          // Get QR code ID from database for session creation
-          const { data: qrCodeData } = await supabase
-            .from('qr_codes')
-            .select('id')
-            .eq('qr_token', qrToken)
-            .maybeSingle();
-
-          if (qrCodeData?.id) {
-            sessionId = await createSession(
-              qrData.tenant_id,
-              qrCodeData.id,
-              qrData.room_id
-            );
-          }
-        }
 
         return {
           qr_token: qrToken,
           room_number: roomNumber,
-          hotel_name: qrData.hotel_name || qrSettings?.hotel_name || 'Hotel',
-          services: qrData.services || [],
-          is_active: qrData.is_valid,
-          label: qrData.label, // Now available from validation function
-          tenant_id: qrData.tenant_id,
+          hotel_name: result.session.hotelName || qrSettings?.hotel_name || 'Hotel',
+          services: result.session.services || [],
+          is_active: true,
+          label: 'Guest Services',
+          tenant_id: result.session.tenantId,
           hotel_logo: qrSettings?.show_logo_on_qr ? qrSettings?.hotel_logo_url : undefined,
           front_desk_phone: qrSettings?.front_desk_phone || '+2347065937769',
           theme: qrSettings?.theme || 'classic-luxury-gold'
         } as QRCodeInfo;
       } catch (error) {
         console.error('QR lookup error:', error);
-        console.error('Failed to fetch QR data or tenant info');
+        toast({
+          title: 'Session Error',
+          description: 'Failed to validate QR code. Please try scanning again.',
+          variant: 'destructive'
+        });
         return null;
       }
     },
@@ -251,16 +236,16 @@ export default function QRPortal() {
         {/* Service Content */}
         <div className="max-w-2xl mx-auto p-6">
           {currentService === 'Wi-Fi' && (
-            <WiFiService qrToken={qrInfo.qr_token} sessionToken={session?.session_id || ''} hotelName={qrInfo.hotel_name} />
+            <WiFiService qrToken={qrInfo.qr_token} sessionToken={sessionData?.sessionId || ''} hotelName={qrInfo.hotel_name} />
           )}
           {currentService === 'Housekeeping' && (
-            <HousekeepingService qrToken={qrInfo.qr_token} sessionToken={session?.session_id || ''} />
+            <HousekeepingService qrToken={qrInfo.qr_token} sessionToken={sessionData?.sessionId || ''} />
           )}
           {currentService === 'Maintenance' && (
-            <MaintenanceService qrToken={qrInfo.qr_token} sessionToken={session?.session_id || ''} />
+            <MaintenanceService qrToken={qrInfo.qr_token} sessionToken={sessionData?.sessionId || ''} />
           )}
           {(currentService === 'Room Service' || currentService === 'Digital Menu') && (
-            <RoomServiceMenu qrToken={qrInfo.qr_token} sessionToken={session?.session_id || ''} />
+            <RoomServiceMenu qrToken={qrInfo.qr_token} sessionToken={sessionData?.sessionId || ''} />
           )}
           {currentService === 'Events & Packages' && (
             <Card className="shadow-xl border-amber-200/50 bg-white/90 backdrop-blur-sm">
@@ -283,12 +268,12 @@ export default function QRPortal() {
             </Card>
           )}
           {currentService === 'Feedback' && (
-            <FeedbackService qrToken={qrInfo.qr_token} sessionToken={session?.session_id || ''} />
+            <FeedbackService qrToken={qrInfo.qr_token} sessionToken={sessionData?.sessionId || ''} />
           )}
           {currentService === 'Front Desk' && (
             <FrontDeskService 
               qrToken={qrInfo.qr_token} 
-              sessionToken={session?.session_id || ''}
+              sessionToken={sessionData?.sessionId || ''}
               hotelPhone={qrInfo.front_desk_phone || '+2347065937769'}
             />
           )}

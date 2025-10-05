@@ -31,6 +31,8 @@ export default function InteractiveReservationCalendar({
     ...res,
     folioBalance: res.folios?.[0]?.balance || 0,
     folioPaid: res.folios?.[0]?.balance <= 0.01,
+    totalPayments: res.folios?.[0]?.total_payments || 0,
+    totalCharges: res.folios?.[0]?.total_charges || 0,
   }));
 
   // Generate calendar days
@@ -213,7 +215,12 @@ export default function InteractiveReservationCalendar({
                           {reservation.status.replace('_', ' ')}
                         </Badge>
                         {/* PHASE 3.2: Payment status badge */}
-                        {reservation.folioBalance > 0 && (
+                        {reservation.folioBalance > 0 && reservation.totalPayments > 0 && (
+                          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">
+                            Partial
+                          </Badge>
+                        )}
+                        {reservation.folioBalance > 0 && reservation.totalPayments === 0 && (
                           <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">
                             Unpaid
                           </Badge>

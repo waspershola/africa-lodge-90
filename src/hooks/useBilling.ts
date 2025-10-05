@@ -368,13 +368,14 @@ export function useBilling() {
           payment_method: normalizedMethod,
           tenant_id: tenant.tenant_id,
           status: 'completed',
+          processed_by: userId, // Set the staff member who processed the payment
           // Phase 3: Include department and terminal tracking
           department_id: paymentData.department_id || null,
           terminal_id: paymentData.terminal_id || null,
           payment_source: paymentData.payment_source || 'frontdesk',
           payment_status: paymentStatus, // Use determined status
           is_verified: true,
-          verified_by: (await supabase.auth.getUser()).data.user?.id || null,
+          verified_by: userId || null,
           verified_at: new Date().toISOString(),
           gross_amount: paymentData.amount,
           fee_amount: 0,

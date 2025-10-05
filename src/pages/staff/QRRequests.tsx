@@ -1,6 +1,5 @@
-import { QRRequestsDashboard } from '@/components/staff/QRRequestsDashboard';
-import StaffOrderChat from '@/components/staff/messaging/StaffOrderChat';
+import { EnhancedQRStaffDashboard } from '@/components/staff/qr/EnhancedQRStaffDashboard';
 
 export default function QRRequests() {
-  return <QRRequestsDashboard />;
+  return <EnhancedQRStaffDashboard />;
 }

@@ -64,6 +64,7 @@ import { PaymentSummaryCard } from "./PaymentSummaryCard";
 import { TaxBreakdownCard } from "@/components/billing/TaxBreakdownCard";
 import { determinePaymentStatus } from "@/lib/payment-rules";
 import { mapPaymentMethodWithLogging } from "@/lib/payment-method-mapper";
+import { PaymentFormFields } from './PaymentFormFields';
 
 interface QuickGuestCaptureProps {
   room?: Room | null;
@@ -84,6 +85,8 @@ interface GuestFormData {
   idNumber: string;
   paymentMode: string;
   depositAmount: string;
+  departmentId: string;
+  terminalId: string;
   printNow: boolean;
   notes: string;
   checkInDate: string;
@@ -170,6 +173,8 @@ export const QuickGuestCapture = ({
       idNumber: '',
       paymentMode: 'cash',
       depositAmount: '0',
+      departmentId: '',
+      terminalId: '',
       printNow: false,
       notes: '',
       checkInDate: currentDate,
@@ -889,6 +894,8 @@ export const QuickGuestCapture = ({
           idNumber: '',
           paymentMode: 'cash',
           depositAmount: '10000',
+          departmentId: '',
+          terminalId: '',
           printNow: true,
           notes: '',
           checkInDate: new Date().toISOString().split('T')[0],
@@ -1307,57 +1314,33 @@ export const QuickGuestCapture = ({
                 Payment & Deposit
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <Label htmlFor="paymentMode">Payment Mode</Label>
-                <Select value={formData.paymentMode} onValueChange={(value) => handleInputChange('paymentMode', value)}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {enabledMethods.map((method) => (
-                      <SelectItem key={method.id} value={method.id}>
-                        {method.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="depositAmount">
-                  {existingPayments && action === 'check-in' 
+            <CardContent>
+              <PaymentFormFields
+                amount={formData.depositAmount}
+                onAmountChange={(value) => handleInputChange('depositAmount', value)}
+                paymentMethodId={formData.paymentMode}
+                onPaymentMethodChange={(value) => handleInputChange('paymentMode', value)}
+                departmentId={formData.departmentId}
+                onDepartmentChange={(value) => handleInputChange('departmentId', value)}
+                terminalId={formData.terminalId}
+                onTerminalChange={(value) => handleInputChange('terminalId', value)}
+                totalAmount={formData.totalAmount}
+                showTotalHint={formData.totalAmount > 0}
+                amountLabel={
+                  existingPayments && action === 'check-in' 
                     ? 'Additional Payment (if any)' 
                     : action === 'walkin' 
                     ? 'Total Amount' 
-                    : 'Deposit Amount'} (₦)
-                </Label>
-                {existingPayments && action === 'check-in' && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Balance due: ₦{existingPayments.balance.toLocaleString()}
-                  </p>
-                )}
-                <div className="relative mt-1">
-                  <Input
-                    id="depositAmount"
-                    type="number"
-                    value={formData.depositAmount}
-                    onChange={(e) => handleInputChange('depositAmount', e.target.value)}
-                    placeholder={formData.totalAmount > 0 ? formData.totalAmount.toString() : "10000"}
-                    className="pr-20"
-                  />
-                  {formData.totalAmount > 0 && (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                      / ₦{formData.totalAmount.toLocaleString()}
-                    </div>
-                  )}
-                </div>
-                {action === 'walkin' && formData.numberOfNights > 0 && (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    ₦{formData.roomRate.toLocaleString()}/night × {formData.numberOfNights} nights
-                  </div>
-                )}
-              </div>
+                    : 'Deposit Amount'
+                }
+                amountHint={
+                  existingPayments && action === 'check-in'
+                    ? `Balance due: ₦${existingPayments.balance.toLocaleString()}`
+                    : action === 'walkin' && formData.numberOfNights > 0
+                    ? `₦${formData.roomRate.toLocaleString()}/night × ${formData.numberOfNights} nights`
+                    : undefined
+                }
+              />
             </CardContent>
           </Card>
 

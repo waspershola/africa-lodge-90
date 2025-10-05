@@ -5899,6 +5899,53 @@ export type Database = {
         }
         Relationships: []
       }
+      v_suspicious_charges: {
+        Row: {
+          amount: number | null
+          base_amount: number | null
+          charge_type: string | null
+          description: string | null
+          folio_id: string | null
+          folio_number: string | null
+          guest_name: string | null
+          id: string | null
+          issue: string | null
+          reservation_number: string | null
+          service_charge_amount: number | null
+          tenant_id: string | null
+          vat_amount: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folio_charges_folio_id_fkey"
+            columns: ["folio_id"]
+            isOneToOne: false
+            referencedRelation: "folio_balances"
+            referencedColumns: ["folio_id"]
+          },
+          {
+            foreignKeyName: "folio_charges_folio_id_fkey"
+            columns: ["folio_id"]
+            isOneToOne: false
+            referencedRelation: "folios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folio_charges_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "occupancy_stats"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "folio_charges_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
     }
     Functions: {
       apply_rate_plan_bulk: {
@@ -6122,6 +6169,13 @@ export type Database = {
       expire_stale_sessions: {
         Args: Record<PropertyKey, never>
         Returns: number
+      }
+      fix_double_taxed_charges: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          charges_details: Json
+          fixed_count: number
+        }[]
       }
       fn_adr: {
         Args: { end_date?: string; start_date?: string; tenant_uuid: string }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
-import { useQRRealtime } from '@/hooks/useQRRealtime';
+import { useUnifiedQR } from '@/hooks/useUnifiedQR';
 import { useFolioIntegration } from '@/hooks/useFolioIntegration';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -28,29 +28,20 @@ import StaffOrderChat from '@/components/staff/messaging/StaffOrderChat';
 
 interface QRRequest {
   id: string;
-  service_type: string;
-  status: string; // Made more flexible to handle all status values
-  request_details: any;
+  request_type: string;
+  status: string;
+  request_data: any;
   notes?: string;
-  priority: number;
+  priority: string;
   created_at: string;
   updated_at: string;
   assigned_to?: string;
-  assigned_at?: string;
   completed_at?: string;
-  room_id: string;
-  guest_session_id: string;
-  assigned_team: string;
-  qr_code?: {
-    rooms: { room_number: string };
+  room_id?: string;
+  session_id?: string;
+  rooms?: {
+    room_number: string;
   };
-  messages?: Array<{
-    id: string;
-    sender_role: string; // Made flexible to handle any role value
-    message: string;
-    created_at: string;
-    is_read: boolean;
-  }>;
 }
 
 interface QRRequestsDashboardProps {
@@ -65,8 +56,9 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
   const [responseMessage, setResponseMessage] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('pending');
   
-  // Use real-time hook and folio integration
-  const { orders: requests, loading: isLoading, updateOrderStatus, assignOrder } = useQRRealtime();
+  // Use unified QR hook
+  const { useAllQRRequests, updateRequestStatus } = useUnifiedQR();
+  const { data: requests = [], isLoading } = useAllQRRequests(user?.tenant_id || null);
   const { processServiceCompletion } = useFolioIntegration();
 
   // Filter requests based on status and role
@@ -75,11 +67,11 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
     
     // Role-based filtering
     if (userRole === 'HOUSEKEEPING') {
-      return statusMatch && request.service_type === 'housekeeping';
+      return statusMatch && request.request_type === 'HOUSEKEEPING';
     } else if (userRole === 'MAINTENANCE') {
-      return statusMatch && request.service_type === 'maintenance';
+      return statusMatch && request.request_type === 'MAINTENANCE';
     } else if (userRole === 'POS') {
-      return statusMatch && request.service_type === 'room_service';
+      return statusMatch && request.request_type === 'ROOM_SERVICE';
     }
     
     return statusMatch;
@@ -100,27 +92,35 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
     }
   };
 
-  const getPriorityIcon = (priority: number) => {
-    if (priority > 2) return <AlertTriangle className="h-4 w-4 text-red-500" />;
-    if (priority > 1) return <Clock className="h-4 w-4 text-yellow-500" />;
+  const getPriorityIcon = (priority: string) => {
+    if (priority === 'urgent' || priority === 'high') return <AlertTriangle className="h-4 w-4 text-red-500" />;
+    if (priority === 'normal') return <Clock className="h-4 w-4 text-yellow-500" />;
     return <Clock className="h-4 w-4 text-green-500" />;
   };
 
-  const handleAssignToMe = (requestId: string) => {
-    assignOrder(requestId, user?.id);
+  const handleAssignToMe = async (requestId: string) => {
+    await updateRequestStatus.mutateAsync({
+      requestId,
+      status: 'acknowledged',
+      notes: `Assigned to ${user?.name || 'staff member'}`
+    });
   };
 
   const handleStatusUpdate = async (requestId: string, status: string, note?: string) => {
-    const success = await updateOrderStatus(requestId, status, note);
+    await updateRequestStatus.mutateAsync({
+      requestId,
+      status,
+      notes: note
+    });
     
-    if (success && status === 'completed') {
+    if (status === 'completed') {
       // Find the request to get service details
       const request = filteredRequests.find(r => r.id === requestId);
-      if (request) {
+      if (request && request.room_id) {
         // Process folio integration for chargeable services
         await processServiceCompletion(
           requestId,
-          request.service_type,
+          request.request_type,
           request.room_id
         );
       }
@@ -131,24 +131,18 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
     if (!selectedRequest || !responseMessage.trim()) return;
     
     try {
-      const { error } = await supabase
-        .from('qr_request_messages')
-        .insert([{
-          request_id: selectedRequest.id,
-          tenant_id: user?.tenant_id,
-          sender_id: user?.id,
-          sender_role: 'staff',
-          message: responseMessage,
-          message_payload: {}
-        }]);
-
-      if (error) throw error;
+      // Add note to request
+      await updateRequestStatus.mutateAsync({
+        requestId: selectedRequest.id,
+        status: selectedRequest.status,
+        notes: (selectedRequest.notes || '') + '\n' + responseMessage
+      });
       
       setResponseMessage('');
-      toast.success('Message sent successfully');
+      toast.success('Response added successfully');
     } catch (error) {
-      console.error('Error sending message:', error);
-      toast.error('Failed to send message');
+      console.error('Error sending response:', error);
+      toast.error('Failed to send response');
     }
   };
 
@@ -218,7 +212,7 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
                         <div>
                           <div className="flex items-center gap-2">
                             <h3 className="font-semibold capitalize">
-                              {request.service_type.replace('_', ' ')}
+                              {request.request_type.replace('_', ' ')}
                             </h3>
                             <Badge className={getStatusColor(request.status)}>
                               {request.status}
@@ -227,7 +221,7 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
                           <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                             <span className="flex items-center gap-1">
                               <MapPin className="h-3 w-3" />
-                              Room {request.room_id || 'Unknown'}
+                              Room {request.rooms?.room_number || 'Unknown'}
                             </span>
                             <span className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />
@@ -236,12 +230,6 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
                                 minute: '2-digit' 
                               })}
                             </span>
-                            {request.messages && request.messages.length > 0 && (
-                              <span className="flex items-center gap-1">
-                                <MessageSquare className="h-3 w-3" />
-                                {request.messages.length} messages
-                              </span>
-                            )}
                           </div>
                           {request.notes && (
                             <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
@@ -322,8 +310,8 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
               {/* Request Info */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium">Service Type</label>
-                  <p className="capitalize">{selectedRequest.service_type.replace('_', ' ')}</p>
+                  <label className="text-sm font-medium">Request Type</label>
+                  <p className="capitalize">{selectedRequest.request_type.replace('_', ' ')}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium">Status</label>
@@ -333,7 +321,7 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
                 </div>
                 <div>
                   <label className="text-sm font-medium">Room</label>
-                  <p>Room {selectedRequest.room_id || 'Unknown'}</p>
+                  <p>Room {selectedRequest.rooms?.room_number || 'Unknown'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium">Created</label>
@@ -342,42 +330,23 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
               </div>
 
               {/* Request Details */}
-              {selectedRequest.request_details && (
+              {selectedRequest.request_data && (
                 <div>
                   <label className="text-sm font-medium">Request Details</label>
                   <div className="mt-2 p-3 bg-gray-50 rounded-md">
                     <pre className="text-sm whitespace-pre-wrap">
-                      {JSON.stringify(selectedRequest.request_details, null, 2)}
+                      {JSON.stringify(selectedRequest.request_data, null, 2)}
                     </pre>
                   </div>
                 </div>
               )}
 
-              {/* Messages */}
-              {selectedRequest.messages && selectedRequest.messages.length > 0 && (
+              {/* Notes History */}
+              {selectedRequest.notes && (
                 <div>
-                  <label className="text-sm font-medium">Messages</label>
-                  <div className="mt-2 space-y-2 max-h-48 overflow-y-auto">
-                    {selectedRequest.messages.map((message) => (
-                      <div 
-                        key={message.id}
-                        className={`p-3 rounded-md ${
-                          message.sender_role === 'staff' 
-                            ? 'bg-blue-50 ml-4' 
-                            : 'bg-gray-50 mr-4'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-medium capitalize">
-                            {message.sender_role}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(message.created_at).toLocaleString()}
-                          </span>
-                        </div>
-                        <p className="text-sm">{message.message}</p>
-                      </div>
-                    ))}
+                  <label className="text-sm font-medium">Notes</label>
+                  <div className="mt-2 p-3 bg-gray-50 rounded-md">
+                    <p className="text-sm whitespace-pre-wrap">{selectedRequest.notes}</p>
                   </div>
                 </div>
               )}

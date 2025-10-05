@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useUnifiedQR } from '@/hooks/useUnifiedQR';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -72,15 +73,12 @@ export const QRAnalyticsDashboard: React.FC = () => {
 
       if (analyticsError) throw analyticsError;
 
-      // Get requests data
+      // Get requests data from unified qr_requests table
       const { data: requests, error: requestsError } = await supabase
-        .from('qr_orders')
+        .from('qr_requests')
         .select(`
           *,
-          qr_code:qr_codes(
-            room_id,
-            rooms!qr_codes_room_id_fkey(room_number)
-          )
+          rooms(room_number)
         `)
         .eq('tenant_id', user.tenant_id)
         .gte('created_at', dateRange.from.toISOString())
@@ -106,9 +104,9 @@ export const QRAnalyticsDashboard: React.FC = () => {
           }, 0) / completedWithTimes.length
         : 0;
 
-      // Group by service type
+      // Group by request type
       const serviceStats = requests?.reduce((acc, req) => {
-        acc[req.service_type] = (acc[req.service_type] || 0) + 1;
+        acc[req.request_type] = (acc[req.request_type] || 0) + 1;
         return acc;
       }, {} as Record<string, number>) || {};
 
@@ -138,7 +136,7 @@ export const QRAnalyticsDashboard: React.FC = () => {
 
       // Room stats
       const roomStats = requests?.reduce((acc, req) => {
-        const roomNumber = req.qr_code?.rooms?.room_number || 'Unknown';
+        const roomNumber = req.rooms?.room_number || 'Unknown';
         if (!acc[roomNumber]) {
           acc[roomNumber] = { room: roomNumber, scans: 0, requests: 0 };
         }

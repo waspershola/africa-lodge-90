@@ -33,11 +33,13 @@ export function validatePaymentMethod(
     'credit',
     'digital',
     'complimentary',
+    'wallet',
     // Legacy compatibility
     'mobile_money',
     'paystack',
     'flutterwave',
     'pay_later',
+    'pay later', // Support both underscore and space variants
     'corporate',
   ];
 

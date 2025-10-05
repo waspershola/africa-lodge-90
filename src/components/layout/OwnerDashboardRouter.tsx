@@ -4,7 +4,7 @@ import HotelConfigurationPage from '@/components/owner/HotelConfigurationPage';
 import ReservationCalendar from '@/components/owner/reservations/ReservationCalendar';
 import RoomInventoryGrid from '@/components/owner/rooms/RoomInventoryGrid';
 import GuestDirectory from '@/components/owner/guests/GuestDirectory';
-import { QRCodeManager } from '@/components/frontdesk/QRCodeManager';
+import QRManagerPage from '@/pages/owner/QRManager';
 import ReportsInterface from '@/components/ReportsInterface';
 import { StaffManagementDashboard } from '@/components/owner/staff/StaffManagementDashboard';
 import { EnhancedBillingInterface } from '@/components/owner/EnhancedBillingInterface';
@@ -34,7 +34,7 @@ export function OwnerDashboardRouter() {
         <Route path="/reservations" element={<ReservationCalendar searchTerm="" statusFilter="all" onReservationSelect={() => {}} />} />
         <Route path="/rooms" element={<RoomInventoryGrid />} />
         <Route path="/guests" element={<GuestDirectory onGuestSelect={() => {}} onNewGuest={() => {}} />} />
-        <Route path="/qr-manager" element={<QRCodeManager />} />
+        <Route path="/qr-manager" element={<QRManagerPage />} />
         <Route path="/reports" element={<ReportsInterface />} />
         <Route path="/staff" element={<StaffManagementDashboard />} />
         <Route path="/billing" element={<EnhancedBillingInterface />} />

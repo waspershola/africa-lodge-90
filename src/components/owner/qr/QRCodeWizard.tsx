@@ -107,10 +107,11 @@ export const QRCodeWizard = ({ open, onOpenChange, onSave, defaultServices = [] 
           });
         }
       } else {
-        // Single room
+        // Single room - format the room number
+        const roomNumber = assignedTo.replace(/^Room\s+/i, '').trim();
         onSave({
           scope: 'Room',
-          assignedTo: assignedTo.trim(),
+          assignedTo: roomNumber,
           servicesEnabled: services,
           status: 'Active'
         });

@@ -63,7 +63,9 @@ export default function QRManagerPage() {
       }
 
       return (data || []).map(qr => ({
-        id: qr.qr_token,
+        id: qr.id,
+        qr_token: qr.qr_token,
+        qr_code_url: qr.qr_code_url,
         scope: 'Room' as const,
         assignedTo: qr.rooms?.room_number ? `Room ${qr.rooms.room_number}` : (qr.label || 'Location'),
         servicesEnabled: qr.services || [],
@@ -142,7 +144,7 @@ export default function QRManagerPage() {
           services: updatedQR.servicesEnabled,
           is_active: updatedQR.status === 'Active'
         })
-        .eq('qr_token', updatedQR.id);
+        .eq('id', updatedQR.id);
 
       if (error) throw error;
       
@@ -167,7 +169,7 @@ export default function QRManagerPage() {
       const { error } = await supabase
         .from('qr_codes')
         .delete()
-        .eq('qr_token', qrCode.id)
+        .eq('id', qrCode.id)
         .eq('tenant_id', user.tenant_id);
 
       if (error) throw error;
@@ -195,14 +197,27 @@ export default function QRManagerPage() {
       // Extract room number if it's a room QR code
       let roomId = null;
       if (newQRData.scope === 'Room' && newQRData.assignedTo) {
-        // Try to find matching room by room number
-        const roomNumber = newQRData.assignedTo.replace('Room ', '').trim();
-        const { data: room } = await supabase
+        // Extract room number - handle both "Room 101" and "101" formats
+        const roomNumber = newQRData.assignedTo.replace(/^Room\s+/i, '').trim();
+        
+        if (!roomNumber) {
+          throw new Error('Please provide a valid room number');
+        }
+        
+        const { data: room, error: roomError } = await supabase
           .from('rooms')
           .select('id')
           .eq('tenant_id', user.tenant_id)
           .eq('room_number', roomNumber)
-          .single();
+          .maybeSingle();
+        
+        if (roomError) {
+          console.error('Room lookup error:', roomError);
+        }
+        
+        if (!room) {
+          console.warn(`Room ${roomNumber} not found in database. QR code will be created without room association.`);
+        }
         
         roomId = room?.id || null;
       }

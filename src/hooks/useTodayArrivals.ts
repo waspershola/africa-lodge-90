@@ -44,7 +44,7 @@ export const useTodayArrivals = () => {
         guest_name: reservation.guest_name || 'Guest',
         room_number: reservation.rooms?.room_number || 'TBA',
         check_in_time: '14:00', // Default check-in time
-        status: reservation.status === 'checked_in' ? 'checked_in' : 'pending',
+        status: reservation.status as 'pending' | 'checked_in',
         phone: reservation.guest_phone
       })) as TodayArrival[];
     },

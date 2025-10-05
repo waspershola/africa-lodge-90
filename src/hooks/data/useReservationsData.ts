@@ -80,7 +80,7 @@ export function useTodayArrivals() {
         `)
         .eq('tenant_id', tenantId)
         .eq('check_in_date', today)
-        .in('status', ['confirmed', 'checked_in'])
+        .in('status', ['pending', 'confirmed', 'checked_in'])
         .order('check_in_date', { ascending: true });
 
       if (error) throw error;
@@ -110,7 +110,7 @@ export function useTodayDepartures() {
         `)
         .eq('tenant_id', tenantId)
         .eq('check_out_date', today)
-        .eq('status', 'checked_in')
+        .in('status', ['checked_in', 'checked_out'])
         .order('check_out_date', { ascending: true });
 
       if (error) throw error;

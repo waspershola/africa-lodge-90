@@ -6203,6 +6203,25 @@ export type Database = {
           transaction_count: number
         }[]
       }
+      get_room_type_availability: {
+        Args: {
+          p_check_in_date: string
+          p_check_out_date: string
+          p_tenant_id: string
+        }
+        Returns: {
+          availability_status: string
+          available_count: number
+          base_rate: number
+          blocked_count: number
+          can_book: boolean
+          max_occupancy: number
+          reserved_count: number
+          room_type_id: string
+          room_type_name: string
+          total_inventory: number
+        }[]
+      }
       get_secure_daily_revenue: {
         Args: Record<PropertyKey, never>
         Returns: unknown[]

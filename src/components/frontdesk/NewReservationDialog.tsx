@@ -13,6 +13,9 @@ import { useCreateReservation, useRoomAvailability } from "@/hooks/data/useReser
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useRoomTypeAvailability } from "@/hooks/useRoomTypeAvailability";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 
 interface NewReservationDialogProps {
   open: boolean;
@@ -29,63 +32,81 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
   const [guestEmail, setGuestEmail] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
   const [roomTypeId, setRoomTypeId] = useState("");
+  const [selectedRoomId, setSelectedRoomId] = useState("");
   const [adults, setAdults] = useState("1");
   const [children, setChildren] = useState("0");
-
+  
+  const { toast } = useToast();
   const createReservation = useCreateReservation();
 
-  // Fetch room types
-  const { data: roomTypes } = useQuery({
-    queryKey: ['room-types', tenantId],
+  // Professional room type availability
+  const { data: roomTypeAvailability } = useRoomTypeAvailability(checkIn, checkOut);
+  
+  // Fetch specific available rooms for selected room type
+  const { data: availableRooms, isLoading: availabilityLoading } = useQuery({
+    queryKey: ['available-rooms', tenantId, checkIn ? format(checkIn, 'yyyy-MM-dd') : null, checkOut ? format(checkOut, 'yyyy-MM-dd') : null, roomTypeId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('room_types')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .order('name');
+      if (!tenantId || !checkIn || !checkOut || !roomTypeId) return [];
+      
+      const { data, error } = await supabase.rpc('get_available_rooms', {
+        p_tenant_id: tenantId,
+        p_check_in_date: format(checkIn, 'yyyy-MM-dd'),
+        p_check_out_date: format(checkOut, 'yyyy-MM-dd'),
+        p_room_type_id: roomTypeId
+      });
+      
       if (error) throw error;
-      return data;
+      return data || [];
     },
-    enabled: !!tenantId && open,
+    enabled: !!tenantId && !!roomTypeId && !!checkIn && !!checkOut && open,
   });
-
-  // Check availability when dates and room type change
-  const availability = useRoomAvailability(checkIn, checkOut, roomTypeId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!checkIn || !checkOut || !roomTypeId) {
+    if (!checkIn || !checkOut || !selectedRoomId) {
+      toast({
+        title: "Error",
+        description: "Please select a specific room",
+        variant: "destructive"
+      });
       return;
     }
 
-    const selectedRoomType = roomTypes?.find(rt => rt.id === roomTypeId);
-    if (!selectedRoomType) return;
+    const selectedRoom = availableRooms?.find((r: any) => r.room_id === selectedRoomId);
+    if (!selectedRoom) {
+      toast({
+        title: "Error",
+        description: "Selected room is no longer available",
+        variant: "destructive"
+      });
+      return;
+    }
 
     const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
-    const totalAmount = selectedRoomType.base_rate * nights;
+    const totalAmount = selectedRoom.base_rate * nights;
 
     await createReservation.mutateAsync({
       guest_name: guestName,
       guest_email: guestEmail,
       guest_phone: guestPhone,
-      room_type_id: roomTypeId,
+      room_id: selectedRoomId,
       check_in_date: format(checkIn, 'yyyy-MM-dd'),
       check_out_date: format(checkOut, 'yyyy-MM-dd'),
       adults: parseInt(adults),
       children: parseInt(children),
       status: 'confirmed',
-      room_rate: selectedRoomType.base_rate,
+      room_rate: selectedRoom.base_rate,
       total_amount: totalAmount,
       reservation_number: `RES-${Date.now()}`,
     });
 
     onOpenChange(false);
-    // Reset form
     setGuestName("");
     setGuestEmail("");
     setGuestPhone("");
     setRoomTypeId("");
+    setSelectedRoomId("");
     setAdults("1");
     setChildren("0");
     setCheckIn(new Date());
@@ -140,21 +161,78 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
 
           <div className="space-y-2">
             <Label htmlFor="roomType">Room Type *</Label>
-            <Select value={roomTypeId} onValueChange={setRoomTypeId} required>
+            <Select 
+              value={roomTypeId} 
+              onValueChange={(value) => {
+                setRoomTypeId(value);
+                setSelectedRoomId("");
+              }} 
+              required
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select room type" />
               </SelectTrigger>
               <SelectContent>
-                {roomTypes?.map((rt) => (
-                  <SelectItem key={rt.id} value={rt.id}>
-                    {rt.name} - ₦{rt.base_rate.toLocaleString()}/night
+                {roomTypeAvailability?.map((rt) => (
+                  <SelectItem 
+                    key={rt.room_type_id} 
+                    value={rt.room_type_id}
+                    disabled={!rt.can_book}
+                  >
+                    <div className="flex items-center justify-between w-full gap-4">
+                      <span>{rt.room_type_name} - ₦{rt.base_rate.toLocaleString()}/night</span>
+                      <Badge 
+                        variant={
+                          rt.availability_status === 'available' ? 'default' :
+                          rt.availability_status === 'limited' ? 'secondary' :
+                          'destructive'
+                        }
+                        className="ml-2"
+                      >
+                        {rt.available_count}/{rt.total_inventory} available
+                      </Badge>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            {availability.data && availability.data.length > 0 && (
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="specificRoom">Select Room *</Label>
+            <Select 
+              value={selectedRoomId} 
+              onValueChange={setSelectedRoomId}
+              disabled={!roomTypeId || availabilityLoading}
+              required
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={
+                  availabilityLoading 
+                    ? "Loading available rooms..." 
+                    : availableRooms && availableRooms.length > 0
+                      ? "Select specific room" 
+                      : roomTypeId 
+                        ? "No rooms available"
+                        : "Select room type first"
+                } />
+              </SelectTrigger>
+              <SelectContent>
+                {availableRooms?.map((room: any) => (
+                  <SelectItem key={room.room_id} value={room.room_id}>
+                    Room {room.room_number} - {room.room_type_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {availableRooms && availableRooms.length > 0 && (
               <p className="text-sm text-muted-foreground">
-                {availability.data.length} room(s) available
+                {availableRooms.length} room(s) available for selected dates
+              </p>
+            )}
+            {availableRooms && availableRooms.length === 0 && roomTypeId && (
+              <p className="text-sm text-destructive">
+                No rooms available for this room type and date range
               </p>
             )}
           </div>
@@ -247,7 +325,7 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={createReservation.isPending || !availability.data?.length}>
+            <Button type="submit" disabled={createReservation.isPending || !selectedRoomId}>
               {createReservation.isPending ? "Creating..." : "Create Reservation"}
             </Button>
           </div>

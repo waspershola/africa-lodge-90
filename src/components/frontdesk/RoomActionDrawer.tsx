@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   LogIn,
   LogOut,
@@ -23,12 +24,16 @@ import {
   Mail,
   IdCard,
   AlertTriangle,
-  Edit3
+  Edit3,
+  Receipt,
+  History
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { QuickGuestCapture } from "./QuickGuestCapture";
 import { CheckoutDialog } from "./CheckoutDialog";
 import { PaymentDialog } from "./PaymentDialog";
+import { PaymentHistorySection } from "./PaymentHistorySection";
+import { ChargeTimelineSection } from "./ChargeTimelineSection";
 import { MaintenanceTaskDialog } from "./MaintenanceTaskDialog";
 import { ExtendStayDialog } from "./ExtendStayDialog";
 import { OverstayChargeDialog } from "./OverstayChargeDialog";
@@ -41,6 +46,8 @@ import { AuditTrailDisplay } from "./AuditTrailDisplay";
 import { useAuditLog } from "@/hooks/useAuditLog";
 import { useAuth } from '@/hooks/useAuth';
 import { MarkAsCleanedButton } from "./MarkAsCleanedButton";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import type { Room } from "./RoomGrid";
 
 interface RoomActionDrawerProps {
@@ -75,6 +82,46 @@ export const RoomActionDrawer = ({
   const [overstayAction, setOverstayAction] = useState<'overstay-charge' | 'send-reminder' | 'escalate-manager' | 'force-checkout'>('overstay-charge');
   const [showAddService, setShowAddService] = useState(false);
   const [showCancelReservation, setShowCancelReservation] = useState(false);
+
+  // Fetch folio ID for payment history
+  const { data: folioData } = useQuery({
+    queryKey: ['room-folio', room?.id],
+    queryFn: async () => {
+      if (!room?.id) return null;
+      
+      console.log('[RoomActionDrawer] Fetching folio for room:', room.id);
+      
+      // First, find the active reservation for this room
+      const { data: reservation, error: resError } = await supabase
+        .from('reservations')
+        .select('id')
+        .eq('room_id', room.id)
+        .eq('status', 'checked_in')
+        .single();
+      
+      if (resError || !reservation) {
+        console.log('[RoomActionDrawer] No active reservation found:', resError);
+        return null;
+      }
+      
+      // Then get the open folio for this reservation
+      const { data: folio, error: folioError } = await supabase
+        .from('folios')
+        .select('id')
+        .eq('reservation_id', reservation.id)
+        .eq('status', 'open')
+        .single();
+      
+      if (folioError) {
+        console.error('[RoomActionDrawer] Error fetching folio:', folioError);
+        return null;
+      }
+      
+      console.log('[RoomActionDrawer] Found folio:', folio);
+      return folio;
+    },
+    enabled: !!room?.id && (room?.status === 'occupied' || room?.status === 'overstay'),
+  });
 
   if (!room) return null;
 
@@ -489,8 +536,87 @@ export const RoomActionDrawer = ({
             </Card>
           )}
 
-          {/* Folio Information */}
-          {room.folio && (
+          {/* Folio Information with Payment History */}
+          {room.folio && folioData?.id && (
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Folio Balance
+                  </CardTitle>
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg font-semibold">
+                      ₦{room.folio.balance.toLocaleString()}
+                    </span>
+                    <Badge 
+                      variant={room.folio.isPaid ? 'default' : 'destructive'}
+                      className={room.folio.isPaid ? 'bg-success text-success-foreground' : ''}
+                    >
+                      {room.folio.status === 'paid' ? 'Paid' : 
+                       room.folio.status === 'partial' ? 'Partial' : 'Unpaid'}
+                    </Badge>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Tabs defaultValue="summary" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="summary" className="text-xs">
+                      <FileText className="h-3 w-3 mr-1" />
+                      Summary
+                    </TabsTrigger>
+                    <TabsTrigger value="payments" className="text-xs">
+                      <History className="h-3 w-3 mr-1" />
+                      History
+                    </TabsTrigger>
+                    <TabsTrigger value="timeline" className="text-xs">
+                      <Receipt className="h-3 w-3 mr-1" />
+                      Timeline
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="summary" className="mt-3 space-y-2">
+                    {room.folio.total_charges !== undefined && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Total Charges:</span>
+                        <span className="font-medium">₦{room.folio.total_charges.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {room.folio.total_payments !== undefined && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Total Paid:</span>
+                        <span className="font-medium text-green-600">₦{room.folio.total_payments.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {room.folio.vat_amount !== undefined && room.folio.vat_amount > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">VAT:</span>
+                        <span>₦{room.folio.vat_amount.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {room.folio.service_charge_amount !== undefined && room.folio.service_charge_amount > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Service Charge:</span>
+                        <span>₦{room.folio.service_charge_amount.toLocaleString()}</span>
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="payments" className="mt-3">
+                    <PaymentHistorySection folioId={folioData.id} />
+                  </TabsContent>
+
+                  <TabsContent value="timeline" className="mt-3">
+                    <ChargeTimelineSection folioId={folioData.id} />
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Simple Folio Display if no folio ID available */}
+          {room.folio && !folioData?.id && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">

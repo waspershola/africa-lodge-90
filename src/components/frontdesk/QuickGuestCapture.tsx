@@ -660,9 +660,11 @@ export const QuickGuestCapture = ({
             
             // Process additional payment if needed
             const additionalPayment = parseFloat(formData.depositAmount) || 0;
-            if (formData.paymentMode !== 'pay_later' && additionalPayment > 0 && result.folio_id) {
+            const selectedMethod = enabledMethods.find(m => m.id === formData.paymentMode);
+            
+            // Only record payment if not "Pay Later" (credit type) and amount > 0
+            if (selectedMethod && selectedMethod.type !== 'credit' && additionalPayment > 0 && result.folio_id) {
               console.log('[Check-in] Processing additional payment:', additionalPayment);
-              const selectedMethod = enabledMethods.find(m => m.id === formData.paymentMode);
               
               // PHASE 1 FIX: No hardcoded fallbacks - enforce method existence
               if (!selectedMethod) {
@@ -795,9 +797,11 @@ export const QuickGuestCapture = ({
               description: `Guest ${formData.guestName} checked into Room ${room?.number}`,
             });
 
-            // Process payment if not pay later
-            if (formData.paymentMode !== 'pay_later' && parseFloat(formData.depositAmount) > 0 && result.folio_id) {
-              const selectedMethod = enabledMethods.find(m => m.id === formData.paymentMode);
+            // Process payment if not pay later (credit type)
+            const selectedMethod = enabledMethods.find(m => m.id === formData.paymentMode);
+            
+            // Only record payment if not "Pay Later" (credit type) and amount > 0
+            if (selectedMethod && selectedMethod.type !== 'credit' && parseFloat(formData.depositAmount) > 0 && result.folio_id) {
               
               // PHASE 1 FIX: No hardcoded fallbacks - enforce method existence
               if (!selectedMethod) {

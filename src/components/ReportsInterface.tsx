@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   BarChart3, 
@@ -13,48 +12,24 @@ import {
   DollarSign,
   Users,
   CreditCard,
-  Filter,
-  FileText,
-  Printer
 } from "lucide-react";
 import { usePaymentMethodsContext } from '@/contexts/PaymentMethodsContext';
-
-// Mock report data
-const mockRevenueData = [
-  { period: "Jan 2024", cash: 450000, pos: 800000, transfer: 650000, online: 300000 },
-  { period: "Feb 2024", cash: 520000, pos: 920000, transfer: 780000, online: 350000 },
-  { period: "Mar 2024", cash: 480000, pos: 1100000, transfer: 850000, online: 420000 },
-  { period: "Apr 2024", cash: 610000, pos: 1200000, transfer: 900000, online: 480000 }
-];
-
-const mockOccupancyData = [
-  { date: "2024-04-01", occupied: 45, available: 60, rate: 75 },
-  { date: "2024-04-02", occupied: 52, available: 60, rate: 87 },
-  { date: "2024-04-03", occupied: 48, available: 60, rate: 80 },
-  { date: "2024-04-04", occupied: 55, available: 60, rate: 92 },
-  { date: "2024-04-05", occupied: 58, available: 60, rate: 97 }
-];
-
-const mockRoomServiceData = [
-  { category: "Main Course", orders: 89, revenue: 890000 },
-  { category: "Beverages", orders: 156, revenue: 468000 },
-  { category: "Appetizers", orders: 67, revenue: 335000 },
-  { category: "Desserts", orders: 43, revenue: 215000 },
-  { category: "Traditional", orders: 71, revenue: 710000 }
-];
-
-const mockHousekeepingData = [
-  { room: "101", status: "Clean", turnaround: "25 min", staff: "Amaka O." },
-  { room: "102", status: "In Progress", turnaround: "15 min", staff: "Kemi A." },
-  { room: "201", status: "Clean", turnaround: "30 min", staff: "Folake S." },
-  { room: "305", status: "Dirty", turnaround: "Pending", staff: "Unassigned" }
-];
+import { useRevenueAnalytics, useOccupancyAnalytics, useRoomServiceAnalytics, useHousekeepingAnalytics } from '@/hooks/data/useAnalyticsData';
+import { LoadingState } from '@/components/common/LoadingState';
+import { format } from 'date-fns';
 
 const ReportsInterface = () => {
   const [selectedReport, setSelectedReport] = useState("revenue");
   const [dateRange, setDateRange] = useState("last-30-days");
   const [exportFormat, setExportFormat] = useState("excel");
   const { enabledMethods } = usePaymentMethodsContext();
+
+  const days = dateRange === 'last-7-days' ? 7 : dateRange === 'last-90-days' ? 90 : 30;
+  
+  const { data: revenueData, isLoading: revenueLoading } = useRevenueAnalytics(days);
+  const { data: occupancyData, isLoading: occupancyLoading } = useOccupancyAnalytics(days);
+  const { data: roomServiceData, isLoading: roomServiceLoading } = useRoomServiceAnalytics(days);
+  const { data: housekeepingData, isLoading: housekeepingLoading } = useHousekeepingAnalytics(days);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-NG', {
@@ -64,16 +39,17 @@ const ReportsInterface = () => {
     }).format(amount);
   };
 
-  const getTotalRevenue = (data: typeof mockRevenueData[0]) => {
-    return data.cash + data.pos + data.transfer + data.online;
-  };
-
   const reportTypes = [
-    { id: "revenue", name: "Revenue by Payment Type", icon: <DollarSign className="h-4 w-4" /> },
+    { id: "revenue", name: "Revenue Analytics", icon: <DollarSign className="h-4 w-4" /> },
     { id: "occupancy", name: "Occupancy Rate", icon: <BarChart3 className="h-4 w-4" /> },
     { id: "room-service", name: "Room Service Orders", icon: <Users className="h-4 w-4" /> },
-    { id: "housekeeping", name: "Housekeeping Status", icon: <FileText className="h-4 w-4" /> }
+    { id: "housekeeping", name: "Housekeeping Status", icon: <Calendar className="h-4 w-4" /> }
   ];
+
+  if (revenueLoading && selectedReport === 'revenue') return <LoadingState message="Loading revenue data..." />;
+  if (occupancyLoading && selectedReport === 'occupancy') return <LoadingState message="Loading occupancy data..." />;
+  if (roomServiceLoading && selectedReport === 'room-service') return <LoadingState message="Loading room service data..." />;
+  if (housekeepingLoading && selectedReport === 'housekeeping') return <LoadingState message="Loading housekeeping data..." />;
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -85,7 +61,7 @@ const ReportsInterface = () => {
               Reports & Analytics
             </h1>
             <p className="text-muted-foreground mt-1">
-              Comprehensive insights into your hotel operations
+              Real-time insights into your hotel operations
             </p>
           </div>
           
@@ -98,7 +74,6 @@ const ReportsInterface = () => {
                 <SelectItem value="last-7-days">Last 7 Days</SelectItem>
                 <SelectItem value="last-30-days">Last 30 Days</SelectItem>
                 <SelectItem value="last-90-days">Last 90 Days</SelectItem>
-                <SelectItem value="year-to-date">Year to Date</SelectItem>
               </SelectContent>
             </Select>
             
@@ -137,83 +112,105 @@ const ReportsInterface = () => {
       </div>
 
       {/* Revenue Report */}
-      {selectedReport === "revenue" && (
+      {selectedReport === "revenue" && revenueData && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            {enabledMethods.slice(0, 4).map((method, index) => {
-              const colors = ["success", "primary", "accent", "warning"];
-              const totals = mockRevenueData.reduce((acc, curr) => {
-                const key = method.type as keyof typeof curr;
-                return acc + (typeof curr[key] === 'number' ? curr[key] : 0);
-              }, 0);
-              
-              return (
-                <Card key={method.id} className="luxury-card">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className={`h-12 w-12 rounded-full flex items-center justify-center ${
-                        colors[index] === 'success' ? 'bg-success/10 text-success' :
-                        colors[index] === 'primary' ? 'bg-primary/10 text-primary' :
-                        colors[index] === 'accent' ? 'bg-accent/10 text-accent-foreground' :
-                        'bg-warning/10 text-warning-foreground'
-                      }`}>
-                        <CreditCard className="h-6 w-6" />
-                      </div>
-                      <TrendingUp className="h-5 w-5 text-success" />
-                    </div>
-                    <div className="text-2xl font-bold mb-1">{formatCurrency(totals)}</div>
-                    <div className="text-sm text-muted-foreground">{method.name}</div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+            <Card className="luxury-card">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-12 w-12 rounded-full bg-success/10 flex items-center justify-center">
+                    <DollarSign className="h-6 w-6 text-success" />
+                  </div>
+                  <TrendingUp className="h-5 w-5 text-success" />
+                </div>
+                <div className="text-2xl font-bold mb-1">{formatCurrency(revenueData.totalRevenue)}</div>
+                <div className="text-sm text-muted-foreground">Total Revenue</div>
+              </CardContent>
+            </Card>
+
+            <Card className="luxury-card">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <CreditCard className="h-6 w-6 text-primary" />
+                  </div>
+                  <TrendingUp className="h-5 w-5 text-success" />
+                </div>
+                <div className="text-2xl font-bold mb-1">{formatCurrency(revenueData.avgDailyRevenue)}</div>
+                <div className="text-sm text-muted-foreground">Avg Daily Revenue</div>
+              </CardContent>
+            </Card>
+
+            <Card className="luxury-card">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-12 w-12 rounded-full bg-warning/10 flex items-center justify-center">
+                    <BarChart3 className="h-6 w-6 text-warning-foreground" />
+                  </div>
+                  <TrendingUp className="h-5 w-5 text-success" />
+                </div>
+                <div className="text-2xl font-bold mb-1">{formatCurrency(revenueData.adr)}</div>
+                <div className="text-sm text-muted-foreground">ADR (Avg Daily Rate)</div>
+              </CardContent>
+            </Card>
+
+            <Card className="luxury-card">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
+                    <TrendingUp className="h-6 w-6 text-accent-foreground" />
+                  </div>
+                  <TrendingUp className="h-5 w-5 text-success" />
+                </div>
+                <div className="text-2xl font-bold mb-1">{formatCurrency(revenueData.revpar)}</div>
+                <div className="text-sm text-muted-foreground">RevPAR</div>
+              </CardContent>
+            </Card>
           </div>
 
           <Card className="luxury-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-primary" />
-                Revenue Trend by Payment Method
+                Daily Revenue Trend
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-3 font-medium">Period</th>
-                      {enabledMethods.slice(0, 4).map(method => (
-                        <th key={method.id} className="text-right p-3 font-medium">{method.name}</th>
-                      ))}
-                      <th className="text-right p-3 font-medium">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {mockRevenueData.map((row, index) => (
-                      <tr key={index} className="border-b hover:bg-muted/50">
-                        <td className="p-3 font-medium">{row.period}</td>
-                        {enabledMethods.slice(0, 4).map(method => {
-                          const key = method.type as keyof typeof row;
-                          const value = typeof row[key] === 'number' ? row[key] : 0;
-                          return (
-                            <td key={method.id} className="p-3 text-right">{formatCurrency(value)}</td>
-                          );
-                        })}
-                        <td className="p-3 text-right font-bold text-primary">
-                          {formatCurrency(getTotalRevenue(row))}
-                        </td>
+              {revenueData.chartData.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-3 font-medium">Date</th>
+                        <th className="text-right p-3 font-medium">Room Revenue</th>
+                        <th className="text-right p-3 font-medium">Other Revenue</th>
+                        <th className="text-right p-3 font-medium">Total</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {revenueData.chartData.map((row: any, index: number) => (
+                        <tr key={index} className="border-b hover:bg-muted/50">
+                          <td className="p-3 font-medium">{row.date}</td>
+                          <td className="p-3 text-right">{formatCurrency(row.roomRevenue)}</td>
+                          <td className="p-3 text-right">{formatCurrency(row.otherRevenue)}</td>
+                          <td className="p-3 text-right font-bold text-primary">
+                            {formatCurrency(row.revenue)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-center py-8">No revenue data available for this period</p>
+              )}
             </CardContent>
           </Card>
         </div>
       )}
 
       {/* Occupancy Report */}
-      {selectedReport === "occupancy" && (
+      {selectedReport === "occupancy" && occupancyData && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="luxury-card">
@@ -224,7 +221,7 @@ const ReportsInterface = () => {
                   </div>
                   <TrendingUp className="h-5 w-5 text-success" />
                 </div>
-                <div className="text-3xl font-bold mb-1">87%</div>
+                <div className="text-3xl font-bold mb-1">{occupancyData.avgOccupancy}%</div>
                 <div className="text-sm text-muted-foreground">Average Occupancy</div>
               </CardContent>
             </Card>
@@ -237,8 +234,8 @@ const ReportsInterface = () => {
                   </div>
                   <TrendingUp className="h-5 w-5 text-success" />
                 </div>
-                <div className="text-3xl font-bold mb-1">52</div>
-                <div className="text-sm text-muted-foreground">Rooms Occupied</div>
+                <div className="text-3xl font-bold mb-1">{occupancyData.totalOccupiedRooms}</div>
+                <div className="text-sm text-muted-foreground">Total Room Nights</div>
               </CardContent>
             </Card>
 
@@ -248,10 +245,9 @@ const ReportsInterface = () => {
                   <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
                     <Calendar className="h-6 w-6 text-accent-foreground" />
                   </div>
-                  <TrendingDown className="h-5 w-5 text-danger" />
                 </div>
-                <div className="text-3xl font-bold mb-1">8</div>
-                <div className="text-sm text-muted-foreground">Rooms Available</div>
+                <div className="text-3xl font-bold mb-1">{occupancyData.chartData.length}</div>
+                <div className="text-sm text-muted-foreground">Days Tracked</div>
               </CardContent>
             </Card>
           </div>
@@ -261,170 +257,209 @@ const ReportsInterface = () => {
               <CardTitle>Daily Occupancy Breakdown</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-3 font-medium">Date</th>
-                      <th className="text-right p-3 font-medium">Occupied</th>
-                      <th className="text-right p-3 font-medium">Available</th>
-                      <th className="text-right p-3 font-medium">Occupancy Rate</th>
-                      <th className="text-center p-3 font-medium">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {mockOccupancyData.map((row, index) => (
-                      <tr key={index} className="border-b hover:bg-muted/50">
-                        <td className="p-3 font-medium">
-                          {new Date(row.date).toLocaleDateString()}
-                        </td>
-                        <td className="p-3 text-right">{row.occupied}</td>
-                        <td className="p-3 text-right">{row.available}</td>
-                        <td className="p-3 text-right font-bold">{row.rate}%</td>
-                        <td className="p-3 text-center">
-                          <Badge 
-                            variant={row.rate >= 90 ? 'default' : row.rate >= 70 ? 'secondary' : 'outline'}
-                            className={
-                              row.rate >= 90 ? 'bg-success text-success-foreground' :
-                              row.rate >= 70 ? 'bg-warning/20 text-warning-foreground' :
-                              'bg-danger/20 text-danger'
-                            }
-                          >
-                            {row.rate >= 90 ? 'High' : row.rate >= 70 ? 'Good' : 'Low'}
-                          </Badge>
-                        </td>
+              {occupancyData.chartData.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-3 font-medium">Date</th>
+                        <th className="text-right p-3 font-medium">Occupied</th>
+                        <th className="text-right p-3 font-medium">Available</th>
+                        <th className="text-right p-3 font-medium">Occupancy Rate</th>
+                        <th className="text-center p-3 font-medium">Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {occupancyData.chartData.map((row: any, index: number) => (
+                        <tr key={index} className="border-b hover:bg-muted/50">
+                          <td className="p-3 font-medium">{row.date}</td>
+                          <td className="p-3 text-right">{row.occupied}</td>
+                          <td className="p-3 text-right">{row.available}</td>
+                          <td className="p-3 text-right font-bold">{row.occupancy.toFixed(1)}%</td>
+                          <td className="p-3 text-center">
+                            <Badge 
+                              variant={row.occupancy >= 90 ? 'default' : row.occupancy >= 70 ? 'secondary' : 'outline'}
+                              className={
+                                row.occupancy >= 90 ? 'bg-success text-success-foreground' :
+                                row.occupancy >= 70 ? 'bg-warning/20 text-warning-foreground' :
+                                'bg-destructive/20 text-destructive'
+                              }
+                            >
+                              {row.occupancy >= 90 ? 'High' : row.occupancy >= 70 ? 'Good' : 'Low'}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-center py-8">No occupancy data available for this period</p>
+              )}
             </CardContent>
           </Card>
         </div>
       )}
 
       {/* Room Service Report */}
-      {selectedReport === "room-service" && (
+      {selectedReport === "room-service" && roomServiceData && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="luxury-card">
-              <CardHeader>
-                <CardTitle>Orders by Category</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {mockRoomServiceData.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                      <div>
-                        <div className="font-medium">{item.category}</div>
-                        <div className="text-sm text-muted-foreground">{item.orders} orders</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-bold text-primary">{formatCurrency(item.revenue)}</div>
-                        <div className="text-sm text-muted-foreground">
-                          Avg: {formatCurrency(item.revenue / item.orders)}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Users className="h-6 w-6 text-primary" />
+                  </div>
+                  <TrendingUp className="h-5 w-5 text-success" />
                 </div>
+                <div className="text-3xl font-bold mb-1">{roomServiceData.totalOrders}</div>
+                <div className="text-sm text-muted-foreground">Total Orders</div>
               </CardContent>
             </Card>
 
             <Card className="luxury-card">
-              <CardHeader>
-                <CardTitle>Performance Metrics</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium">Average Preparation Time</span>
-                      <span className="text-sm text-muted-foreground">22 minutes</span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2">
-                      <div className="bg-primary h-2 rounded-full" style={{ width: '73%' }} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium">On-Time Delivery Rate</span>
-                      <span className="text-sm text-muted-foreground">94%</span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2">
-                      <div className="bg-success h-2 rounded-full" style={{ width: '94%' }} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium">Customer Satisfaction</span>
-                      <span className="text-sm text-muted-foreground">4.8/5.0</span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2">
-                      <div className="bg-accent h-2 rounded-full" style={{ width: '96%' }} />
-                    </div>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-12 w-12 rounded-full bg-success/10 flex items-center justify-center">
+                    <TrendingUp className="h-6 w-6 text-success" />
                   </div>
                 </div>
+                <div className="text-3xl font-bold mb-1">{roomServiceData.completionRate}%</div>
+                <div className="text-sm text-muted-foreground">Completion Rate</div>
+              </CardContent>
+            </Card>
+
+            <Card className="luxury-card">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
+                    <Calendar className="h-6 w-6 text-accent-foreground" />
+                  </div>
+                </div>
+                <div className="text-3xl font-bold mb-1">{roomServiceData.chartData.length}</div>
+                <div className="text-sm text-muted-foreground">Active Days</div>
               </CardContent>
             </Card>
           </div>
+
+          <Card className="luxury-card">
+            <CardHeader>
+              <CardTitle>Recent Orders</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {roomServiceData.orders.length > 0 ? (
+                <div className="space-y-3">
+                  {roomServiceData.orders.slice(0, 10).map((order: any) => (
+                    <div key={order.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                      <div>
+                        <div className="font-medium">{order.service_type}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {order.rooms?.room_number || 'N/A'} • {format(new Date(order.created_at), 'PPp')}
+                        </div>
+                      </div>
+                      <Badge variant={order.status === 'completed' ? 'default' : 'outline'}>
+                        {order.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-center py-8">No room service orders for this period</p>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
 
       {/* Housekeeping Report */}
-      {selectedReport === "housekeeping" && (
-        <Card className="luxury-card">
-          <CardHeader>
-            <CardTitle>Housekeeping Status Report</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-3 font-medium">Room</th>
-                    <th className="text-center p-3 font-medium">Status</th>
-                    <th className="text-right p-3 font-medium">Turnaround Time</th>
-                    <th className="text-left p-3 font-medium">Assigned Staff</th>
-                    <th className="text-center p-3 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mockHousekeepingData.map((row, index) => (
-                    <tr key={index} className="border-b hover:bg-muted/50">
-                      <td className="p-3 font-medium">Room {row.room}</td>
-                      <td className="p-3 text-center">
-                        <Badge 
-                          variant={
-                            row.status === 'Clean' ? 'default' :
-                            row.status === 'In Progress' ? 'secondary' :
-                            'outline'
-                          }
-                          className={
-                            row.status === 'Clean' ? 'bg-success text-success-foreground' :
-                            row.status === 'In Progress' ? 'bg-warning/20 text-warning-foreground' :
-                            'bg-danger/20 text-danger'
-                          }
-                        >
-                          {row.status}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-right">{row.turnaround}</td>
-                      <td className="p-3">{row.staff}</td>
-                      <td className="p-3 text-center">
-                        <Button size="sm" variant="outline">
-                          Update
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+      {selectedReport === "housekeeping" && housekeepingData && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className="luxury-card">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Calendar className="h-6 w-6 text-primary" />
+                  </div>
+                  <TrendingUp className="h-5 w-5 text-success" />
+                </div>
+                <div className="text-3xl font-bold mb-1">{housekeepingData.totalTasks}</div>
+                <div className="text-sm text-muted-foreground">Total Tasks</div>
+              </CardContent>
+            </Card>
+
+            <Card className="luxury-card">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-12 w-12 rounded-full bg-success/10 flex items-center justify-center">
+                    <TrendingUp className="h-6 w-6 text-success" />
+                  </div>
+                </div>
+                <div className="text-3xl font-bold mb-1">{housekeepingData.completionRate}%</div>
+                <div className="text-sm text-muted-foreground">Completion Rate</div>
+              </CardContent>
+            </Card>
+
+            <Card className="luxury-card">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
+                    <BarChart3 className="h-6 w-6 text-accent-foreground" />
+                  </div>
+                </div>
+                <div className="text-3xl font-bold mb-1">{housekeepingData.avgDuration} min</div>
+                <div className="text-sm text-muted-foreground">Avg Task Duration</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="luxury-card">
+            <CardHeader>
+              <CardTitle>Recent Housekeeping Tasks</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {housekeepingData.tasks.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-3 font-medium">Room</th>
+                        <th className="text-left p-3 font-medium">Task Type</th>
+                        <th className="text-center p-3 font-medium">Status</th>
+                        <th className="text-right p-3 font-medium">Duration</th>
+                        <th className="text-left p-3 font-medium">Created</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {housekeepingData.tasks.slice(0, 15).map((task: any) => (
+                        <tr key={task.id} className="border-b hover:bg-muted/50">
+                          <td className="p-3 font-medium">Room {task.rooms?.room_number || 'N/A'}</td>
+                          <td className="p-3">{task.task_type}</td>
+                          <td className="p-3 text-center">
+                            <Badge 
+                              variant={
+                                task.status === 'completed' ? 'default' :
+                                task.status === 'in_progress' ? 'secondary' :
+                                'outline'
+                              }
+                            >
+                              {task.status}
+                            </Badge>
+                          </td>
+                          <td className="p-3 text-right">{task.actual_minutes || '-'} min</td>
+                          <td className="p-3">{format(new Date(task.created_at), 'PPp')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-center py-8">No housekeeping tasks for this period</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

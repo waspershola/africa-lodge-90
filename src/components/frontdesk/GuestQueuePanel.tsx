@@ -9,6 +9,8 @@ import {
   ChevronRight
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useTodayArrivals, useTodayDepartures } from "@/hooks/data/useReservationsData";
+import { format } from "date-fns";
 
 interface Guest {
   id: string;
@@ -23,25 +25,56 @@ interface GuestQueuePanelProps {
   onGuestAction: (guest: Guest, action: string) => void;
 }
 
-const mockArrivals: Guest[] = [
-  { id: '1', name: 'Adebayo Johnson', room: '201', time: '14:00', status: 'pending', priority: 'high' },
-  { id: '2', name: 'Sarah Okonkwo', room: '305', time: '15:30', status: 'checked-in' },
-  { id: '3', name: 'Michael Eze', room: '102', time: '16:00', status: 'pending' },
-  { id: '4', name: 'Fatima Al-Hassan', room: '401', time: '17:00', status: 'pending', priority: 'medium' },
-];
-
-const mockDepartures: Guest[] = [
-  { id: '5', name: 'David Okoro', room: '203', time: '11:00', status: 'pending', priority: 'high' },
-  { id: '6', name: 'Grace Nwankwo', room: '304', time: '12:00', status: 'checked-out' },
-  { id: '7', name: 'Ahmed Yusuf', room: '502', time: '13:00', status: 'pending' },
-];
-
-const mockOverstays: Guest[] = [
-  { id: '8', name: 'Jennifer Okafor', room: '301', time: '11:00', status: 'overstay', priority: 'high' },
-  { id: '9', name: 'Charles Ebuka', room: '205', time: '12:00', status: 'overstay', priority: 'medium' },
-];
-
 export const GuestQueuePanel = ({ onGuestAction }: GuestQueuePanelProps) => {
+  const { data: arrivalReservations = [], isLoading: arrivalsLoading } = useTodayArrivals();
+  const { data: departureReservations = [], isLoading: departuresLoading } = useTodayDepartures();
+
+  // Transform reservations to Guest format
+  const arrivals: Guest[] = arrivalReservations.map((res: any) => ({
+    id: res.id,
+    name: res.guest_name,
+    room: res.room?.room_number || 'TBA',
+    time: format(new Date(res.check_in_date), 'HH:mm'),
+    status: res.status === 'checked_in' ? 'checked-in' : 'pending',
+    priority: res.status === 'confirmed' ? 'high' : 'medium',
+  }));
+
+  const departures: Guest[] = departureReservations.map((res: any) => ({
+    id: res.id,
+    name: res.guest_name,
+    room: res.room?.room_number || 'N/A',
+    time: format(new Date(res.check_out_date), 'HH:mm'),
+    status: res.status === 'checked_out' ? 'checked-out' : 'pending',
+    priority: res.status === 'checked_in' ? 'high' : 'medium',
+  }));
+
+  // Check for overstays (checked-in reservations past checkout date)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const overstays: Guest[] = departureReservations
+    .filter((res: any) => {
+      const checkoutDate = new Date(res.check_out_date);
+      checkoutDate.setHours(0, 0, 0, 0);
+      return res.status === 'checked_in' && checkoutDate < today;
+    })
+    .map((res: any) => ({
+      id: res.id,
+      name: res.guest_name,
+      room: res.room?.room_number || 'N/A',
+      time: format(new Date(res.check_out_date), 'HH:mm'),
+      status: 'overstay' as const,
+      priority: 'high' as const,
+    }));
+
+  if (arrivalsLoading || departuresLoading) {
+    return (
+      <Card className="h-full">
+        <CardContent className="p-8 text-center">
+          <div className="text-muted-foreground">Loading guest queue...</div>
+        </CardContent>
+      </Card>
+    );
+  }
   const renderGuestList = (guests: Guest[], type: 'arrivals' | 'departures' | 'overstays') => {
     const getActionButton = (guest: Guest) => {
       switch (type) {
@@ -142,12 +175,12 @@ export const GuestQueuePanel = ({ onGuestAction }: GuestQueuePanelProps) => {
             <LogIn className="h-4 w-4 text-success" />
             Arrivals Today
             <Badge variant="secondary" className="ml-auto">
-              {mockArrivals.filter(g => g.status === 'pending').length}
+              {arrivals.filter(g => g.status === 'pending').length}
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {renderGuestList(mockArrivals, 'arrivals')}
+          {renderGuestList(arrivals, 'arrivals')}
         </CardContent>
       </Card>
 
@@ -158,12 +191,12 @@ export const GuestQueuePanel = ({ onGuestAction }: GuestQueuePanelProps) => {
             <LogOut className="h-4 w-4 text-warning" />
             Departures Today
             <Badge variant="secondary" className="ml-auto">
-              {mockDepartures.filter(g => g.status === 'pending').length}
+              {departures.filter(g => g.status === 'pending').length}
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {renderGuestList(mockDepartures, 'departures')}
+          {renderGuestList(departures, 'departures')}
         </CardContent>
       </Card>
 
@@ -174,12 +207,12 @@ export const GuestQueuePanel = ({ onGuestAction }: GuestQueuePanelProps) => {
             <AlertTriangle className="h-4 w-4 text-destructive" />
             Overstays
             <Badge variant="destructive" className="ml-auto">
-              {mockOverstays.length}
+              {overstays.length}
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {renderGuestList(mockOverstays, 'overstays')}
+          {renderGuestList(overstays, 'overstays')}
         </CardContent>
       </Card>
     </div>

@@ -1475,6 +1475,64 @@ export type Database = {
           },
         ]
       }
+      guest_wallets: {
+        Row: {
+          balance: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          guest_id: string
+          id: string
+          is_active: boolean | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          guest_id: string
+          id?: string
+          is_active?: boolean | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          guest_id?: string
+          id?: string
+          is_active?: boolean | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_wallets_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_wallets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "occupancy_stats"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "guest_wallets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
       guests: {
         Row: {
           address: string | null
@@ -5669,6 +5727,99 @@ export type Database = {
         }
         Relationships: []
       }
+      wallet_transactions: {
+        Row: {
+          amount: number
+          balance_after: number
+          balance_before: number
+          created_at: string
+          description: string
+          guest_id: string
+          id: string
+          metadata: Json | null
+          payment_method: string | null
+          payment_method_id: string | null
+          processed_by: string | null
+          reference_id: string | null
+          reference_type: string | null
+          tenant_id: string
+          transaction_type: string
+          wallet_id: string
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          balance_before: number
+          created_at?: string
+          description: string
+          guest_id: string
+          id?: string
+          metadata?: Json | null
+          payment_method?: string | null
+          payment_method_id?: string | null
+          processed_by?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          tenant_id: string
+          transaction_type: string
+          wallet_id: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          balance_before?: number
+          created_at?: string
+          description?: string
+          guest_id?: string
+          id?: string
+          metadata?: Json | null
+          payment_method?: string | null
+          payment_method_id?: string | null
+          processed_by?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          tenant_id?: string
+          transaction_type?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_transactions_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_transactions_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_transactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "occupancy_stats"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "wallet_transactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "wallet_transactions_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "guest_wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       work_orders: {
         Row: {
           actual_cost: number | null
@@ -6535,6 +6686,20 @@ export type Database = {
       process_trial_expiry: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      process_wallet_transaction: {
+        Args: {
+          p_amount: number
+          p_description: string
+          p_metadata?: Json
+          p_payment_method?: string
+          p_payment_method_id?: string
+          p_reference_id?: string
+          p_reference_type?: string
+          p_transaction_type: string
+          p_wallet_id: string
+        }
+        Returns: string
       }
       provision_sms_credits: {
         Args: {

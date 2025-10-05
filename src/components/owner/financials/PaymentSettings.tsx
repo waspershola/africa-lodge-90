@@ -224,25 +224,21 @@ export default function PaymentSettings() {
           </CardContent>
         </Card>
 
-        {/* Taxes & Policies */}
+        {/* Payment Policies */}
         <Card>
           <CardHeader>
-            <CardTitle>Taxes & Policies</CardTitle>
-            <CardDescription>Configure tax rates and payment policies</CardDescription>
+            <CardTitle>Payment Policies</CardTitle>
+            <CardDescription>Configure deposit requirements and payment options</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="city-tax">City Tax Rate (%)</Label>
-                  <Input id="city-tax" placeholder="8.5" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="service-tax">Service Tax Rate (%)</Label>
-                  <Input id="service-tax" placeholder="12.0" />
-                </div>
-              </div>
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Tax & VAT Settings:</strong> Configure VAT rates and service charges in the Configuration Center under "Tax & Currency Settings".
+              </AlertDescription>
+            </Alert>
 
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="deposit-percentage">Required Deposit (%)</Label>
                 <Input id="deposit-percentage" placeholder="25" />

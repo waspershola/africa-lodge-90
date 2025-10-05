@@ -110,3 +110,32 @@ If issues occur, restore these files from git history:
 3. Verify reserved rooms display payment history correctly
 4. Monitor for any duplicate payment errors
 5. Consider running `performFullCleanup()` to clean existing data
+
+---
+
+## Update: 2025-10-05 - Duplicate Tax Settings Removed
+
+### Issue 4: Confusing Duplicate Tax Configuration
+**Problem:** Two different pages showed tax configuration:
+1. Configuration Center → Tax & Currency Settings (ACTIVE: VAT 7.5%, Service 10%)
+2. Financials Page → Payment Settings (MOCK: City Tax 8.5%, Service Tax 12%)
+
+The Financials page settings were non-functional mock UI, causing confusion about which settings were actually used.
+
+**Solution Implemented:**
+- Modified `src/components/owner/financials/PaymentSettings.tsx`
+- Removed mock "City Tax Rate (%)" input field
+- Removed mock "Service Tax Rate (%)" input field
+- Renamed card from "Taxes & Policies" to "Payment Policies"
+- Added alert box directing users to Configuration Center for tax settings
+
+**Result:** Configuration Center is now the single source of truth for all tax and service charge settings.
+
+### Database Cleanup Required
+Run the cleanup script to fix existing double-taxed charges:
+```bash
+npm run fix-double-tax -- --scan    # Identify affected charges
+npm run fix-double-tax -- --fix     # Apply corrections
+```
+
+**Known affected rooms:** 103, 111, 112, 113, 131

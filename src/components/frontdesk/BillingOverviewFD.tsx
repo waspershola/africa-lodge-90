@@ -21,6 +21,9 @@ import {
 import { useCurrency } from "@/hooks/useCurrency";
 import { useBilling } from "@/hooks/useBilling";
 import { usePaymentMethodsContext } from "@/contexts/PaymentMethodsContext";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
 
 interface PendingPayment {
   id: string;
@@ -132,12 +135,39 @@ const mockDailySummary: DailySummary = {
 };
 
 export const BillingOverviewFD = () => {
+  const { tenant } = useAuth();
   const [activeTab, setActiveTab] = useState("pending");
   const [searchTerm, setSearchTerm] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const { billingStats, folioBalances, payments, loading } = useBilling();
   const { formatPrice } = useCurrency();
   const { getMethodById } = usePaymentMethodsContext();
+
+  // Fetch staff names for payments
+  const { data: staffMap } = useQuery({
+    queryKey: ['payment-staff-names', tenant?.tenant_id],
+    queryFn: async () => {
+      const staffIds = payments
+        .map(p => p.processed_by)
+        .filter((id): id is string => !!id);
+      const uniqueStaffIds = [...new Set(staffIds)];
+      
+      if (uniqueStaffIds.length === 0) return {};
+      
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, name')
+        .in('id', uniqueStaffIds);
+      
+      if (error) throw error;
+      
+      return data.reduce((acc, user) => {
+        acc[user.id] = user.name;
+        return acc;
+      }, {} as Record<string, string>);
+    },
+    enabled: !!tenant?.tenant_id && payments.length > 0,
+  });
 
   // Convert folio balances to pending payments format
   const pendingPayments: PendingPayment[] = folioBalances
@@ -153,9 +183,10 @@ export const BillingOverviewFD = () => {
       folioId: f.folio_number
     }));
 
-  // Convert payments to completed format with payment method names
+  // Convert payments to completed format with payment method names and staff names
   const completedPayments: CompletedPayment[] = payments.map(p => {
     const method = p.payment_method_id ? getMethodById(p.payment_method_id) : null;
+    const staffName = p.processed_by ? (staffMap?.[p.processed_by] || 'Unknown Staff') : 'System';
     return {
       id: p.id,
       guestName: (p as any).folios?.reservations?.guest_name || 'Unknown Guest',
@@ -163,7 +194,7 @@ export const BillingOverviewFD = () => {
       amount: p.amount,
       method: method?.name || p.payment_method || 'Unknown',
       processedAt: new Date(p.created_at),
-      processedBy: p.processed_by || 'System',
+      processedBy: staffName,
       transactionRef: p.reference
     };
   });

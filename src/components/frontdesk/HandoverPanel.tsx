@@ -25,26 +25,63 @@ import { useQRRealtime } from "@/hooks/useQRRealtime";
 import { useStaffData } from "@/hooks/useStaffData";
 import { useShiftPDFReport } from "@/hooks/useShiftPDFReport";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
 
 export const HandoverPanel = () => {
+  const { tenant } = useAuth();
   const { data: activeShifts, isLoading: shiftsLoading } = useActiveShiftSessions();
   const { data: allShifts } = useShiftSessions();
   const { orders } = useQRRealtime();
   const { generateDailyShiftsReport } = useShiftPDFReport();
   const [selectedNote, setSelectedNote] = useState<string | null>(null);
 
-  // Get current shift information
-  const currentShifts = activeShifts || [];
+  // Fetch staff names for all shifts
+  const { data: staffMap } = useQuery({
+    queryKey: ['staff-names', tenant?.tenant_id],
+    queryFn: async () => {
+      const allStaffIds = [
+        ...(activeShifts?.map(s => s.staff_id) || []),
+        ...(allShifts?.map(s => s.staff_id) || [])
+      ];
+      const uniqueStaffIds = [...new Set(allStaffIds)];
+      
+      if (uniqueStaffIds.length === 0) return {};
+      
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, name')
+        .in('id', uniqueStaffIds);
+      
+      if (error) throw error;
+      
+      return data.reduce((acc, user) => {
+        acc[user.id] = user.name;
+        return acc;
+      }, {} as Record<string, string>);
+    },
+    enabled: !!tenant?.tenant_id && ((activeShifts?.length || 0) > 0 || (allShifts?.length || 0) > 0),
+  });
+
+  // Get current shift information with staff names
+  const currentShifts = (activeShifts || []).map(shift => ({
+    ...shift,
+    staff_name: staffMap?.[shift.staff_id] || 'Unknown Staff'
+  }));
 
   // Get pending QR orders that need attention
   const pendingOrders = orders?.filter(order => 
     order.status === 'pending' || order.status === 'assigned'
   ).slice(0, 5) || [];
 
-  // Get recent handover notes from completed shifts
-  const recentHandovers = allShifts?.filter(shift => 
+  // Get recent handover notes from completed shifts with staff names
+  const recentHandovers = (allShifts?.filter(shift => 
     shift.status === 'completed' && shift.handover_notes
-  ).slice(0, 3) || [];
+  ).slice(0, 3) || []).map(shift => ({
+    ...shift,
+    staff_name: staffMap?.[shift.staff_id] || 'Unknown Staff'
+  }));
 
   // Get urgent housekeeping tasks (placeholder)
   const urgentTasks: any[] = [];
@@ -77,7 +114,7 @@ export const HandoverPanel = () => {
               const completedShifts = allShifts?.filter(s => s.status === 'completed').slice(0, 10) || [];
               const summaryData = completedShifts.map(shift => ({
                 shift_id: shift.id,
-                staff_name: shift.staff_id,
+                staff_name: staffMap?.[shift.staff_id] || 'Unknown Staff',
                 role: shift.role || 'Staff',
                 start_time: shift.start_time,
                 end_time: shift.end_time || new Date().toISOString(),
@@ -124,10 +161,10 @@ export const HandoverPanel = () => {
                   <div className="text-sm text-muted-foreground">Loading shift data...</div>
                 ) : currentShifts.length > 0 ? (
                   <div className="space-y-3">
-                    {currentShifts.map((shift) => (
+                     {currentShifts.map((shift) => (
                       <div key={shift.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                         <div className="space-y-1">
-                          <div className="font-medium">Staff: {shift.staff_id}</div>
+                          <div className="font-medium">{shift.staff_name}</div>
                           <div className="flex items-center gap-2">
                             <Badge variant="secondary">{shift.role}</Badge>
                             {shift.device_id && (
@@ -298,7 +335,7 @@ export const HandoverPanel = () => {
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <div>
-                              <span className="font-medium">Staff: {shift.staff_id}</span>
+                              <span className="font-medium">{shift.staff_name}</span>
                               <Badge variant="outline" className="ml-2">{shift.role}</Badge>
                             </div>
                             <div className="text-sm text-muted-foreground">

@@ -1,5 +1,20 @@
-import { QRAnalyticsDashboard } from '@/components/owner/qr/QRAnalyticsDashboard';
+import { UnifiedAnalyticsDashboard } from '@/components/owner/qr/UnifiedAnalyticsDashboard';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function QRAnalytics() {
-  return <QRAnalyticsDashboard />;
+  const { user } = useAuth();
+  
+  if (!user?.tenant_id) {
+    return <div>Loading...</div>;
+  }
+  
+  return (
+    <div className="space-y-6 p-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">QR Analytics</h1>
+        <p className="text-muted-foreground">Monitor QR code usage and guest request metrics</p>
+      </div>
+      <UnifiedAnalyticsDashboard tenantId={user.tenant_id} />
+    </div>
+  );
 }

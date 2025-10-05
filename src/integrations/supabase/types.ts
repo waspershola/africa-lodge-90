@@ -4445,6 +4445,61 @@ export type Database = {
           },
         ]
       }
+      short_urls: {
+        Row: {
+          click_count: number | null
+          created_at: string | null
+          created_by: string | null
+          expires_at: string | null
+          metadata: Json | null
+          short_code: string
+          target_url: string
+          tenant_id: string | null
+        }
+        Insert: {
+          click_count?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          metadata?: Json | null
+          short_code: string
+          target_url: string
+          tenant_id?: string | null
+        }
+        Update: {
+          click_count?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          metadata?: Json | null
+          short_code?: string
+          target_url?: string
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "short_urls_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "short_urls_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "occupancy_stats"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "short_urls_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
       sms_credits: {
         Row: {
           balance: number | null
@@ -6551,6 +6606,10 @@ export type Database = {
       generate_recovery_codes: {
         Args: { user_uuid: string }
         Returns: string[]
+      }
+      generate_short_code: {
+        Args: { length?: number }
+        Returns: string
       }
       get_active_session_count: {
         Args: { p_user_id: string }

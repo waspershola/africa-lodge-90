@@ -96,8 +96,10 @@ export const RoomActionDrawer = ({
         .from('reservations')
         .select('id')
         .eq('room_id', room.id)
-        .eq('status', 'checked_in')
-        .single();
+        .in('status', ['checked_in', 'confirmed', 'hard_assigned'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
       
       if (resError || !reservation) {
         console.log('[RoomActionDrawer] No active reservation found:', resError);

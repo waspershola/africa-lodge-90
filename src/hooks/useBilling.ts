@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 export interface BillingStats {
   totalRevenue: number;
@@ -263,25 +264,25 @@ export function useBilling() {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       const userId = currentUser?.id;
 
-      // PHASE 2: Improved duplicate detection - 10 second window with method and user check
+      // PHASE 2: Improved duplicate detection - 5 second window with method and user check
       const { data: recentPayments } = await supabase
         .from('payments')
         .select('*')
         .eq('folio_id', paymentData.folio_id)
-        .eq('amount', paymentData.amount)
-        .gte('created_at', new Date(Date.now() - 10000).toISOString()) // 10 seconds
+        .eq('payment_method_id', paymentData.payment_method_id)
+        .eq('processed_by', userId)
+        .gte('created_at', new Date(Date.now() - 5000).toISOString()) // 5 seconds
         .eq('status', 'completed');
 
       if (recentPayments && recentPayments.length > 0) {
-        // Additional intelligent checks
+        // Check if amount is within ₦0.01 (true duplicate)
         const isDuplicate = recentPayments.some(p => 
-          Math.abs(p.amount - paymentData.amount) < 0.01 &&
-          (paymentData.payment_method_id ? p.payment_method_id === paymentData.payment_method_id : true) &&
-          (userId ? p.processed_by === userId : true)
+          Math.abs(p.amount - paymentData.amount) < 0.01
         );
         
         if (isDuplicate) {
-          throw new Error('Duplicate payment detected. A payment of this amount was just processed.');
+          toast.error('Duplicate payment detected. Please wait 5 seconds before retrying.');
+          return null;
         }
       }
 

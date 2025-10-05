@@ -213,25 +213,24 @@ export const useCheckout = (roomId?: string) => {
 
     setLoading(true);
     try {
-      // PHASE 2: Improved duplicate detection - 10 second window with intelligent checks
+      // PHASE 2: Improved duplicate detection - 5 second window with intelligent checks
       const checkoutFolioId = checkoutSession.guest_bill.folio_id;
       const { data: recentPayments } = await supabase
         .from('payments')
         .select('*')
         .eq('folio_id', checkoutFolioId)
-        .eq('amount', amount)
-        .gte('created_at', new Date(Date.now() - 10000).toISOString()) // 10 seconds
+        .eq('processed_by', user.id)
+        .gte('created_at', new Date(Date.now() - 5000).toISOString()) // 5 seconds
         .eq('status', 'completed');
 
       if (recentPayments && recentPayments.length > 0) {
-        // Additional intelligent checks
+        // Check if amount is within ₦0.01 (true duplicate)
         const isDuplicate = recentPayments.some(p => 
-          Math.abs(p.amount - amount) < 0.01 &&
-          (user?.id ? p.processed_by === user.id : true)
+          Math.abs(p.amount - amount) < 0.01
         );
         
         if (isDuplicate) {
-          setError('Duplicate payment detected. A payment of this amount was just processed.');
+          setError('Duplicate payment detected. Please wait 5 seconds before retrying.');
           setLoading(false);
           return false;
         }

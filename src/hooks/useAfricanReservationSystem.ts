@@ -338,10 +338,55 @@ export const useHardAssignReservation = () => {
 
       if (folioError) throw folioError;
 
-      // Step 4: Add initial room charges based on reservation
-      const nights = Math.ceil((new Date(reservation.check_out_date).getTime() - new Date(reservation.check_in_date).getTime()) / (1000 * 60 * 60 * 24));
-      const totalAmount = reservation.room_rate * nights;
+      // Step 4: Fetch hotel settings for tax calculation
+      const { data: hotelSettings } = await supabase
+        .from('hotel_settings')
+        .select('*')
+        .eq('tenant_id', tenant_id)
+        .single();
 
+      // Check if guest is tax exempt
+      const { data: guest } = await supabase
+        .from('guests')
+        .select('tax_exempt')
+        .eq('id', reservation.guest_id)
+        .single();
+
+      // Calculate charges with proper tax breakdown
+      const nights = Math.ceil((new Date(reservation.check_out_date).getTime() - new Date(reservation.check_in_date).getTime()) / (1000 * 60 * 60 * 24));
+      const baseAmount = reservation.room_rate * nights;
+
+      // Import calculateTaxesAndCharges at the top of the file
+      const { calculateTaxesAndCharges } = await import('@/lib/tax-calculator');
+      
+      // Create minimal configuration object for tax calculation
+      const configuration = {
+        general: { hotel_name: '', address: { street: '', city: '', state: '', country: '', postal_code: '' }, contact: { phone: '', email: '' }, timezone: 'UTC', date_format: 'DD/MM/YYYY' as const, time_format: '24h' as const },
+        currency: { default_currency: 'NGN', currency_symbol: '₦', symbol_position: 'before' as const, decimal_places: 2, thousand_separator: ',' as const, decimal_separator: '.' as const },
+        branding: { primary_color: '', secondary_color: '', accent_color: '', receipt_header_text: '', receipt_footer_text: '', font_style: 'giveny' as const },
+        documents: { default_receipt_template: 'A4' as const, invoice_prefix: '', receipt_prefix: '', digital_signature_enabled: false, include_qr_code: false },
+        guest_experience: { checkin_slip_fields: { guest_id_required: false, phone_required: false, email_required: false, address_required: false }, qr_defaults: { include_logo: false, include_hotel_name: false, qr_size: 'medium' as const, default_services: [] } },
+        permissions: { pricing_changes_require_approval: false, discount_approval_threshold: 0, refund_approval_threshold: 0, service_price_edits_require_approval: false, manager_can_override_rates: false },
+        tax: {
+          vat_rate: hotelSettings?.tax_rate || 7.5,
+          service_charge_rate: hotelSettings?.service_charge_rate || 10,
+          tax_inclusive: hotelSettings?.tax_inclusive || false,
+          service_charge_inclusive: hotelSettings?.service_charge_inclusive || false,
+          vat_applicable_to: hotelSettings?.vat_applicable_to || ['room', 'food', 'beverage', 'laundry', 'spa'],
+          service_applicable_to: hotelSettings?.service_applicable_to || ['room', 'food', 'beverage', 'spa'],
+        }
+      };
+      
+      const taxCalculation = calculateTaxesAndCharges({
+        baseAmount,
+        chargeType: 'room',
+        isTaxable: true,
+        isServiceChargeable: true,
+        guestTaxExempt: guest?.tax_exempt || false,
+        configuration
+      });
+
+      // Insert charge with proper breakdown (prevents double tax)
       await supabase
         .from('folio_charges')
         .insert({
@@ -349,7 +394,12 @@ export const useHardAssignReservation = () => {
           folio_id: newFolio.id,
           charge_type: 'room',
           description: `Room charges for ${nights} night(s) at ${room.room_number}`,
-          amount: totalAmount,
+          amount: taxCalculation.totalAmount,
+          base_amount: taxCalculation.baseAmount,
+          vat_amount: taxCalculation.vatAmount,
+          service_charge_amount: taxCalculation.serviceChargeAmount,
+          is_taxable: !guest?.tax_exempt,
+          is_service_chargeable: !guest?.tax_exempt,
           posted_by: user.id
         });
 

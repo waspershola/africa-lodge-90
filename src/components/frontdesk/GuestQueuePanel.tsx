@@ -76,33 +76,48 @@ export const GuestQueuePanel = ({ onGuestAction }: GuestQueuePanelProps) => {
     );
   }
   const renderGuestList = (guests: Guest[], type: 'arrivals' | 'departures' | 'overstays') => {
-    const getStatusBadge = (guest: Guest) => {
+    const getActionButton = (guest: Guest) => {
       switch (type) {
         case 'arrivals':
-          return guest.status === 'checked-in' ? (
+          return guest.status === 'pending' ? (
+            <Button 
+              size="sm" 
+              onClick={() => onGuestAction(guest, 'check-in')}
+              className="bg-success hover:bg-success/90"
+            >
+              <LogIn className="h-3 w-3 mr-1" />
+              Check In
+            </Button>
+          ) : (
             <Badge variant="default" className="bg-success text-success-foreground">
               Checked In
             </Badge>
-          ) : (
-            <Badge variant="secondary">
-              Pending
-            </Badge>
           );
         case 'departures':
-          return guest.status === 'checked-out' ? (
+          return guest.status === 'pending' ? (
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => onGuestAction(guest, 'check-out')}
+            >
+              <LogOut className="h-3 w-3 mr-1" />
+              Check Out
+            </Button>
+          ) : (
             <Badge variant="default" className="bg-success text-success-foreground">
               Checked Out
-            </Badge>
-          ) : (
-            <Badge variant="secondary">
-              Pending
             </Badge>
           );
         case 'overstays':
           return (
-            <Badge variant="destructive">
-              Overstay
-            </Badge>
+            <Button 
+              size="sm" 
+              variant="destructive"
+              onClick={() => onGuestAction(guest, 'handle-overstay')}
+            >
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              Action Required
+            </Button>
           );
         default:
           return null;
@@ -142,7 +157,7 @@ export const GuestQueuePanel = ({ onGuestAction }: GuestQueuePanelProps) => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {getStatusBadge(guest)}
+              {getActionButton(guest)}
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </div>
           </motion.div>
@@ -160,7 +175,7 @@ export const GuestQueuePanel = ({ onGuestAction }: GuestQueuePanelProps) => {
             <LogIn className="h-4 w-4 text-success" />
             Arrivals Today
             <Badge variant="secondary" className="ml-auto">
-              {arrivals.length}
+              {arrivals.filter(g => g.status === 'pending').length}
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -176,7 +191,7 @@ export const GuestQueuePanel = ({ onGuestAction }: GuestQueuePanelProps) => {
             <LogOut className="h-4 w-4 text-warning" />
             Departures Today
             <Badge variant="secondary" className="ml-auto">
-              {departures.length}
+              {departures.filter(g => g.status === 'pending').length}
             </Badge>
           </CardTitle>
         </CardHeader>

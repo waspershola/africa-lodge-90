@@ -1,9 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.1';
+import { signJWT, verifyJWT } from './jwt-utils.ts';
+import { checkRateLimit, getClientIdentifier } from './rate-limiter.ts';
+import { validateQRValidation, validateRequestCreation, sanitizeDeviceInfo, sanitizeRequestData } from './validation.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token',
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'",
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
 };
 
 interface QRValidationRequest {
@@ -33,17 +40,42 @@ serve(async (req) => {
 
     const url = new URL(req.url);
     const path = url.pathname.replace('/qr-unified-api', '');
+    const clientIp = getClientIdentifier(req);
 
     // Route: POST /validate - Validate QR and create session
     if (path === '/validate' && req.method === 'POST') {
-      const { qrToken, deviceInfo = {} } = await req.json() as QRValidationRequest;
-
-      if (!qrToken) {
+      // Rate limiting
+      const rateCheck = checkRateLimit(clientIp, 'validate');
+      if (!rateCheck.allowed) {
         return new Response(
-          JSON.stringify({ error: 'QR token is required' }),
+          JSON.stringify({ 
+            error: 'Rate limit exceeded', 
+            resetAt: rateCheck.resetAt 
+          }),
+          { 
+            status: 429, 
+            headers: { 
+              ...corsHeaders, 
+              'Content-Type': 'application/json',
+              'Retry-After': String(Math.ceil((rateCheck.resetAt! - Date.now()) / 1000))
+            } 
+          }
+        );
+      }
+
+      const body = await req.json();
+      
+      // Input validation
+      const validation = validateQRValidation(body);
+      if (!validation.valid) {
+        return new Response(
+          JSON.stringify({ error: 'Validation failed', details: validation.errors }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      const { qrToken } = body;
+      const deviceInfo = sanitizeDeviceInfo(body.deviceInfo || {});
 
       // Call database function to validate and create session
       const { data, error } = await supabaseClient.rpc('validate_qr_and_create_session', {
@@ -61,11 +93,20 @@ serve(async (req) => {
 
       const result = data[0];
       if (!result.is_valid) {
+        // Log failed attempt
+        console.warn('Invalid QR validation attempt', { qrToken: qrToken.substring(0, 10) + '...', clientIp });
         return new Response(
           JSON.stringify({ error: 'Invalid or expired QR code' }),
           { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      // Sign JWT token
+      const jwt = await signJWT({
+        session_id: result.session_id,
+        tenant_id: result.tenant_id,
+        qr_code_id: result.qr_code_id
+      });
 
       return new Response(
         JSON.stringify({
@@ -78,7 +119,8 @@ serve(async (req) => {
             roomNumber: result.room_number,
             services: result.services,
             expiresAt: result.expires_at
-          }
+          },
+          token: jwt // JWT token for authentication
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -86,14 +128,50 @@ serve(async (req) => {
 
     // Route: POST /request - Create a new service request
     if (path === '/request' && req.method === 'POST') {
-      const { sessionId, requestType, requestData, priority = 'normal' } = await req.json() as RequestCreationPayload;
-
-      if (!sessionId || !requestType || !requestData) {
+      // Rate limiting
+      const rateCheck = checkRateLimit(clientIp, 'request');
+      if (!rateCheck.allowed) {
         return new Response(
-          JSON.stringify({ error: 'Session ID, request type, and request data are required' }),
+          JSON.stringify({ 
+            error: 'Rate limit exceeded', 
+            resetAt: rateCheck.resetAt 
+          }),
+          { 
+            status: 429, 
+            headers: { 
+              ...corsHeaders, 
+              'Content-Type': 'application/json',
+              'Retry-After': String(Math.ceil((rateCheck.resetAt! - Date.now()) / 1000))
+            } 
+          }
+        );
+      }
+
+      // Verify JWT token
+      const authHeader = req.headers.get('x-session-token');
+      if (authHeader) {
+        const jwtPayload = await verifyJWT(authHeader);
+        if (!jwtPayload) {
+          return new Response(
+            JSON.stringify({ error: 'Invalid or expired session token' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+
+      const body = await req.json();
+      
+      // Input validation
+      const validation = validateRequestCreation(body);
+      if (!validation.valid) {
+        return new Response(
+          JSON.stringify({ error: 'Validation failed', details: validation.errors }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      const { sessionId, requestType, priority = 'normal' } = body;
+      const requestData = sanitizeRequestData(body.requestData);
 
       // Call database function to create request
       const { data, error } = await supabaseClient.rpc('create_unified_qr_request', {

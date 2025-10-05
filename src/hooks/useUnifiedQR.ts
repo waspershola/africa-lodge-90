@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { JWTClient } from '@/lib/jwt-client';
 
 interface QRSession {
   sessionId: string;
@@ -9,6 +10,7 @@ interface QRSession {
   roomNumber: string;
   services: string[];
   expiresAt: string;
+  token?: string; // JWT token
 }
 
 interface QRRequest {
@@ -50,7 +52,14 @@ export function useUnifiedQR() {
         throw new Error(response.error.message);
       }
 
-      return response.data as { success: boolean; session: QRSession };
+      const result = response.data as { success: boolean; session: QRSession; token: string };
+      
+      // Store JWT token securely
+      if (result.token) {
+        JWTClient.storeToken(result.token, result.session);
+      }
+
+      return result;
     },
     onSuccess: (data) => {
       // Cache session data
@@ -73,8 +82,18 @@ export function useUnifiedQR() {
       requestData: Record<string, any>;
       priority?: string;
     }) => {
+      // Get JWT token
+      const token = JWTClient.getToken();
+      
+      // Check if token is valid
+      if (token && !JWTClient.isTokenValid(token)) {
+        JWTClient.clearToken();
+        throw new Error('Session expired. Please scan QR code again.');
+      }
+
       const response = await supabase.functions.invoke('qr-unified-api/request', {
-        body: { sessionId, requestType, requestData, priority }
+        body: { sessionId, requestType, requestData, priority },
+        headers: token ? { 'x-session-token': token } : {}
       });
 
       if (response.error) {
@@ -222,12 +241,38 @@ export function useUnifiedQR() {
     }
   });
 
+  /**
+   * Clear session and JWT token
+   */
+  const clearSession = () => {
+    JWTClient.clearToken();
+    queryClient.clear();
+  };
+
+  /**
+   * Check if current session is valid
+   */
+  const isSessionValid = (): boolean => {
+    const token = JWTClient.getToken();
+    return token ? JWTClient.isTokenValid(token) : false;
+  };
+
+  /**
+   * Get current session data
+   */
+  const getCurrentSession = (): any | null => {
+    return JWTClient.getSessionData();
+  };
+
   return {
     // Guest operations
     validateQR,
     createRequest,
     useRequestStatus,
     useSessionRequests,
+    clearSession,
+    isSessionValid,
+    getCurrentSession,
     
     // Staff/Owner operations
     useAllQRRequests,

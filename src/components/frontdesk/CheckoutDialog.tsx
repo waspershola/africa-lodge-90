@@ -263,6 +263,19 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogPro
   const { guest_bill } = checkoutSession;
   const canCheckout = checkoutSession.checkout_status === 'ready';
 
+  // Debug logging
+  React.useEffect(() => {
+    if (guest_bill) {
+      console.log('[CheckoutDialog] Guest Bill Data:', {
+        folio_id: guest_bill.folio_id,
+        payment_status: guest_bill.payment_status,
+        pending_balance: guest_bill.pending_balance,
+        room_number: guest_bill.room_number,
+        total_amount: guest_bill.total_amount
+      });
+    }
+  }, [guest_bill]);
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>

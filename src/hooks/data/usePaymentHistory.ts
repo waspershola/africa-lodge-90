@@ -26,7 +26,10 @@ export function usePaymentHistory(folioId: string | undefined) {
   return useQuery({
     queryKey: ['payment-history', folioId, tenant?.tenant_id],
     queryFn: async () => {
+      console.log('[usePaymentHistory] Fetching payments for:', { folioId, tenantId: tenant?.tenant_id });
+      
       if (!folioId || !tenant?.tenant_id) {
+        console.error('[usePaymentHistory] Missing required params:', { folioId, tenantId: tenant?.tenant_id });
         throw new Error('Folio ID and tenant required');
       }
 
@@ -53,7 +56,12 @@ export function usePaymentHistory(folioId: string | undefined) {
         .eq('tenant_id', tenant.tenant_id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[usePaymentHistory] Query error:', error);
+        throw error;
+      }
+
+      console.log('[usePaymentHistory] Fetched payments:', { count: data?.length, data });
 
       return (data || []).map((payment: any) => ({
         id: payment.id,

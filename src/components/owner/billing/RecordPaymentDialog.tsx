@@ -55,7 +55,7 @@ export default function RecordPaymentDialog({ bill, onClose }: RecordPaymentDial
     { value: 'card', label: 'Credit/Debit Card', icon: '💳' },
     { value: 'transfer', label: 'Bank Transfer', icon: '🏦' },
     { value: 'pos', label: 'POS Terminal', icon: '📱' },
-    { value: 'wallet', label: 'Digital Wallet', icon: '📲' }
+    { value: 'wallet', label: 'Guest Wallet', icon: '👛' }
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {

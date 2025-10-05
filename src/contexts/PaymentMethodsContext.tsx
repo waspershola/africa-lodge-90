@@ -4,7 +4,7 @@ import { usePaymentMethodsDB } from '@/hooks/usePaymentMethodsDB';
 export interface PaymentMethod {
   id: string;
   name: string;
-  type: 'pos' | 'digital' | 'transfer' | 'cash' | 'credit';
+  type: 'pos' | 'digital' | 'transfer' | 'cash' | 'credit' | 'wallet';
   icon: string;
   enabled: boolean;
   fees?: {

@@ -23,6 +23,7 @@ export function determinePaymentStatus(
     case 'pos':
     case 'digital':
     case 'transfer':
+    case 'wallet': // Wallet payments are immediate (balance already verified)
       return 'paid'; // Immediate payment
     
     case 'credit': // Pay Later / Invoice

@@ -18,6 +18,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { mapPaymentMethodWithLogging } from '@/lib/payment-method-mapper';
 import { useActiveDepartments, useDefaultDepartment } from '@/hooks/data/useDepartments';
 import { useActiveTerminals, useDefaultTerminal } from '@/hooks/data/useTerminals';
+import { useGuestWallet } from '@/hooks/useGuestWallet';
+import { Wallet } from 'lucide-react';
 
 // Phase 1: Enhanced props interface with security context
 interface PaymentDialogProps {
@@ -66,6 +68,9 @@ export const PaymentDialog = ({
   const { data: defaultDepartmentId } = useDefaultDepartment();
   const { terminals, options: terminalOptions } = useActiveTerminals(selectedDepartmentId);
   const { data: defaultTerminalId } = useDefaultTerminal(selectedDepartmentId);
+  
+  // Wallet support
+  const { wallet, walletLoading, payFromWallet } = useGuestWallet(guestId);
 
   // Memoized function to load scoped folio - prevents dependency issues
   const loadScopedFolio = useCallback(async () => {
@@ -207,6 +212,62 @@ export const PaymentDialog = ({
     if (!method.enabled) {
       toast.error(`${method.name} is currently disabled`);
       setIsProcessing(false);
+      return;
+    }
+
+    // Wallet payment: Check balance and process via wallet
+    if (method.type === 'wallet') {
+      if (!guestId) {
+        toast.error("Guest ID required for wallet payments");
+        setIsProcessing(false);
+        return;
+      }
+
+      if (!wallet || wallet.balance < paymentAmount) {
+        toast.error("Insufficient wallet balance");
+        setIsProcessing(false);
+        return;
+      }
+
+      try {
+        // Pay from wallet
+        await payFromWallet({
+          amount: paymentAmount,
+          description: `Payment for folio ${selectedPayment.folio_number}`,
+          referenceType: 'folio',
+          referenceId: selectedPayment.folio_id
+        });
+
+        // Record the payment in the system
+        await createPayment({
+          folio_id: selectedPayment.folio_id,
+          amount: paymentAmount,
+          payment_method: 'Wallet',
+          payment_method_id: paymentMethodId,
+          department_id: selectedDepartmentId || undefined,
+          terminal_id: selectedTerminalId || undefined,
+          payment_source: triggerSource === 'checkout' ? 'frontdesk' : 
+                         (triggerSource === 'accounting' ? 'frontdesk' : triggerSource)
+        });
+
+        toast.success(`Payment of ₦${paymentAmount.toLocaleString()} processed from wallet`);
+        
+        if (onPaymentSuccess) {
+          await onPaymentSuccess(paymentAmount, method.name);
+        }
+        
+        setTimeout(() => {
+          onOpenChange(false);
+          setSelectedPayment(null);
+          setPaymentMethodId("");
+          setAmount("");
+        }, 1000);
+      } catch (error: any) {
+        console.error('[Payment Process] Wallet payment error:', error);
+        toast.error(error.message || "Failed to process wallet payment");
+      } finally {
+        setIsProcessing(false);
+      }
       return;
     }
 
@@ -379,7 +440,7 @@ export const PaymentDialog = ({
                         <SelectValue placeholder="Select payment method" />
                       </SelectTrigger>
                       <SelectContent>
-                         {enabledMethods.map((method) => {
+                          {enabledMethods.map((method) => {
                            const IconComponent = () => {
                              switch (method.icon) {
                                case 'Banknote': return <Banknote className="h-4 w-4" />;
@@ -388,6 +449,7 @@ export const PaymentDialog = ({
                                case 'Smartphone': return <Smartphone className="h-4 w-4" />;
                                case 'Clock': return <Clock className="h-4 w-4" />;
                                case 'UserX': return <UserX className="h-4 w-4" />;
+                               case 'Wallet': return <Wallet className="h-4 w-4" />;
                                default: return <CreditCard className="h-4 w-4" />;
                              }
                            };
@@ -397,6 +459,11 @@ export const PaymentDialog = ({
                                <div className="flex items-center gap-2">
                                  <IconComponent />
                                  {method.name}
+                                 {method.type === 'wallet' && wallet && (
+                                   <span className="text-xs text-muted-foreground ml-2">
+                                     (Balance: ₦{wallet.balance.toFixed(2)})
+                                   </span>
+                                 )}
                                  {method.fees && method.fees.percentage > 0 && (
                                    <span className="text-xs text-muted-foreground ml-2">
                                      (+{method.fees.percentage}%)

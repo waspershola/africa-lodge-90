@@ -4,6 +4,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, CreditCard, Eye, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 
 interface GuestBookingHistoryProps {
   guestId: string;
@@ -12,45 +15,73 @@ interface GuestBookingHistoryProps {
 }
 
 export default function GuestBookingHistory({ guestId, onViewReservation, onViewBill }: GuestBookingHistoryProps) {
-  // Mock booking history data
-  const bookingHistory = [
-    {
-      id: 'res-001',
-      roomNumber: '301',
-      roomType: 'Deluxe Suite',
-      checkIn: new Date('2024-01-15'),
-      checkOut: new Date('2024-01-18'),
-      nights: 3,
-      totalAmount: 450000,
-      status: 'completed',
-      billId: 'bill-001',
-      billStatus: 'paid'
+  const { tenant } = useAuth();
+  
+  // Fetch real booking history from reservations
+  const { data: reservations = [], isLoading } = useQuery({
+    queryKey: ['guest-reservations', guestId],
+    queryFn: async () => {
+      if (!tenant?.tenant_id) return [];
+
+      const { data, error } = await supabase
+        .from('reservations')
+        .select(`
+          id,
+          reservation_number,
+          check_in_date,
+          check_out_date,
+          total_amount,
+          status,
+          room:rooms (
+            room_number,
+            room_type:room_types (
+              name
+            )
+          ),
+          folio:folios (
+            id,
+            balance
+          )
+        `)
+        .eq('tenant_id', tenant.tenant_id)
+        .eq('guest_id', guestId)
+        .order('check_in_date', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
     },
-    {
-      id: 'res-002',
-      roomNumber: '205',
-      roomType: 'Standard Room',
-      checkIn: new Date('2023-11-10'),
-      checkOut: new Date('2023-11-12'),
-      nights: 2,
-      totalAmount: 180000,
-      status: 'completed',
-      billId: 'bill-002',
-      billStatus: 'paid'
-    },
-    {
-      id: 'res-003',
-      roomNumber: '401',
-      roomType: 'Presidential Suite',
-      checkIn: new Date('2023-08-20'),
-      checkOut: new Date('2023-08-25'),
-      nights: 5,
-      totalAmount: 1250000,
-      status: 'completed',
-      billId: 'bill-003',
-      billStatus: 'paid'
-    }
-  ];
+    enabled: !!tenant?.tenant_id && !!guestId,
+  });
+
+  const bookingHistory = reservations.map((res: any) => {
+    const checkIn = new Date(res.check_in_date);
+    const checkOut = new Date(res.check_out_date);
+    const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
+    const balance = res.folio?.[0]?.balance || 0;
+    
+    return {
+      id: res.id,
+      roomNumber: res.room?.room_number || 'N/A',
+      roomType: res.room?.room_type?.name || 'Unknown',
+      checkIn,
+      checkOut,
+      nights,
+      totalAmount: res.total_amount || 0,
+      status: res.status,
+      billId: res.folio?.[0]?.id,
+      billStatus: balance === 0 ? 'paid' : balance > 0 ? 'outstanding' : 'paid',
+    };
+  });
+
+  if (isLoading) {
+    return (
+      <Card className="luxury-card">
+        <CardContent className="p-8 text-center">
+          <div className="text-muted-foreground">Loading booking history...</div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {

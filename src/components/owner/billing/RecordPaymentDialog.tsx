@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { CreditCard, Calculator, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useBillingData } from '@/hooks/data/useBillingData';
 
 interface RecordPaymentDialogProps {
   bill: any;
@@ -16,8 +17,9 @@ interface RecordPaymentDialogProps {
 
 export default function RecordPaymentDialog({ bill, onClose }: RecordPaymentDialogProps) {
   const { toast } = useToast();
+  const { recordPayment } = useBillingData();
   const [paymentData, setPaymentData] = useState({
-    amount: bill.balancedue,
+    amount: bill.balance || bill.balancedue || 0,
     paymentMethod: '',
     reference: '',
     notes: ''
@@ -31,7 +33,7 @@ export default function RecordPaymentDialog({ bill, onClose }: RecordPaymentDial
     { value: 'wallet', label: 'Digital Wallet', icon: '📲' }
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!paymentData.paymentMethod || paymentData.amount <= 0) {
@@ -43,30 +45,26 @@ export default function RecordPaymentDialog({ bill, onClose }: RecordPaymentDial
       return;
     }
 
-    // Check for overpayment
-    const isOverpayment = paymentData.amount > bill.balancedue;
+    const balance = bill.balance || bill.balancedue || 0;
+    const isOverpayment = paymentData.amount > balance;
     
-    if (isOverpayment && !confirm(`This payment of ₦${paymentData.amount.toLocaleString()} exceeds the balance due of ₦${bill.balancedue.toLocaleString()}. The overpayment of ₦${(paymentData.amount - bill.balancedue).toLocaleString()} will be added to the guest's credit balance. Continue?`)) {
+    if (isOverpayment && !confirm(`This payment of ₦${paymentData.amount.toLocaleString()} exceeds the balance due of ₦${balance.toLocaleString()}. Continue?`)) {
       return;
     }
 
-    // Here you would normally process the payment in your backend
-    console.log('Recording payment:', {
-      billId: bill.id,
-      payment: paymentData,
-      isOverpayment,
-      creditAmount: isOverpayment ? paymentData.amount - bill.balancedue : 0
-    });
+    try {
+      await recordPayment.mutateAsync({
+        folioId: bill.id,
+        amount: paymentData.amount,
+        paymentMethod: paymentData.paymentMethod,
+        reference: paymentData.reference,
+        notes: paymentData.notes,
+      });
 
-    toast({
-      title: 'Payment Recorded',
-      description: `Payment of ₦${paymentData.amount.toLocaleString()} recorded successfully${
-        isOverpayment ? ` with ₦${(paymentData.amount - bill.balancedue).toLocaleString()} credit added to guest profile.` : '.'
-      }`,
-      variant: 'default'
-    });
-
-    onClose();
+      onClose();
+    } catch (error) {
+      // Error already handled by mutation
+    }
   };
 
   const generateReference = () => {
@@ -77,11 +75,13 @@ export default function RecordPaymentDialog({ bill, onClose }: RecordPaymentDial
   };
 
   const calculateNewBalance = () => {
-    return Math.max(0, bill.balancedue - paymentData.amount);
+    const balance = bill.balance || bill.balancedue || 0;
+    return Math.max(0, balance - paymentData.amount);
   };
 
   const calculateCreditAmount = () => {
-    return Math.max(0, paymentData.amount - bill.balancedue);
+    const balance = bill.balance || bill.balancedue || 0;
+    return Math.max(0, paymentData.amount - balance);
   };
 
   return (
@@ -100,23 +100,23 @@ export default function RecordPaymentDialog({ bill, onClose }: RecordPaymentDial
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span>Guest:</span>
-                <span className="font-medium">{bill.guestName}</span>
+                <span className="font-medium">{bill.guest_name || 'Unknown'}</span>
               </div>
               <div className="flex justify-between">
                 <span>Room:</span>
-                <span className="font-medium">{bill.room}</span>
+                <span className="font-medium">{bill.room_number || 'N/A'}</span>
               </div>
               <div className="flex justify-between">
-                <span>Total Amount:</span>
-                <span className="font-medium">₦{bill.totalAmount.toLocaleString()}</span>
+                <span>Total Charges:</span>
+                <span className="font-medium">₦{(bill.total_charges || 0).toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
                 <span>Amount Paid:</span>
-                <span className="font-medium text-success">₦{bill.paidAmount.toLocaleString()}</span>
+                <span className="font-medium text-success">₦{(bill.total_payments || 0).toLocaleString()}</span>
               </div>
               <div className="flex justify-between font-bold">
                 <span>Balance Due:</span>
-                <span className="text-danger">₦{bill.balancedue.toLocaleString()}</span>
+                <span className="text-danger">₦{Math.abs(bill.balance || 0).toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -141,15 +141,15 @@ export default function RecordPaymentDialog({ bill, onClose }: RecordPaymentDial
                   variant="outline"
                   size="sm"
                   className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 px-2 text-xs"
-                  onClick={() => setPaymentData({...paymentData, amount: bill.balancedue})}
+                  onClick={() => setPaymentData({...paymentData, amount: bill.balance || bill.balancedue || 0})}
                 >
                   Full
                 </Button>
               </div>
-              {paymentData.amount > bill.balancedue && (
+              {paymentData.amount > (bill.balance || bill.balancedue || 0) && (
                 <div className="flex items-center gap-2 text-warning text-sm">
                   <AlertCircle className="h-4 w-4" />
-                  Overpayment of ₦{calculateCreditAmount().toLocaleString()} will be credited to guest
+                  Overpayment of ₦{calculateCreditAmount().toLocaleString()}
                 </div>
               )}
             </div>
@@ -250,8 +250,12 @@ export default function RecordPaymentDialog({ bill, onClose }: RecordPaymentDial
               <Button type="button" variant="outline" onClick={onClose} className="flex-1">
                 Cancel
               </Button>
-              <Button type="submit" className="flex-1">
-                Record Payment
+              <Button 
+                type="submit" 
+                className="flex-1"
+                disabled={recordPayment.isPending}
+              >
+                {recordPayment.isPending ? 'Recording...' : 'Record Payment'}
               </Button>
             </div>
           </form>

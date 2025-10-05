@@ -62,6 +62,9 @@ export type Database = {
       audio_preferences: {
         Row: {
           created_at: string | null
+          custom_sound_critical: string | null
+          custom_sound_high: string | null
+          custom_sound_medium: string | null
           id: string
           notification_sounds: boolean | null
           payment_sound: boolean | null
@@ -75,6 +78,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          custom_sound_critical?: string | null
+          custom_sound_high?: string | null
+          custom_sound_medium?: string | null
           id?: string
           notification_sounds?: boolean | null
           payment_sound?: boolean | null
@@ -88,6 +94,9 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          custom_sound_critical?: string | null
+          custom_sound_high?: string | null
+          custom_sound_medium?: string | null
           id?: string
           notification_sounds?: boolean | null
           payment_sound?: boolean | null
@@ -99,7 +108,29 @@ export type Database = {
           user_id?: string
           volume_level?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "audio_preferences_custom_sound_critical_fkey"
+            columns: ["custom_sound_critical"]
+            isOneToOne: false
+            referencedRelation: "sounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audio_preferences_custom_sound_high_fkey"
+            columns: ["custom_sound_high"]
+            isOneToOne: false
+            referencedRelation: "sounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audio_preferences_custom_sound_medium_fkey"
+            columns: ["custom_sound_medium"]
+            isOneToOne: false
+            referencedRelation: "sounds"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       audit_log: {
         Row: {
@@ -4931,6 +4962,60 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "sms_templates"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      sounds: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          file_path: string
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          name: string
+          sound_type: string
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          file_path: string
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name: string
+          sound_type: string
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          file_path?: string
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name?: string
+          sound_type?: string
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sounds_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "occupancy_stats"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "sounds_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["tenant_id"]
           },
         ]
       }

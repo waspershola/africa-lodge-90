@@ -461,7 +461,7 @@ export const QuickGuestCapture = ({
           adults: 1,
           children: 0,
           room_rate: formData.roomRate,
-          total_amount: formData.totalAmount,
+          total_amount: formData.roomRate * formData.numberOfNights, // CRITICAL FIX: Base amount only, no taxes
           status: 'confirmed',
           reservation_number: reservationNumber,
           tenant_id: user.user_metadata?.tenant_id
@@ -521,8 +521,18 @@ export const QuickGuestCapture = ({
         }
 
         // Add initial room charge to folio WITH TAX CALCULATION
+        // CRITICAL: Use room_rate * nights as base, NOT total_amount (which may already include taxes)
+        const baseAmountForTaxes = formData.roomRate * formData.numberOfNights;
+        
+        console.log('🔍 [QuickGuestCapture] Tax calculation input:', {
+          formData_totalAmount: formData.totalAmount,
+          formData_roomRate: formData.roomRate,
+          formData_numberOfNights: formData.numberOfNights,
+          calculated_baseAmount: baseAmountForTaxes
+        });
+        
         const taxCalc = calculateTaxesAndCharges({
-          baseAmount: formData.totalAmount,
+          baseAmount: baseAmountForTaxes,
           chargeType: 'room',
           isTaxable: true,
           isServiceChargeable: true,
@@ -681,7 +691,7 @@ export const QuickGuestCapture = ({
               adults: 1,
               children: 0,
               room_rate: formData.roomRate,
-              total_amount: formData.totalAmount,
+              total_amount: formData.roomRate * formData.numberOfNights, // CRITICAL FIX: Base amount only, no taxes
               status: 'confirmed',  // Will be updated to checked_in by atomic function
               reservation_number: reservationNumber,
               tenant_id: user.user_metadata?.tenant_id

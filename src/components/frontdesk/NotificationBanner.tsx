@@ -5,15 +5,17 @@ import {
   AlertTriangle, 
   CreditCard, 
   IdCard, 
-  Wrench, 
+  Wrench,
+  ClipboardCheck,
+  FileWarning,
   X 
 } from "lucide-react";
 
 interface AlertItem {
   id: string;
-  type: 'payment' | 'id' | 'deposit' | 'maintenance';
+  type: 'payment' | 'id' | 'deposit' | 'maintenance' | 'compliance' | 'housekeeping';
   message: string;
-  count: number;
+  count?: number;
   priority: 'high' | 'medium' | 'low';
 }
 
@@ -32,6 +34,8 @@ export const NotificationBanner = ({ alerts, onDismiss, onViewAll }: Notificatio
       case 'id': return <IdCard className="h-4 w-4" />;
       case 'deposit': return <CreditCard className="h-4 w-4" />;
       case 'maintenance': return <Wrench className="h-4 w-4" />;
+      case 'compliance': return <FileWarning className="h-4 w-4" />;
+      case 'housekeeping': return <ClipboardCheck className="h-4 w-4" />;
       default: return <AlertTriangle className="h-4 w-4" />;
     }
   };
@@ -57,9 +61,11 @@ export const NotificationBanner = ({ alerts, onDismiss, onViewAll }: Notificatio
             {getIcon(alert.type)}
             <AlertDescription className="flex items-center gap-2">
               <span>{alert.message}</span>
-              <Badge variant="secondary" className="text-xs">
-                {alert.count}
-              </Badge>
+              {alert.count && alert.count > 1 && (
+                <Badge variant="secondary" className="text-xs">
+                  {alert.count}
+                </Badge>
+              )}
             </AlertDescription>
           </div>
           <div className="flex items-center gap-2">

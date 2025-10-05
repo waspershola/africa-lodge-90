@@ -251,6 +251,10 @@ export function useBilling() {
     payment_method: string;
     payment_method_id?: string;
     reference?: string;
+    // Phase 3: Department/Terminal tracking
+    department_id?: string;
+    terminal_id?: string;
+    payment_source?: 'frontdesk' | 'restaurant' | 'bar' | 'gym' | 'spa' | 'laundry' | 'other';
   }) => {
     if (!tenant?.tenant_id) return null;
 
@@ -323,6 +327,9 @@ export function useBilling() {
         method: normalizedMethod,
         methodId: paymentData.payment_method_id,
         folioId: paymentData.folio_id,
+        departmentId: paymentData.department_id,
+        terminalId: paymentData.terminal_id,
+        paymentSource: paymentData.payment_source
       });
 
       const { data, error } = await supabase
@@ -331,7 +338,18 @@ export function useBilling() {
           ...paymentData,
           payment_method: normalizedMethod,
           tenant_id: tenant.tenant_id,
-          status: 'completed'
+          status: 'completed',
+          // Phase 3: Include department and terminal tracking
+          department_id: paymentData.department_id || null,
+          terminal_id: paymentData.terminal_id || null,
+          payment_source: paymentData.payment_source || 'frontdesk',
+          payment_status: 'paid',
+          is_verified: true,
+          verified_by: (await supabase.auth.getUser()).data.user?.id || null,
+          verified_at: new Date().toISOString(),
+          gross_amount: paymentData.amount,
+          fee_amount: 0,
+          net_amount: paymentData.amount
         })
         .select()
         .single();

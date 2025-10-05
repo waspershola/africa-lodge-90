@@ -16,6 +16,8 @@ import { TaxBreakdownDisplay } from './TaxBreakdownDisplay';
 import { TaxBreakdownItem } from '@/lib/tax-calculator';
 import { supabase } from '@/integrations/supabase/client';
 import { mapPaymentMethodWithLogging } from '@/lib/payment-method-mapper';
+import { useActiveDepartments, useDefaultDepartment } from '@/hooks/data/useDepartments';
+import { useActiveTerminals, useDefaultTerminal } from '@/hooks/data/useTerminals';
 
 // Phase 1: Enhanced props interface with security context
 interface PaymentDialogProps {
@@ -56,6 +58,14 @@ export const PaymentDialog = ({
   const [isFetching, setIsFetching] = useState(false);
   const [taxBreakdown, setTaxBreakdown] = useState<TaxBreakdownItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Phase 3: Department and Terminal tracking
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>('');
+  const [selectedTerminalId, setSelectedTerminalId] = useState<string>('');
+  const { departments, options: departmentOptions } = useActiveDepartments();
+  const { data: defaultDepartmentId } = useDefaultDepartment();
+  const { terminals, options: terminalOptions } = useActiveTerminals(selectedDepartmentId);
+  const { data: defaultTerminalId } = useDefaultTerminal(selectedDepartmentId);
 
   // Memoized function to load scoped folio - prevents dependency issues
   const loadScopedFolio = useCallback(async () => {
@@ -129,6 +139,19 @@ export const PaymentDialog = ({
   useEffect(() => {
     loadScopedFolio();
   }, [open, folioId]);
+  
+  // Phase 3: Auto-select default department and terminal
+  useEffect(() => {
+    if (open && !selectedDepartmentId && defaultDepartmentId) {
+      setSelectedDepartmentId(defaultDepartmentId);
+    }
+  }, [open, defaultDepartmentId, selectedDepartmentId]);
+  
+  useEffect(() => {
+    if (selectedDepartmentId && !selectedTerminalId && defaultTerminalId) {
+      setSelectedTerminalId(defaultTerminalId);
+    }
+  }, [selectedDepartmentId, defaultTerminalId, selectedTerminalId]);
 
   // Phase 4: Determine which folios to show (scoped or all)
   const pendingPayments = folioId 
@@ -201,7 +224,12 @@ export const PaymentDialog = ({
         folio_id: selectedPayment.folio_id,
         amount: paymentAmount,
         payment_method: dbPaymentMethod,
-        payment_method_id: paymentMethodId
+        payment_method_id: paymentMethodId,
+        // Phase 3: Include department and terminal context
+        department_id: selectedDepartmentId || undefined,
+        terminal_id: selectedTerminalId || undefined,
+        payment_source: triggerSource === 'checkout' ? 'frontdesk' : 
+                       (triggerSource === 'accounting' ? 'frontdesk' : triggerSource)
       });
 
       console.log('[Payment Process] Payment successful');
@@ -374,6 +402,49 @@ export const PaymentDialog = ({
                       </SelectContent>
                     </Select>
                   </div>
+                  
+                  {/* Phase 3: Department Selection */}
+                  <div>
+                    <Label htmlFor="department">Department</Label>
+                    <Select value={selectedDepartmentId} onValueChange={setSelectedDepartmentId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departmentOptions.map((dept) => (
+                          <SelectItem key={dept.value} value={dept.value}>
+                            {dept.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {/* Phase 3: Terminal Selection */}
+                  {selectedDepartmentId && (
+                    <div>
+                      <Label htmlFor="terminal">Terminal / POS</Label>
+                      <Select value={selectedTerminalId} onValueChange={setSelectedTerminalId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select terminal" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {terminalOptions.map((terminal) => (
+                            <SelectItem key={terminal.value} value={terminal.value}>
+                              <div className="flex flex-col">
+                                <span>{terminal.label}</span>
+                                {terminal.location && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {terminal.location}
+                                  </span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-3 pt-4">

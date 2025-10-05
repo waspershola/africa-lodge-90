@@ -21,6 +21,7 @@ export const useTodayDepartures = () => {
 
       const today = new Date().toISOString().split('T')[0];
       
+      // PHASE 1.2: Multi-day departure logic - show all guests departing today
       const { data, error } = await supabase
         .from('reservations')
         .select(`
@@ -35,6 +36,7 @@ export const useTodayDepartures = () => {
         `)
         .eq('tenant_id', tenant.tenant_id)
         .eq('check_out_date', today)
+        .in('status', ['confirmed', 'checked_in', 'checked_out'])
         .order('check_out_date', { ascending: true });
 
       if (error) throw error;
@@ -50,5 +52,6 @@ export const useTodayDepartures = () => {
     },
     enabled: !!tenant?.tenant_id,
     refetchInterval: 30000, // Refresh every 30 seconds
+    staleTime: 120000, // Phase 7: 2 minutes stale time
   });
 };

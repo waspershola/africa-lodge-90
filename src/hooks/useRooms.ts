@@ -334,12 +334,19 @@ export const useReservations = (limit: number = 100, offset: number = 0) => {
         throw new Error('No tenant context available');
       }
 
+      // PHASE 3: Add folio data to reservation query
       let query = supabase
         .from('reservations')
         .select(`
           *,
           rooms!reservations_room_id_fkey (room_number, room_types:room_type_id (name)),
-          guests:guest_id (first_name, last_name, email, phone, vip_status)
+          guests:guest_id (first_name, last_name, email, phone, vip_status),
+          folios!folios_reservation_id_fkey (
+            id,
+            total_charges,
+            total_payments,
+            status
+          )
         `, { count: 'exact' })
         .eq('tenant_id', tenant.tenant_id)
         .order('created_at', { ascending: false });
@@ -353,8 +360,17 @@ export const useReservations = (limit: number = 100, offset: number = 0) => {
 
       if (error) throw new Error(error.message);
       
+      // PHASE 3.1: Calculate balance for each reservation
+      const processedReservations = (data || []).map(res => ({
+        ...res,
+        folioBalance: res.folios?.[0] ? 
+          Math.max(0, (res.folios[0].total_charges || 0) - (res.folios[0].total_payments || 0)) : 0,
+        folioPaid: res.folios?.[0] ? 
+          ((res.folios[0].total_charges || 0) - (res.folios[0].total_payments || 0)) <= 0.01 : true,
+      }));
+      
       return {
-        reservations: data || [],
+        reservations: processedReservations,
         count: count || 0,
         hasMore: paginationEnabled ? (count || 0) > offset + limit : false
       };

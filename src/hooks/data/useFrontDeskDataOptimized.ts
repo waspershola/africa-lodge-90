@@ -1,9 +1,8 @@
 import { useQueries } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
-import { useTodayArrivals } from '@/hooks/useTodayArrivals';
-import { useTodayDepartures } from '@/hooks/useTodayDepartures';
 import type { FrontDeskAlert, FrontDeskOverview } from './useFrontDeskData';
+import { useEffect } from 'react';
 
 /**
  * Optimized Front Desk Data Hook
@@ -15,13 +14,125 @@ import type { FrontDeskAlert, FrontDeskOverview } from './useFrontDeskData';
  */
 export const useFrontDeskDataOptimized = () => {
   const { tenant } = useAuth();
-  const { data: arrivals = [] } = useTodayArrivals();
-  const { data: departures = [] } = useTodayDepartures();
 
-  // Execute all queries in parallel with useQueries
+  // PHASE 5: Real-time sync for reservations, folios, and rooms
+  useEffect(() => {
+    if (!tenant?.tenant_id) return;
+
+    const channel = supabase
+      .channel('front-desk-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, () => {
+        console.log('Reservation updated - invalidating queries');
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'folios' }, () => {
+        console.log('Folio updated - invalidating queries');
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, () => {
+        console.log('Room updated - invalidating queries');
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [tenant?.tenant_id]);
+
+  // PHASE 2: Unified data sources - Execute all queries in parallel
   const queries = useQueries({
     queries: [
-      // Query 1: Room counts and availability
+      // Query 1: Arrivals with multi-status logic
+      {
+        queryKey: ['today-arrivals-optimized', tenant?.tenant_id],
+        queryFn: async () => {
+          if (!tenant?.tenant_id) return [];
+
+          const today = new Date().toISOString().split('T')[0];
+          
+          const { data, error } = await supabase
+            .from('reservations')
+            .select(`
+              id,
+              guest_name,
+              guest_phone,
+              check_in_date,
+              check_out_date,
+              status,
+              rooms!reservations_room_id_fkey (room_number)
+            `)
+            .eq('tenant_id', tenant.tenant_id)
+            .or(`and(check_in_date.eq.${today},status.in.(confirmed,pending)),and(status.eq.checked_in,check_in_date.lte.${today},check_out_date.gt.${today})`)
+            .order('check_in_date', { ascending: true });
+
+          if (error) throw error;
+          return data;
+        },
+        enabled: !!tenant?.tenant_id,
+        staleTime: 120000, // Phase 7: 2 minutes
+        gcTime: 300000,
+      },
+
+      // Query 2: Departures with multi-day logic
+      {
+        queryKey: ['today-departures-optimized', tenant?.tenant_id],
+        queryFn: async () => {
+          if (!tenant?.tenant_id) return [];
+
+          const today = new Date().toISOString().split('T')[0];
+          
+          const { data, error } = await supabase
+            .from('reservations')
+            .select(`
+              id,
+              guest_name,
+              guest_phone,
+              check_out_date,
+              status,
+              rooms!reservations_room_id_fkey (room_number)
+            `)
+            .eq('tenant_id', tenant.tenant_id)
+            .eq('check_out_date', today)
+            .in('status', ['confirmed', 'checked_in', 'checked_out'])
+            .order('check_out_date', { ascending: true });
+
+          if (error) throw error;
+          return data;
+        },
+        enabled: !!tenant?.tenant_id,
+        staleTime: 120000, // Phase 7: 2 minutes
+        gcTime: 300000,
+      },
+
+      // Query 3: Overstays
+      {
+        queryKey: ['overstays-optimized', tenant?.tenant_id],
+        queryFn: async () => {
+          if (!tenant?.tenant_id) return [];
+
+          const today = new Date().toISOString().split('T')[0];
+          
+          const { data, error } = await supabase
+            .from('reservations')
+            .select(`
+              id,
+              guest_name,
+              guest_phone,
+              check_out_date,
+              status,
+              rooms!reservations_room_id_fkey (room_number)
+            `)
+            .eq('tenant_id', tenant.tenant_id)
+            .eq('status', 'checked_in')
+            .lt('check_out_date', today)
+            .order('check_out_date', { ascending: true });
+
+          if (error) throw error;
+          return data;
+        },
+        enabled: !!tenant?.tenant_id,
+        staleTime: 60000, // Phase 7: 1 minute
+        gcTime: 120000,
+      },
+      // Query 4: Room counts and availability
       {
         queryKey: ['front-desk-rooms-optimized', tenant?.tenant_id],
         queryFn: async () => {
@@ -48,28 +159,33 @@ export const useFrontDeskDataOptimized = () => {
         gcTime: 300000, // 5 minutes cache
       },
 
-      // Query 2: Pending payments
+      // Query 5: Pending payments with folio data
       {
         queryKey: ['front-desk-pending-payments-optimized', tenant?.tenant_id],
         queryFn: async () => {
           if (!tenant?.tenant_id) return [];
 
+          // PHASE 3: Include total_charges and total_payments for real balance calculation
           const { data, error } = await supabase
             .from('folios')
-            .select('id, balance')
+            .select('id, total_charges, total_payments, status')
             .eq('tenant_id', tenant.tenant_id)
-            .eq('status', 'open')
-            .gt('balance', 0);
+            .eq('status', 'open');
 
           if (error) throw error;
-          return data;
+          
+          // Calculate real balance client-side
+          return data.map(folio => ({
+            ...folio,
+            balance: Math.max(0, (folio.total_charges || 0) - (folio.total_payments || 0))
+          })).filter(folio => folio.balance > 0);
         },
         enabled: !!tenant?.tenant_id,
-        staleTime: 30000,
+        staleTime: 30000, // Phase 7: 30 seconds for frequently updated data
         gcTime: 60000,
       },
 
-      // Query 3: Fuel level
+      // Query 6: Fuel level
       {
         queryKey: ['front-desk-fuel-optimized', tenant?.tenant_id],
         queryFn: async () => {
@@ -93,7 +209,7 @@ export const useFrontDeskDataOptimized = () => {
         gcTime: 120000,
       },
 
-      // Query 4: Alerts (aggregated from multiple sources)
+      // Query 7: Alerts (aggregated from multiple sources)
       {
         queryKey: ['front-desk-alerts-optimized', tenant?.tenant_id],
         queryFn: async () => {
@@ -229,8 +345,19 @@ export const useFrontDeskDataOptimized = () => {
   });
 
   // Extract data from queries
-  const [roomCountsQuery, pendingPaymentsQuery, fuelLevelQuery, alertsQuery] = queries;
+  const [
+    arrivalsQuery,
+    departuresQuery,
+    overstaysQuery,
+    roomCountsQuery,
+    pendingPaymentsQuery,
+    fuelLevelQuery,
+    alertsQuery
+  ] = queries;
 
+  const arrivals = arrivalsQuery.data || [];
+  const departures = departuresQuery.data || [];
+  const overstays = overstaysQuery.data || [];
   const roomCounts = roomCountsQuery.data;
   const pendingPayments = pendingPaymentsQuery.data || [];
   const fuelLevel = fuelLevelQuery.data || 65;

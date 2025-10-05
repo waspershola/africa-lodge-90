@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTodayArrivals, useTodayDepartures } from "@/hooks/data/useReservationsData";
+import { useOverstays } from "@/hooks/useOverstays";
 import { format } from "date-fns";
 
 interface Guest {
@@ -29,6 +30,7 @@ interface GuestQueuePanelProps {
 export const GuestQueuePanel = ({ onGuestAction }: GuestQueuePanelProps) => {
   const { data: arrivalReservations = [], isLoading: arrivalsLoading } = useTodayArrivals();
   const { data: departureReservations = [], isLoading: departuresLoading } = useTodayDepartures();
+  const { data: overstayData = [], isLoading: overstaysLoading } = useOverstays();
 
   // Transform reservations to Guest format
   const arrivals: Guest[] = arrivalReservations.map((res: any) => ({
@@ -49,25 +51,17 @@ export const GuestQueuePanel = ({ onGuestAction }: GuestQueuePanelProps) => {
     priority: res.status === 'checked_in' ? 'high' : 'medium',
   }));
 
-  // Check for overstays (checked-in reservations past checkout date)
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const overstays: Guest[] = departureReservations
-    .filter((res: any) => {
-      const checkoutDate = new Date(res.check_out_date);
-      checkoutDate.setHours(0, 0, 0, 0);
-      return res.status === 'checked_in' && checkoutDate < today;
-    })
-    .map((res: any) => ({
-      id: res.id,
-      name: res.guest_name,
-      room: res.room?.room_number || 'N/A',
-      time: format(new Date(res.check_out_date), 'HH:mm'),
-      status: 'overstay' as const,
-      priority: 'high' as const,
-    }));
+  // PHASE 1.3: Use dedicated overstays hook
+  const overstays: Guest[] = overstayData.map((overstay: any) => ({
+    id: overstay.id,
+    name: overstay.guest_name,
+    room: overstay.room_number,
+    time: `${overstay.hours_over}h over`,
+    status: 'overstay' as const,
+    priority: 'high' as const,
+  }));
 
-  if (arrivalsLoading || departuresLoading) {
+  if (arrivalsLoading || departuresLoading || overstaysLoading) {
     return (
       <div className="grid md:grid-cols-3 gap-4">
         {[1, 2, 3].map((i) => (

@@ -21,6 +21,8 @@ export const useTodayArrivals = () => {
 
       const today = new Date().toISOString().split('T')[0];
       
+      // PHASE 1.1: Multi-status, multi-day arrival logic
+      // Show confirmed/pending checking in today OR already checked-in guests who arrived earlier
       const { data, error } = await supabase
         .from('reservations')
         .select(`
@@ -28,13 +30,14 @@ export const useTodayArrivals = () => {
           guest_name,
           guest_phone,
           check_in_date,
+          check_out_date,
           status,
           rooms!reservations_room_id_fkey (
             room_number
           )
         `)
         .eq('tenant_id', tenant.tenant_id)
-        .eq('check_in_date', today)
+        .or(`and(check_in_date.eq.${today},status.in.(confirmed,pending)),and(status.eq.checked_in,check_in_date.lte.${today},check_out_date.gt.${today})`)
         .order('check_in_date', { ascending: true });
 
       if (error) throw error;
@@ -50,5 +53,6 @@ export const useTodayArrivals = () => {
     },
     enabled: !!tenant?.tenant_id,
     refetchInterval: 30000, // Refresh every 30 seconds
+    staleTime: 120000, // Phase 7: 2 minutes stale time
   });
 };

@@ -25,7 +25,13 @@ export default function InteractiveReservationCalendar({
   const [selectedDate, setSelectedDate] = useState<Date>(currentDate);
   const { toast } = useToast();
   const { data: reservationsData, isLoading: loading, error } = useReservations();
-  const reservations = reservationsData?.reservations || [];
+  
+  // PHASE 3.1: Transform reservations with folio data
+  const reservations = (reservationsData?.reservations || []).map((res: any) => ({
+    ...res,
+    folioBalance: res.folios?.[0]?.balance || 0,
+    folioPaid: res.folios?.[0]?.balance <= 0.01,
+  }));
 
   // Generate calendar days
   const calendarDays = useMemo(() => {
@@ -148,8 +154,18 @@ export default function InteractiveReservationCalendar({
                           onReservationSelect?.(reservation);
                         }}
                       >
-                        <div className="truncate font-medium">
-                          {reservation.guest_name}
+                        <div className="flex items-center justify-between gap-1">
+                          <div className="truncate font-medium flex-1">
+                            {reservation.guest_name}
+                          </div>
+                          {/* PHASE 3.2: Show folio balance badge */}
+                          {reservation.folioBalance > 0 && (
+                            <span className={`text-[10px] px-1 rounded ${
+                              reservation.folioPaid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            }`}>
+                              ₦{reservation.folioBalance.toFixed(0)}
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -176,20 +192,32 @@ export default function InteractiveReservationCalendar({
                 <div className="space-y-2">
                   {getReservationsForDate(selectedDate).map(reservation => (
                     <div key={reservation.id} className="flex items-center justify-between p-3 bg-background rounded border">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-1">
                         <User className="h-4 w-4 text-muted-foreground" />
-                        <div>
+                        <div className="flex-1">
                           <div className="font-medium">{reservation.guest_name}</div>
                           <div className="text-sm text-muted-foreground">
                             Room {reservation.room_id} • {reservation.adults} adults
                             {reservation.children > 0 && `, ${reservation.children} children`}
                           </div>
+                          {/* PHASE 3.2: Show folio status */}
+                          {reservation.folioBalance > 0 && (
+                            <div className="text-xs mt-1 text-red-600">
+                              Balance: ₦{reservation.folioBalance.toFixed(2)}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className={getStatusColor(reservation.status)}>
                           {reservation.status.replace('_', ' ')}
                         </Badge>
+                        {/* PHASE 3.2: Payment status badge */}
+                        {reservation.folioBalance > 0 && (
+                          <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">
+                            Unpaid
+                          </Badge>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"

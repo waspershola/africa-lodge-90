@@ -14,6 +14,9 @@ import {
 import { useActiveShiftSessions } from '@/hooks/useShiftSessions';
 import { useQRShiftRouting } from '@/hooks/useQRShiftRouting';
 import { formatDistanceToNow } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 
 interface ShiftIntegrationPanelProps {
   className?: string;
@@ -22,8 +25,34 @@ interface ShiftIntegrationPanelProps {
 export const ShiftIntegrationPanel: React.FC<ShiftIntegrationPanelProps> = ({ 
   className 
 }) => {
+  const { tenant } = useAuth();
   const { data: activeShifts, isLoading } = useActiveShiftSessions();
   const { activeStaff, getShiftCoverage } = useQRShiftRouting();
+  
+  // Fetch staff details for active shifts
+  const { data: shiftsWithStaff } = useQuery({
+    queryKey: ['shifts-with-staff', tenant?.tenant_id, activeShifts],
+    queryFn: async () => {
+      if (!activeShifts || activeShifts.length === 0) return [];
+      
+      const staffIds = activeShifts.map(shift => shift.staff_id);
+      
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, name, email, role')
+        .in('id', staffIds);
+      
+      if (error) throw error;
+      
+      // Map staff info to shifts
+      return activeShifts.map(shift => ({
+        ...shift,
+        staff_name: data.find(s => s.id === shift.staff_id)?.name || 'Unknown Staff',
+        staff_email: data.find(s => s.id === shift.staff_id)?.email
+      }));
+    },
+    enabled: !!activeShifts && activeShifts.length > 0,
+  });
   
   const shiftCoverage = getShiftCoverage();
   const totalActiveStaff = activeShifts?.length || 0;
@@ -136,13 +165,13 @@ export const ShiftIntegrationPanel: React.FC<ShiftIntegrationPanelProps> = ({
           <CardContent>
             {totalActiveStaff > 0 ? (
               <div className="space-y-3">
-                {activeShifts?.map((shift) => (
+                {shiftsWithStaff?.map((shift) => (
                   <div 
                     key={shift.id} 
                     className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
                   >
                     <div className="space-y-1">
-                      <div className="font-medium">Staff: {shift.staff_id}</div>
+                      <div className="font-medium">{shift.staff_name}</div>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline">{shift.role}</Badge>
                         {shift.device_id && (
@@ -152,12 +181,11 @@ export const ShiftIntegrationPanel: React.FC<ShiftIntegrationPanelProps> = ({
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(shift.start_time), { 
-                          addSuffix: true 
-                        })}
+                        Started {formatDistanceToNow(new Date(shift.start_time))} ago
                       </div>
                     </div>
-                    <Badge variant="outline" className="bg-green-50 text-green-700">
+                    <Badge className="bg-green-50 text-green-700">
+                      <Activity className="h-3 w-3 mr-1 animate-pulse" />
                       Active
                     </Badge>
                   </div>

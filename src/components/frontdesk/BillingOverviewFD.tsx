@@ -168,14 +168,21 @@ export const BillingOverviewFD = () => {
     };
   });
 
-  // Calculate daily summary from real data
+  // Calculate daily summary from real data - grouping all payment methods
+  const dailySummaryPaymentMethods = payments
+    .filter(p => new Date(p.created_at).toDateString() === new Date().toDateString())
+    .reduce((acc, p) => {
+      const method = p.payment_method_id ? getMethodById(p.payment_method_id) : null;
+      const methodName = method?.name || p.payment_method || 'Unknown';
+      acc[methodName] = (acc[methodName] || 0) + p.amount;
+      return acc;
+    }, {} as Record<string, number>);
+
   const dailySummary: DailySummary = {
     date: new Date().toISOString().split('T')[0],
-    totalCollected: billingStats?.todaysCashflow 
-      ? Object.values(billingStats.todaysCashflow).reduce((sum, amount) => sum + amount, 0)
-      : 0,
-    totalPending: folioBalances.reduce((sum, f) => sum + f.balance, 0),
-    paymentMethods: billingStats?.todaysCashflow || {},
+    totalCollected: Object.values(dailySummaryPaymentMethods).reduce((sum, amount) => sum + amount, 0),
+    totalPending: folioBalances.filter(f => f.balance > 0).reduce((sum, f) => sum + f.balance, 0),
+    paymentMethods: dailySummaryPaymentMethods,
     transactionCount: payments.filter(p => 
       new Date(p.created_at).toDateString() === new Date().toDateString()
     ).length

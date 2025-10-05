@@ -126,6 +126,27 @@ serve(async (req) => {
       throw new Error('Failed to create shift session');
     }
 
+    // ✅ Log attendance record
+    const { error: attendanceError } = await supabaseClient
+      .from('attendance_log')
+      .insert({
+        tenant_id: userData.tenant_id,
+        user_id: user.id,
+        shift_session_id: shiftSession.id,
+        check_in_time: new Date().toISOString(),
+        device_slug: deviceSlug,
+        status: 'present',
+        metadata: {
+          device_id: deviceId,
+          authorized_by: authorizedBy
+        }
+      });
+
+    if (attendanceError) {
+      console.error('Attendance logging error:', attendanceError);
+      // Don't fail the shift start if attendance logging fails
+    }
+
     // Log the event in audit log
     await supabaseClient
       .from('audit_log')
@@ -139,7 +160,8 @@ serve(async (req) => {
         metadata: {
           device_slug: deviceSlug,
           device_id: deviceId,
-          authorized_by: authorizedBy
+          authorized_by: authorizedBy,
+          attendance_logged: !attendanceError
         }
       });
 

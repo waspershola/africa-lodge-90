@@ -20,8 +20,10 @@ import {
   Smartphone
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useQRDirectory } from "@/hooks/data/useQRDirectory";
+import type { QRCodeInfo } from "@/hooks/data/useQRDirectory";
 
-interface QRCodeInfo {
+interface OldQRCodeInfo {
   id: string;
   roomNumber: string;
   guestName?: string;
@@ -95,7 +97,7 @@ const mockQRCodes: QRCodeInfo[] = [
 
 export const QRDirectoryFD = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [qrCodes] = useState<QRCodeInfo[]>(mockQRCodes);
+  const { data: qrCodes = [], isLoading } = useQRDirectory();
   const [auditLogs, setAuditLogs] = useState<Array<{
     id: string;
     action: string;
@@ -243,7 +245,15 @@ export const QRDirectoryFD = () => {
       </div>
 
       {/* QR Codes Grid */}
-      <div className="grid gap-4">
+      {isLoading ? (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading QR codes...</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4">
         {filteredQRCodes.map((qrCode) => (
           <Card key={qrCode.id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-6">
@@ -346,8 +356,9 @@ export const QRDirectoryFD = () => {
               </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Recent Audit Log */}
       {auditLogs.length > 0 && (

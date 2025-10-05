@@ -9,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Clock, Monitor, User, DollarSign, FileText, WifiOff, Wifi, RefreshCw, Shield } from "lucide-react";
+import { Clock, Monitor, User, DollarSign, FileText, WifiOff, Wifi, RefreshCw, Shield, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useStartShift, useEndShift, useActiveShiftSessions, useDevices } from "@/hooks/useShiftSessions";
 import { useShiftPDFReport } from "@/hooks/useShiftPDFReport";
 import { useShiftNotifications } from "@/hooks/useShiftNotifications";
@@ -20,6 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 
 export default function ShiftTerminal() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const deviceParam = searchParams.get('device');
   
@@ -50,16 +52,30 @@ export default function ShiftTerminal() {
 
   const handleStartShift = async (e: React.FormEvent) => {
     e.preventDefault();
-    await startShiftMutation.mutateAsync({
-      email,
-      password,
-      deviceSlug: selectedDevice,
-      authorizedBy: user?.id,
-    });
     
-    // Clear form
-    setEmail("");
-    setPassword("");
+    try {
+      await startShiftMutation.mutateAsync({
+        email,
+        password,
+        deviceSlug: selectedDevice,
+        authorizedBy: user?.id,
+      });
+      
+      // ✅ Clear credentials immediately after successful login
+      setEmail("");
+      setPassword("");
+      setSelectedDevice("");
+      
+      // ✅ Show security reminder
+      toast({
+        title: "Shift Started Successfully",
+        description: "⚠️ Security Reminder: This is a shared terminal. Always log out when done to protect your account.",
+        duration: 8000,
+      });
+    } catch (error) {
+      // Error is already handled by the mutation
+      console.error('Shift start error:', error);
+    }
   };
 
   const handleEndShift = async () => {
@@ -103,11 +119,21 @@ export default function ShiftTerminal() {
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Shift Terminal</h1>
-              <p className="text-muted-foreground">
-                Start and end staff shifts from this shared terminal
-              </p>
+            <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/front-desk')}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Front Desk
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold">Shift Terminal</h1>
+                <p className="text-muted-foreground">
+                  Start and end staff shifts from this shared terminal
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-3">
               {/* Connection Status */}

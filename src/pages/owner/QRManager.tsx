@@ -14,6 +14,7 @@ import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTenantInfo } from '@/hooks/useTenantInfo';
 import { QRSecurity } from '@/lib/qr-security';
+import { queryClient } from '@/lib/queryClient';
 
 export interface QRCodeData {
   id: string;
@@ -270,8 +271,9 @@ export default function QRManagerPage() {
       // Wait briefly to ensure database transaction is committed
       await new Promise(resolve => setTimeout(resolve, 150));
       
-      // Force immediate refetch to get the latest data
-      console.log('[QR CREATE] Refetching latest data...');
+      // Force immediate refetch with cache invalidation
+      console.log('[QR CREATE] Invalidating cache and refetching...');
+      await queryClient.invalidateQueries({ queryKey: ['qr-codes'], exact: false });
       await refetch();
       
       console.log('[QR CREATE] Refetch complete');

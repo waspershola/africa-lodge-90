@@ -91,8 +91,16 @@ serve(async (req) => {
         );
       }
 
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        console.error('Invalid data returned from RPC');
+        return new Response(
+          JSON.stringify({ error: 'QR code not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       const result = data[0];
-      if (!result.is_valid) {
+      if (!result || !result.is_valid) {
         // Log failed attempt
         console.warn('Invalid QR validation attempt', { qrToken: qrToken.substring(0, 10) + '...', clientIp });
         return new Response(

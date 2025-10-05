@@ -12,6 +12,10 @@ export interface ProcessPaymentParams {
   tenantId: string;
   userId?: string;
   metadata?: Record<string, any>;
+  // Phase 2: Department/Terminal tracking
+  departmentId?: string;
+  terminalId?: string;
+  paymentSource?: 'frontdesk' | 'restaurant' | 'bar' | 'gym' | 'spa' | 'laundry' | 'other';
 }
 
 export interface ProcessPaymentResult {
@@ -85,7 +89,17 @@ async function getPaymentMethodConfig(paymentMethodId: string): Promise<PaymentM
 export async function processPayment(
   params: ProcessPaymentParams
 ): Promise<ProcessPaymentResult> {
-  const { folioId, grossAmount, paymentMethodId, tenantId, userId, metadata } = params;
+  const { 
+    folioId, 
+    grossAmount, 
+    paymentMethodId, 
+    tenantId, 
+    userId, 
+    metadata,
+    departmentId,
+    terminalId,
+    paymentSource = 'frontdesk'
+  } = params;
 
   // Fetch payment method configuration
   const method = await getPaymentMethodConfig(paymentMethodId);
@@ -94,14 +108,43 @@ export async function processPayment(
   const feeAmount = calculatePaymentFee(grossAmount, method);
   const netAmount = grossAmount - feeAmount;
 
+  // Phase 2: Determine payment status and verification based on method type
+  const shouldAutoVerify = ['pos', 'bank_transfer', 'card', 'mobile_money'].includes(method.type);
+  const paymentStatus = ['credit', 'bill_to_company'].includes(method.type) 
+    ? 'unpaid' 
+    : (method.type === 'cheque' ? 'pending' : 'paid');
+  const isVerified = shouldAutoVerify;
+
   console.log('[Payment Processor] Processing payment:', {
     method: method.name,
+    type: method.type,
     gross: grossAmount,
     fee: feeAmount,
-    net: netAmount
+    net: netAmount,
+    paymentStatus,
+    isVerified
   });
 
-  // Create payment record
+  // Phase 2: Get default department/terminal if not provided
+  let finalDepartmentId = departmentId;
+  let finalTerminalId = terminalId;
+
+  if (!finalDepartmentId) {
+    const { data: defaultDept } = await supabase.rpc('get_default_department', {
+      p_tenant_id: tenantId
+    });
+    finalDepartmentId = defaultDept || undefined;
+  }
+
+  if (!finalTerminalId && finalDepartmentId) {
+    const { data: defaultTerminal } = await supabase.rpc('get_default_terminal', {
+      p_tenant_id: tenantId,
+      p_department_id: finalDepartmentId
+    });
+    finalTerminalId = defaultTerminal || undefined;
+  }
+
+  // Create payment record with Phase 2 enhancements
   const { data: payment, error: paymentError } = await supabase
     .from('payments')
     .insert({
@@ -112,10 +155,19 @@ export async function processPayment(
       payment_method: method.name,
       status: method.requires_verification ? 'pending' : 'completed',
       processed_by: userId,
+      // Phase 2: New schema columns
+      department_id: finalDepartmentId || null,
+      terminal_id: finalTerminalId || null,
+      payment_status: paymentStatus,
+      payment_source: paymentSource,
+      is_verified: isVerified,
+      verified_by: isVerified ? userId : null,
+      verified_at: isVerified ? new Date().toISOString() : null,
+      gross_amount: grossAmount,
+      fee_amount: feeAmount,
+      net_amount: netAmount,
       metadata: {
         ...metadata,
-        gross_amount: grossAmount,
-        fee_amount: feeAmount,
         fee_type: method.fee_type,
         settlement_type: method.settlement_type
       }

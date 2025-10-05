@@ -630,6 +630,57 @@ export type Database = {
         }
         Relationships: []
       }
+      departments: {
+        Row: {
+          code: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          revenue_account: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          revenue_account?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          revenue_account?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "departments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "occupancy_stats"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "departments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
       devices: {
         Row: {
           created_at: string | null
@@ -2240,42 +2291,79 @@ export type Database = {
           amount: number
           card_last_four: string | null
           created_at: string | null
+          department_id: string | null
+          fee_amount: number | null
           folio_id: string
+          gross_amount: number | null
           id: string
+          is_verified: boolean | null
+          net_amount: number | null
           payment_method: string
           payment_method_id: string | null
+          payment_source: string | null
+          payment_status: string | null
           processed_by: string | null
           reference: string | null
           status: string
           tenant_id: string
+          terminal_id: string | null
+          verified_at: string | null
+          verified_by: string | null
         }
         Insert: {
           amount: number
           card_last_four?: string | null
           created_at?: string | null
+          department_id?: string | null
+          fee_amount?: number | null
           folio_id: string
+          gross_amount?: number | null
           id?: string
+          is_verified?: boolean | null
+          net_amount?: number | null
           payment_method: string
           payment_method_id?: string | null
+          payment_source?: string | null
+          payment_status?: string | null
           processed_by?: string | null
           reference?: string | null
           status?: string
           tenant_id: string
+          terminal_id?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Update: {
           amount?: number
           card_last_four?: string | null
           created_at?: string | null
+          department_id?: string | null
+          fee_amount?: number | null
           folio_id?: string
+          gross_amount?: number | null
           id?: string
+          is_verified?: boolean | null
+          net_amount?: number | null
           payment_method?: string
           payment_method_id?: string | null
+          payment_source?: string | null
+          payment_status?: string | null
           processed_by?: string | null
           reference?: string | null
           status?: string
           tenant_id?: string
+          terminal_id?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "payments_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payments_folio_id_fkey"
             columns: ["folio_id"]
@@ -2317,6 +2405,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "payments_terminal_id_fkey"
+            columns: ["terminal_id"]
+            isOneToOne: false
+            referencedRelation: "terminals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -5162,6 +5264,70 @@ export type Database = {
           },
         ]
       }
+      terminals: {
+        Row: {
+          created_at: string | null
+          department_id: string | null
+          id: string
+          is_active: boolean | null
+          location: string | null
+          metadata: Json | null
+          tenant_id: string
+          terminal_code: string
+          terminal_name: string
+          terminal_type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          department_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          location?: string | null
+          metadata?: Json | null
+          tenant_id: string
+          terminal_code: string
+          terminal_name: string
+          terminal_type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          department_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          location?: string | null
+          metadata?: Json | null
+          tenant_id?: string
+          terminal_code?: string
+          terminal_name?: string
+          terminal_type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "terminals_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "terminals_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "occupancy_stats"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "terminals_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
       user_sessions: {
         Row: {
           browser_name: string | null
@@ -6039,6 +6205,14 @@ export type Database = {
           total_revenue: number
           unique_guests: number
         }[]
+      }
+      get_default_department: {
+        Args: { p_tenant_id: string }
+        Returns: string
+      }
+      get_default_terminal: {
+        Args: { p_department_id?: string; p_tenant_id: string }
+        Returns: string
       }
       get_folio_balance: {
         Args: { p_folio_id: string; p_tenant_id: string }

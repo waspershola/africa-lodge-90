@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCheckout } from '@/hooks/useCheckout';
 import { useAtomicCheckoutV3 } from '@/hooks/useAtomicCheckoutV3';
 import { useToast } from '@/hooks/use-toast';
@@ -14,6 +15,8 @@ import { BillingOverview } from './BillingOverview';
 import { ServiceSummaryModal } from './ServiceSummaryModal';
 import { PaymentDialog } from './PaymentDialog';
 import { EnhancedReceiptGenerator } from './EnhancedReceiptGenerator';
+import { PaymentHistorySection } from './PaymentHistorySection';
+import { ChargeTimelineSection } from './ChargeTimelineSection';
 import { 
   User, 
   Calendar, 
@@ -22,7 +25,9 @@ import {
   FileText, 
   CheckCircle,
   AlertTriangle,
-  Printer
+  Printer,
+  Receipt,
+  History
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -309,8 +314,35 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogPro
             </CardHeader>
           </Card>
 
-          {/* Billing Overview */}
-          <BillingOverview bill={guest_bill} />
+          {/* Tabbed Interface for Billing Details */}
+          <Tabs defaultValue="summary" className="mb-6">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="summary" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Summary
+              </TabsTrigger>
+              <TabsTrigger value="payments" className="flex items-center gap-2">
+                <History className="h-4 w-4" />
+                Payment History
+              </TabsTrigger>
+              <TabsTrigger value="timeline" className="flex items-center gap-2">
+                <Receipt className="h-4 w-4" />
+                Timeline
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="summary" className="mt-4">
+              <BillingOverview bill={guest_bill} />
+            </TabsContent>
+
+            <TabsContent value="payments" className="mt-4">
+              <PaymentHistorySection folioId={guest_bill.folio_id} />
+            </TabsContent>
+
+            <TabsContent value="timeline" className="mt-4">
+              <ChargeTimelineSection folioId={guest_bill.folio_id} />
+            </TabsContent>
+          </Tabs>
 
           <Separator className="my-6" />
 

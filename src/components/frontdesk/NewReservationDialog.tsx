@@ -1,13 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Plus } from "lucide-react";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { CalendarIcon, Plus, Search, UserCheck, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, addDays } from "date-fns";
 import { useCreateReservation, useRoomAvailability } from "@/hooks/data/useReservationsData";
@@ -17,6 +24,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRoomTypeAvailability } from "@/hooks/useRoomTypeAvailability";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useGuestSearch, useRecentGuests } from "@/hooks/useGuestSearch";
 
 interface NewReservationDialogProps {
   open: boolean;
@@ -28,7 +36,9 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
   const tenantId = user?.tenant_id;
   
   const [guestMode, setGuestMode] = useState<'new' | 'existing'>('new');
-  const [selectedGuestId, setSelectedGuestId] = useState<string>("");
+  const [selectedGuest, setSelectedGuest] = useState<any>(null);
+  const [guestSearchOpen, setGuestSearchOpen] = useState(false);
+  const [guestSearchValue, setGuestSearchValue] = useState("");
   const [checkIn, setCheckIn] = useState<Date>(new Date());
   const [checkOut, setCheckOut] = useState<Date>(addDays(new Date(), 1));
   const [guestName, setGuestName] = useState("");
@@ -41,24 +51,16 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
   
   const { toast } = useToast();
   const createReservation = useCreateReservation();
+  const { data: recentGuests } = useRecentGuests();
+  const { data: searchResults } = useGuestSearch(guestSearchValue);
 
-  // Fetch existing guests
-  const { data: existingGuests = [] } = useQuery({
-    queryKey: ['guests', tenantId],
-    queryFn: async () => {
-      if (!tenantId) return [];
-      
-      const { data, error } = await supabase
-        .from('guests')
-        .select('id, first_name, last_name, email, phone')
-        .eq('tenant_id', tenantId)
-        .order('last_name', { ascending: true });
-      
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!tenantId && guestMode === 'existing',
-  });
+  // Combine search results with recent guests
+  const filteredGuests = useMemo(() => {
+    if (guestSearchValue.length >= 2) {
+      return searchResults || [];
+    }
+    return recentGuests?.slice(0, 10) || [];
+  }, [searchResults, recentGuests, guestSearchValue]);
 
   // Professional room type availability
   const { data: roomTypeAvailability, isLoading: roomTypesLoading, error: roomTypesError } = useRoomTypeAvailability(checkIn, checkOut);
@@ -148,19 +150,26 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
     }
   };
 
-  const handleGuestSelect = (guestId: string) => {
-    setSelectedGuestId(guestId);
-    const guest = existingGuests.find((g: any) => g.id === guestId);
-    if (guest) {
-      setGuestName(`${guest.first_name} ${guest.last_name}`);
-      setGuestEmail(guest.email || "");
-      setGuestPhone(guest.phone || "");
+  const handleGuestSelect = (guest: any) => {
+    setSelectedGuest(guest);
+    setGuestName(guest.name);
+    setGuestEmail(guest.email || "");
+    setGuestPhone(guest.phone || "");
+    setGuestSearchOpen(false);
+  };
+
+  const handleGuestModeChange = (mode: 'new' | 'existing') => {
+    setGuestMode(mode);
+    if (mode === 'new') {
+      setSelectedGuest(null);
+      setGuestSearchValue("");
     }
   };
 
   const resetForm = () => {
     setGuestMode('new');
-    setSelectedGuestId("");
+    setSelectedGuest(null);
+    setGuestSearchValue("");
     setGuestName("");
     setGuestEmail("");
     setGuestPhone("");
@@ -184,79 +193,146 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
         
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Guest Selection Mode */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label>Guest Information *</Label>
-            <RadioGroup value={guestMode} onValueChange={(value) => setGuestMode(value as 'new' | 'existing')}>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="new" id="new" />
-                <Label htmlFor="new" className="font-normal cursor-pointer">Create New Guest</Label>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={guestMode === 'existing' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleGuestModeChange('existing')}
+                className="flex-1"
+              >
+                <UserCheck className="h-4 w-4 mr-2" />
+                Select Existing
+              </Button>
+              <Button
+                type="button"
+                variant={guestMode === 'new' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleGuestModeChange('new')}
+                className="flex-1"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create New
+              </Button>
+            </div>
+
+            {/* Existing Guest Search */}
+            {guestMode === 'existing' && (
+              <div>
+                <Label>Search & Select Guest *</Label>
+                <Popover open={guestSearchOpen} onOpenChange={setGuestSearchOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={guestSearchOpen}
+                      className="w-full justify-between mt-1"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Search className="h-4 w-4" />
+                        {selectedGuest ? selectedGuest.name : "Search guest by name or phone..."}
+                      </div>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0 z-[100]" align="start">
+                    <Command>
+                      <CommandInput 
+                        placeholder="Search guests..." 
+                        value={guestSearchValue}
+                        onValueChange={setGuestSearchValue}
+                      />
+                      <CommandList>
+                        <CommandEmpty>No guest found.</CommandEmpty>
+                        <CommandGroup>
+                          {filteredGuests.map((guest: any) => (
+                            <CommandItem
+                              key={guest.id}
+                              value={guest.name}
+                              onSelect={() => handleGuestSelect(guest)}
+                            >
+                              <div className="flex flex-col">
+                                <span className="font-medium">{guest.name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {guest.phone} • {guest.email}
+                                </span>
+                                {guest.last_stay_date && (
+                                  <span className="text-xs text-muted-foreground">
+                                    Last stay: {new Date(guest.last_stay_date).toLocaleDateString()} • {guest.total_stays} stays
+                                  </span>
+                                )}
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="existing" id="existing" />
-                <Label htmlFor="existing" className="font-normal cursor-pointer">Select Existing Guest</Label>
+            )}
+
+            {/* Show selected guest info for existing mode */}
+            {guestMode === 'existing' && selectedGuest && (
+              <div className="p-3 bg-muted rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <User className="h-4 w-4" />
+                  <span className="font-medium">{selectedGuest.name}</span>
+                </div>
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <div>📱 {selectedGuest.phone}</div>
+                  <div>📧 {selectedGuest.email}</div>
+                  {selectedGuest.last_stay_date && (
+                    <div>🏨 Last stay: {new Date(selectedGuest.last_stay_date).toLocaleDateString()} • {selectedGuest.total_stays} stays</div>
+                  )}
+                </div>
               </div>
-            </RadioGroup>
-          </div>
+            )}
 
-          {/* Existing Guest Selection */}
-          {guestMode === 'existing' && (
-            <div className="space-y-2">
-              <Label htmlFor="existingGuest">Select Guest *</Label>
-              <Select value={selectedGuestId} onValueChange={handleGuestSelect}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Search and select guest" />
-                </SelectTrigger>
-                <SelectContent>
-                  {existingGuests.map((guest: any) => (
-                    <SelectItem key={guest.id} value={guest.id}>
-                      {guest.first_name} {guest.last_name} {guest.email ? `(${guest.email})` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+            {/* New Guest Fields */}
+            {guestMode === 'new' && (
+              <>
+                <div>
+                  <Label htmlFor="guestName">Guest Name *</Label>
+                  <Input
+                    id="guestName"
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                    placeholder="Enter guest full name"
+                    required
+                    className="mt-1"
+                  />
+                </div>
 
-          {/* Guest Information Fields */}
-          <div className="space-y-2">
-            <Label htmlFor="guestName">Guest Name *</Label>
-            <Input
-              id="guestName"
-              value={guestName}
-              onChange={(e) => setGuestName(e.target.value)}
-              placeholder="Enter guest name"
-              required
-              readOnly={guestMode === 'existing'}
-              disabled={guestMode === 'existing'}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="guestEmail">Email</Label>
-              <Input
-                id="guestEmail"
-                type="email"
-                value={guestEmail}
-                onChange={(e) => setGuestEmail(e.target.value)}
-                placeholder="guest@example.com"
-                readOnly={guestMode === 'existing'}
-                disabled={guestMode === 'existing'}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="guestPhone">Phone *</Label>
-              <Input
-                id="guestPhone"
-                value={guestPhone}
-                onChange={(e) => setGuestPhone(e.target.value)}
-                placeholder="+234..."
-                required
-                readOnly={guestMode === 'existing'}
-                disabled={guestMode === 'existing'}
-              />
-            </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="guestPhone">Phone *</Label>
+                    <Input
+                      id="guestPhone"
+                      value={guestPhone}
+                      onChange={(e) => setGuestPhone(e.target.value)}
+                      placeholder="+234..."
+                      required
+                      className="mt-1"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="guestEmail">Email</Label>
+                    <Input
+                      id="guestEmail"
+                      type="email"
+                      value={guestEmail}
+                      onChange={(e) => setGuestEmail(e.target.value)}
+                      placeholder="guest@example.com"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="space-y-2">

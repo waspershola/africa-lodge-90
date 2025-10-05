@@ -210,6 +210,13 @@ export const PaymentDialog = ({
       return;
     }
 
+    // PHASE 1: Enforce terminal requirement for POS payments
+    if (method.type === 'pos' && !selectedTerminalId) {
+      toast.error("POS payments require a terminal selection");
+      setIsProcessing(false);
+      return;
+    }
+
     const fees = calculateFees(paymentAmount, paymentMethodId);
     const dbPaymentMethod = mapPaymentMethod(method);
 

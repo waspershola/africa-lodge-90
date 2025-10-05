@@ -494,7 +494,17 @@ export const QuickGuestCapture = ({
         const depositAmount = parseFloat(formData.depositAmount) || 0;
         if (depositAmount > 0) {
           const selectedMethod = enabledMethods.find(m => m.id === formData.paymentMode);
-          const paymentMethodType = selectedMethod?.type || 'cash';
+          
+          // PHASE 1 FIX: No hardcoded fallbacks - enforce method existence
+          if (!selectedMethod) {
+            throw new Error('Selected payment method not found. Please refresh and try again.');
+          }
+          
+          if (!selectedMethod.enabled) {
+            throw new Error(`${selectedMethod.name} is currently disabled. Please select another payment method.`);
+          }
+          
+          const paymentMethodType = selectedMethod.type;
           
           const { error: paymentError } = await supabase
             .from('payments')
@@ -641,7 +651,17 @@ export const QuickGuestCapture = ({
             if (formData.paymentMode !== 'pay_later' && additionalPayment > 0 && result.folio_id) {
               console.log('[Check-in] Processing additional payment:', additionalPayment);
               const selectedMethod = enabledMethods.find(m => m.id === formData.paymentMode);
-              const paymentMethodType = selectedMethod?.type || 'cash';
+              
+              // PHASE 1 FIX: No hardcoded fallbacks - enforce method existence
+              if (!selectedMethod) {
+                throw new Error('Selected payment method not found. Please refresh and try again.');
+              }
+              
+              if (!selectedMethod.enabled) {
+                throw new Error(`${selectedMethod.name} is currently disabled. Please select another payment method.`);
+              }
+              
+              const paymentMethodType = selectedMethod.type;
               
               const { error: paymentError } = await supabase
                 .from('payments')
@@ -756,7 +776,17 @@ export const QuickGuestCapture = ({
             // Process payment if not pay later
             if (formData.paymentMode !== 'pay_later' && parseFloat(formData.depositAmount) > 0 && result.folio_id) {
               const selectedMethod = enabledMethods.find(m => m.id === formData.paymentMode);
-              const paymentMethodType = selectedMethod?.type || 'cash';
+              
+              // PHASE 1 FIX: No hardcoded fallbacks - enforce method existence
+              if (!selectedMethod) {
+                throw new Error('Selected payment method not found. Please refresh and try again.');
+              }
+              
+              if (!selectedMethod.enabled) {
+                throw new Error(`${selectedMethod.name} is currently disabled. Please select another payment method.`);
+              }
+              
+              const paymentMethodType = selectedMethod.type;
               
               const { error: paymentError } = await supabase
                 .from('payments')

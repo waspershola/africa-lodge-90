@@ -62,6 +62,8 @@ import { calculateTaxesAndCharges } from "@/lib/tax-calculator";
 import type { Room } from "./RoomGrid";
 import { PaymentSummaryCard } from "./PaymentSummaryCard";
 import { TaxBreakdownCard } from "@/components/billing/TaxBreakdownCard";
+import { determinePaymentStatus } from "@/lib/payment-rules";
+import { mapPaymentMethodWithLogging } from "@/lib/payment-method-mapper";
 
 interface QuickGuestCaptureProps {
   room?: Room | null;
@@ -504,7 +506,9 @@ export const QuickGuestCapture = ({
             throw new Error(`${selectedMethod.name} is currently disabled. Please select another payment method.`);
           }
           
-          const paymentMethodType = selectedMethod.type;
+          // PHASE 4: Apply latest payment logic
+          const canonicalMethod = mapPaymentMethodWithLogging(selectedMethod.type || selectedMethod.name, 'QuickGuestCapture-Assign');
+          const paymentStatus = determinePaymentStatus(selectedMethod.type);
           
           const { error: paymentError } = await supabase
             .from('payments')
@@ -512,10 +516,18 @@ export const QuickGuestCapture = ({
               tenant_id: user.user_metadata?.tenant_id,
               folio_id: folio.id,
               amount: depositAmount,
-              payment_method: paymentMethodType,
+              payment_method: canonicalMethod,
               payment_method_id: formData.paymentMode,
               status: 'completed',
+              payment_status: paymentStatus,
+              payment_source: 'frontdesk',
               processed_by: user.id,
+              verified_by: user.id,
+              is_verified: true,
+              verified_at: new Date().toISOString(),
+              gross_amount: depositAmount,
+              fee_amount: 0,
+              net_amount: depositAmount,
               reference: `Deposit for ${reservationNumber}`
             }]);
 
@@ -661,17 +673,27 @@ export const QuickGuestCapture = ({
                 throw new Error(`${selectedMethod.name} is currently disabled. Please select another payment method.`);
               }
               
-              const paymentMethodType = selectedMethod.type;
+              // PHASE 4: Apply latest payment logic
+              const canonicalMethod = mapPaymentMethodWithLogging(selectedMethod.type || selectedMethod.name, 'QuickGuestCapture-CheckIn');
+              const paymentStatus = determinePaymentStatus(selectedMethod.type);
               
               const { error: paymentError } = await supabase
                 .from('payments')
                 .insert({
                   folio_id: result.folio_id,
                   amount: additionalPayment,
-                  payment_method: paymentMethodType,
+                  payment_method: canonicalMethod,
                   payment_method_id: formData.paymentMode,
                   status: 'completed',
+                  payment_status: paymentStatus,
+                  payment_source: 'frontdesk',
                   processed_by: user.id,
+                  verified_by: user.id,
+                  is_verified: true,
+                  verified_at: new Date().toISOString(),
+                  gross_amount: additionalPayment,
+                  fee_amount: 0,
+                  net_amount: additionalPayment,
                   reference: `Additional payment on check-in`,
                   tenant_id: user.user_metadata?.tenant_id
                 });
@@ -786,16 +808,27 @@ export const QuickGuestCapture = ({
                 throw new Error(`${selectedMethod.name} is currently disabled. Please select another payment method.`);
               }
               
-              const paymentMethodType = selectedMethod.type;
+              // PHASE 4: Apply latest payment logic
+              const canonicalMethod = mapPaymentMethodWithLogging(selectedMethod.type || selectedMethod.name, 'QuickGuestCapture-WalkIn');
+              const paymentStatus = determinePaymentStatus(selectedMethod.type);
               
               const { error: paymentError } = await supabase
                 .from('payments')
                 .insert({
                   folio_id: result.folio_id,
                   amount: parseFloat(formData.depositAmount),
-                  payment_method: paymentMethodType,
+                  payment_method: canonicalMethod,
                   payment_method_id: formData.paymentMode,
                   status: 'completed',
+                  payment_status: paymentStatus,
+                  payment_source: 'frontdesk',
+                  processed_by: user.id,
+                  verified_by: user.id,
+                  is_verified: true,
+                  verified_at: new Date().toISOString(),
+                  gross_amount: parseFloat(formData.depositAmount),
+                  fee_amount: 0,
+                  net_amount: parseFloat(formData.depositAmount),
                   tenant_id: user.user_metadata?.tenant_id
                 });
 

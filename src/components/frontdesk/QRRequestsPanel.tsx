@@ -23,7 +23,7 @@ import {
   Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useQRRealtime } from "@/hooks/useQRRealtime";
+import { useUnifiedQR } from "@/hooks/useUnifiedQR";
 import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
 
 interface QRRequest {
@@ -72,43 +72,47 @@ export const QRRequestsPanel = () => {
   const [filterType, setFilterType] = useState("all");
   const { toast } = useToast();
   
-  // USE REAL DATA from QR Realtime hook
-  const { 
-    orders: qrOrders, 
-    loading: isLoading,
-    updateOrderStatus,
-    assignOrder 
-  } = useQRRealtime();
+  // USE REAL DATA from unified QR hook
+  const { useAllQRRequests, updateRequestStatus } = useUnifiedQR();
+  const { data: qrOrders = [], isLoading } = useAllQRRequests(user?.tenant_id || null);
 
   // Map real QR orders to display format
   const requests = useMemo(() => {
     return qrOrders.map(order => {
-      // Determine type from service_type
-      const serviceType = order.service_type || 'service';
+      // Determine type from request_type
+      const requestType = order.request_type || 'service';
       let type: QRRequest['type'] = 'service';
-      if (serviceType.includes('housekeeping') || serviceType.includes('cleaning')) type = 'housekeeping';
-      else if (serviceType.includes('maintenance') || serviceType.includes('repair')) type = 'maintenance';
-      else if (serviceType.includes('amenity') || serviceType.includes('towel') || serviceType.includes('pillow')) type = 'amenity';
+      if (requestType.includes('HOUSEKEEPING') || requestType.includes('cleaning')) type = 'housekeeping';
+      else if (requestType.includes('MAINTENANCE') || requestType.includes('repair')) type = 'maintenance';
+      else if (requestType.includes('amenity') || requestType.includes('towel') || requestType.includes('pillow')) type = 'amenity';
       
-      // Map priority
-      const priorityMap = { 1: 'low', 2: 'medium', 3: 'high', 4: 'urgent' } as const;
-      const priority = priorityMap[order.priority as 1 | 2 | 3 | 4] || 'medium';
+      // Map priority (now a string)
+      const priorityMap: Record<string, QRRequest['priority']> = { 
+        'low': 'low', 
+        'normal': 'medium', 
+        'high': 'high', 
+        'urgent': 'urgent' 
+      };
+      const priority = priorityMap[order.priority] || 'medium';
+      
+      // Cast request_data to any for accessing properties
+      const requestData = (order.request_data || {}) as any;
       
       return {
         id: order.id,
-        room: order.room_id || 'Unknown', // Use room_id instead of room_number
-        guestName: 'Guest', // QROrder doesn't have guest_name
+        room: order.rooms?.room_number || order.room_id || 'Unknown',
+        guestName: order.guest_name || 'Guest',
         type,
-        category: order.service_type?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Service',
-        description: order.request_details?.description || order.notes || 'No description',
+        category: order.request_type?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Service',
+        description: requestData.description || order.notes || 'No description',
         priority,
         status: order.status as QRRequest['status'],
         requestedAt: new Date(order.created_at),
-        assignedTo: order.assigned_to, // Use assigned_to (ID) instead of assigned_to_name
+        assignedTo: order.assigned_to,
         completedAt: order.completed_at ? new Date(order.completed_at) : undefined,
-        estimatedTime: order.request_details?.estimated_time || 20,
-        specialInstructions: order.request_details?.special_instructions || order.notes,
-        qrToken: order.qr_code_id
+        estimatedTime: requestData.estimated_time || 20,
+        specialInstructions: requestData.special_instructions || order.notes,
+        qrToken: order.qr_code_id || ''
       } as QRRequest;
     });
   }, [qrOrders]);
@@ -144,14 +148,18 @@ export const QRRequestsPanel = () => {
   };
 
   const handleAssignRequest = async (requestId: string) => {
-    const success = await assignOrder(requestId, user?.id, undefined);
-    
-    if (success) {
+    try {
+      await updateRequestStatus.mutateAsync({
+        requestId,
+        status: 'acknowledged',
+        notes: `Assigned to ${user?.name || 'staff member'}`
+      });
+      
       toast({
         title: "Request Assigned",
         description: "Request has been assigned to you"
       });
-    } else {
+    } catch (error) {
       toast({
         title: "Assignment Failed",
         description: "Could not assign request. Please try again.",
@@ -161,14 +169,18 @@ export const QRRequestsPanel = () => {
   };
 
   const handleCompleteRequest = async (requestId: string) => {
-    const success = await updateOrderStatus(requestId, 'completed', 'Completed by front desk');
-    
-    if (success) {
+    try {
+      await updateRequestStatus.mutateAsync({
+        requestId,
+        status: 'completed',
+        notes: 'Completed by front desk'
+      });
+      
       toast({
         title: "Request Completed",
         description: "Request has been marked as completed"
       });
-    } else {
+    } catch (error) {
       toast({
         title: "Update Failed",
         description: "Could not complete request. Please try again.",
@@ -178,14 +190,18 @@ export const QRRequestsPanel = () => {
   };
 
   const handleCancelRequest = async (requestId: string) => {
-    const success = await updateOrderStatus(requestId, 'cancelled', 'Cancelled by front desk');
-    
-    if (success) {
+    try {
+      await updateRequestStatus.mutateAsync({
+        requestId,
+        status: 'cancelled',
+        notes: 'Cancelled by front desk'
+      });
+      
       toast({
         title: "Request Cancelled",
         description: "Request has been cancelled"
       });
-    } else {
+    } catch (error) {
       toast({
         title: "Cancellation Failed",
         description: "Could not cancel request. Please try again.",

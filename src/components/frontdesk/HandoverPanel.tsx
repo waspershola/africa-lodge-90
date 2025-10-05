@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { useShiftSessions, useActiveShiftSessions } from "@/hooks/useShiftSessions";
-import { useQRRealtime } from "@/hooks/useQRRealtime";
+import { useUnifiedQR } from "@/hooks/useUnifiedQR";
 import { useStaffData } from "@/hooks/useStaffData";
 import { useShiftPDFReport } from "@/hooks/useShiftPDFReport";
 import { cn } from "@/lib/utils";
@@ -33,7 +33,8 @@ export const HandoverPanel = () => {
   const { tenant } = useAuth();
   const { data: activeShifts, isLoading: shiftsLoading } = useActiveShiftSessions();
   const { data: allShifts } = useShiftSessions();
-  const { orders } = useQRRealtime();
+  const { useAllQRRequests } = useUnifiedQR();
+  const { data: orders = [] } = useAllQRRequests(tenant?.tenant_id || null);
   const { generateDailyShiftsReport } = useShiftPDFReport();
   const [selectedNote, setSelectedNote] = useState<string | null>(null);
 
@@ -210,12 +211,12 @@ export const HandoverPanel = () => {
                     {pendingOrders.map((order) => (
                       <div key={order.id} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
                         <div className="flex-1">
-                          <div className="font-medium capitalize">
-                            {order.service_type.replace('_', ' ')}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Room {order.room_id} • Priority {order.priority}
-                          </div>
+                        <div className="font-medium capitalize">
+                          {order.request_type?.replace('_', ' ') || 'Request'}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Room {order.rooms?.room_number || order.room_id} • Priority {order.priority}
+                        </div>
                           <div className="text-xs text-muted-foreground">
                             {formatDistanceToNow(new Date(order.created_at), { addSuffix: true })}
                           </div>

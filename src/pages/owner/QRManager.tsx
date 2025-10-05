@@ -267,42 +267,13 @@ export default function QRManagerPage() {
 
       console.log('[QR CREATE] Successfully created QR code:', insertedData);
       
-      // Optimistically add the new QR code to the cache immediately
-      if (insertedData) {
-        const newQR: QRCodeData = {
-          id: insertedData.id,
-          qr_token: insertedData.qr_token,
-          qr_code_url: insertedData.qr_code_url,
-          scope: 'Room' as const,
-          assignedTo: newQRData.assignedTo,
-          servicesEnabled: newQRData.servicesEnabled,
-          status: newQRData.status,
-          pendingRequests: 0,
-          createdAt: insertedData.created_at || new Date().toISOString(),
-          createdBy: 'System'
-        };
-
-        // Immediately update the cache with the new QR code
-        queryClient.setQueryData(['qr-codes', user.tenant_id], (old: QRCodeData[] = []) => {
-          console.log('[QR CREATE] Optimistically updating cache, old data:', old.length, 'items');
-          return [newQR, ...old];
-        });
-
-        console.log('[QR CREATE] Cache updated optimistically');
-      }
+      // Wait briefly to ensure database transaction is committed
+      await new Promise(resolve => setTimeout(resolve, 150));
       
-      // Then invalidate and refetch to ensure consistency
-      console.log('[QR CREATE] Invalidating queries...');
-      await queryClient.invalidateQueries({ 
-        queryKey: ['qr-codes', user.tenant_id]
-      });
+      // Force immediate refetch to get the latest data
+      console.log('[QR CREATE] Refetching latest data...');
+      await refetch();
       
-      console.log('[QR CREATE] Refetching queries...');
-      await queryClient.refetchQueries({ 
-        queryKey: ['qr-codes', user.tenant_id],
-        type: 'active'
-      });
-
       console.log('[QR CREATE] Refetch complete');
       
       setShowWizard(false);

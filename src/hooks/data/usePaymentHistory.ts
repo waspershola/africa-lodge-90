@@ -45,7 +45,7 @@ export function usePaymentHistory(folioId: string | undefined) {
           gross_amount,
           fee_amount,
           net_amount,
-          processor:users!payments_processed_by_fkey(name),
+          processor:processed_by(name),
           department:departments(name),
           terminal:terminals(name)
         `)

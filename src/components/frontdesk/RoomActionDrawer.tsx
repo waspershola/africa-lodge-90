@@ -545,16 +545,16 @@ export const RoomActionDrawer = ({
                     <CreditCard className="h-4 w-4" />
                     Folio Balance
                   </CardTitle>
-                  <div className="flex items-center gap-3">
+                   <div className="flex items-center gap-3">
                     <span className="text-lg font-semibold">
                       ₦{room.folio.balance.toLocaleString()}
                     </span>
                     <Badge 
-                      variant={room.folio.isPaid ? 'default' : 'destructive'}
-                      className={room.folio.isPaid ? 'bg-success text-success-foreground' : ''}
+                      variant={room.folio.balance <= 0 ? 'default' : room.folio.balance < (room.folio.total_charges || 0) ? 'secondary' : 'destructive'}
+                      className={room.folio.balance <= 0 ? 'bg-success text-success-foreground' : ''}
                     >
-                      {room.folio.status === 'paid' ? 'Paid' : 
-                       room.folio.status === 'partial' ? 'Partial' : 'Unpaid'}
+                      {room.folio.balance <= 0 ? 'Paid in Full' : 
+                       room.folio.balance < (room.folio.total_charges || 0) ? 'Partial' : 'Unpaid'}
                     </Badge>
                   </div>
                 </div>
@@ -630,10 +630,10 @@ export const RoomActionDrawer = ({
                     ₦{room.folio.balance.toLocaleString()}
                   </span>
                   <Badge 
-                    variant={room.folio.isPaid ? 'default' : 'destructive'}
-                    className={room.folio.isPaid ? 'bg-success text-success-foreground' : ''}
+                    variant={room.folio.balance <= 0 ? 'default' : 'destructive'}
+                    className={room.folio.balance <= 0 ? 'bg-success text-success-foreground' : ''}
                   >
-                    {room.folio.isPaid ? 'Paid' : 'Unpaid'}
+                    {room.folio.balance <= 0 ? 'Paid in Full' : 'Unpaid'}
                   </Badge>
                 </div>
               </CardContent>

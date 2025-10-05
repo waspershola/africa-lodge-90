@@ -242,7 +242,7 @@ export default function QRManagerPage() {
       // Generate QR code URL - permanent, no expiry
       const qrCodeUrl = QRSecurity.generateQRUrl(qrToken);
       
-      const { error } = await supabase
+      const { data: insertedData, error } = await supabase
         .from('qr_codes')
         .insert([{
           tenant_id: user.tenant_id,
@@ -253,7 +253,9 @@ export default function QRManagerPage() {
           qr_code_url: qrCodeUrl,
           label: newQRData.assignedTo,
           scan_type: newQRData.scope.toLowerCase()
-        }]);
+        }])
+        .select()
+        .single();
 
       if (error) {
         // Check if it's a duplicate room constraint error
@@ -262,15 +264,47 @@ export default function QRManagerPage() {
         }
         throw error;
       }
+
+      console.log('[QR CREATE] Successfully created QR code:', insertedData);
       
-      // Invalidate cache and force immediate refetch
+      // Optimistically add the new QR code to the cache immediately
+      if (insertedData) {
+        const newQR: QRCodeData = {
+          id: insertedData.id,
+          qr_token: insertedData.qr_token,
+          qr_code_url: insertedData.qr_code_url,
+          scope: 'Room' as const,
+          assignedTo: newQRData.assignedTo,
+          servicesEnabled: newQRData.servicesEnabled,
+          status: newQRData.status,
+          pendingRequests: 0,
+          createdAt: insertedData.created_at || new Date().toISOString(),
+          createdBy: 'System'
+        };
+
+        // Immediately update the cache with the new QR code
+        queryClient.setQueryData(['qr-codes', user.tenant_id], (old: QRCodeData[] = []) => {
+          console.log('[QR CREATE] Optimistically updating cache, old data:', old.length, 'items');
+          return [newQR, ...old];
+        });
+
+        console.log('[QR CREATE] Cache updated optimistically');
+      }
+      
+      // Then invalidate and refetch to ensure consistency
+      console.log('[QR CREATE] Invalidating queries...');
       await queryClient.invalidateQueries({ 
         queryKey: ['qr-codes', user.tenant_id]
       });
+      
+      console.log('[QR CREATE] Refetching queries...');
       await queryClient.refetchQueries({ 
         queryKey: ['qr-codes', user.tenant_id],
         type: 'active'
       });
+
+      console.log('[QR CREATE] Refetch complete');
+      
       setShowWizard(false);
       toast({
         title: "QR Code Created",

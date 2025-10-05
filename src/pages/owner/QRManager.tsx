@@ -11,7 +11,7 @@ import { SessionSettingsModal } from '@/components/qr/SessionSettingsModal';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTenantInfo } from '@/hooks/useTenantInfo';
 import { QRSecurity } from '@/lib/qr-security';
 
@@ -30,6 +30,7 @@ export interface QRCodeData {
 
 export default function QRManagerPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [selectedQR, setSelectedQR] = useState<QRCodeData | null>(null);
   const [showWizard, setShowWizard] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
@@ -148,7 +149,8 @@ export default function QRManagerPage() {
 
       if (error) throw error;
       
-      await refetch();
+      // Invalidate and refetch
+      await queryClient.invalidateQueries({ queryKey: ['qr-codes', user.tenant_id] });
       toast({
         title: "QR Code Updated",
         description: `${updatedQR.assignedTo} QR code has been updated successfully`
@@ -174,7 +176,10 @@ export default function QRManagerPage() {
 
       if (error) throw error;
       
-      await refetch();
+      // Invalidate and refetch
+      await queryClient.invalidateQueries({ queryKey: ['qr-codes', user.tenant_id] });
+      setShowDrawer(false);
+      setSelectedQR(null);
       toast({
         title: "QR Code Deleted",
         description: `QR code for ${qrCode.assignedTo} has been deleted successfully`
@@ -246,7 +251,9 @@ export default function QRManagerPage() {
         throw error;
       }
       
-      await refetch();
+      // Invalidate and refetch
+      await queryClient.invalidateQueries({ queryKey: ['qr-codes', user.tenant_id] });
+      setShowWizard(false);
       toast({
         title: "QR Code Created",
         description: `QR code for ${newQRData.assignedTo} has been generated successfully`

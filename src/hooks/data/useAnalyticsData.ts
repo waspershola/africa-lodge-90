@@ -120,12 +120,12 @@ export function useRoomServiceAnalytics(days = 30) {
 
       const startDate = subDays(new Date(), days);
 
-      // Get room service orders from qr_orders
+      // Get room service orders from qr_requests
       const { data: orders, error: ordersError } = await supabase
-        .from('qr_orders')
+        .from('qr_requests')
         .select('*, rooms(room_number)')
         .eq('tenant_id', tenantId)
-        .eq('service_type', 'room_service')
+        .eq('request_type', 'room_service')
         .gte('created_at', startDate.toISOString())
         .order('created_at', { ascending: true });
 
@@ -133,8 +133,8 @@ export function useRoomServiceAnalytics(days = 30) {
 
       // Calculate stats
       const totalOrders = orders?.length || 0;
-      // Note: qr_orders doesn't have total_amount, would need to calculate from order items
-      const totalRevenue = 0; // TODO: Calculate from pos_orders or qr_order_items when available
+      // Note: qr_requests doesn't have total_amount, would need to calculate from order items
+      const totalRevenue = 0; // TODO: Calculate from pos_orders or request_data when available
       const avgOrderValue = 0;
       const completedOrders = orders?.filter(o => o.status === 'completed').length || 0;
       const completionRate = totalOrders > 0 ? (completedOrders / totalOrders) * 100 : 0;

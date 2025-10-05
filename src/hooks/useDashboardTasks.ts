@@ -88,21 +88,21 @@ export function useDashboardTasks() {
           });
         }
 
-        // Check for QR orders needing attention
-        const { data: qrOrders } = await supabase
-          .from('qr_orders')
+        // Check for QR requests needing attention
+        const { data: qrRequests } = await supabase
+          .from('qr_requests')
           .select('id')
           .eq('tenant_id', tenant.tenant_id)
           .eq('status', 'pending')
           .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
-        const qrOrdersCount = qrOrders?.length || 0;
-        if (qrOrdersCount > 0) {
+        const qrRequestsCount = qrRequests?.length || 0;
+        if (qrRequestsCount > 0) {
           tasks.push({
-            id: 'qr-orders-' + Date.now(),
-            task: `Handle ${qrOrdersCount} QR service requests`,
+            id: 'qr-requests-' + Date.now(),
+            task: `Handle ${qrRequestsCount} QR service requests`,
             priority: 'medium',
-            count: qrOrdersCount
+            count: qrRequestsCount
           });
         }
 

@@ -10,7 +10,7 @@ export type Reservation = Tables['reservations']['Row'];
 export type Room = Tables['rooms']['Row'];
 export type RoomType = Tables['room_types']['Row'];
 export type QRCode = Tables['qr_codes']['Row'];
-export type QROrder = Tables['qr_orders']['Row'];
+export type QROrder = Tables['qr_requests']['Row'];
 export type HousekeepingTask = Tables['housekeeping_tasks']['Row'];
 export type WorkOrder = Tables['work_orders']['Row'];
 export type Supply = Tables['supplies']['Row'];
@@ -294,7 +294,7 @@ export const qrApi = {
 
   async getQROrders() {
     const { data, error } = await supabase
-      .from('qr_orders')
+      .from('qr_requests')
       .select(`
         *,
         qr_codes:qr_code_id (*)

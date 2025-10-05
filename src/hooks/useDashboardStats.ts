@@ -58,12 +58,12 @@ export const useDashboardStats = () => {
           .eq('tenant_id', tenant.tenant_id)
           .eq('is_active', true);
 
-        // Fetch QR orders (room service)
-        const { data: qrOrders, error: qrError } = await supabase
-          .from('qr_orders')
+        // Fetch QR requests (room service)
+        const { data: qrRequests, error: qrError } = await supabase
+          .from('qr_requests')
           .select('id')
           .eq('tenant_id', tenant.tenant_id)
-          .eq('service_type', 'room_service')
+          .eq('request_type', 'room_service')
           .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
 
         // Fetch power logs for cost tracking
@@ -97,7 +97,7 @@ export const useDashboardStats = () => {
         const occupancyRate = Math.round((occupiedRooms / totalRooms) * 100);
 
         const staffCount = users?.length || 0;
-        const roomServiceOrders = qrOrders?.length || 0;
+        const roomServiceOrders = qrRequests?.length || 0;
         const powerCost = powerLogs?.reduce((sum, p) => sum + (p.total_cost || 0), 0) || 0;
         const pendingApprovals = salaryAudits?.length || 0;
 

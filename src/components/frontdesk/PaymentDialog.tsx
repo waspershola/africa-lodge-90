@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CreditCard, Banknote, Building, Smartphone, Clock, UserX, DollarSign, Info, Loader2 } from 'lucide-react';
+import { CreditCard, Banknote, Building, Smartphone, Clock, UserX, DollarSign, Info, Loader2, AlertCircle } from 'lucide-react';
 import { usePaymentMethodsContext } from '@/contexts/PaymentMethodsContext';
 import { useBilling } from '@/hooks/useBilling';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { mapPaymentMethodWithLogging } from '@/lib/payment-method-mapper';
 import { useActiveDepartments, useDefaultDepartment } from '@/hooks/data/useDepartments';
 import { useActiveTerminals, useDefaultTerminal } from '@/hooks/data/useTerminals';
+import { determinePaymentStatus, canMarkAsPaid, getPaymentValidationError } from '@/lib/payment-rules';
 
 // Phase 1: Enhanced props interface with security context
 interface PaymentDialogProps {
@@ -210,6 +211,13 @@ export const PaymentDialog = ({
       return;
     }
 
+    // PHASE 2: Block "Pay Later" from being marked as paid
+    if (!canMarkAsPaid(method.type)) {
+      toast.error(getPaymentValidationError(method.type));
+      setIsProcessing(false);
+      return;
+    }
+
     // PHASE 1: Enforce terminal requirement for POS payments
     if (method.type === 'pos' && !selectedTerminalId) {
       toast.error("POS payments require a terminal selection");
@@ -219,19 +227,26 @@ export const PaymentDialog = ({
 
     const fees = calculateFees(paymentAmount, paymentMethodId);
     const dbPaymentMethod = mapPaymentMethod(method);
+    
+    // PHASE 2: Determine payment status based on method type
+    const paymentStatus = determinePaymentStatus(method.type, false);
 
     console.log('[Payment Process] Creating payment:', {
       folio_id: selectedPayment.folio_id,
       amount: paymentAmount,
       payment_method: dbPaymentMethod,
-      payment_method_id: paymentMethodId
+      payment_method_id: paymentMethodId,
+      payment_status: paymentStatus,
+      method_type: method.type
     });
+    
     try {
       await createPayment({
         folio_id: selectedPayment.folio_id,
         amount: paymentAmount,
         payment_method: dbPaymentMethod,
         payment_method_id: paymentMethodId,
+        payment_status: paymentStatus, // NEW: Use dynamic payment status
         // Phase 3: Include department and terminal context
         department_id: selectedDepartmentId || undefined,
         terminal_id: selectedTerminalId || undefined,
@@ -392,11 +407,19 @@ export const PaymentDialog = ({
                              }
                            };
                            
+                           // PHASE 2: Mark credit/pay later methods visually
+                           const isCredit = method.type === 'credit';
+                           
                            return (
                              <SelectItem key={method.id} value={method.id}>
                                <div className="flex items-center gap-2">
                                  <IconComponent />
-                                 {method.name}
+                                 <span>{method.name}</span>
+                                 {isCredit && (
+                                   <Badge variant="outline" className="ml-auto text-xs bg-amber-50 text-amber-700 border-amber-200">
+                                     Unpaid
+                                   </Badge>
+                                 )}
                                  {method.fees && method.fees.percentage > 0 && (
                                    <span className="text-xs text-muted-foreground ml-2">
                                      (+{method.fees.percentage}%)
@@ -408,6 +431,16 @@ export const PaymentDialog = ({
                          })}
                       </SelectContent>
                     </Select>
+                    
+                    {/* PHASE 2: Warning for credit/pay later selection */}
+                    {paymentMethodId && getMethodById(paymentMethodId)?.type === 'credit' && (
+                      <div className="flex items-start gap-2 mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
+                        <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <p className="text-xs text-amber-700">
+                          This will record an unpaid debt. Guest must pay later with a valid payment method.
+                        </p>
+                      </div>
+                    )}
                   </div>
                   
                   {/* Phase 3: Department Selection */}

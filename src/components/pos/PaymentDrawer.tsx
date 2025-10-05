@@ -79,6 +79,7 @@ export default function PaymentDrawer({ order, trigger }: PaymentDrawerProps) {
     try {
       const paymentTotal = getPaymentTotal(order.total_amount, paymentMethodId);
       
+      // PHASE 2: POS payments are processed immediately
       await processPayment(order.id, paymentMethodId, paymentTotal.total);
       
       toast({

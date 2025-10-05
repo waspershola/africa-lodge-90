@@ -62,6 +62,7 @@ import { calculateTaxesAndCharges } from "@/lib/tax-calculator";
 import type { Room } from "./RoomGrid";
 import { PaymentSummaryCard } from "./PaymentSummaryCard";
 import { TaxBreakdownCard } from "@/components/billing/TaxBreakdownCard";
+import { determinePaymentStatus } from "@/lib/payment-rules";
 
 interface QuickGuestCaptureProps {
   room?: Room | null;
@@ -506,6 +507,9 @@ export const QuickGuestCapture = ({
           
           const paymentMethodType = selectedMethod.type;
           
+          // PHASE 2: Determine payment status
+          const paymentStatus = determinePaymentStatus(selectedMethod.type, false);
+          
           const { error: paymentError } = await supabase
             .from('payments')
             .insert([{
@@ -514,7 +518,8 @@ export const QuickGuestCapture = ({
               amount: depositAmount,
               payment_method: paymentMethodType,
               payment_method_id: formData.paymentMode,
-              status: 'completed',
+              payment_status: paymentStatus,
+              status: paymentStatus === 'paid' ? 'completed' : 'pending',
               processed_by: user.id,
               reference: `Deposit for ${reservationNumber}`
             }]);
@@ -663,6 +668,9 @@ export const QuickGuestCapture = ({
               
               const paymentMethodType = selectedMethod.type;
               
+              // PHASE 2: Determine payment status
+              const paymentStatus = determinePaymentStatus(selectedMethod.type, false);
+              
               const { error: paymentError } = await supabase
                 .from('payments')
                 .insert({
@@ -670,7 +678,8 @@ export const QuickGuestCapture = ({
                   amount: additionalPayment,
                   payment_method: paymentMethodType,
                   payment_method_id: formData.paymentMode,
-                  status: 'completed',
+                  payment_status: paymentStatus,
+                  status: paymentStatus === 'paid' ? 'completed' : 'pending',
                   processed_by: user.id,
                   reference: `Additional payment on check-in`,
                   tenant_id: user.user_metadata?.tenant_id
@@ -788,6 +797,9 @@ export const QuickGuestCapture = ({
               
               const paymentMethodType = selectedMethod.type;
               
+              // PHASE 2: Determine payment status
+              const paymentStatus = determinePaymentStatus(selectedMethod.type, false);
+              
               const { error: paymentError } = await supabase
                 .from('payments')
                 .insert({
@@ -795,7 +807,8 @@ export const QuickGuestCapture = ({
                   amount: parseFloat(formData.depositAmount),
                   payment_method: paymentMethodType,
                   payment_method_id: formData.paymentMode,
-                  status: 'completed',
+                  payment_status: paymentStatus,
+                  status: paymentStatus === 'paid' ? 'completed' : 'pending',
                   tenant_id: user.user_metadata?.tenant_id
                 });
 

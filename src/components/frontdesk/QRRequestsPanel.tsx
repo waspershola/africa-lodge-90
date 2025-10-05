@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,9 +19,12 @@ import {
   Shield,
   Wrench,
   AlertCircle,
-  X
+  X,
+  Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useQRRealtime } from "@/hooks/useQRRealtime";
+import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
 
 interface QRRequest {
   id: string;
@@ -39,65 +42,6 @@ interface QRRequest {
   specialInstructions?: string;
   qrToken: string;
 }
-
-const mockQRRequests: QRRequest[] = [
-  {
-    id: '1',
-    room: '305',
-    guestName: 'Sarah Johnson',
-    type: 'amenity',
-    category: 'Towels & Linens',
-    description: '2 extra bath towels, 1 bathrobe',
-    priority: 'medium',
-    status: 'pending',
-    requestedAt: new Date(Date.now() - 10 * 60 * 1000), // 10 minutes ago
-    estimatedTime: 15,
-    qrToken: 'QR_REQ_305_001'
-  },
-  {
-    id: '2',
-    room: '201',
-    guestName: 'Mike Chen',    
-    type: 'service',
-    category: 'Room Service',
-    description: 'Coffee and pastries for 2 people',
-    priority: 'low',
-    status: 'assigned',
-    requestedAt: new Date(Date.now() - 25 * 60 * 1000), // 25 minutes ago
-    assignedTo: 'Room Service Staff',
-    estimatedTime: 20,
-    specialInstructions: 'Guest prefers decaf coffee',
-    qrToken: 'QR_REQ_201_002'
-  },
-  {
-    id: '3',
-    room: '410',
-    guestName: 'David Wilson',
-    type: 'maintenance',
-    category: 'AC/Heating',
-    description: 'Air conditioning too cold, cannot adjust temperature',
-    priority: 'high',
-    status: 'in-progress',
-    requestedAt: new Date(Date.now() - 45 * 60 * 1000), // 45 minutes ago
-    assignedTo: 'Mike Chen (Maintenance)',
-    estimatedTime: 30,
-    qrToken: 'QR_REQ_410_003'
-  },
-  {
-    id: '4',
-    room: '150',
-    guestName: 'Amara Okafor',
-    type: 'housekeeping',
-    category: 'Cleaning',
-    description: 'Room cleaning - guest stepped out',
-    priority: 'medium',
-    status: 'completed',
-    requestedAt: new Date(Date.now() - 120 * 60 * 1000), // 2 hours ago
-    assignedTo: 'Sarah Johnson (Housekeeping)',
-    completedAt: new Date(Date.now() - 30 * 60 * 1000), // 30 minutes ago
-    qrToken: 'QR_REQ_150_004'
-  }
-];
 
 const requestTypes = {
   amenity: { 
@@ -123,10 +67,51 @@ const requestTypes = {
 };
 
 export const QRRequestsPanel = () => {
-  const [requests, setRequests] = useState<QRRequest[]>(mockQRRequests);
+  const { user } = useAuth();
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterType, setFilterType] = useState("all");
   const { toast } = useToast();
+  
+  // USE REAL DATA from QR Realtime hook
+  const { 
+    orders: qrOrders, 
+    loading: isLoading,
+    updateOrderStatus,
+    assignOrder 
+  } = useQRRealtime();
+
+  // Map real QR orders to display format
+  const requests = useMemo(() => {
+    return qrOrders.map(order => {
+      // Determine type from service_type
+      const serviceType = order.service_type || 'service';
+      let type: QRRequest['type'] = 'service';
+      if (serviceType.includes('housekeeping') || serviceType.includes('cleaning')) type = 'housekeeping';
+      else if (serviceType.includes('maintenance') || serviceType.includes('repair')) type = 'maintenance';
+      else if (serviceType.includes('amenity') || serviceType.includes('towel') || serviceType.includes('pillow')) type = 'amenity';
+      
+      // Map priority
+      const priorityMap = { 1: 'low', 2: 'medium', 3: 'high', 4: 'urgent' } as const;
+      const priority = priorityMap[order.priority as 1 | 2 | 3 | 4] || 'medium';
+      
+      return {
+        id: order.id,
+        room: order.room_id || 'Unknown', // Use room_id instead of room_number
+        guestName: 'Guest', // QROrder doesn't have guest_name
+        type,
+        category: order.service_type?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Service',
+        description: order.request_details?.description || order.notes || 'No description',
+        priority,
+        status: order.status as QRRequest['status'],
+        requestedAt: new Date(order.created_at),
+        assignedTo: order.assigned_to, // Use assigned_to (ID) instead of assigned_to_name
+        completedAt: order.completed_at ? new Date(order.completed_at) : undefined,
+        estimatedTime: order.request_details?.estimated_time || 20,
+        specialInstructions: order.request_details?.special_instructions || order.notes,
+        qrToken: order.qr_code_id
+      } as QRRequest;
+    });
+  }, [qrOrders]);
 
   const getRequestIcon = (type: QRRequest['type']) => {
     const IconComponent = requestTypes[type].icon;
@@ -158,43 +143,55 @@ export const QRRequestsPanel = () => {
     }
   };
 
-  const handleAssignRequest = (requestId: string) => {
-    setRequests(prev => prev.map(req => 
-      req.id === requestId 
-        ? { ...req, status: 'assigned' as const, assignedTo: 'Front Desk Staff' }
-        : req
-    ));
+  const handleAssignRequest = async (requestId: string) => {
+    const success = await assignOrder(requestId, user?.id, undefined);
     
-    toast({
-      title: "Request Assigned",
-      description: "Request has been assigned to staff member"
-    });
+    if (success) {
+      toast({
+        title: "Request Assigned",
+        description: "Request has been assigned to you"
+      });
+    } else {
+      toast({
+        title: "Assignment Failed",
+        description: "Could not assign request. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleCompleteRequest = (requestId: string) => {
-    setRequests(prev => prev.map(req => 
-      req.id === requestId 
-        ? { ...req, status: 'completed' as const, completedAt: new Date() }
-        : req
-    ));
+  const handleCompleteRequest = async (requestId: string) => {
+    const success = await updateOrderStatus(requestId, 'completed', 'Completed by front desk');
     
-    toast({
-      title: "Request Completed",
-      description: "Request has been marked as completed"
-    });
+    if (success) {
+      toast({
+        title: "Request Completed",
+        description: "Request has been marked as completed"
+      });
+    } else {
+      toast({
+        title: "Update Failed",
+        description: "Could not complete request. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleCancelRequest = (requestId: string) => {
-    setRequests(prev => prev.map(req => 
-      req.id === requestId 
-        ? { ...req, status: 'cancelled' as const }
-        : req
-    ));
+  const handleCancelRequest = async (requestId: string) => {
+    const success = await updateOrderStatus(requestId, 'cancelled', 'Cancelled by front desk');
     
-    toast({
-      title: "Request Cancelled",
-      description: "Request has been cancelled"
-    });
+    if (success) {
+      toast({
+        title: "Request Cancelled",
+        description: "Request has been cancelled"
+      });
+    } else {
+      toast({
+        title: "Cancellation Failed",
+        description: "Could not cancel request. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const getTimeAgo = (date: Date) => {
@@ -220,6 +217,23 @@ export const QRRequestsPanel = () => {
     new Date(r.completedAt).toDateString() === new Date().toDateString()
   );
 
+  const avgResponseTime = requests.filter(r => r.estimatedTime).length > 0
+    ? Math.round(requests.filter(r => r.estimatedTime).reduce((sum, r) => sum + (r.estimatedTime || 0), 0) / requests.filter(r => r.estimatedTime).length)
+    : 0;
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center">
+          <Loader2 className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-spin" />
+          <h3 className="font-medium mb-2">Loading QR Requests...</h3>
+          <p className="text-muted-foreground">Fetching guest service requests</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header Stats */}
@@ -244,9 +258,7 @@ export const QRRequestsPanel = () => {
         </Card>
         <Card className="bg-purple-50 border-purple-200">
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-purple-600">
-              {Math.round(requests.filter(r => r.estimatedTime).reduce((sum, r) => sum + (r.estimatedTime || 0), 0) / (requests.filter(r => r.estimatedTime).length || 1))}m
-            </div>
+            <div className="text-2xl font-bold text-purple-600">{avgResponseTime}m</div>
             <div className="text-sm text-purple-700">Avg Response Time</div>
           </CardContent>
         </Card>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,8 +15,13 @@ import {
   AlertCircle,
   UserCheck,
   MapPin,
-  Timer
+  Timer,
+  Loader2
 } from "lucide-react";
+import { useStaffOperations } from "@/hooks/data/useStaffOperations";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
 
 interface StaffMember {
   id: string;
@@ -44,95 +49,109 @@ interface Task {
   notes?: string;
 }
 
-const mockStaff: StaffMember[] = [
-  {
-    id: '1',
-    name: 'Sarah Johnson',
-    role: 'housekeeping',
-    status: 'on-duty',
-    currentTask: 'Deep cleaning',
-    currentRoom: '305',
-    completedTasks: 8,
-    shiftStart: '07:00'
-  },
-  {
-    id: '2',
-    name: 'Mike Chen',
-    role: 'maintenance',
-    status: 'on-duty',
-    currentTask: 'AC repair',
-    currentRoom: '201',
-    completedTasks: 3,
-    shiftStart: '08:00'
-  },
-  {
-    id: '3',
-    name: 'Amara Okafor',
-    role: 'housekeeping',
-    status: 'break',
-    completedTasks: 6,
-    shiftStart: '07:00'
-  },
-  {
-    id: '4',
-    name: 'David Security',
-    role: 'security',
-    status: 'on-duty',
-    currentTask: 'Patrol round',
-    completedTasks: 12,
-    shiftStart: '06:00'
-  }
-];
-
-const mockTasks: Task[] = [
-  {
-    id: '1',
-    type: 'cleaning',
-    room: '405',
-    description: 'Standard cleaning after checkout',
-    assignedTo: '1',
-    status: 'pending',
-    priority: 'medium',
-    estimatedTime: 45
-  },
-  {
-    id: '2',
-    type: 'maintenance',
-    room: '302',
-    description: 'Bathroom sink leaking',
-    assignedTo: '2',
-    status: 'in-progress',
-    priority: 'high',
-    estimatedTime: 60,
-    startedAt: new Date(Date.now() - 30 * 60 * 1000) // 30 minutes ago
-  },
-  {
-    id: '3',
-    type: 'guest-request',
-    room: '150',
-    description: 'Extra towels and pillows',
-    assignedTo: '1',
-    status: 'completed',
-    priority: 'low',
-    estimatedTime: 15,
-    completedAt: new Date(Date.now() - 10 * 60 * 1000) // 10 minutes ago
-  },
-  {
-    id: '4',
-    type: 'maintenance',
-    room: '210',
-    description: 'TV remote not working',
-    assignedTo: '',
-    status: 'pending',
-    priority: 'low',
-    estimatedTime: 20
-  }
-];
-
 export const StaffOpsPanel = () => {
-  const [staff] = useState<StaffMember[]>(mockStaff);
-  const [tasks] = useState<Task[]>(mockTasks);
+  const { tenant } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
+  
+  // USE REAL DATA from Staff Operations hook
+  const { 
+    staff: realStaff, 
+    tasks: realTasks,
+    isLoading: staffLoading,
+    assignTask,
+    updateTaskStatus
+  } = useStaffOperations();
+  
+  // Fetch active shifts to determine on-duty status
+  const { data: activeShifts = [] } = useQuery({
+    queryKey: ['active-shifts', tenant?.tenant_id],
+    queryFn: async () => {
+      if (!tenant?.tenant_id) return [];
+      
+      const { data, error } = await supabase
+        .from('shift_sessions')
+        .select('*, users(name, role)')
+        .eq('tenant_id', tenant.tenant_id)
+        .eq('status', 'active')
+        .order('start_time', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!tenant?.tenant_id,
+    refetchInterval: 30000
+  });
+  
+  // Map real staff with shift status
+  const staff = useMemo<StaffMember[]>(() => {
+    return realStaff.map(member => {
+      const activeShift = activeShifts.find(s => s.staff_id === member.id);
+      const assignedTasks = realTasks.filter(t => t.assigned_to === member.id);
+      const activeTasks = assignedTasks.filter(t => t.status === 'in_progress');
+      const completedTasks = assignedTasks.filter(t => t.status === 'completed');
+      
+      // Map role
+      let role: StaffMember['role'] = 'front-desk';
+      const memberRole = member.role?.toLowerCase() || '';
+      if (memberRole.includes('housekeeping')) role = 'housekeeping';
+      else if (memberRole.includes('maintenance')) role = 'maintenance';
+      else if (memberRole.includes('security')) role = 'security';
+      
+      return {
+        id: member.id,
+        name: member.name || member.email?.split('@')[0] || 'Staff Member',
+        role,
+        status: activeShift ? 'on-duty' : 'off-duty',
+        currentTask: activeTasks[0]?.title,
+        currentRoom: activeTasks[0]?.room?.room_number, // Access room_number through room relation
+        completedTasks: completedTasks.length,
+        shiftStart: activeShift ? new Date(activeShift.start_time).toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: false 
+        }) : ''
+      };
+    });
+  }, [realStaff, activeShifts, realTasks]);
+  
+  // Map real tasks
+  const tasks = useMemo<Task[]>(() => {
+    return realTasks.map(task => {
+      // Determine type
+      let type: Task['type'] = 'guest-request';
+      const taskType = task.task_type?.toLowerCase() || '';
+      if (taskType.includes('cleaning') || taskType.includes('housekeeping')) type = 'cleaning';
+      else if (taskType.includes('maintenance') || taskType.includes('repair')) type = 'maintenance';
+      else if (taskType.includes('security')) type = 'security';
+      
+      // Map status
+      let status: Task['status'] = 'pending';
+      if (task.status === 'in_progress') status = 'in-progress';
+      else if (task.status === 'completed') status = 'completed';
+      else if (task.status === 'cancelled') status = 'blocked'; // Map cancelled to blocked for display
+      
+      // Map priority
+      let priority: Task['priority'] = 'medium';
+      const taskPriority = task.priority?.toLowerCase() || '';
+      if (taskPriority === 'high') priority = 'high';
+      else if (taskPriority === 'low') priority = 'low';
+      else if (taskPriority === 'urgent') priority = 'urgent';
+      
+      return {
+        id: task.id,
+        type,
+        room: task.room?.room_number || 'N/A', // Access room_number through room relation
+        description: task.description || task.title || 'No description',
+        assignedTo: task.assigned_to || '',
+        status,
+        priority,
+        estimatedTime: task.estimated_minutes || 30,
+        startedAt: task.started_at ? new Date(task.started_at) : undefined,
+        completedAt: task.completed_at ? new Date(task.completed_at) : undefined,
+        notes: task.description
+      };
+    });
+  }, [realTasks]);
 
   const getStaffName = (staffId: string) => {
     return staff.find(s => s.id === staffId)?.name || 'Unassigned';
@@ -189,6 +208,20 @@ export const StaffOpsPanel = () => {
   const onDutyStaff = staff.filter(s => s.status === 'on-duty');
   const pendingTasks = tasks.filter(t => t.status === 'pending');
   const inProgressTasks = tasks.filter(t => t.status === 'in-progress');
+  const completedTasks = tasks.filter(t => t.status === 'completed');
+
+  // Loading state
+  if (staffLoading) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center">
+          <Loader2 className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-spin" />
+          <h3 className="font-medium mb-2">Loading Staff Operations...</h3>
+          <p className="text-muted-foreground">Fetching staff and task data</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -215,7 +248,7 @@ export const StaffOpsPanel = () => {
         <Card>
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold text-primary">
-              {tasks.filter(t => t.status === 'completed').length}
+              {completedTasks.length}
             </div>
             <div className="text-sm text-muted-foreground">Completed Today</div>
           </CardContent>
@@ -230,122 +263,148 @@ export const StaffOpsPanel = () => {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4">
-            {staff.map((member) => (
-              <Card key={member.id}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        <AvatarFallback>
-                          {member.name.split(' ').map(n => n[0]).join('')}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-medium">{member.name}</h3>
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            {getRoleIcon(member.role)}
-                            <span className="capitalize">{member.role.replace('-', ' ')}</span>
+          {staff.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="font-medium mb-2">No Staff Members</h3>
+                <p className="text-muted-foreground">
+                  No staff members found. Staff will appear here once they start their shifts.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {staff.map((member) => (
+                <Card key={member.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          <AvatarFallback>
+                            {member.name.split(' ').map(n => n[0]).join('')}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-medium">{member.name}</h3>
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              {getRoleIcon(member.role)}
+                              <span className="capitalize">{member.role.replace('-', ' ')}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                            {member.shiftStart && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                Since {member.shiftStart}
+                              </span>
+                            )}
+                            <span className="flex items-center gap-1">
+                              <CheckCircle className="h-3 w-3" />
+                              {member.completedTasks} completed
+                            </span>
+                            {member.currentRoom && (
+                              <span className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                Room {member.currentRoom}
+                              </span>
+                            )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            Since {member.shiftStart}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <CheckCircle className="h-3 w-3" />
-                            {member.completedTasks} completed
-                          </span>
-                          {member.currentRoom && (
-                            <span className="flex items-center gap-1">
-                              <MapPin className="h-3 w-3" />
-                              Room {member.currentRoom}
-                            </span>
-                          )}
-                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <Badge className={getStatusColor(member.status)}>
+                          {member.status.replace('-', ' ')}
+                        </Badge>
+                        {member.currentTask && (
+                          <div className="text-sm text-muted-foreground mt-1">
+                            {member.currentTask}
+                          </div>
+                        )}
                       </div>
                     </div>
-
-                    <div className="text-right">
-                      <Badge className={getStatusColor(member.status)}>
-                        {member.status.replace('-', ' ')}
-                      </Badge>
-                      {member.currentTask && (
-                        <div className="text-sm text-muted-foreground mt-1">
-                          {member.currentTask}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="tasks" className="space-y-4">
-          <div className="grid gap-4">
-            {tasks.map((task) => (
-              <Card key={task.id} className={task.priority === 'urgent' ? 'border-red-200 bg-red-50/50' : ''}>
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge className={getPriorityColor(task.priority)}>
-                          {task.priority.toUpperCase()}
-                        </Badge>
-                        <Badge className={getTaskStatusColor(task.status)}>
-                          {task.status.replace('-', ' ')}
-                        </Badge>
-                        <Badge variant="outline">Room {task.room}</Badge>
-                      </div>
-                      
-                      <h3 className="font-medium mb-1">{task.description}</h3>
-                      
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>Assigned: {getStaffName(task.assignedTo)}</span>
-                        <span className="flex items-center gap-1">
-                          <Timer className="h-3 w-3" />
-                          {task.estimatedTime} min
-                        </span>
-                        {task.startedAt && (
-                          <span>Started: {task.startedAt.toLocaleTimeString()}</span>
+          {tasks.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="font-medium mb-2">No Tasks</h3>
+                <p className="text-muted-foreground">
+                  No tasks found. Tasks will appear here when created or assigned.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {tasks.map((task) => (
+                <Card key={task.id} className={task.priority === 'urgent' ? 'border-red-200 bg-red-50/50' : ''}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge className={getPriorityColor(task.priority)}>
+                            {task.priority.toUpperCase()}
+                          </Badge>
+                          <Badge className={getTaskStatusColor(task.status)}>
+                            {task.status.replace('-', ' ')}
+                          </Badge>
+                          <Badge variant="outline">Room {task.room}</Badge>
+                        </div>
+                        
+                        <h3 className="font-medium mb-1">{task.description}</h3>
+                        
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <span>Assigned: {getStaffName(task.assignedTo)}</span>
+                          <span className="flex items-center gap-1">
+                            <Timer className="h-3 w-3" />
+                            {task.estimatedTime} min
+                          </span>
+                          {task.startedAt && (
+                            <span>Started: {task.startedAt.toLocaleTimeString()}</span>
+                          )}
+                        </div>
+
+                        {task.status === 'in-progress' && (
+                          <div className="mt-3">
+                            <div className="flex items-center justify-between text-sm mb-1">
+                              <span>Progress</span>
+                              <span>{Math.round(getTaskProgress(task))}%</span>
+                            </div>
+                            <Progress value={getTaskProgress(task)} className="h-2" />
+                          </div>
                         )}
                       </div>
 
-                      {task.status === 'in-progress' && (
-                        <div className="mt-3">
-                          <div className="flex items-center justify-between text-sm mb-1">
-                            <span>Progress</span>
-                            <span>{Math.round(getTaskProgress(task))}%</span>
-                          </div>
-                          <Progress value={getTaskProgress(task)} className="h-2" />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex gap-2 ml-4">
-                      {task.status === 'pending' && (
-                        <Button size="sm" variant="outline">
-                          Assign Staff
+                      <div className="flex gap-2 ml-4">
+                        {task.status === 'pending' && (
+                          <Button size="sm" variant="outline">
+                            Assign Staff
+                          </Button>
+                        )}
+                        {task.status === 'in-progress' && (
+                          <Button size="sm">
+                            Mark Complete
+                          </Button>
+                        )}
+                        <Button size="sm" variant="ghost">
+                          <AlertCircle className="h-4 w-4" />
                         </Button>
-                      )}
-                      {task.status === 'in-progress' && (
-                        <Button size="sm">
-                          Mark Complete
-                        </Button>
-                      )}
-                      <Button size="sm" variant="ghost">
-                        <AlertCircle className="h-4 w-4" />
-                      </Button>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="assignments" className="space-y-4">

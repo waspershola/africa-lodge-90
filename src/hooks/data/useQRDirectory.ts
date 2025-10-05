@@ -47,7 +47,7 @@ export const useQRDirectory = () => {
           rooms (
             room_number,
             status,
-            reservations!inner (
+            reservations!reservations_room_id_fkey (
               guest_name,
               guest_email,
               guest_phone,

@@ -58,13 +58,13 @@ import { LoadingState } from '@/components/common/LoadingState';
 import type { Room } from "./frontdesk/RoomGrid";
 import { useTenantInfo } from "@/hooks/useTenantInfo";
 import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
-import { useFrontDeskData } from "@/hooks/data/useFrontDeskData";
+import { useFrontDeskDataOptimized } from "@/hooks/data/useFrontDeskDataOptimized";
 
 const FrontDeskDashboard = () => {
   const { data: tenantInfo } = useTenantInfo();
   const { logout } = useAuth();
   
-  // Consolidated real-time data from unified hook
+  // Consolidated real-time data from unified hook (OPTIMIZED)
   const {
     overview,
     arrivals: todayArrivals,
@@ -73,7 +73,7 @@ const FrontDeskDashboard = () => {
     alerts: realAlerts,
     groupedAlerts,
     isLoading: dataLoading,
-  } = useFrontDeskData();
+  } = useFrontDeskDataOptimized();
   
   // Enable unified real-time updates with role-based filtering
   useUnifiedRealtime({ verbose: false });

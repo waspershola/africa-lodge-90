@@ -9,13 +9,15 @@ export interface QROrder {
   id: string;
   tenant_id: string;
   qr_code_id: string;
-  service_type: string;
+  request_type: string; // Changed from service_type
   status: string;
-  request_details: any;
-  priority: number;
+  request_data: any; // Changed from request_details
+  priority: string; // Changed from number to string
   assigned_to?: string;
   assigned_team?: string;
   room_id?: string;
+  session_id?: string;
+  tracking_number?: string;
   created_at: string;
   updated_at: string;
   completed_at?: string;
@@ -48,19 +50,20 @@ const getServiceDepartment = (serviceType: string): string => {
   }
 };
 
-const getPriorityLevel = (priority: number): 'low' | 'medium' | 'high' => {
-  if (priority >= 3) return 'high';
-  if (priority >= 2) return 'medium';
+const getPriorityLevel = (priority: string): 'low' | 'medium' | 'high' => {
+  const normalizedPriority = priority.toLowerCase();
+  if (normalizedPriority === 'urgent' || normalizedPriority === 'high') return 'high';
+  if (normalizedPriority === 'medium') return 'medium';
   return 'low';
 };
 
 const getServiceDescription = (order: QROrder): string => {
-  const details = order.request_details;
+  const details = order.request_data;
   if (details?.items && Array.isArray(details.items)) {
     const itemCount = details.items.length;
-    return `${order.service_type.replace('_', ' ')} order with ${itemCount} item(s)`;
+    return `${order.request_type.replace('_', ' ')} order with ${itemCount} item(s)`;
   }
-  return details?.description || `${order.service_type.replace('_', ' ')} request`;
+  return details?.description || `${order.request_type.replace('_', ' ')} request`;
 };
 
 export const useQRRealtime = () => {
@@ -77,7 +80,7 @@ export const useQRRealtime = () => {
     const fetchOrders = async () => {
       try {
         const { data, error } = await supabase
-          .from('qr_orders')
+          .from('qr_requests')
           .select('*')
           .eq('tenant_id', user.tenant_id)
           .order('created_at', { ascending: false });
@@ -85,7 +88,7 @@ export const useQRRealtime = () => {
         if (error) throw error;
         setOrders(data || []);
       } catch (error) {
-        console.error('Error fetching QR orders:', error);
+        console.error('Error fetching QR requests:', error);
         toast.error('Failed to load QR requests');
       } finally {
         setLoading(false);
@@ -100,13 +103,13 @@ export const useQRRealtime = () => {
     if (!user?.tenant_id) return;
 
     const channel = supabase
-      .channel('qr_orders_realtime')
+      .channel('qr_requests_realtime')
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'qr_orders',
+          table: 'qr_requests',
           filter: `tenant_id=eq.${user.tenant_id}`,
         },
         (payload) => {
@@ -115,7 +118,7 @@ export const useQRRealtime = () => {
           
           // Check shift coverage for intelligent routing
           const shiftCoverage = getShiftCoverage();
-          const bestStaff = findBestStaffForService(newOrder.service_type);
+          const bestStaff = findBestStaffForService(newOrder.request_type);
           
           let toastDescription = `Room ${newOrder.room_id || 'Unknown'} - Priority ${newOrder.priority}`;
           
@@ -129,18 +132,18 @@ export const useQRRealtime = () => {
           }
           
           // Show notification for new requests
-          toast.success(`New ${newOrder.service_type.replace('_', ' ')} request received`, {
+          toast.success(`New ${newOrder.request_type.replace('_', ' ')} request received`, {
             description: toastDescription,
           });
 
           // Trigger staff alert notification
-          const department = getServiceDepartment(newOrder.service_type);
+          const department = getServiceDepartment(newOrder.request_type);
           const priority = getPriorityLevel(newOrder.priority);
           
           createServiceAlert.mutate({
             sourceId: newOrder.id,
-            sourceType: 'qr_order',
-            title: `New ${newOrder.service_type.replace('_', ' ')} Request`,
+            sourceType: 'qr_request',
+            title: `New ${newOrder.request_type.replace('_', ' ')} Request`,
             description: getServiceDescription(newOrder) + (bestStaff ? ` (Assigned to ${bestStaff.staff_name})` : ''),
             roomNumber: newOrder.room_id,
             priority: priority,
@@ -153,7 +156,7 @@ export const useQRRealtime = () => {
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'qr_orders',
+          table: 'qr_requests',
           filter: `tenant_id=eq.${user.tenant_id}`,
         },
         (payload) => {
@@ -167,7 +170,7 @@ export const useQRRealtime = () => {
           // Show notification for status changes
           if (payload.old && payload.old.status !== updatedOrder.status) {
             toast.info(`Request ${updatedOrder.status}`, {
-              description: `${updatedOrder.service_type.replace('_', ' ')} request updated`,
+              description: `${updatedOrder.request_type.replace('_', ' ')} request updated`,
             });
           }
         }
@@ -177,7 +180,7 @@ export const useQRRealtime = () => {
         {
           event: 'DELETE',
           schema: 'public',
-          table: 'qr_orders',
+          table: 'qr_requests',
           filter: `tenant_id=eq.${user.tenant_id}`,
         },
         (payload) => {
@@ -204,7 +207,7 @@ export const useQRRealtime = () => {
       if (status === 'completed') updateData.completed_at = new Date().toISOString();
 
       const { error } = await supabase
-        .from('qr_orders')
+        .from('qr_requests')
         .update(updateData)
         .eq('id', orderId);
 
@@ -222,7 +225,7 @@ export const useQRRealtime = () => {
   const assignOrder = async (orderId: string, assignedTo?: string, assignedTeam?: string) => {
     try {
       const { error } = await supabase
-        .from('qr_orders')
+        .from('qr_requests')
         .update({
           assigned_to: assignedTo,
           assigned_team: assignedTeam,

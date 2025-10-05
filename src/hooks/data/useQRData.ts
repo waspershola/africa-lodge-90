@@ -7,10 +7,10 @@ export interface QROrder {
   id: string;
   tenant_id: string;
   qr_code_id: string;
-  guest_session_id: string | null;
+  session_id: string | null;
   room_id: string | null;
-  service_type: string;
-  request_details: any;
+  request_type: string; // Changed from service_type
+  request_data: any; // Changed from request_details
   status: 'pending' | 'acknowledged' | 'in_progress' | 'completed' | 'cancelled';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   assigned_to: string | null;
@@ -18,6 +18,7 @@ export interface QROrder {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  tracking_number?: string;
   room?: {
     room_number: string;
   };
@@ -38,7 +39,7 @@ export function useQROrders() {
       if (!tenant?.tenant_id) throw new Error('No tenant');
 
       const { data, error } = await supabase
-        .from('qr_orders')
+        .from('qr_requests')
         .select(`
           *,
           room:rooms (
@@ -65,7 +66,7 @@ export function useQROrders() {
         if (!tenant?.tenant_id) throw new Error('No tenant');
 
         const { data, error } = await supabase
-          .from('qr_orders')
+          .from('qr_requests')
           .select(`
             *,
             room:rooms (
@@ -110,7 +111,7 @@ export function useQROrders() {
       if (status === 'completed') updates.completed_at = new Date().toISOString();
 
       const { data, error } = await supabase
-        .from('qr_orders')
+        .from('qr_requests')
         .update(updates)
         .eq('id', orderId)
         .select()
@@ -139,7 +140,7 @@ export function useQROrders() {
   const assignOrder = useMutation({
     mutationFn: async ({ orderId, staffId }: { orderId: string; staffId: string }) => {
       const { data, error } = await supabase
-        .from('qr_orders')
+        .from('qr_requests')
         .update({
           assigned_to: staffId,
           status: 'acknowledged',

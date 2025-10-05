@@ -134,7 +134,7 @@ export const useCreateServiceAlert = () => {
       department
     }: {
       sourceId: string;
-      sourceType: 'qr_order' | 'housekeeping' | 'maintenance';
+      sourceType: 'qr_request' | 'housekeeping' | 'maintenance';
       title: string;
       description: string;
       roomNumber?: string;

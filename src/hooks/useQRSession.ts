@@ -171,23 +171,23 @@ export const useQRSession = (sessionToken?: string | null) => {
   const loadRequestsForSession = async (guestSessionId: string) => {
     try {
       const { data, error } = await supabase
-        .from('qr_orders')
+        .from('qr_requests')
         .select('*')
-        .eq('guest_session_id', guestSessionId)
+        .eq('session_id', guestSessionId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
       const formattedRequests: QRRequest[] = (data || []).map(order => ({
         id: order.id,
-        type: order.service_type as QRRequest['type'],
+        type: order.request_type as QRRequest['type'],
         status: order.status as QRRequest['status'],
-        title: `${order.service_type} Request`,
-        details: order.request_details,
+        title: `${order.request_type} Request`,
+        details: order.request_data,
         created_at: order.created_at || '',
         updated_at: order.updated_at || '',
-        eta_minutes: (order.request_details as any)?.eta_minutes,
-        assigned_staff: (order.request_details as any)?.assigned_staff
+        eta_minutes: (order.request_data as any)?.eta_minutes,
+        assigned_staff: (order.request_data as any)?.assigned_staff
       }));
 
       setRequests(formattedRequests);
@@ -204,14 +204,15 @@ export const useQRSession = (sessionToken?: string | null) => {
 
     try {
       const { data: orderData, error } = await supabase
-        .from('qr_orders')
+        .from('qr_requests')
         .insert([{
           tenant_id: session.hotel_id,
           qr_code_id: session.id,
-          guest_session_id: session.guest_session_id,
-          service_type: type,
+          session_id: session.guest_session_id,
+          request_type: type,
           status: 'pending',
-          request_details: data,
+          request_data: data,
+          priority: data.priority || 'medium',
           notes: data.special_instructions || data.notes
         }])
         .select()
@@ -254,10 +255,10 @@ export const useQRSession = (sessionToken?: string | null) => {
   const updateRequest = async (requestId: string, updates: Partial<QRRequest>) => {
     try {
       const { error } = await supabase
-        .from('qr_orders')
+        .from('qr_requests')
         .update({
           status: updates.status,
-          request_details: updates.details,
+          request_data: updates.details,
           updated_at: new Date().toISOString()
         })
         .eq('id', requestId);
@@ -297,8 +298,8 @@ export const useQRSession = (sessionToken?: string | null) => {
         {
           event: '*',
           schema: 'public',
-          table: 'qr_orders',
-          filter: `guest_session_id=eq.${session.guest_session_id}`
+          table: 'qr_requests',
+          filter: `session_id=eq.${session.guest_session_id}`
         },
         (payload) => {
           console.log('QR Order update:', payload);

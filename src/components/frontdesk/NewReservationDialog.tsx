@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Plus } from "lucide-react";
+import { CalendarIcon, Plus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, addDays } from "date-fns";
 import { useCreateReservation, useRoomAvailability } from "@/hooks/data/useReservationsData";
@@ -26,6 +27,8 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
   const { user } = useAuth();
   const tenantId = user?.tenant_id;
   
+  const [guestMode, setGuestMode] = useState<'new' | 'existing'>('new');
+  const [selectedGuestId, setSelectedGuestId] = useState("");
   const [checkIn, setCheckIn] = useState<Date>(new Date());
   const [checkOut, setCheckOut] = useState<Date>(addDays(new Date(), 1));
   const [guestName, setGuestName] = useState("");
@@ -39,8 +42,24 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
   const { toast } = useToast();
   const createReservation = useCreateReservation();
 
+  // Fetch existing guests
+  const { data: existingGuests, isLoading: guestsLoading } = useQuery({
+    queryKey: ['guests', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+      const { data, error } = await supabase
+        .from('guests')
+        .select('id, first_name, last_name, email, phone')
+        .eq('tenant_id', tenantId)
+        .order('last_name');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!tenantId && open && guestMode === 'existing',
+  });
+
   // Professional room type availability
-  const { data: roomTypeAvailability } = useRoomTypeAvailability(checkIn, checkOut);
+  const { data: roomTypeAvailability, isLoading: roomTypesLoading, error: roomTypesError } = useRoomTypeAvailability(checkIn, checkOut);
   
   // Fetch specific available rooms for selected room type
   const { data: availableRooms, isLoading: availabilityLoading } = useQuery({
@@ -60,6 +79,16 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
     },
     enabled: !!tenantId && !!roomTypeId && !!checkIn && !!checkOut && open,
   });
+
+  const handleGuestSelect = (guestId: string) => {
+    setSelectedGuestId(guestId);
+    const guest = existingGuests?.find(g => g.id === guestId);
+    if (guest) {
+      setGuestName(`${guest.first_name} ${guest.last_name}`);
+      setGuestEmail(guest.email || "");
+      setGuestPhone(guest.phone || "");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,6 +131,8 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
     });
 
     onOpenChange(false);
+    setGuestMode('new');
+    setSelectedGuestId("");
     setGuestName("");
     setGuestEmail("");
     setGuestPhone("");
@@ -124,6 +155,46 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-4">
+            <Label>Guest Information *</Label>
+            <RadioGroup value={guestMode} onValueChange={(value: 'new' | 'existing') => {
+              setGuestMode(value);
+              if (value === 'new') {
+                setSelectedGuestId("");
+                setGuestName("");
+                setGuestEmail("");
+                setGuestPhone("");
+              }
+            }}>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="new" id="new" />
+                <Label htmlFor="new" className="font-normal cursor-pointer">Create New Guest</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="existing" id="existing" />
+                <Label htmlFor="existing" className="font-normal cursor-pointer">Select Existing Guest</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          {guestMode === 'existing' && (
+            <div className="space-y-2">
+              <Label htmlFor="existingGuest">Select Guest *</Label>
+              <Select value={selectedGuestId} onValueChange={handleGuestSelect}>
+                <SelectTrigger>
+                  <SelectValue placeholder={guestsLoading ? "Loading guests..." : "Select a guest"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {existingGuests?.map((guest) => (
+                    <SelectItem key={guest.id} value={guest.id}>
+                      {guest.first_name} {guest.last_name} - {guest.phone}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="guestName">Guest Name *</Label>
             <Input
@@ -132,6 +203,8 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
               onChange={(e) => setGuestName(e.target.value)}
               placeholder="Enter guest name"
               required
+              readOnly={guestMode === 'existing'}
+              className={guestMode === 'existing' ? 'bg-muted' : ''}
             />
           </div>
 
@@ -144,6 +217,8 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
                 value={guestEmail}
                 onChange={(e) => setGuestEmail(e.target.value)}
                 placeholder="guest@example.com"
+                readOnly={guestMode === 'existing'}
+                className={guestMode === 'existing' ? 'bg-muted' : ''}
               />
             </div>
             
@@ -155,6 +230,8 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
                 onChange={(e) => setGuestPhone(e.target.value)}
                 placeholder="+234..."
                 required
+                readOnly={guestMode === 'existing'}
+                className={guestMode === 'existing' ? 'bg-muted' : ''}
               />
             </div>
           </div>
@@ -168,34 +245,56 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
                 setSelectedRoomId("");
               }} 
               required
+              disabled={roomTypesLoading}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select room type" />
+                <SelectValue placeholder={
+                  roomTypesLoading 
+                    ? "Loading room types..." 
+                    : roomTypesError 
+                      ? "Error loading room types" 
+                      : "Select room type"
+                } />
               </SelectTrigger>
               <SelectContent>
-                {roomTypeAvailability?.map((rt) => (
-                  <SelectItem 
-                    key={rt.room_type_id} 
-                    value={rt.room_type_id}
-                    disabled={!rt.can_book}
-                  >
-                    <div className="flex items-center justify-between w-full gap-4">
-                      <span>{rt.room_type_name} - ₦{rt.base_rate.toLocaleString()}/night</span>
-                      <Badge 
-                        variant={
-                          rt.availability_status === 'available' ? 'default' :
-                          rt.availability_status === 'limited' ? 'secondary' :
-                          'destructive'
-                        }
-                        className="ml-2"
-                      >
-                        {rt.available_count}/{rt.total_inventory} available
-                      </Badge>
-                    </div>
-                  </SelectItem>
-                ))}
+                {roomTypesLoading ? (
+                  <div className="flex items-center justify-center p-4">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
+                ) : roomTypeAvailability && roomTypeAvailability.length > 0 ? (
+                  roomTypeAvailability.map((rt) => (
+                    <SelectItem 
+                      key={rt.room_type_id} 
+                      value={rt.room_type_id}
+                      disabled={!rt.can_book}
+                    >
+                      <div className="flex items-center justify-between w-full gap-4">
+                        <span>{rt.room_type_name} - ₦{rt.base_rate.toLocaleString()}/night</span>
+                        <Badge 
+                          variant={
+                            rt.availability_status === 'available' ? 'default' :
+                            rt.availability_status === 'limited' ? 'secondary' :
+                            'destructive'
+                          }
+                          className="ml-2"
+                        >
+                          {rt.available_count}/{rt.total_inventory} available
+                        </Badge>
+                      </div>
+                    </SelectItem>
+                  ))
+                ) : (
+                  <div className="p-4 text-sm text-muted-foreground text-center">
+                    No room types available
+                  </div>
+                )}
               </SelectContent>
             </Select>
+            {roomTypesError && (
+              <p className="text-sm text-destructive">
+                Failed to load room types. Please try again.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">

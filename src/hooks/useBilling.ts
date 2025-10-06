@@ -408,6 +408,9 @@ export function useBilling() {
 
       console.log('[Payment] Payment created successfully:', data?.id);
 
+      // Commit optimistic update
+      optimisticManager.commit(opId);
+
       // Aggressive refresh to ensure UI updates
       await Promise.all([
         loadBillingStats(), 
@@ -422,6 +425,8 @@ export function useBilling() {
       
       return data;
     } catch (err) {
+      // Rollback optimistic update on error
+      optimisticManager.rollback(opId);
       console.error('[Payment] Error creating payment:', err);
       throw err;
     }

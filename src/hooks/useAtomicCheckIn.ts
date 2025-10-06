@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useQueryClient } from '@tanstack/react-query';
+import { OptimisticUpdateManager, createArrayItemUpdate } from '@/lib/optimistic-updates';
 
 export interface AtomicCheckInParams {
   reservationId: string;
@@ -40,6 +41,7 @@ export function useAtomicCheckIn() {
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const optimisticManager = new OptimisticUpdateManager(queryClient);
 
   const checkIn = async (params: AtomicCheckInParams): Promise<AtomicCheckInResult> => {
     if (!tenant?.tenant_id) {
@@ -57,6 +59,24 @@ export function useAtomicCheckIn() {
       hasGuestData: !!params.guestData,
       chargeCount: params.initialCharges?.length || 0
     });
+
+    // Apply optimistic updates immediately for instant UI feedback
+    const opId = optimisticManager.applyOptimistic([
+      {
+        queryKey: ['reservations', tenant.tenant_id],
+        updater: createArrayItemUpdate(params.reservationId, (res: any) => ({
+          ...res,
+          status: 'checked_in'
+        }))
+      },
+      {
+        queryKey: ['rooms', tenant.tenant_id],
+        updater: createArrayItemUpdate(params.roomId, (room: any) => ({
+          ...room,
+          status: 'occupied'
+        }))
+      }
+    ]);
 
     try {
       // Call atomic check-in database function
@@ -88,7 +108,9 @@ export function useAtomicCheckIn() {
 
       // PHASE 1 REFINEMENT: Enhanced query invalidation including overstay
       if (result.success) {
-        console.log('[Atomic Check-in] Success - invalidating queries including overstay');
+        console.log('[Atomic Check-in] Success - committing optimistic updates');
+        optimisticManager.commit(opId);
+        
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ['rooms', tenant.tenant_id] }),
           queryClient.invalidateQueries({ queryKey: ['reservations', tenant.tenant_id] }),
@@ -100,11 +122,16 @@ export function useAtomicCheckIn() {
           queryClient.invalidateQueries({ queryKey: ['owner', 'overview'] })
         ]);
       } else {
+        console.log('[Atomic Check-in] Failed - rolling back optimistic updates');
+        optimisticManager.rollback(opId);
         setError(result.message);
       }
 
       return result;
     } catch (err) {
+      console.error('[Atomic Check-in] Error - rolling back optimistic updates');
+      optimisticManager.rollback(opId);
+      
       const errorMessage = err instanceof Error ? err.message : 'Unknown error during check-in';
       console.error('[Atomic Check-in] Error:', errorMessage);
       setError(errorMessage);

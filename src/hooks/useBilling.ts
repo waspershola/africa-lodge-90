@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { OptimisticUpdateManager, createArrayAppendUpdate } from '@/lib/optimistic-updates';
 
 export interface BillingStats {
   totalRevenue: number;
@@ -252,12 +253,27 @@ export function useBilling() {
     payment_method: string;
     payment_method_id?: string;
     reference?: string;
-    // Phase 3: Department/Terminal tracking
     department_id?: string;
     terminal_id?: string;
     payment_source?: 'frontdesk' | 'restaurant' | 'bar' | 'gym' | 'spa' | 'laundry' | 'other';
   }) => {
     if (!tenant?.tenant_id) return null;
+
+    const optimisticManager = new OptimisticUpdateManager(queryClient);
+    const tempPayment = {
+      id: `temp_${Date.now()}`,
+      ...paymentData,
+      tenant_id: tenant.tenant_id,
+      status: 'completed' as const,
+      created_at: new Date().toISOString()
+    };
+
+    const opId = optimisticManager.applyOptimistic([
+      {
+        queryKey: ['payments', tenant.tenant_id],
+        updater: createArrayAppendUpdate(tempPayment)
+      }
+    ]);
 
     try {
       // Get current user ID for duplicate check

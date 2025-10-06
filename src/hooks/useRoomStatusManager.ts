@@ -2,12 +2,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
+import { OptimisticUpdateManager, createArrayItemUpdate } from '@/lib/optimistic-updates';
 
 // Enhanced Room Status Manager with proper check-in logic and validation
 export const useRoomStatusManager = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
+  const optimisticManager = new OptimisticUpdateManager(queryClient);
 
   const updateRoomStatus = useMutation({
     mutationFn: async ({
@@ -17,7 +19,8 @@ export const useRoomStatusManager = () => {
       guestData,
       actionType = 'status_change',
       reason,
-      metadata
+      metadata,
+      _optimisticOpId
     }: {
       roomId: string;
       newStatus: 'available' | 'occupied' | 'reserved' | 'dirty' | 'oos' | 'overstay' | 'clean' | 'maintenance';
@@ -26,6 +29,7 @@ export const useRoomStatusManager = () => {
       actionType?: 'assign' | 'checkin' | 'checkout' | 'status_change';
       reason?: string;
       metadata?: Record<string, any>;
+      _optimisticOpId?: string;
     }) => {
       if (!user?.tenant_id) {
         throw new Error('User not authenticated or missing tenant information');
@@ -115,9 +119,14 @@ export const useRoomStatusManager = () => {
         if (resError) throw resError;
       }
 
-      return { room: roomData, actionType };
+      return { room: roomData, actionType, _optimisticOpId };
     },
     onSuccess: (data, variables) => {
+      // Commit optimistic update if provided
+      if (data._optimisticOpId) {
+        optimisticManager.commit(data._optimisticOpId);
+      }
+      
       // PHASE 4 FIX: Enhanced query invalidation for real-time updates
       const queriesToInvalidate = [
         { queryKey: ['rooms'] },
@@ -150,6 +159,11 @@ export const useRoomStatusManager = () => {
       });
     },
     onError: (error, variables) => {
+      // Rollback optimistic update if provided
+      if (variables._optimisticOpId) {
+        optimisticManager.rollback(variables._optimisticOpId);
+      }
+      
       console.error(`[RoomStatus] Failed to update room ${variables.roomId}:`, {
         error: error.message,
         variables,
@@ -168,22 +182,46 @@ export const useRoomStatusManager = () => {
     }
   });
 
-  const quickCheckIn = (roomId: string, reservationId: string, guestData?: any) => {
+  const quickCheckIn = async (roomId: string, reservationId: string, guestData?: any) => {
+    // Apply optimistic update immediately
+    const opId = optimisticManager.applyOptimistic([
+      {
+        queryKey: ['rooms', user?.tenant_id],
+        updater: createArrayItemUpdate(roomId, (room: any) => ({
+          ...room,
+          status: 'occupied'
+        }))
+      }
+    ]);
+
     return updateRoomStatus.mutateAsync({
       roomId,
       newStatus: 'occupied',
       reservationId,
       guestData,
-      actionType: 'checkin'
+      actionType: 'checkin',
+      _optimisticOpId: opId
     });
   };
 
-  const quickCheckOut = (roomId: string, reservationId?: string) => {
+  const quickCheckOut = async (roomId: string, reservationId?: string) => {
+    // Apply optimistic update immediately
+    const opId = optimisticManager.applyOptimistic([
+      {
+        queryKey: ['rooms', user?.tenant_id],
+        updater: createArrayItemUpdate(roomId, (room: any) => ({
+          ...room,
+          status: 'dirty'
+        }))
+      }
+    ]);
+
     return updateRoomStatus.mutateAsync({
       roomId,
       newStatus: 'dirty',
       reservationId,
-      actionType: 'checkout'
+      actionType: 'checkout',
+      _optimisticOpId: opId
     });
   };
 

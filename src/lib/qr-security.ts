@@ -48,8 +48,7 @@ export class QRSecurity {
     const baseUrl = typeof window !== 'undefined' && window.location 
       ? window.location.origin 
       : 'https://yourapp.com'; // Fallback for SSR
-    // Use /qr/:token route which validates first, then redirects to /guest/qr/:token
-    return `${baseUrl}/qr/${qrToken}`;
+    return `${baseUrl}/guest/qr/${qrToken}`;
   }
 
   static extractTokenFromUrl(): string | null {

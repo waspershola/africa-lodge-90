@@ -11,9 +11,9 @@ import { QueryClient } from '@tanstack/react-query';
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 0, // Always consider data stale for QR codes
+      staleTime: 30000, // 30 seconds
       gcTime: 5 * 60 * 1000, // 5 minutes
-      refetchOnWindowFocus: true, // Refetch when window gains focus
+      refetchOnWindowFocus: false, // Prevent constant refetching
       retry: 1, // Single retry for faster failure detection
     },
   },

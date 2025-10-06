@@ -14,7 +14,6 @@ import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTenantInfo } from '@/hooks/useTenantInfo';
 import { QRSecurity } from '@/lib/qr-security';
-import { queryClient } from '@/lib/queryClient';
 
 export interface QRCodeData {
   id: string;
@@ -243,7 +242,7 @@ export default function QRManagerPage() {
       // Generate QR code URL - permanent, no expiry
       const qrCodeUrl = QRSecurity.generateQRUrl(qrToken);
       
-      const { data: insertedData, error } = await supabase
+      const { error } = await supabase
         .from('qr_codes')
         .insert([{
           tenant_id: user.tenant_id,
@@ -254,9 +253,7 @@ export default function QRManagerPage() {
           qr_code_url: qrCodeUrl,
           label: newQRData.assignedTo,
           scan_type: newQRData.scope.toLowerCase()
-        }])
-        .select()
-        .single();
+        }]);
 
       if (error) {
         // Check if it's a duplicate room constraint error
@@ -265,19 +262,15 @@ export default function QRManagerPage() {
         }
         throw error;
       }
-
-      console.log('[QR CREATE] Successfully created QR code:', insertedData);
       
-      // Wait briefly to ensure database transaction is committed
-      await new Promise(resolve => setTimeout(resolve, 150));
-      
-      // Force immediate refetch with cache invalidation
-      console.log('[QR CREATE] Invalidating cache and refetching...');
-      await queryClient.invalidateQueries({ queryKey: ['qr-codes'], exact: false });
-      await refetch();
-      
-      console.log('[QR CREATE] Refetch complete');
-      
+      // Invalidate cache and force immediate refetch
+      await queryClient.invalidateQueries({ 
+        queryKey: ['qr-codes', user.tenant_id]
+      });
+      await queryClient.refetchQueries({ 
+        queryKey: ['qr-codes', user.tenant_id],
+        type: 'active'
+      });
       setShowWizard(false);
       toast({
         title: "QR Code Created",

@@ -96,9 +96,10 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
           console.log(`[Realtime] Invalidating query: ${key}`);
         }
         
-        // Handle both array and string query keys
-        const queryKey = key.includes('-') 
-          ? key.split('-').filter(Boolean)
+        // Handle query keys that contain tenant IDs (format: "key,tenantId")
+        // Split by comma to handle array-based query keys
+        const queryKey = key.includes(',') 
+          ? key.split(',').filter(Boolean)
           : [key];
         
         queryClient.invalidateQueries({ queryKey });
@@ -108,49 +109,51 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
   }, [queryClient, debounceDelay, verbose]);
 
   // Get query keys for a specific group
+  // Uses comma separator to support React Query's array-based query keys: ['key', tenantId]
   const getGroupQueryKeys = useCallback((table: string, tenantId: string): string[] => {
     const keys: string[] = [];
     
     switch (table) {
       case 'payments':
-        DEBOUNCE_GROUPS.payments.forEach(k => keys.push(`${k}-${tenantId}`));
+        // Critical: payments affect folios, billing, and rooms
+        DEBOUNCE_GROUPS.payments.forEach(k => keys.push(`${k},${tenantId}`));
         break;
       case 'folios':
       case 'folio_charges':
-        DEBOUNCE_GROUPS.folios.forEach(k => keys.push(`${k}-${tenantId}`));
+        DEBOUNCE_GROUPS.folios.forEach(k => keys.push(`${k},${tenantId}`));
         break;
       case 'rooms':
-        DEBOUNCE_GROUPS.rooms.forEach(k => keys.push(`${k}-${tenantId}`));
+        DEBOUNCE_GROUPS.rooms.forEach(k => keys.push(`${k},${tenantId}`));
         break;
       case 'reservations':
-        DEBOUNCE_GROUPS.reservations.forEach(k => keys.push(`${k}-${tenantId}`));
+        DEBOUNCE_GROUPS.reservations.forEach(k => keys.push(`${k},${tenantId}`));
         break;
       case 'guests':
-        DEBOUNCE_GROUPS.guests.forEach(k => keys.push(`${k}-${tenantId}`));
+        DEBOUNCE_GROUPS.guests.forEach(k => keys.push(`${k},${tenantId}`));
         break;
       case 'housekeeping_tasks':
-        DEBOUNCE_GROUPS.housekeeping.forEach(k => keys.push(`${k}-${tenantId}`));
+        DEBOUNCE_GROUPS.housekeeping.forEach(k => keys.push(`${k},${tenantId}`));
         break;
       case 'qr_requests':
-        DEBOUNCE_GROUPS.qr.forEach(k => keys.push(`${k}-${tenantId}`));
+        DEBOUNCE_GROUPS.qr.forEach(k => keys.push(`${k},${tenantId}`));
         break;
       case 'qr_codes':
-        DEBOUNCE_GROUPS.qr_codes.forEach(k => keys.push(`${k}-${tenantId}`));
+        DEBOUNCE_GROUPS.qr_codes.forEach(k => keys.push(`${k},${tenantId}`));
         break;
       case 'qr_orders':
-        DEBOUNCE_GROUPS.qr_orders.forEach(k => keys.push(`${k}-${tenantId}`));
+        DEBOUNCE_GROUPS.qr_orders.forEach(k => keys.push(`${k},${tenantId}`));
         break;
       case 'group_reservations':
-        DEBOUNCE_GROUPS.group_reservations.forEach(k => keys.push(`${k}-${tenantId}`));
+        DEBOUNCE_GROUPS.group_reservations.forEach(k => keys.push(`${k},${tenantId}`));
         break;
       case 'work_orders':
-        DEBOUNCE_GROUPS.work_orders.forEach(k => keys.push(`${k}-${tenantId}`));
+        DEBOUNCE_GROUPS.work_orders.forEach(k => keys.push(`${k},${tenantId}`));
         break;
       case 'pos_orders':
-        DEBOUNCE_GROUPS.pos_orders.forEach(k => keys.push(`${k}-${tenantId}`));
+        DEBOUNCE_GROUPS.pos_orders.forEach(k => keys.push(`${k},${tenantId}`));
         break;
       default:
-        keys.push(`${table}-${tenantId}`);
+        keys.push(`${table},${tenantId}`);
     }
     
     return keys;

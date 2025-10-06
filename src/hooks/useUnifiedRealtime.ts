@@ -36,10 +36,10 @@ interface SubscriptionState {
 
 // Role-based table access configuration
 const ROLE_TABLE_ACCESS: Record<UserRole, string[]> = {
-  SUPER_ADMIN: ['rooms', 'reservations', 'folios', 'folio_charges', 'payments', 'guests', 'housekeeping_tasks', 'qr_requests', 'shift_sessions', 'audit_log'],
-  OWNER: ['rooms', 'reservations', 'folios', 'folio_charges', 'payments', 'guests', 'housekeeping_tasks', 'qr_requests', 'shift_sessions'],
-  MANAGER: ['rooms', 'reservations', 'folios', 'folio_charges', 'payments', 'guests', 'housekeeping_tasks', 'qr_requests', 'shift_sessions'],
-  FRONT_DESK: ['rooms', 'reservations', 'folios', 'folio_charges', 'payments', 'guests', 'housekeeping_tasks', 'qr_requests'],
+  SUPER_ADMIN: ['rooms', 'reservations', 'folios', 'folio_charges', 'payments', 'guests', 'housekeeping_tasks', 'qr_requests', 'shift_sessions', 'audit_log', 'qr_codes'],
+  OWNER: ['rooms', 'reservations', 'folios', 'folio_charges', 'payments', 'guests', 'housekeeping_tasks', 'qr_requests', 'shift_sessions', 'qr_codes'],
+  MANAGER: ['rooms', 'reservations', 'folios', 'folio_charges', 'payments', 'guests', 'housekeeping_tasks', 'qr_requests', 'shift_sessions', 'qr_codes'],
+  FRONT_DESK: ['rooms', 'reservations', 'folios', 'folio_charges', 'payments', 'guests', 'housekeeping_tasks', 'qr_requests', 'qr_codes'],
   HOUSEKEEPING: ['rooms', 'housekeeping_tasks', 'reservations'],
   POS: ['menu_items', 'menu_categories', 'qr_requests', 'payments'],
   MAINTENANCE: ['rooms', 'housekeeping_tasks']
@@ -53,7 +53,8 @@ const DEBOUNCE_GROUPS = {
   reservations: ['reservations', 'rooms', 'guests', 'group-reservations'],
   guests: ['guests', 'guest-search', 'recent-guests'],
   housekeeping: ['housekeeping-tasks', 'rooms'],
-  qr: ['qr-requests', 'qr-orders']
+  qr: ['qr-requests', 'qr-orders'],
+  qr_codes: ['qr-codes']
 };
 
 export function useUnifiedRealtime(config: RealtimeConfig = {}) {
@@ -126,6 +127,9 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
         break;
       case 'qr_requests':
         DEBOUNCE_GROUPS.qr.forEach(k => keys.push(`${k}-${tenantId}`));
+        break;
+      case 'qr_codes':
+        keys.push(`qr-codes-${tenantId}`);
         break;
       default:
         keys.push(`${table}-${tenantId}`);

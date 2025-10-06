@@ -14,6 +14,8 @@ import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTenantInfo } from '@/hooks/useTenantInfo';
 import { QRSecurity } from '@/lib/qr-security';
+import { useUnifiedRealtime } from '@/hooks/useUnifiedRealtime';
+import { useEffect } from 'react';
 
 export interface QRCodeData {
   id: string;
@@ -40,6 +42,31 @@ export default function QRManagerPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const { data: tenantInfo } = useTenantInfo();
+  
+  // Phase 2C: Enable realtime sync for QR codes
+  const { isConnected, reconnectAttempts } = useUnifiedRealtime({
+    roleBasedFiltering: true,
+    debounceDelay: 300,
+    verbose: true, // Enable debug logging
+    errorRecovery: true
+  });
+  
+  // Show connection status notifications
+  useEffect(() => {
+    if (!isConnected && reconnectAttempts > 0) {
+      toast({
+        title: "Reconnecting...",
+        description: `Real-time sync reconnecting (attempt ${reconnectAttempts})`,
+        variant: "default"
+      });
+    } else if (isConnected && reconnectAttempts > 0) {
+      toast({
+        title: "Reconnected",
+        description: "Real-time sync restored",
+        variant: "default"
+      });
+    }
+  }, [isConnected, reconnectAttempts, toast]);
 
   // Load QR codes from database
   const { data: qrCodes = [], isLoading, refetch } = useQuery({

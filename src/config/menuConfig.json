@@ -242,7 +242,7 @@
     "OWNER": {
       "title": "Hotel Owner / Director",
       "icon": "Crown",
-      "inherits": ["ACCOUNTANT", "HOUSEKEEPING", "MAINTENANCE", "POS"],
+      "inherits": ["MANAGER", "ACCOUNTANT", "HOUSEKEEPING", "MAINTENANCE", "POS"],
       "modules": [
         {
           "id": "dashboard",
@@ -278,34 +278,6 @@
           "path": "/dashboard/billing",
           "component": "@/pages/owner/EnhancedBilling",
           "icon": "CreditCard"
-        },
-        {
-          "id": "operations",
-          "label": "Operations",
-          "path": "/dashboard/operations",
-          "component": "@/pages/manager/Operations",
-          "icon": "Activity"
-        },
-        {
-          "id": "approvals",
-          "label": "Approvals",
-          "path": "/dashboard/approvals",
-          "component": "@/pages/manager/Approvals",
-          "icon": "CheckCircle"
-        },
-        {
-          "id": "rooms",
-          "label": "Room Status",
-          "path": "/dashboard/rooms-status",
-          "component": "@/pages/manager/RoomStatus",
-          "icon": "Bed"
-        },
-        {
-          "id": "requests",
-          "label": "Service Requests",
-          "path": "/dashboard/requests",
-          "component": "@/pages/manager/ServiceRequests",
-          "icon": "Bell"
         },
         {
           "id": "qr-manager",

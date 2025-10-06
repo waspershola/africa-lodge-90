@@ -11,13 +11,9 @@ import { SessionSettingsModal } from '@/components/qr/SessionSettingsModal';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useTenantInfo } from '@/hooks/useTenantInfo';
 import { QRSecurity } from '@/lib/qr-security';
-import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import { RealtimeDebugIndicator } from '@/components/owner/qr/RealtimeDebugIndicator';
-import { useEffect } from 'react';
-import { useSyncWatcher } from '@/contexts/RealtimeSyncProvider';
 
 export interface QRCodeData {
   id: string;
@@ -34,7 +30,6 @@ export interface QRCodeData {
 
 export default function QRManagerPage() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [selectedQR, setSelectedQR] = useState<QRCodeData | null>(null);
   const [showWizard, setShowWizard] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
@@ -44,28 +39,10 @@ export default function QRManagerPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const { data: tenantInfo } = useTenantInfo();
-  
-  // Phase 2G: Use global sync provider (single source of truth)
-  const syncStatus = useSyncWatcher();
-  const qrCodeSync = syncStatus.qrCodes;
-  
-  // Phase 2E: Network status monitoring with auto-recovery
-  const { isOnline, lastSyncAt, setSyncing } = useNetworkStatus();
-  
-  // Auto-refetch when coming back online
-  useEffect(() => {
-    if (isOnline && lastSyncAt && user?.tenant_id) {
-      console.log('[QR Manager] Network restored, refetching QR codes');
-      setSyncing(true);
-      queryClient.invalidateQueries({ queryKey: ['qr-codes', user.tenant_id] })
-        .finally(() => setSyncing(false));
-    }
-  }, [isOnline, lastSyncAt, user?.tenant_id, queryClient, setSyncing]);
 
   // Load QR codes from database
   const { data: qrCodes = [], isLoading, refetch } = useQuery({
     queryKey: ['qr-codes', user?.tenant_id],
-    staleTime: 0, // Always refetch when invalidated
     queryFn: async () => {
       if (!user?.tenant_id) return [];
       
@@ -86,9 +63,7 @@ export default function QRManagerPage() {
       }
 
       return (data || []).map(qr => ({
-        id: qr.id,
-        qr_token: qr.qr_token,
-        qr_code_url: qr.qr_code_url,
+        id: qr.qr_token,
         scope: 'Room' as const,
         assignedTo: qr.rooms?.room_number ? `Room ${qr.rooms.room_number}` : (qr.label || 'Location'),
         servicesEnabled: qr.services || [],
@@ -98,7 +73,8 @@ export default function QRManagerPage() {
         createdBy: 'System'
       }));
     },
-    enabled: !!user?.tenant_id
+    enabled: !!user?.tenant_id,
+    staleTime: 30000 // Cache for 30 seconds
   });
 
   // Get branding settings from tenant info
@@ -160,37 +136,22 @@ export default function QRManagerPage() {
     if (!user?.tenant_id) return;
     
     try {
-      // Optimistic update - immediately update UI
-      queryClient.setQueryData(['qr-codes', user.tenant_id], (old: QRCodeData[] = []) => {
-        return old.map(qr => qr.id === updatedQR.id ? updatedQR : qr);
-      });
-
-      const { data: updated, error } = await supabase
+      const { error } = await supabase
         .from('qr_codes')
         .update({ 
           services: updatedQR.servicesEnabled,
           is_active: updatedQR.status === 'Active'
         })
-        .eq('id', updatedQR.id)
-        .select(`
-          *,
-          rooms:room_id (room_number),
-          qr_orders:qr_orders!qr_code_id (id, status, service_type, created_at)
-        `)
-        .single();
+        .eq('qr_token', updatedQR.id);
 
       if (error) throw error;
       
-      // Phase 5: Simplified - let RealtimeSyncProvider handle cross-device sync
       await refetch();
-
       toast({
         title: "QR Code Updated",
         description: `${updatedQR.assignedTo} QR code has been updated successfully`
       });
     } catch (err: any) {
-      // Revert optimistic update on error
-      await queryClient.invalidateQueries({ queryKey: ['qr-codes', user.tenant_id] });
       toast({
         title: "Error",
         description: err.message || "Failed to update QR code",
@@ -203,31 +164,20 @@ export default function QRManagerPage() {
     if (!user?.tenant_id) return;
     
     try {
-      // Optimistic update - immediately remove from UI
-      queryClient.setQueryData(['qr-codes', user.tenant_id], (old: QRCodeData[] = []) => {
-        return old.filter(qr => qr.id !== qrCode.id);
-      });
-
       const { error } = await supabase
         .from('qr_codes')
         .delete()
-        .eq('id', qrCode.id)
+        .eq('qr_token', qrCode.id)
         .eq('tenant_id', user.tenant_id);
 
       if (error) throw error;
       
-      // Phase 5: Simplified - let RealtimeSyncProvider handle cross-device sync
       await refetch();
-
-      setShowDrawer(false);
-      setSelectedQR(null);
       toast({
         title: "QR Code Deleted",
         description: `QR code for ${qrCode.assignedTo} has been deleted successfully`
       });
     } catch (err: any) {
-      // Revert optimistic update on error
-      await queryClient.invalidateQueries({ queryKey: ['qr-codes', user.tenant_id] });
       toast({
         title: "Error",
         description: err.message || "Failed to delete QR code",
@@ -245,27 +195,14 @@ export default function QRManagerPage() {
       // Extract room number if it's a room QR code
       let roomId = null;
       if (newQRData.scope === 'Room' && newQRData.assignedTo) {
-        // Extract room number - handle both "Room 101" and "101" formats
-        const roomNumber = newQRData.assignedTo.replace(/^Room\s+/i, '').trim();
-        
-        if (!roomNumber) {
-          throw new Error('Please provide a valid room number');
-        }
-        
-        const { data: room, error: roomError } = await supabase
+        // Try to find matching room by room number
+        const roomNumber = newQRData.assignedTo.replace('Room ', '').trim();
+        const { data: room } = await supabase
           .from('rooms')
           .select('id')
           .eq('tenant_id', user.tenant_id)
           .eq('room_number', roomNumber)
-          .maybeSingle();
-        
-        if (roomError) {
-          console.error('Room lookup error:', roomError);
-        }
-        
-        if (!room) {
-          console.warn(`Room ${roomNumber} not found in database. QR code will be created without room association.`);
-        }
+          .single();
         
         roomId = room?.id || null;
       }
@@ -273,7 +210,7 @@ export default function QRManagerPage() {
       // Generate QR code URL - permanent, no expiry
       const qrCodeUrl = QRSecurity.generateQRUrl(qrToken);
       
-      const { data: newQR, error } = await supabase
+      const { error } = await supabase
         .from('qr_codes')
         .insert([{
           tenant_id: user.tenant_id,
@@ -284,13 +221,7 @@ export default function QRManagerPage() {
           qr_code_url: qrCodeUrl,
           label: newQRData.assignedTo,
           scan_type: newQRData.scope.toLowerCase()
-        }])
-        .select(`
-          *,
-          rooms:room_id (room_number),
-          qr_orders:qr_orders!qr_code_id (id, status, service_type, created_at)
-        `)
-        .single();
+        }]);
 
       if (error) {
         // Check if it's a duplicate room constraint error
@@ -299,37 +230,8 @@ export default function QRManagerPage() {
         }
         throw error;
       }
-
-      if (newQR) {
-        // Transform the database record to match QRCodeData interface
-        const transformedQR: QRCodeData = {
-          id: newQR.id,
-          qr_token: newQR.qr_token,
-          qr_code_url: newQR.qr_code_url,
-          scope: 'Room' as const,
-          assignedTo: newQR.rooms?.room_number ? `Room ${newQR.rooms.room_number}` : (newQR.label || 'Location'),
-          servicesEnabled: newQR.services || [],
-          status: (newQR.is_active ? 'Active' : 'Inactive') as 'Active' | 'Inactive',
-          pendingRequests: 0,
-          createdAt: newQR.created_at,
-          createdBy: 'System'
-        };
-        
-        console.log('[QR Cache Debug] Before optimistic update:', queryClient.getQueryData(['qr-codes', user.tenant_id]));
-        
-        // Optimistic update - immediately add to UI
-        queryClient.setQueryData(['qr-codes', user.tenant_id], (old: QRCodeData[] = []) => {
-          return [transformedQR, ...old];
-        });
-        
-        console.log('[QR Cache Debug] After optimistic update:', queryClient.getQueryData(['qr-codes', user.tenant_id]));
-        
-        // Phase 4: Immediate refetch to confirm database state
-        await refetch();
-        console.log('[QR Cache Debug] After immediate refetch:', queryClient.getQueryData(['qr-codes', user.tenant_id]));
-      }
-
-      setShowWizard(false);
+      
+      await refetch();
       toast({
         title: "QR Code Created",
         description: `QR code for ${newQRData.assignedTo} has been generated successfully`
@@ -422,14 +324,6 @@ export default function QRManagerPage() {
       <SessionSettingsModal
         open={showSessionSettings}
         onOpenChange={setShowSessionSettings}
-      />
-      
-      {/* Phase 2D: Realtime Debug Indicator (dev only) */}
-      <RealtimeDebugIndicator
-        isConnected={qrCodeSync.isConnected}
-        reconnectAttempts={0}
-        lastSync={qrCodeSync.lastSync}
-        isOnline={isOnline}
       />
     </div>
   );

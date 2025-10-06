@@ -1,4 +1,3 @@
-import React from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -110,7 +109,6 @@ import SupportStaffDashboard from "./pages/support-staff/Dashboard";
 import MenuPreview from "./pages/debug/MenuPreview";
 import PaymentVerification from "./pages/staff/PaymentVerification";
 import QRRequests from "./pages/staff/QRRequests";
-import { RealtimeSyncProvider } from "./contexts/RealtimeSyncProvider";
 
 // Font manager component to apply global font styles
 const FontManager = () => {
@@ -127,14 +125,13 @@ const SentryMonitor = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <MultiTenantAuthProvider>
-      <RealtimeSyncProvider>
-        <PaymentMethodsProvider>
-          <TooltipProvider>
-            <FontManager />
-            <SentryMonitor />
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
+      <PaymentMethodsProvider>
+        <TooltipProvider>
+          <FontManager />
+          <SentryMonitor />
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<AuthPage />} />
@@ -281,10 +278,9 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
         <SecurityDebugPanel />
-          </BrowserRouter>
-          </TooltipProvider>
-        </PaymentMethodsProvider>
-      </RealtimeSyncProvider>
+        </BrowserRouter>
+        </TooltipProvider>
+      </PaymentMethodsProvider>
     </MultiTenantAuthProvider>
   </QueryClientProvider>
 );

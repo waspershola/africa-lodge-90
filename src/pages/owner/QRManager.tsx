@@ -149,13 +149,9 @@ export default function QRManagerPage() {
 
       if (error) throw error;
       
-      // Invalidate cache and force immediate refetch
-      await queryClient.invalidateQueries({ 
+      // Clear cache and force immediate refetch
+      queryClient.resetQueries({ 
         queryKey: ['qr-codes', user.tenant_id]
-      });
-      await queryClient.refetchQueries({ 
-        queryKey: ['qr-codes', user.tenant_id],
-        type: 'active'
       });
       toast({
         title: "QR Code Updated",
@@ -182,13 +178,9 @@ export default function QRManagerPage() {
 
       if (error) throw error;
       
-      // Invalidate cache and force immediate refetch
-      await queryClient.invalidateQueries({ 
+      // Clear cache and force immediate refetch
+      queryClient.resetQueries({ 
         queryKey: ['qr-codes', user.tenant_id]
-      });
-      await queryClient.refetchQueries({ 
-        queryKey: ['qr-codes', user.tenant_id],
-        type: 'active'
       });
       setShowDrawer(false);
       setSelectedQR(null);
@@ -263,13 +255,9 @@ export default function QRManagerPage() {
         throw error;
       }
       
-      // Invalidate cache and force immediate refetch
-      await queryClient.invalidateQueries({ 
+      // Clear cache and force immediate refetch
+      queryClient.resetQueries({ 
         queryKey: ['qr-codes', user.tenant_id]
-      });
-      await queryClient.refetchQueries({ 
-        queryKey: ['qr-codes', user.tenant_id],
-        type: 'active'
       });
       setShowWizard(false);
       toast({

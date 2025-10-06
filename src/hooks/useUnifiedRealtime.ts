@@ -36,13 +36,13 @@ interface SubscriptionState {
 
 // Role-based table access configuration
 const ROLE_TABLE_ACCESS: Record<UserRole, string[]> = {
-  SUPER_ADMIN: ['rooms', 'reservations', 'folios', 'folio_charges', 'payments', 'guests', 'housekeeping_tasks', 'qr_requests', 'shift_sessions', 'audit_log'],
-  OWNER: ['rooms', 'reservations', 'folios', 'folio_charges', 'payments', 'guests', 'housekeeping_tasks', 'qr_requests', 'shift_sessions'],
-  MANAGER: ['rooms', 'reservations', 'folios', 'folio_charges', 'payments', 'guests', 'housekeeping_tasks', 'qr_requests', 'shift_sessions'],
-  FRONT_DESK: ['rooms', 'reservations', 'folios', 'folio_charges', 'payments', 'guests', 'housekeeping_tasks', 'qr_requests'],
+  SUPER_ADMIN: ['rooms', 'reservations', 'folios', 'folio_charges', 'payments', 'guests', 'housekeeping_tasks', 'qr_requests', 'qr_codes', 'qr_orders', 'group_reservations', 'work_orders', 'pos_orders', 'shift_sessions', 'audit_log'],
+  OWNER: ['rooms', 'reservations', 'folios', 'folio_charges', 'payments', 'guests', 'housekeeping_tasks', 'qr_requests', 'qr_codes', 'qr_orders', 'group_reservations', 'work_orders', 'pos_orders', 'shift_sessions'],
+  MANAGER: ['rooms', 'reservations', 'folios', 'folio_charges', 'payments', 'guests', 'housekeeping_tasks', 'qr_requests', 'qr_codes', 'qr_orders', 'group_reservations', 'work_orders', 'shift_sessions'],
+  FRONT_DESK: ['rooms', 'reservations', 'folios', 'folio_charges', 'payments', 'guests', 'housekeeping_tasks', 'qr_requests', 'qr_codes', 'qr_orders', 'group_reservations', 'work_orders'],
   HOUSEKEEPING: ['rooms', 'housekeeping_tasks', 'reservations'],
-  POS: ['menu_items', 'menu_categories', 'qr_requests', 'payments'],
-  MAINTENANCE: ['rooms', 'housekeeping_tasks']
+  POS: ['menu_items', 'menu_categories', 'qr_requests', 'qr_orders', 'pos_orders', 'payments'],
+  MAINTENANCE: ['rooms', 'housekeeping_tasks', 'work_orders']
 };
 
 // Debounce groups - tables that should be invalidated together with same delay
@@ -53,7 +53,12 @@ const DEBOUNCE_GROUPS = {
   reservations: ['reservations', 'rooms', 'guests', 'group-reservations'],
   guests: ['guests', 'guest-search', 'recent-guests'],
   housekeeping: ['housekeeping-tasks', 'rooms'],
-  qr: ['qr-requests', 'qr-orders']
+  qr: ['qr-requests', 'qr-orders'],
+  qr_codes: ['qr-codes', 'qr-directory'],
+  qr_orders: ['qr-orders', 'qr-requests'],
+  group_reservations: ['group-reservations', 'reservations'],
+  work_orders: ['work-orders', 'housekeeping-tasks'],
+  pos_orders: ['pos-orders', 'payments']
 };
 
 export function useUnifiedRealtime(config: RealtimeConfig = {}) {
@@ -126,6 +131,21 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
         break;
       case 'qr_requests':
         DEBOUNCE_GROUPS.qr.forEach(k => keys.push(`${k}-${tenantId}`));
+        break;
+      case 'qr_codes':
+        DEBOUNCE_GROUPS.qr_codes.forEach(k => keys.push(`${k}-${tenantId}`));
+        break;
+      case 'qr_orders':
+        DEBOUNCE_GROUPS.qr_orders.forEach(k => keys.push(`${k}-${tenantId}`));
+        break;
+      case 'group_reservations':
+        DEBOUNCE_GROUPS.group_reservations.forEach(k => keys.push(`${k}-${tenantId}`));
+        break;
+      case 'work_orders':
+        DEBOUNCE_GROUPS.work_orders.forEach(k => keys.push(`${k}-${tenantId}`));
+        break;
+      case 'pos_orders':
+        DEBOUNCE_GROUPS.pos_orders.forEach(k => keys.push(`${k}-${tenantId}`));
         break;
       default:
         keys.push(`${table}-${tenantId}`);

@@ -11,7 +11,7 @@ import { QueryClient } from '@tanstack/react-query';
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30000, // 30 seconds
+      staleTime: 0, // Always fresh for real-time updates - let debounced invalidation control refetching
       gcTime: 5 * 60 * 1000, // 5 minutes
       refetchOnWindowFocus: false, // Prevent constant refetching
       retry: 1, // Single retry for faster failure detection

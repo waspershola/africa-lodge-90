@@ -14,6 +14,7 @@ import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useQuery } from '@tanstack/react-query';
 import { useTenantInfo } from '@/hooks/useTenantInfo';
 import { QRSecurity } from '@/lib/qr-security';
+import { useUnifiedRealtime } from '@/hooks/useUnifiedRealtime';
 
 export interface QRCodeData {
   id: string;
@@ -39,6 +40,9 @@ export default function QRManagerPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const { data: tenantInfo } = useTenantInfo();
+  
+  // Enable unified real-time updates for QR codes
+  useUnifiedRealtime({ verbose: false });
 
   // Load QR codes from database
   const { data: qrCodes = [], isLoading, refetch } = useQuery({
@@ -74,7 +78,7 @@ export default function QRManagerPage() {
       }));
     },
     enabled: !!user?.tenant_id,
-    staleTime: 30000 // Cache for 30 seconds
+    staleTime: 0 // Always fresh for real-time updates
   });
 
   // Get branding settings from tenant info

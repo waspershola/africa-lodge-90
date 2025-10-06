@@ -54,27 +54,21 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Never cache these patterns - always network only
+  // Never cache these patterns - always network only with original request (preserve all headers)
   const shouldNeverCache = NEVER_CACHE_PATTERNS.some(pattern => pattern.test(request.url));
   
   if (shouldNeverCache) {
     event.respondWith(
-      fetch(request, {
-        cache: 'no-store',
-        headers: {
-          ...request.headers,
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        }
-      }).catch(() => {
-        return new Response(
-          JSON.stringify({ error: 'Offline - network required' }),
-          {
-            status: 503,
-            headers: { 'Content-Type': 'application/json' }
-          }
-        );
-      })
+      fetch(request) // Use original request to preserve all headers including apikey
+        .catch(() => {
+          return new Response(
+            JSON.stringify({ error: 'Offline - network required' }),
+            {
+              status: 503,
+              headers: { 'Content-Type': 'application/json' }
+            }
+          );
+        })
     );
     return;
   }
@@ -82,7 +76,7 @@ self.addEventListener('fetch', (event) => {
   // For navigation requests (HTML pages) - network first with cache fallback
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request, { cache: 'no-cache' })
+      fetch(request)
         .then((networkResponse) => {
           // Don't cache navigation responses to ensure fresh app bundle
           return networkResponse;
@@ -96,7 +90,7 @@ self.addEventListener('fetch', (event) => {
 
   // For static assets (JS, CSS, images) - network first, cache fallback
   event.respondWith(
-    fetch(request, { cache: 'no-cache' })
+    fetch(request)
       .then((networkResponse) => {
         // Only cache successful responses for truly static assets
         if (networkResponse.ok && (

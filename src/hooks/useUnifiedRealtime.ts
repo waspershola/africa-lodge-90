@@ -45,16 +45,16 @@ const ROLE_TABLE_ACCESS: Record<UserRole, string[]> = {
   MAINTENANCE: ['rooms', 'housekeeping_tasks']
 };
 
-// Debounce groups - tables that should be invalidated together with same delay
+// Phase 2: Debounce groups - use array-based query keys for consistent cache invalidation
 const DEBOUNCE_GROUPS = {
-  payments: ['payments', 'folios', 'folio-balances', 'billing', 'rooms', 'owner-overview'],
-  folios: ['folios', 'folio-balances', 'billing'],
-  rooms: ['rooms', 'room-availability', 'room-types'],
-  reservations: ['reservations', 'rooms', 'guests', 'group-reservations'],
-  guests: ['guests', 'guest-search', 'recent-guests'],
-  housekeeping: ['housekeeping-tasks', 'rooms'],
-  qr: ['qr-requests', 'qr-orders'],
-  qr_codes: ['qr-codes']
+  payments: [['payments'], ['folios'], ['folio-balances'], ['billing'], ['rooms'], ['owner-overview']],
+  folios: [['folios'], ['folio-balances'], ['billing']],
+  rooms: [['rooms'], ['room-availability'], ['room-types']],
+  reservations: [['reservations'], ['rooms'], ['guests'], ['group-reservations']],
+  guests: [['guests'], ['guest-search'], ['recent-guests']],
+  housekeeping: [['housekeeping-tasks'], ['rooms']],
+  qr: [['qr-requests'], ['qr-orders']],
+  qr_codes: [['qr-codes']]
 };
 
 export function useUnifiedRealtime(config: RealtimeConfig = {}) {
@@ -78,61 +78,57 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
   const invalidationTimeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Debounced invalidation with grouping
-  const debouncedInvalidate = useCallback((queryKeys: string[], delay: number = debounceDelay) => {
-    queryKeys.forEach(key => {
-      if (invalidationTimeoutsRef.current[key]) {
-        clearTimeout(invalidationTimeoutsRef.current[key]);
+  // Phase 2: Debounced invalidation with array-based query keys
+  const debouncedInvalidate = useCallback((queryKeys: string[][], delay: number = debounceDelay) => {
+    queryKeys.forEach(queryKey => {
+      const keyString = queryKey.join('-');
+      if (invalidationTimeoutsRef.current[keyString]) {
+        clearTimeout(invalidationTimeoutsRef.current[keyString]);
       }
 
-      invalidationTimeoutsRef.current[key] = setTimeout(() => {
+      invalidationTimeoutsRef.current[keyString] = setTimeout(() => {
         if (verbose) {
-          console.log(`[Realtime] Invalidating query: ${key}`);
+          console.log(`[Realtime] Invalidating query:`, queryKey);
         }
         
-        // Handle both array and string query keys
-        const queryKey = key.includes('-') 
-          ? key.split('-').filter(Boolean)
-          : [key];
-        
         queryClient.invalidateQueries({ queryKey });
-        delete invalidationTimeoutsRef.current[key];
+        delete invalidationTimeoutsRef.current[keyString];
       }, delay);
     });
   }, [queryClient, debounceDelay, verbose]);
 
-  // Get query keys for a specific group
-  const getGroupQueryKeys = useCallback((table: string, tenantId: string): string[] => {
-    const keys: string[] = [];
+  // Phase 2: Get array-based query keys for a specific group
+  const getGroupQueryKeys = useCallback((table: string, tenantId: string): string[][] => {
+    const keys: string[][] = [];
     
     switch (table) {
       case 'payments':
-        DEBOUNCE_GROUPS.payments.forEach(k => keys.push(`${k}-${tenantId}`));
+        DEBOUNCE_GROUPS.payments.forEach(baseKey => keys.push([...baseKey, tenantId]));
         break;
       case 'folios':
       case 'folio_charges':
-        DEBOUNCE_GROUPS.folios.forEach(k => keys.push(`${k}-${tenantId}`));
+        DEBOUNCE_GROUPS.folios.forEach(baseKey => keys.push([...baseKey, tenantId]));
         break;
       case 'rooms':
-        DEBOUNCE_GROUPS.rooms.forEach(k => keys.push(`${k}-${tenantId}`));
+        DEBOUNCE_GROUPS.rooms.forEach(baseKey => keys.push([...baseKey, tenantId]));
         break;
       case 'reservations':
-        DEBOUNCE_GROUPS.reservations.forEach(k => keys.push(`${k}-${tenantId}`));
+        DEBOUNCE_GROUPS.reservations.forEach(baseKey => keys.push([...baseKey, tenantId]));
         break;
       case 'guests':
-        DEBOUNCE_GROUPS.guests.forEach(k => keys.push(`${k}-${tenantId}`));
+        DEBOUNCE_GROUPS.guests.forEach(baseKey => keys.push([...baseKey, tenantId]));
         break;
       case 'housekeeping_tasks':
-        DEBOUNCE_GROUPS.housekeeping.forEach(k => keys.push(`${k}-${tenantId}`));
+        DEBOUNCE_GROUPS.housekeeping.forEach(baseKey => keys.push([...baseKey, tenantId]));
         break;
       case 'qr_requests':
-        DEBOUNCE_GROUPS.qr.forEach(k => keys.push(`${k}-${tenantId}`));
+        DEBOUNCE_GROUPS.qr.forEach(baseKey => keys.push([...baseKey, tenantId]));
         break;
       case 'qr_codes':
-        keys.push(`qr-codes-${tenantId}`);
+        keys.push(['qr-codes', tenantId]);
         break;
       default:
-        keys.push(`${table}-${tenantId}`);
+        keys.push([table, tenantId]);
     }
     
     return keys;

@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 interface SyncWatcherConfig {
   queryKey: string[];
   realtimeTable: string;
+  tenantId: string; // Phase 3: Direct tenantId parameter for reliability
   pollInterval?: number; // Fallback polling in ms (default: 30000)
   enableToast?: boolean; // Show toast notifications (default: true)
   onNewData?: (payload: any) => void;
@@ -28,6 +29,7 @@ export function useBackgroundSyncWatcher(config: SyncWatcherConfig) {
   const {
     queryKey,
     realtimeTable,
+    tenantId,
     pollInterval = 30000,
     enableToast = true,
     onNewData,
@@ -36,13 +38,15 @@ export function useBackgroundSyncWatcher(config: SyncWatcherConfig) {
   } = config;
 
   const queryClient = useQueryClient();
-  const { user, tenant } = useAuth();
+  const { user } = useAuth();
   const channelRef = useRef<any>(null);
   const lastSyncRef = useRef<Date>(new Date());
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleRealtimeEvent = useCallback((payload: any) => {
-    console.log(`[Sync Watcher] ${realtimeTable} event:`, payload.eventType);
+    // Phase 6: Structured debug logging
+    console.log(`[Realtime Sync] ${realtimeTable} - Event: ${payload.eventType}, Record:`, 
+      payload.new?.id || payload.old?.id || 'unknown');
     
     // Update last sync timestamp
     lastSyncRef.current = new Date();
@@ -71,28 +75,34 @@ export function useBackgroundSyncWatcher(config: SyncWatcherConfig) {
   }, [queryClient, queryKey, realtimeTable, enableToast, onNewData, onUpdate, onDelete]);
 
   useEffect(() => {
-    if (!user || !tenant?.tenant_id) return;
+    // Phase 3: Validate tenantId before subscribing
+    if (!user || !tenantId) {
+      console.log(`[Realtime Sync] Skipping ${realtimeTable} - No tenantId`);
+      return;
+    }
 
-    console.log(`[Sync Watcher] Initializing for ${realtimeTable}`);
+    console.log(`[Realtime Sync] Initializing ${realtimeTable} for tenant: ${tenantId}`);
 
     // Subscribe to realtime changes
     const channel = supabase
-      .channel(`sync-watcher-${realtimeTable}-${tenant.tenant_id}`)
+      .channel(`sync-watcher-${realtimeTable}-${tenantId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: realtimeTable,
-          filter: `tenant_id=eq.${tenant.tenant_id}`
+          filter: `tenant_id=eq.${tenantId}`
         },
         handleRealtimeEvent
       )
       .subscribe((status) => {
-        console.log(`[Sync Watcher] ${realtimeTable} subscription:`, status);
+        console.log(`[Realtime Sync] ${realtimeTable} subscription status: ${status}`);
         
         if (status === 'SUBSCRIBED') {
           lastSyncRef.current = new Date();
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error(`[Realtime Sync] ${realtimeTable} subscription failed`);
         }
       });
 
@@ -111,7 +121,7 @@ export function useBackgroundSyncWatcher(config: SyncWatcherConfig) {
     }, pollInterval);
 
     return () => {
-      console.log(`[Sync Watcher] Cleaning up ${realtimeTable} watcher`);
+      console.log(`[Realtime Sync] Cleaning up ${realtimeTable} for tenant: ${tenantId}`);
       
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
@@ -123,7 +133,7 @@ export function useBackgroundSyncWatcher(config: SyncWatcherConfig) {
         pollIntervalRef.current = null;
       }
     };
-  }, [user, tenant?.tenant_id, realtimeTable, pollInterval, queryKey, handleRealtimeEvent, queryClient]);
+  }, [user, tenantId, realtimeTable, pollInterval, queryKey, handleRealtimeEvent, queryClient]);
 
   return {
     lastSync: lastSyncRef.current,

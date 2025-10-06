@@ -57,26 +57,29 @@ export function RealtimeSyncProvider({
 }: RealtimeSyncProviderProps) {
   const { user } = useAuth();
   
-  // QR Codes Sync
+  // Phase 3: Pass tenantId explicitly to all watchers
   const qrCodesSync = useBackgroundSyncWatcher({
-    queryKey: ['qr-codes', user?.tenant_id],
+    queryKey: ['qr-codes', user?.tenant_id || ''],
     realtimeTable: 'qr_codes',
+    tenantId: user?.tenant_id || '',
     enableToast: enableQRCodes,
     pollInterval: 30000
   });
   
   // Rooms Sync
   const roomsSync = useBackgroundSyncWatcher({
-    queryKey: ['rooms', user?.tenant_id],
+    queryKey: ['rooms', user?.tenant_id || ''],
     realtimeTable: 'rooms',
+    tenantId: user?.tenant_id || '',
     enableToast: false, // Less intrusive for background updates
     pollInterval: 45000
   });
   
   // QR Orders Sync
   const qrOrdersSync = useBackgroundSyncWatcher({
-    queryKey: ['qr-orders', user?.tenant_id],
+    queryKey: ['qr-orders', user?.tenant_id || ''],
     realtimeTable: 'qr_orders',
+    tenantId: user?.tenant_id || '',
     enableToast: enableOrders,
     pollInterval: 20000, // More frequent for orders
     onNewData: (payload) => {
@@ -86,16 +89,18 @@ export function RealtimeSyncProvider({
   
   // Reservations Sync
   const reservationsSync = useBackgroundSyncWatcher({
-    queryKey: ['reservations', user?.tenant_id],
+    queryKey: ['reservations', user?.tenant_id || ''],
     realtimeTable: 'reservations',
+    tenantId: user?.tenant_id || '',
     enableToast: enableReservations,
     pollInterval: 30000
   });
   
   // Payments Sync
   const paymentsSync = useBackgroundSyncWatcher({
-    queryKey: ['payments', user?.tenant_id],
+    queryKey: ['payments', user?.tenant_id || ''],
     realtimeTable: 'payments',
+    tenantId: user?.tenant_id || '',
     enableToast: enablePayments,
     pollInterval: 25000,
     onNewData: (payload) => {

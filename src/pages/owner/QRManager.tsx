@@ -14,10 +14,10 @@ import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTenantInfo } from '@/hooks/useTenantInfo';
 import { QRSecurity } from '@/lib/qr-security';
-import { useUnifiedRealtime } from '@/hooks/useUnifiedRealtime';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { RealtimeDebugIndicator } from '@/components/owner/qr/RealtimeDebugIndicator';
 import { useEffect } from 'react';
+import { useSyncWatcher } from '@/contexts/RealtimeSyncProvider';
 
 export interface QRCodeData {
   id: string;
@@ -45,13 +45,9 @@ export default function QRManagerPage() {
   const { user } = useAuth();
   const { data: tenantInfo } = useTenantInfo();
   
-  // Phase 2C: Enable realtime sync for QR codes
-  const { isConnected, reconnectAttempts } = useUnifiedRealtime({
-    roleBasedFiltering: true,
-    debounceDelay: 300,
-    verbose: true, // Enable debug logging
-    errorRecovery: true
-  });
+  // Phase 2G: Use global sync provider (single source of truth)
+  const syncStatus = useSyncWatcher();
+  const qrCodeSync = syncStatus.qrCodes;
   
   // Phase 2E: Network status monitoring with auto-recovery
   const { isOnline, lastSyncAt, setSyncing } = useNetworkStatus();
@@ -65,23 +61,6 @@ export default function QRManagerPage() {
         .finally(() => setSyncing(false));
     }
   }, [isOnline, lastSyncAt, user?.tenant_id, queryClient, setSyncing]);
-  
-  // Show connection status notifications
-  useEffect(() => {
-    if (!isConnected && reconnectAttempts > 0) {
-      toast({
-        title: "Reconnecting...",
-        description: `Real-time sync reconnecting (attempt ${reconnectAttempts})`,
-        variant: "default"
-      });
-    } else if (isConnected && reconnectAttempts > 0) {
-      toast({
-        title: "Reconnected",
-        description: "Real-time sync restored",
-        variant: "default"
-      });
-    }
-  }, [isConnected, reconnectAttempts, toast]);
 
   // Load QR codes from database
   const { data: qrCodes = [], isLoading, refetch } = useQuery({
@@ -202,18 +181,8 @@ export default function QRManagerPage() {
 
       if (error) throw error;
       
-      // Aggressive cache invalidation + refetch
-      await queryClient.invalidateQueries({ 
-        queryKey: ['qr-codes'], 
-        exact: false,
-        refetchType: 'active'
-      });
-      
-      await queryClient.refetchQueries({ 
-        queryKey: ['qr-codes', user.tenant_id],
-        type: 'active',
-        exact: true
-      });
+      // Phase 5: Simplified - let RealtimeSyncProvider handle cross-device sync
+      await refetch();
 
       toast({
         title: "QR Code Updated",
@@ -247,18 +216,8 @@ export default function QRManagerPage() {
 
       if (error) throw error;
       
-      // Aggressive cache invalidation + refetch
-      await queryClient.invalidateQueries({ 
-        queryKey: ['qr-codes'], 
-        exact: false,
-        refetchType: 'active'
-      });
-      
-      await queryClient.refetchQueries({ 
-        queryKey: ['qr-codes', user.tenant_id],
-        type: 'active',
-        exact: true
-      });
+      // Phase 5: Simplified - let RealtimeSyncProvider handle cross-device sync
+      await refetch();
 
       setShowDrawer(false);
       setSelectedQR(null);
@@ -364,22 +323,11 @@ export default function QRManagerPage() {
         });
         
         console.log('[QR Cache Debug] After optimistic update:', queryClient.getQueryData(['qr-codes', user.tenant_id]));
+        
+        // Phase 4: Immediate refetch to confirm database state
+        await refetch();
+        console.log('[QR Cache Debug] After immediate refetch:', queryClient.getQueryData(['qr-codes', user.tenant_id]));
       }
-      
-      // Aggressive cache invalidation + refetch
-      await queryClient.invalidateQueries({ 
-        queryKey: ['qr-codes'], 
-        exact: false,
-        refetchType: 'active'
-      });
-      
-      await queryClient.refetchQueries({ 
-        queryKey: ['qr-codes', user.tenant_id],
-        type: 'active',
-        exact: true
-      });
-      
-      console.log('[QR Cache Debug] After invalidation & refetch:', queryClient.getQueryData(['qr-codes', user.tenant_id]));
 
       setShowWizard(false);
       toast({
@@ -478,8 +426,9 @@ export default function QRManagerPage() {
       
       {/* Phase 2D: Realtime Debug Indicator (dev only) */}
       <RealtimeDebugIndicator
-        isConnected={isConnected}
-        reconnectAttempts={reconnectAttempts}
+        isConnected={qrCodeSync.isConnected}
+        reconnectAttempts={0}
+        lastSync={qrCodeSync.lastSync}
         isOnline={isOnline}
       />
     </div>

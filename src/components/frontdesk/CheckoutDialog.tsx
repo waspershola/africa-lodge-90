@@ -35,9 +35,10 @@ interface CheckoutDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   roomId?: string;
+  onCheckoutComplete?: () => void;
 }
 
-export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogProps) => {
+export const CheckoutDialog = ({ open, onOpenChange, roomId, onCheckoutComplete }: CheckoutDialogProps) => {
   const { checkoutSession, loading, error, fetchGuestBill, processPayment } = useCheckout(roomId);
   const { checkout, isLoading: isCheckingOut } = useAtomicCheckoutV3();
   const { toast } = useToast();
@@ -141,18 +142,21 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId }: CheckoutDialogPro
       const result = await checkout({ reservationId: reservation.id });
       
       if (result.success) {
-        console.log('[Checkout Dialog] Checkout successful, closing modal immediately');
+        console.log('[Checkout Dialog] Checkout successful, waiting for invalidation');
         
-        // Close dialog immediately to prevent refetch issues
-        onOpenChange(false);
+        // Show toast immediately
+        toast({
+          title: "✓ Checkout Complete",
+          description: `${checkoutSession.guest_bill.guest_name} checked out successfully`,
+        });
         
-        // Show toast after closing to ensure it's visible
+        // Signal parent before closing
+        onCheckoutComplete?.();
+        
+        // Close dialog after brief delay for smooth transition
         setTimeout(() => {
-          toast({
-            title: "✓ Checkout Complete",
-            description: `${checkoutSession.guest_bill.guest_name} checked out successfully`,
-          });
-        }, 100);
+          onOpenChange(false);
+        }, 300);
       } else {
         toast({
           title: "Checkout Failed",

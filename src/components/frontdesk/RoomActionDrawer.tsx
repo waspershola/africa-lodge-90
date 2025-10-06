@@ -47,7 +47,8 @@ import { useAuditLog } from "@/hooks/useAuditLog";
 import { useAuth } from '@/hooks/useAuth';
 import { MarkAsCleanedButton } from "./MarkAsCleanedButton";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import type { Room } from "./RoomGrid";
 
 interface RoomActionDrawerProps {
@@ -68,6 +69,7 @@ export const RoomActionDrawer = ({
   const { toast } = useToast();
   const { logEvent } = useAuditLog();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
   const [showQuickCapture, setShowQuickCapture] = useState(false);
   const [captureAction, setCaptureAction] = useState<'assign' | 'walkin' | 'check-in' | 'check-out' | 'assign-room' | 'extend-stay' | 'transfer-room' | 'add-service' | 'work-order' | 'housekeeping'>('assign');
@@ -82,6 +84,34 @@ export const RoomActionDrawer = ({
   const [overstayAction, setOverstayAction] = useState<'overstay-charge' | 'send-reminder' | 'escalate-manager' | 'force-checkout'>('overstay-charge');
   const [showAddService, setShowAddService] = useState(false);
   const [showCancelReservation, setShowCancelReservation] = useState(false);
+
+  // Auto-close drawer when room becomes available after checkout/cancel
+  useEffect(() => {
+    if (!open || !room) return;
+    
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (event.type === 'updated' && event.query.queryKey[0] === 'rooms') {
+        const updatedRooms = event.query.state.data as any[];
+        const updatedRoom = updatedRooms?.find((r: any) => r.id === room.id);
+        
+        // Auto-close if room transitioned from occupied to available
+        if (updatedRoom && 
+            room.status === 'occupied' && 
+            updatedRoom.status === 'available') {
+          
+          setTimeout(() => {
+            onClose();
+            toast({
+              title: "✓ Room Updated",
+              description: `Room ${room.number} is now available`,
+            });
+          }, 500);
+        }
+      }
+    });
+    
+    return () => unsubscribe();
+  }, [open, room, queryClient, onClose, toast]);
 
   // Fetch folio ID for payment history
   const { data: folioData } = useQuery({
@@ -153,7 +183,7 @@ export const RoomActionDrawer = ({
       return;
     }
 
-    // Handle checkout action
+    // Handle checkout action with completion callback
     if (action === 'Check-Out') {
       setShowCheckout(true);
       return;
@@ -777,6 +807,12 @@ export const RoomActionDrawer = ({
         open={showCheckout}
         onOpenChange={setShowCheckout}
         roomId={room?.id}
+        onCheckoutComplete={() => {
+          // Auto-close drawer after successful checkout
+          setTimeout(() => {
+            onClose();
+          }, 600);
+        }}
       />
 
       {/* Payment Dialog */}
@@ -847,7 +883,10 @@ export const RoomActionDrawer = ({
         onComplete={(updatedRoom) => {
           setShowCancelReservation(false);
           onRoomUpdate?.(updatedRoom);
-          onClose();
+          // Auto-close drawer after successful cancellation
+          setTimeout(() => {
+            onClose();
+          }, 600);
         }}
       />
     </>

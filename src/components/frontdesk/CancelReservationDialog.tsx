@@ -14,6 +14,7 @@ import { useShiftIntegratedAction } from "./ShiftIntegratedAction";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCurrency } from "@/hooks/useCurrency";
+import { OptimisticUpdateManager, createArrayItemUpdate } from '@/lib/optimistic-updates';
 import type { Room } from "./RoomGrid";
 
 interface CancelReservationDialogProps {
@@ -187,6 +188,9 @@ export const CancelReservationDialog = ({
 
     setIsProcessing(true);
 
+    const optimisticManager = new OptimisticUpdateManager(queryClient);
+    let opId: string | undefined;
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -203,6 +207,17 @@ export const CancelReservationDialog = ({
       if (!currentReservation?.id) {
         throw new Error('No active reservation found for this room');
       }
+
+      // Apply optimistic update immediately
+      opId = optimisticManager.applyOptimistic([{
+        queryKey: ['rooms', tenantId],
+        updater: createArrayItemUpdate(room.id, (r: any) => ({
+          ...r,
+          status: 'available',
+          current_reservation: null,
+          guest: null
+        }))
+      }]);
 
       // Call enhanced cancel function with payment handling
       const { data, error } = await supabase.rpc('cancel_reservation_atomic', {
@@ -223,6 +238,7 @@ export const CancelReservationDialog = ({
       
       if (!result || result.success !== true) {
         const errorMsg = result?.message || 'Failed to cancel reservation';
+        optimisticManager.rollback(opId);
         toast({
           title: "Cancellation Failed",
           description: errorMsg,
@@ -232,6 +248,9 @@ export const CancelReservationDialog = ({
         setShowConfirmation(false);
         return;
       }
+
+      // Commit optimistic update on success
+      optimisticManager.commit(opId);
 
       // Log shift action
       await logShiftAction({
@@ -249,23 +268,16 @@ export const CancelReservationDialog = ({
         }
       });
 
-      // Aggressively invalidate and refetch queries for immediate UI update
-      console.log('[Cancel] Invalidating queries for immediate room update');
-      await queryClient.invalidateQueries({ queryKey: ['rooms', tenantId] });
-      await queryClient.invalidateQueries({ queryKey: ['room-availability', tenantId] });
-      await queryClient.invalidateQueries({ queryKey: ['reservations', tenantId] });
-      await queryClient.invalidateQueries({ queryKey: ['folios', tenantId] });
-      
-      // Force immediate refetch to update UI - wait for completion
+      // Single invalidation block - wait for completion
       await Promise.all([
-        queryClient.refetchQueries({ queryKey: ['rooms', tenantId], type: 'active' }),
-        queryClient.refetchQueries({ queryKey: ['reservations', tenantId], type: 'active' })
+        queryClient.invalidateQueries({ queryKey: ['rooms', tenantId] }),
+        queryClient.invalidateQueries({ queryKey: ['reservations', tenantId] }),
+        queryClient.invalidateQueries({ queryKey: ['folios', tenantId] }),
+        queryClient.invalidateQueries({ queryKey: ['room-availability', tenantId] })
       ]);
-      
-      console.log('[Cancel] Queries refetched, closing dialog');
 
       // Build success message
-      let successMessage = `Room ${room.room_number || room.number} reservation has been cancelled.`;
+      let successMessage = `Room ${room.room_number || room.number} is now available.`;
       if (paymentAction === 'refund' && refundAmount > 0) {
         successMessage += ` ${formatPrice(refundAmount)} refund processed.`;
       } else if (paymentAction === 'credit' && refundAmount > 0) {
@@ -275,23 +287,11 @@ export const CancelReservationDialog = ({
       }
 
       toast({
-        title: "Reservation Cancelled",
+        title: "✓ Reservation Cancelled",
         description: successMessage,
       });
 
-      // Invalidate queries for real-time UI updates
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['reservations', tenantId] }),
-        queryClient.invalidateQueries({ queryKey: ['rooms', tenantId] }),
-        queryClient.invalidateQueries({ queryKey: ['folios', tenantId] }),
-        queryClient.invalidateQueries({ queryKey: ['payments', tenantId] }),
-        queryClient.invalidateQueries({ queryKey: ['room-availability', tenantId] }),
-        queryClient.invalidateQueries({ queryKey: ['billing', tenantId] }),
-      ]);
-
-      // Force refetch
-      await queryClient.refetchQueries({ queryKey: ['rooms', tenantId] });
-
+      // Signal parent to update and close drawer
       const updatedRoom: Room = {
         ...room,
         status: 'available',
@@ -307,11 +307,6 @@ export const CancelReservationDialog = ({
       onOpenChange(false);
       setShowConfirmation(false);
 
-      // Navigate back to front desk
-      setTimeout(() => {
-        navigate('/front-desk');
-      }, 500);
-
       // Reset form
       setCancellationReason("");
       setPaymentAction("none");
@@ -319,6 +314,9 @@ export const CancelReservationDialog = ({
       setNotes("");
     } catch (error) {
       console.error('Error cancelling reservation:', error);
+      if (opId) {
+        optimisticManager.rollback(opId);
+      }
       toast({
         title: "Cancellation Failed",
         description: error instanceof Error ? error.message : "Failed to cancel reservation. Please try again.",

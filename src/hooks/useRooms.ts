@@ -1,5 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useFeatureFlag } from './useFeatureFlags';
@@ -61,42 +60,8 @@ export interface Reservation {
 
 // Main hook for rooms data using React Query with real reservation integration
 // Maintains backward compatibility - returns same structure as before
+// Real-time updates handled by useUnifiedRealtime globally
 export const useRooms = () => {
-  const queryClient = useQueryClient();
-
-  // Set up real-time subscriptions for folio and payment updates
-  useEffect(() => {
-    const channel = supabase
-      .channel('room-folios-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'folios'
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['rooms'] });
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'payments'
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['rooms'] });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [queryClient]);
-
   return useQuery({
     queryKey: ['rooms'],
     queryFn: async () => {
@@ -208,26 +173,10 @@ export const useRooms = () => {
 /**
  * Hook for paginated rooms with feature flag support
  * Use this when you need pagination controls
+ * Real-time updates handled by useUnifiedRealtime globally
  */
 export const usePaginatedRooms = (limit: number = 100, offset: number = 0) => {
-  const queryClient = useQueryClient();
   const { data: paginationEnabled } = useFeatureFlag('ff/paginated_reservations');
-
-  useEffect(() => {
-    const channel = supabase
-      .channel('room-folios-realtime-paginated')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'folios' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['rooms'] });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['rooms'] });
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [queryClient]);
 
   return useQuery({
     queryKey: ['rooms', 'paginated', limit, offset, paginationEnabled],

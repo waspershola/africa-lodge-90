@@ -15,6 +15,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTenantInfo } from '@/hooks/useTenantInfo';
 import { QRSecurity } from '@/lib/qr-security';
 import { useUnifiedRealtime } from '@/hooks/useUnifiedRealtime';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { RealtimeDebugIndicator } from '@/components/owner/qr/RealtimeDebugIndicator';
 import { useEffect } from 'react';
 
 export interface QRCodeData {
@@ -50,6 +52,19 @@ export default function QRManagerPage() {
     verbose: true, // Enable debug logging
     errorRecovery: true
   });
+  
+  // Phase 2E: Network status monitoring with auto-recovery
+  const { isOnline, lastSyncAt, setSyncing } = useNetworkStatus();
+  
+  // Auto-refetch when coming back online
+  useEffect(() => {
+    if (isOnline && lastSyncAt && user?.tenant_id) {
+      console.log('[QR Manager] Network restored, refetching QR codes');
+      setSyncing(true);
+      queryClient.invalidateQueries({ queryKey: ['qr-codes', user.tenant_id] })
+        .finally(() => setSyncing(false));
+    }
+  }, [isOnline, lastSyncAt, user?.tenant_id, queryClient, setSyncing]);
   
   // Show connection status notifications
   useEffect(() => {
@@ -459,6 +474,13 @@ export default function QRManagerPage() {
       <SessionSettingsModal
         open={showSessionSettings}
         onOpenChange={setShowSessionSettings}
+      />
+      
+      {/* Phase 2D: Realtime Debug Indicator (dev only) */}
+      <RealtimeDebugIndicator
+        isConnected={isConnected}
+        reconnectAttempts={reconnectAttempts}
+        isOnline={isOnline}
       />
     </div>
   );

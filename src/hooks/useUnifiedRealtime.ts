@@ -62,6 +62,38 @@ const DEBOUNCE_GROUPS = {
   pos_orders: ['pos-orders', 'payments']
 };
 
+// Tiered debounce delays based on data priority (Phase 3.2)
+const DEBOUNCE_TIERS = {
+  INSTANT: 0,      // Critical UI updates (rooms, reservations)
+  FAST: 100,       // High priority (guests, QR)
+  NORMAL: 300,     // Standard updates
+  SLOW: 500        // Batch operations (payments, folios)
+};
+
+// Table-specific debounce configuration
+const TABLE_DEBOUNCE_CONFIG: Record<string, number> = {
+  // Instant updates for critical frontdesk operations
+  rooms: DEBOUNCE_TIERS.INSTANT,
+  reservations: DEBOUNCE_TIERS.INSTANT,
+  
+  // Fast updates for user-facing features
+  guests: DEBOUNCE_TIERS.FAST,
+  qr_requests: DEBOUNCE_TIERS.FAST,
+  qr_codes: DEBOUNCE_TIERS.FAST,
+  qr_orders: DEBOUNCE_TIERS.FAST,
+  housekeeping_tasks: DEBOUNCE_TIERS.FAST,
+  pos_orders: DEBOUNCE_TIERS.FAST,
+  
+  // Normal updates for general operations
+  group_reservations: DEBOUNCE_TIERS.NORMAL,
+  work_orders: DEBOUNCE_TIERS.NORMAL,
+  
+  // Slow updates for financial operations (prevent loops)
+  payments: DEBOUNCE_TIERS.SLOW,
+  folios: DEBOUNCE_TIERS.SLOW,
+  folio_charges: DEBOUNCE_TIERS.SLOW
+};
+
 export function useUnifiedRealtime(config: RealtimeConfig = {}) {
   const {
     roleBasedFiltering = true,
@@ -83,9 +115,43 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
 
   const invalidationTimeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const eventCoalescingRef = useRef<Record<string, { count: number; firstEvent: number }>>({});
 
-  // Debounced invalidation with grouping
-  const debouncedInvalidate = useCallback((queryKeys: string[], delay: number = debounceDelay) => {
+  // Event coalescing - batch multiple events within a short window (Phase 3.2)
+  const shouldCoalesceEvent = useCallback((table: string): boolean => {
+    const now = Date.now();
+    const coalescingWindow = 50; // 50ms window for coalescing
+    
+    if (!eventCoalescingRef.current[table]) {
+      eventCoalescingRef.current[table] = { count: 1, firstEvent: now };
+      return false;
+    }
+    
+    const eventData = eventCoalescingRef.current[table];
+    const timeSinceFirst = now - eventData.firstEvent;
+    
+    if (timeSinceFirst < coalescingWindow) {
+      // Within coalescing window - increment count and skip this event
+      eventData.count++;
+      
+      if (verbose) {
+        console.log(`[Realtime] Coalescing event ${eventData.count} for ${table}`);
+      }
+      
+      return true; // Skip this event
+    }
+    
+    // Outside window - reset and process
+    if (verbose && eventData.count > 1) {
+      console.log(`[Realtime] Processed ${eventData.count} coalesced events for ${table}`);
+    }
+    
+    eventCoalescingRef.current[table] = { count: 1, firstEvent: now };
+    return false;
+  }, [verbose]);
+
+  // Debounced invalidation with grouping and tiered delays (Phase 3.2)
+  const debouncedInvalidate = useCallback((queryKeys: string[], delay: number) => {
     queryKeys.forEach(key => {
       if (invalidationTimeoutsRef.current[key]) {
         clearTimeout(invalidationTimeoutsRef.current[key]);
@@ -93,7 +159,7 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
 
       invalidationTimeoutsRef.current[key] = setTimeout(() => {
         if (verbose) {
-          console.log(`[Realtime] Invalidating query: ${key}`);
+          console.log(`[Realtime] Invalidating query: ${key} (delay: ${delay}ms)`);
         }
         
         // Handle query keys that contain tenant IDs (format: "key,tenantId")
@@ -106,7 +172,7 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
         delete invalidationTimeoutsRef.current[key];
       }, delay);
     });
-  }, [queryClient, debounceDelay, verbose]);
+  }, [queryClient, verbose]);
 
   // Get query keys for a specific group
   // Uses comma separator to support React Query's array-based query keys: ['key', tenantId]
@@ -207,11 +273,16 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
             console.log(`[Realtime Event] ${table}:`, payload.eventType, recordId);
           }
 
+          // Event coalescing - skip if within coalescing window
+          if (shouldCoalesceEvent(table)) {
+            return;
+          }
+
           // Get all related query keys for this table
           const queryKeys = getGroupQueryKeys(table, tenant.tenant_id);
           
-          // Use longer debounce for payments to prevent loops
-          const delay = table === 'payments' ? 500 : debounceDelay;
+          // Use table-specific debounce delay from tiered configuration
+          const delay = TABLE_DEBOUNCE_CONFIG[table] ?? DEBOUNCE_TIERS.NORMAL;
           
           debouncedInvalidate(queryKeys, delay);
           
@@ -236,7 +307,7 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
     });
 
     return channel;
-  }, [user, tenant?.tenant_id, userRole, roleBasedFiltering, verbose, errorRecovery, debounceDelay, getGroupQueryKeys, debouncedInvalidate]);
+  }, [user, tenant?.tenant_id, userRole, roleBasedFiltering, verbose, errorRecovery, getGroupQueryKeys, debouncedInvalidate, shouldCoalesceEvent]);
 
   // Exponential backoff reconnection
   const handleConnectionError = useCallback(() => {

@@ -314,10 +314,14 @@ export default function QRManagerPage() {
           createdBy: 'System'
         };
         
+        console.log('[QR Cache Debug] Before optimistic update:', queryClient.getQueryData(['qr-codes', user.tenant_id]));
+        
         // Optimistic update - immediately add to UI
         queryClient.setQueryData(['qr-codes', user.tenant_id], (old: QRCodeData[] = []) => {
           return [transformedQR, ...old];
         });
+        
+        console.log('[QR Cache Debug] After optimistic update:', queryClient.getQueryData(['qr-codes', user.tenant_id]));
       }
       
       // Aggressive cache invalidation + refetch
@@ -332,6 +336,8 @@ export default function QRManagerPage() {
         type: 'active',
         exact: true
       });
+      
+      console.log('[QR Cache Debug] After invalidation & refetch:', queryClient.getQueryData(['qr-codes', user.tenant_id]));
 
       setShowWizard(false);
       toast({

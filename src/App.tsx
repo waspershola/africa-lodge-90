@@ -109,6 +109,7 @@ import SupportStaffDashboard from "./pages/support-staff/Dashboard";
 import MenuPreview from "./pages/debug/MenuPreview";
 import PaymentVerification from "./pages/staff/PaymentVerification";
 import QRRequests from "./pages/staff/QRRequests";
+import { RealtimeSyncProvider } from "./contexts/RealtimeSyncProvider";
 
 // Font manager component to apply global font styles
 const FontManager = () => {
@@ -125,13 +126,14 @@ const SentryMonitor = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <MultiTenantAuthProvider>
-      <PaymentMethodsProvider>
-        <TooltipProvider>
-          <FontManager />
-          <SentryMonitor />
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
+      <RealtimeSyncProvider>
+        <PaymentMethodsProvider>
+          <TooltipProvider>
+            <FontManager />
+            <SentryMonitor />
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<AuthPage />} />
@@ -278,9 +280,10 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
         <SecurityDebugPanel />
-        </BrowserRouter>
-        </TooltipProvider>
-      </PaymentMethodsProvider>
+          </BrowserRouter>
+          </TooltipProvider>
+        </PaymentMethodsProvider>
+      </RealtimeSyncProvider>
     </MultiTenantAuthProvider>
   </QueryClientProvider>
 );

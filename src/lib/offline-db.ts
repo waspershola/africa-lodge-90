@@ -1,5 +1,9 @@
 import Dexie, { Table } from 'dexie';
 
+// Schema version - increment when making breaking changes to clear stale cache
+const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION_KEY = 'offlineDB_schema_version';
+
 export interface OfflineRequest {
   id: string;
   sessionId: string;
@@ -38,11 +42,45 @@ class OfflineDatabase extends Dexie {
   constructor() {
     super('GuestPortalOffline');
     
-    this.version(1).stores({
+    // Version 2: Added schema versioning for cache invalidation
+    this.version(2).stores({
       requests: 'id, sessionId, syncStatus, createdAt',
       sessions: 'session_id, tenant_id, cached_at',
       menus: 'menu_id, tenant_id, cached_at'
     });
+
+    // Check schema version and clear cache if outdated
+    this.on('ready', async () => {
+      await this.checkAndClearStaleCache();
+    });
+  }
+
+  /**
+   * Check schema version and clear cache if it has changed
+   * This ensures stale IndexedDB data doesn't persist across deployments
+   */
+  async checkAndClearStaleCache() {
+    try {
+      const storedVersion = localStorage.getItem(SCHEMA_VERSION_KEY);
+      const storedVersionNum = storedVersion ? parseInt(storedVersion, 10) : 0;
+
+      if (storedVersionNum !== SCHEMA_VERSION) {
+        console.log(`[OfflineDB] Schema version mismatch (stored: ${storedVersionNum}, current: ${SCHEMA_VERSION}). Clearing cache...`);
+        
+        // Clear all tables
+        await Promise.all([
+          this.sessions.clear(),
+          this.menus.clear(),
+          this.requests.where('syncStatus').equals('synced').delete() // Keep pending requests
+        ]);
+
+        // Update stored version
+        localStorage.setItem(SCHEMA_VERSION_KEY, SCHEMA_VERSION.toString());
+        console.log('[OfflineDB] Cache cleared and schema version updated');
+      }
+    } catch (error) {
+      console.error('[OfflineDB] Error checking schema version:', error);
+    }
   }
 
   async addOfflineRequest(request: Omit<OfflineRequest, 'id' | 'createdAt' | 'syncStatus' | 'retryCount'>) {
@@ -113,6 +151,20 @@ class OfflineDatabase extends Dexie {
     await this.sessions.where('cached_at').below(cutoff).delete();
     await this.menus.where('cached_at').below(cutoff).delete();
     await this.requests.where('syncStatus').equals('synced').and(req => req.createdAt < cutoff).delete();
+  }
+
+  /**
+   * Force clear all cache (useful for debugging or emergency reset)
+   */
+  async forceClearCache() {
+    console.log('[OfflineDB] Force clearing all cache...');
+    await Promise.all([
+      this.sessions.clear(),
+      this.menus.clear(),
+      this.requests.clear()
+    ]);
+    localStorage.removeItem(SCHEMA_VERSION_KEY);
+    console.log('[OfflineDB] All cache cleared');
   }
 }
 

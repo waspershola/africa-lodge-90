@@ -139,25 +139,47 @@ export default function QRManagerPage() {
     if (!user?.tenant_id) return;
     
     try {
-      const { error } = await supabase
+      // Optimistic update - immediately update UI
+      queryClient.setQueryData(['qr-codes', user.tenant_id], (old: QRCodeData[] = []) => {
+        return old.map(qr => qr.id === updatedQR.id ? updatedQR : qr);
+      });
+
+      const { data: updated, error } = await supabase
         .from('qr_codes')
         .update({ 
           services: updatedQR.servicesEnabled,
           is_active: updatedQR.status === 'Active'
         })
-        .eq('id', updatedQR.id);
+        .eq('id', updatedQR.id)
+        .select(`
+          *,
+          rooms:room_id (room_number),
+          qr_orders:qr_orders!qr_code_id (id, status, service_type, created_at)
+        `)
+        .single();
 
       if (error) throw error;
       
-      // Clear cache and force immediate refetch
-      queryClient.resetQueries({ 
-        queryKey: ['qr-codes', user.tenant_id]
+      // Aggressive cache invalidation + refetch
+      await queryClient.invalidateQueries({ 
+        queryKey: ['qr-codes'], 
+        exact: false,
+        refetchType: 'active'
       });
+      
+      await queryClient.refetchQueries({ 
+        queryKey: ['qr-codes', user.tenant_id],
+        type: 'active',
+        exact: true
+      });
+
       toast({
         title: "QR Code Updated",
         description: `${updatedQR.assignedTo} QR code has been updated successfully`
       });
     } catch (err: any) {
+      // Revert optimistic update on error
+      await queryClient.invalidateQueries({ queryKey: ['qr-codes', user.tenant_id] });
       toast({
         title: "Error",
         description: err.message || "Failed to update QR code",
@@ -170,6 +192,11 @@ export default function QRManagerPage() {
     if (!user?.tenant_id) return;
     
     try {
+      // Optimistic update - immediately remove from UI
+      queryClient.setQueryData(['qr-codes', user.tenant_id], (old: QRCodeData[] = []) => {
+        return old.filter(qr => qr.id !== qrCode.id);
+      });
+
       const { error } = await supabase
         .from('qr_codes')
         .delete()
@@ -178,10 +205,19 @@ export default function QRManagerPage() {
 
       if (error) throw error;
       
-      // Clear cache and force immediate refetch
-      queryClient.resetQueries({ 
-        queryKey: ['qr-codes', user.tenant_id]
+      // Aggressive cache invalidation + refetch
+      await queryClient.invalidateQueries({ 
+        queryKey: ['qr-codes'], 
+        exact: false,
+        refetchType: 'active'
       });
+      
+      await queryClient.refetchQueries({ 
+        queryKey: ['qr-codes', user.tenant_id],
+        type: 'active',
+        exact: true
+      });
+
       setShowDrawer(false);
       setSelectedQR(null);
       toast({
@@ -189,6 +225,8 @@ export default function QRManagerPage() {
         description: `QR code for ${qrCode.assignedTo} has been deleted successfully`
       });
     } catch (err: any) {
+      // Revert optimistic update on error
+      await queryClient.invalidateQueries({ queryKey: ['qr-codes', user.tenant_id] });
       toast({
         title: "Error",
         description: err.message || "Failed to delete QR code",
@@ -234,7 +272,7 @@ export default function QRManagerPage() {
       // Generate QR code URL - permanent, no expiry
       const qrCodeUrl = QRSecurity.generateQRUrl(qrToken);
       
-      const { error } = await supabase
+      const { data: newQR, error } = await supabase
         .from('qr_codes')
         .insert([{
           tenant_id: user.tenant_id,
@@ -245,7 +283,13 @@ export default function QRManagerPage() {
           qr_code_url: qrCodeUrl,
           label: newQRData.assignedTo,
           scan_type: newQRData.scope.toLowerCase()
-        }]);
+        }])
+        .select(`
+          *,
+          rooms:room_id (room_number),
+          qr_orders:qr_orders!qr_code_id (id, status, service_type, created_at)
+        `)
+        .single();
 
       if (error) {
         // Check if it's a duplicate room constraint error
@@ -254,11 +298,41 @@ export default function QRManagerPage() {
         }
         throw error;
       }
+
+      if (newQR) {
+        // Transform the database record to match QRCodeData interface
+        const transformedQR: QRCodeData = {
+          id: newQR.id,
+          qr_token: newQR.qr_token,
+          qr_code_url: newQR.qr_code_url,
+          scope: 'Room' as const,
+          assignedTo: newQR.rooms?.room_number ? `Room ${newQR.rooms.room_number}` : (newQR.label || 'Location'),
+          servicesEnabled: newQR.services || [],
+          status: (newQR.is_active ? 'Active' : 'Inactive') as 'Active' | 'Inactive',
+          pendingRequests: 0,
+          createdAt: newQR.created_at,
+          createdBy: 'System'
+        };
+        
+        // Optimistic update - immediately add to UI
+        queryClient.setQueryData(['qr-codes', user.tenant_id], (old: QRCodeData[] = []) => {
+          return [transformedQR, ...old];
+        });
+      }
       
-      // Clear cache and force immediate refetch
-      queryClient.resetQueries({ 
-        queryKey: ['qr-codes', user.tenant_id]
+      // Aggressive cache invalidation + refetch
+      await queryClient.invalidateQueries({ 
+        queryKey: ['qr-codes'], 
+        exact: false,
+        refetchType: 'active'
       });
+      
+      await queryClient.refetchQueries({ 
+        queryKey: ['qr-codes', user.tenant_id],
+        type: 'active',
+        exact: true
+      });
+
       setShowWizard(false);
       toast({
         title: "QR Code Created",

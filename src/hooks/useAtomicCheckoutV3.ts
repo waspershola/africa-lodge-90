@@ -116,6 +116,18 @@ export function useAtomicCheckoutV3() {
 
       if (result.success) {
         console.log('[Atomic Checkout V3] Success - invalidating queries');
+        
+        // Optimistic update - immediately update room status and clear reservation
+        if (result.room_id) {
+          queryClient.setQueryData(['rooms', tenant.tenant_id], (old: any[]) => {
+            return old?.map(room => 
+              room.id === result.room_id 
+                ? { ...room, status: 'dirty', current_reservation: null }
+                : room
+            ) || old;
+          });
+        }
+        
         // Aggressive query invalidation to ensure UI updates
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ['rooms', tenant.tenant_id] }),
@@ -126,7 +138,8 @@ export function useAtomicCheckoutV3() {
           queryClient.invalidateQueries({ queryKey: ['billing', tenant.tenant_id] }),
           queryClient.invalidateQueries({ queryKey: ['payments', tenant.tenant_id] }),
           queryClient.invalidateQueries({ queryKey: ['overstays', tenant.tenant_id] }),
-          queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+          queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] }),
+          queryClient.invalidateQueries({ queryKey: ['checkout-session'] })
         ]);
         
         // Force refetch rooms to update UI immediately

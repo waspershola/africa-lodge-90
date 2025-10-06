@@ -431,10 +431,11 @@ export const useCreateRoom = () => {
   });
 };
 
-// Update room mutation
+// Update room mutation with optimistic updates
 export const useUpdateRoom = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async (roomData: {
@@ -455,16 +456,39 @@ export const useUpdateRoom = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rooms'] });
-      queryClient.invalidateQueries({ queryKey: ['room-availability'] });
-      queryClient.invalidateQueries({ queryKey: ['room-types'] });
+    onMutate: async (roomData) => {
+      // Cancel outgoing queries
+      await queryClient.cancelQueries({ queryKey: ['rooms'] });
+
+      // Snapshot previous value
+      const previousRooms = queryClient.getQueryData(['rooms', user?.tenant_id]);
+
+      // Optimistic update
+      queryClient.setQueryData(['rooms', user?.tenant_id], (old: Room[] = []) => {
+        return old.map(room => 
+          room.id === roomData.id 
+            ? { ...room, ...roomData }
+            : room
+        );
+      });
+
+      return { previousRooms };
+    },
+    onSuccess: (data) => {
+      // Immediate invalidation for real-time sync
+      queryClient.invalidateQueries({ queryKey: ['rooms', user?.tenant_id] });
+      queryClient.invalidateQueries({ queryKey: ['room-availability', user?.tenant_id] });
+      queryClient.invalidateQueries({ queryKey: ['room-types', user?.tenant_id] });
       toast({
         title: "Success",
-        description: "Room updated successfully"
+        description: `Room ${data.room_number} updated successfully`
       });
     },
-    onError: (error) => {
+    onError: (error: any, variables, context) => {
+      // Rollback on error
+      if (context?.previousRooms) {
+        queryClient.setQueryData(['rooms', user?.tenant_id], context.previousRooms);
+      }
       console.error('Room update error:', error);
       toast({
         title: "Error",

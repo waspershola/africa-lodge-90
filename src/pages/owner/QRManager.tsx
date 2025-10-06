@@ -11,7 +11,7 @@ import { SessionSettingsModal } from '@/components/qr/SessionSettingsModal';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTenantInfo } from '@/hooks/useTenantInfo';
 import { QRSecurity } from '@/lib/qr-security';
 import { useUnifiedRealtime } from '@/hooks/useUnifiedRealtime';
@@ -139,6 +139,17 @@ export default function QRManagerPage() {
   const handleUpdateQR = async (updatedQR: QRCodeData) => {
     if (!user?.tenant_id) return;
     
+    const queryClient = useQueryClient();
+    
+    // Optimistic update
+    queryClient.setQueryData(['qr-codes', user.tenant_id], (old: QRCodeData[] = []) => {
+      return old.map(qr => 
+        qr.id === updatedQR.id 
+          ? { ...qr, servicesEnabled: updatedQR.servicesEnabled, status: updatedQR.status }
+          : qr
+      );
+    });
+    
     try {
       const { error } = await supabase
         .from('qr_codes')
@@ -150,12 +161,17 @@ export default function QRManagerPage() {
 
       if (error) throw error;
       
-      await refetch();
+      // Immediate invalidation (no staleTime blocking)
+      await queryClient.invalidateQueries({ queryKey: ['qr-codes', user.tenant_id] });
+      
       toast({
         title: "QR Code Updated",
         description: `${updatedQR.assignedTo} QR code has been updated successfully`
       });
     } catch (err: any) {
+      // Rollback on error
+      await queryClient.invalidateQueries({ queryKey: ['qr-codes', user.tenant_id] });
+      
       toast({
         title: "Error",
         description: err.message || "Failed to update QR code",
@@ -167,6 +183,13 @@ export default function QRManagerPage() {
   const handleDeleteQR = async (qrCode: QRCodeData) => {
     if (!user?.tenant_id) return;
     
+    const queryClient = useQueryClient();
+    
+    // Optimistic update - remove from list immediately
+    queryClient.setQueryData(['qr-codes', user.tenant_id], (old: QRCodeData[] = []) => {
+      return old.filter(qr => qr.id !== qrCode.id);
+    });
+    
     try {
       const { error } = await supabase
         .from('qr_codes')
@@ -176,12 +199,17 @@ export default function QRManagerPage() {
 
       if (error) throw error;
       
-      await refetch();
+      // Immediate invalidation
+      await queryClient.invalidateQueries({ queryKey: ['qr-codes', user.tenant_id] });
+      
       toast({
         title: "QR Code Deleted",
         description: `QR code for ${qrCode.assignedTo} has been deleted successfully`
       });
     } catch (err: any) {
+      // Rollback on error
+      await queryClient.invalidateQueries({ queryKey: ['qr-codes', user.tenant_id] });
+      
       toast({
         title: "Error",
         description: err.message || "Failed to delete QR code",
@@ -192,6 +220,23 @@ export default function QRManagerPage() {
 
   const handleCreateQR = async (newQRData: Omit<QRCodeData, 'id' | 'createdAt' | 'createdBy' | 'pendingRequests'>) => {
     if (!user?.tenant_id) return;
+    
+    const queryClient = useQueryClient();
+    const tempId = `temp-${Date.now()}`;
+    
+    // Optimistic update - add to list immediately
+    queryClient.setQueryData(['qr-codes', user.tenant_id], (old: QRCodeData[] = []) => {
+      return [{
+        id: tempId,
+        scope: newQRData.scope,
+        assignedTo: newQRData.assignedTo,
+        servicesEnabled: newQRData.servicesEnabled,
+        status: newQRData.status,
+        pendingRequests: 0,
+        createdAt: new Date().toISOString(),
+        createdBy: 'System'
+      }, ...old];
+    });
     
     try {
       const qrToken = `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -235,12 +280,17 @@ export default function QRManagerPage() {
         throw error;
       }
       
-      await refetch();
+      // Immediate invalidation to get real data
+      await queryClient.invalidateQueries({ queryKey: ['qr-codes', user.tenant_id] });
+      
       toast({
         title: "QR Code Created",
         description: `QR code for ${newQRData.assignedTo} has been generated successfully`
       });
     } catch (err: any) {
+      // Rollback on error
+      await queryClient.invalidateQueries({ queryKey: ['qr-codes', user.tenant_id] });
+      
       console.error('QR creation error:', err);
       toast({
         title: "Error", 

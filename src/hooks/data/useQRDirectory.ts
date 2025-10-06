@@ -89,7 +89,7 @@ export const useQRDirectory = () => {
       });
     },
     enabled: !!tenant?.tenant_id,
-    staleTime: 30000, // 30 seconds
-    refetchInterval: 60000, // Refresh every minute
+    staleTime: 0, // Always fresh - rely on real-time updates
+    refetchInterval: false, // No polling - real-time handles updates
   });
 };

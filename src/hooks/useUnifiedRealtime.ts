@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { RealtimeChannel } from '@supabase/supabase-js';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 
 /**
  * Phase 1: Unified Real-Time Subscription Manager
@@ -72,6 +73,7 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
   const queryClient = useQueryClient();
   const { user, tenant } = useAuth();
   const userRole = user?.role as UserRole;
+  const { isOnline, updateLastSync } = useNetworkStatus();
 
   const subscriptionRef = useRef<SubscriptionState>({
     channel: null,
@@ -299,6 +301,29 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
       }
     };
   }, [setupSubscriptions, verbose]);
+
+  // Network recovery - refetch critical queries on reconnection
+  useEffect(() => {
+    if (isOnline && subscriptionRef.current.channel && tenant?.tenant_id) {
+      const criticalQueries = [
+        'rooms', 'reservations', 'payments', 
+        'qr-codes', 'qr-orders', 'folios',
+        'qr-directory', 'folio-balances'
+      ];
+      
+      if (verbose) {
+        console.log('[Realtime] Network reconnected - invalidating critical queries');
+      }
+      
+      criticalQueries.forEach(key => {
+        queryClient.invalidateQueries({ 
+          queryKey: [key, tenant.tenant_id] 
+        });
+      });
+      
+      updateLastSync();
+    }
+  }, [isOnline, tenant?.tenant_id, queryClient, updateLastSync, verbose]);
 
   // Return subscription state for debugging
   return {

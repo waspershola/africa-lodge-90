@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2 } from "lucide-react";
@@ -23,7 +23,6 @@ export const MarkAsCleanedButton = ({
   const { updateRoomStatusAsync, isLoading } = useRoomStatusManager();
   const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [buttonVisible, setButtonVisible] = useState(false);
 
   // Check if user has permission to mark rooms as cleaned
   const canMarkAsCleaned = user?.role && [
@@ -32,12 +31,6 @@ export const MarkAsCleanedButton = ({
     'MANAGER', 
     'OWNER'
   ].includes(user.role);
-
-  // REAL-TIME UPDATE FIX: Monitor room status changes and update button visibility
-  useEffect(() => {
-    const shouldShowButton = room.status === 'dirty' && canMarkAsCleaned;
-    setButtonVisible(shouldShowButton);
-  }, [room.status, canMarkAsCleaned]);
 
   const handleMarkAsCleaned = async () => {
     if (!canMarkAsCleaned) {
@@ -50,9 +43,6 @@ export const MarkAsCleanedButton = ({
     }
 
     setIsProcessing(true);
-    
-    // OPTIMISTIC UPDATE: Hide button immediately
-    setButtonVisible(false);
 
     // Store previous room data for rollback
     const previousRoomData = { ...room };
@@ -106,9 +96,6 @@ export const MarkAsCleanedButton = ({
     } catch (error) {
       console.error('Mark as cleaned error:', error);
       
-      // ROLLBACK: Restore button visibility on error
-      setButtonVisible(room.status === 'dirty' && canMarkAsCleaned);
-      
       // ROLLBACK: Restore room data if callback provided
       if (onRoomUpdate) {
         onRoomUpdate(previousRoomData);
@@ -124,15 +111,15 @@ export const MarkAsCleanedButton = ({
     }
   };
 
-  // REAL-TIME UPDATE FIX: Use state-based visibility instead of prop-based
-  if (!buttonVisible) {
+  // Only show for dirty rooms
+  if (room.status !== 'dirty') {
     return null;
   }
 
   return (
     <Button
       onClick={handleMarkAsCleaned}
-      disabled={isLoading || isProcessing}
+      disabled={!canMarkAsCleaned || isLoading || isProcessing}
       className="bg-room-available text-room-available-foreground hover:bg-room-available/90"
       size="sm"
     >

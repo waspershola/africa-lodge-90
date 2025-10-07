@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useMultiTenantAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,6 +6,7 @@ import { RefreshCw, LogOut } from 'lucide-react';
 
 export function AuthDebugInfo() {
   const { user, session, logout } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleRefreshToken = async () => {
     console.log('Manually refreshing token...');
@@ -12,7 +14,16 @@ export function AuthDebugInfo() {
   };
 
   const handleLogout = async () => {
-    await logout();
+    // Prevent double-clicks
+    if (isLoggingOut) return;
+    
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout failed:', error);
+      setIsLoggingOut(false);
+    }
   };
 
   return (
@@ -46,9 +57,18 @@ export function AuthDebugInfo() {
             <RefreshCw className="h-3 w-3 mr-1" />
             Refresh
           </Button>
-          <Button size="sm" variant="outline" onClick={handleLogout}>
-            <LogOut className="h-3 w-3 mr-1" />
-            Logout & Re-login
+          <Button size="sm" variant="outline" onClick={handleLogout} disabled={isLoggingOut}>
+            {isLoggingOut ? (
+              <>
+                <div className="h-3 w-3 mr-1 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                Logging out...
+              </>
+            ) : (
+              <>
+                <LogOut className="h-3 w-3 mr-1" />
+                Logout & Re-login
+              </>
+            )}
           </Button>
         </div>
         

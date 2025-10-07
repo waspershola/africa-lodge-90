@@ -323,22 +323,21 @@ export function useMultiTenantAuth(): UseMultiTenantAuthReturn {
       setNeedsPasswordReset(false);
       setIsImpersonating(false);
       
-      // Clear localStorage to prevent session restoration
+      // Clear localStorage synchronously to prevent session restoration
       localStorage.removeItem('supabase.auth.token');
       localStorage.removeItem('sb-dxisnnjsbuuiunjmzzqj-auth-token');
       
-      // Sign out from Supabase
-      await supabase.auth.signOut();
+      // Fire-and-forget: Sign out from Supabase (don't wait)
+      supabase.auth.signOut().catch(err => {
+        console.error('Supabase signOut error (non-blocking):', err);
+      });
       
-      // Force navigation to home without page reload
-      setTimeout(() => {
-        window.location.replace('/');
-      }, 100);
+      // Immediate redirect without setTimeout
+      window.location.href = '/';
     } catch (err) {
       console.error('Logout error:', err);
-      setError(err instanceof Error ? err.message : 'Logout failed');
       // Force redirect even if logout fails
-      window.location.replace('/');
+      window.location.href = '/';
     }
   };
 

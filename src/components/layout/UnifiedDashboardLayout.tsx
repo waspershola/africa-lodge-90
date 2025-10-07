@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Menu, LogOut, PanelLeft } from 'lucide-react';
@@ -129,12 +129,19 @@ export default function UnifiedDashboardLayout({
   children
 }: UnifiedDashboardLayoutProps) {
   const { logout, user } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
+    // Prevent double-clicks
+    if (isLoggingOut) return;
+    
+    setIsLoggingOut(true);
     try {
       await logout();
     } catch (error) {
       console.error('Logout failed:', error);
+      // Reset state if logout somehow fails
+      setIsLoggingOut(false);
     }
   };
   return (
@@ -176,10 +183,20 @@ export default function UnifiedDashboardLayout({
                       variant="outline"
                       size="sm"
                       onClick={handleLogout}
+                      disabled={isLoggingOut}
                       className="h-8 px-3"
                     >
-                      <LogOut className="h-3 w-3 mr-1" />
-                      Logout
+                      {isLoggingOut ? (
+                        <>
+                          <div className="h-3 w-3 mr-1 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                          Logging out...
+                        </>
+                      ) : (
+                        <>
+                          <LogOut className="h-3 w-3 mr-1" />
+                          Logout
+                        </>
+                      )}
                     </Button>
                   </div>
                 )}

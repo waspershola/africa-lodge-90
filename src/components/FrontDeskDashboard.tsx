@@ -75,6 +75,7 @@ import { useToast } from "@/hooks/use-toast";
 const FrontDeskDashboard = () => {
   const { data: tenantInfo } = useTenantInfo();
   const { logout } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: roomsData } = useRooms();
@@ -180,10 +181,15 @@ const FrontDeskDashboard = () => {
   };
 
   const handleLogout = async () => {
+    // Prevent double-clicks
+    if (isLoggingOut) return;
+    
+    setIsLoggingOut(true);
     try {
       await logout();
     } catch (error) {
       console.error('Logout failed:', error);
+      setIsLoggingOut(false);
     }
   };
 

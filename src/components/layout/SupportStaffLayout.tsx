@@ -39,14 +39,20 @@ const navigationItems = [
 
 export default function SupportStaffLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const location = useLocation();
   const { user, logout } = useAuth();
 
   const handleLogout = async () => {
+    // Prevent double-clicks
+    if (isLoggingOut) return;
+    
+    setIsLoggingOut(true);
     try {
       await logout();
     } catch (error) {
       console.error('Logout error:', error);
+      setIsLoggingOut(false);
     }
   };
 
@@ -103,10 +109,20 @@ export default function SupportStaffLayout() {
           variant="ghost"
           size="sm"
           onClick={handleLogout}
+          disabled={isLoggingOut}
           className="w-full justify-start text-blue-700 hover:text-blue-900 hover:bg-blue-100 dark:text-blue-300 dark:hover:text-blue-100 dark:hover:bg-blue-800"
         >
-          <LogOut className="mr-3 h-4 w-4" />
-          Sign Out
+          {isLoggingOut ? (
+            <>
+              <div className="mr-3 h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              Signing out...
+            </>
+          ) : (
+            <>
+              <LogOut className="mr-3 h-4 w-4" />
+              Sign Out
+            </>
+          )}
         </Button>
       </div>
     </div>

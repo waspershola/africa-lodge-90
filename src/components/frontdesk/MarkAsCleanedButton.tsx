@@ -19,13 +19,14 @@ export const MarkAsCleanedButton = ({
   onComplete 
 }: MarkAsCleanedButtonProps) => {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { updateRoomStatusAsync, isLoading } = useRoomStatusManager();
   const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Check if user has permission to mark rooms as cleaned
-  const canMarkAsCleaned = user?.role && [
+  // Only evaluate permissions if auth is loaded (user is defined or explicitly null after loading)
+  const canMarkAsCleaned = !authLoading && user?.role && [
     'HOUSEKEEPING', 
     'FRONT_DESK', 
     'MANAGER', 
@@ -119,11 +120,11 @@ export const MarkAsCleanedButton = ({
   return (
     <Button
       onClick={handleMarkAsCleaned}
-      disabled={!canMarkAsCleaned || isLoading || isProcessing}
+      disabled={authLoading || !canMarkAsCleaned || isLoading || isProcessing}
       className="bg-room-available text-room-available-foreground hover:bg-room-available/90"
       size="sm"
     >
-      {(isLoading || isProcessing) ? (
+      {(authLoading || isLoading || isProcessing) ? (
         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
       ) : (
         <Sparkles className="h-4 w-4 mr-2" />

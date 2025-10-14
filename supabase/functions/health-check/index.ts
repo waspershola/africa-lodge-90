@@ -38,7 +38,7 @@ const handler = async (req: Request): Promise<Response> => {
     const allEnvVarsPresent = hasSupabaseUrl && hasServiceRoleKey;
     const emailConfigured = hasResendKey;
     
-    // Phase 3: Test database triggers
+    // Phase 8: Test database triggers with fixed query
     let triggerStatus: { status: 'healthy' | 'warning' | 'error'; message: string } = {
       status: 'healthy',
       message: 'All triggers operational'
@@ -52,18 +52,39 @@ const handler = async (req: Request): Promise<Response> => {
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
       );
       
-      const { data: funcData, error: funcError } = await supabase
-        .rpc('pg_get_functiondef', { funcoid: 'auto_seed_tenant_templates'::regprocedure });
+      // Phase 8: Use direct SQL query to check trigger function
+      const { data: funcCheck, error: funcError } = await supabase
+        .from('pg_proc')
+        .select('proname, prosrc')
+        .eq('proname', 'auto_seed_tenant_templates')
+        .maybeSingle();
       
-      if (funcError || !funcData) {
-        triggerStatus = {
-          status: 'warning',
-          message: 'Could not verify trigger function'
-        };
-      } else if (!funcData.includes('tenant_id')) {
+      if (funcError) {
+        // If we can't query pg_proc, try a simpler check via information_schema
+        const { data: triggerCheck, error: triggerError } = await supabase.rpc('check_trigger_function_exists', {
+          function_name: 'auto_seed_tenant_templates'
+        });
+        
+        if (triggerError) {
+          triggerStatus = {
+            status: 'warning',
+            message: 'Could not verify trigger function - catalog query failed'
+          };
+        } else if (!triggerCheck) {
+          triggerStatus = {
+            status: 'error',
+            message: 'Trigger function not found'
+          };
+        }
+      } else if (!funcCheck) {
         triggerStatus = {
           status: 'error',
-          message: 'Trigger function may have column reference issue'
+          message: 'Trigger function not found in database'
+        };
+      } else if (funcCheck.prosrc && !funcCheck.prosrc.includes('tenant_id')) {
+        triggerStatus = {
+          status: 'error',
+          message: 'Trigger function uses wrong column reference'
         };
       }
     } catch (triggerError) {

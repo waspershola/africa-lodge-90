@@ -89,18 +89,15 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Check if user already exists in auth or public users
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const existingAuthUser = existingUsers?.users?.find(u => u.email === owner_email);
-    
-    // Also check public users table
+    // Phase 7: Check if user already exists in public users table only
+    // Removed blocking listUsers() call - rely on PostgreSQL unique constraints
     const { data: existingPublicUser } = await supabaseAdmin
       .from('users')
       .select('id, email')
       .eq('email', owner_email)
       .maybeSingle();
     
-    if (existingAuthUser || existingPublicUser) {
+    if (existingPublicUser) {
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'A user with this email already exists. Please use a different email or try signing in.' 

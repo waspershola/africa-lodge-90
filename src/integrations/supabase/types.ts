@@ -7091,19 +7091,57 @@ export type Database = {
       }
       get_secure_daily_revenue: {
         Args: Record<PropertyKey, never>
-        Returns: unknown[]
+        Returns: {
+          avg_revenue_per_reservation: number | null
+          reservation_count: number | null
+          revenue_date: string | null
+          tenant_id: string | null
+          total_revenue: number | null
+          unique_guests: number | null
+        }[]
       }
       get_secure_folio_balances: {
         Args: Record<PropertyKey, never>
-        Returns: unknown[]
+        Returns: {
+          balance: number | null
+          check_in_date: string | null
+          check_out_date: string | null
+          folio_id: string | null
+          folio_number: string | null
+          guest_name: string | null
+          reservation_id: string | null
+          room_id: string | null
+          status: string | null
+          tenant_id: string | null
+          total_charges: number | null
+          total_payments: number | null
+        }[]
       }
       get_secure_guest_stats_monthly: {
         Args: Record<PropertyKey, never>
-        Returns: unknown[]
+        Returns: {
+          avg_reservation_value: number | null
+          avg_stay_length: number | null
+          month_year: string | null
+          repeat_guests: number | null
+          retention_rate: number | null
+          tenant_id: string | null
+          total_reservations: number | null
+          total_revenue: number | null
+          unique_guests: number | null
+        }[]
       }
       get_secure_occupancy_stats: {
         Args: Record<PropertyKey, never>
-        Returns: unknown[]
+        Returns: {
+          month_year: string | null
+          occupancy_rate: number | null
+          occupied_rooms: number | null
+          stat_date: string | null
+          tenant_id: string | null
+          total_rooms: number | null
+          week_start: string | null
+        }[]
       }
       get_sms_credits_balance: {
         Args: { p_tenant_id: string }

@@ -15,6 +15,10 @@ interface HealthCheckResult {
   };
   services: {
     edge_functions: boolean;
+    database_triggers: {
+      status: 'healthy' | 'warning' | 'error';
+      message: string;
+    };
   };
 }
 
@@ -34,12 +38,48 @@ const handler = async (req: Request): Promise<Response> => {
     const allEnvVarsPresent = hasSupabaseUrl && hasServiceRoleKey;
     const emailConfigured = hasResendKey;
     
+    // Phase 3: Test database triggers
+    let triggerStatus: { status: 'healthy' | 'warning' | 'error'; message: string } = {
+      status: 'healthy',
+      message: 'All triggers operational'
+    };
+    
+    try {
+      // Verify critical trigger function exists and uses correct column
+      const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.39.3');
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+      
+      const { data: funcData, error: funcError } = await supabase
+        .rpc('pg_get_functiondef', { funcoid: 'auto_seed_tenant_templates'::regprocedure });
+      
+      if (funcError || !funcData) {
+        triggerStatus = {
+          status: 'warning',
+          message: 'Could not verify trigger function'
+        };
+      } else if (!funcData.includes('tenant_id')) {
+        triggerStatus = {
+          status: 'error',
+          message: 'Trigger function may have column reference issue'
+        };
+      }
+    } catch (triggerError) {
+      console.warn('[health-check] Trigger validation error:', triggerError);
+      triggerStatus = {
+        status: 'warning',
+        message: 'Trigger validation unavailable'
+      };
+    }
+    
     // Determine overall status
     let status: 'healthy' | 'degraded' | 'unhealthy';
-    if (allEnvVarsPresent && emailConfigured) {
+    if (allEnvVarsPresent && emailConfigured && triggerStatus.status === 'healthy') {
       status = 'healthy';
-    } else if (allEnvVarsPresent) {
-      status = 'degraded'; // Core services work, but email won't
+    } else if (allEnvVarsPresent && triggerStatus.status !== 'error') {
+      status = 'degraded'; // Core services work, but email or triggers have issues
     } else {
       status = 'unhealthy';
     }
@@ -54,6 +94,7 @@ const handler = async (req: Request): Promise<Response> => {
       },
       services: {
         edge_functions: true, // If this runs, edge functions are working
+        database_triggers: triggerStatus
       }
     };
     

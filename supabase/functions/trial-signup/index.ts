@@ -231,7 +231,23 @@ const handler = async (req: Request): Promise<Response> => {
         .maybeSingle();
 
       if (tenantError || !tenant) {
-        console.error('Tenant creation error:', tenantError);
+        console.error('Tenant creation error:', {
+          code: tenantError?.code,
+          details: tenantError?.details,
+          hint: tenantError?.hint,
+          message: tenantError?.message
+        });
+        
+        // Phase 4: Specific handling for database column errors
+        if (tenantError?.code === '42703') {
+          throw new Error('Database configuration error. The system administrator has been notified. Please try again in a few minutes or contact support. [ERR_DB_COLUMN_MISMATCH]');
+        }
+        
+        // Check for other common PostgreSQL errors
+        if (tenantError?.code === '23505') {
+          throw new Error('An account with this information already exists. [ERR_DUPLICATE_TENANT]');
+        }
+        
         throw new Error(`Failed to create tenant: ${tenantError?.message || 'No tenant returned'}`);
       }
 

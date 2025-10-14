@@ -47,6 +47,18 @@ const hashPassword = async (password: string): Promise<string> => {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 };
 
+// Phase 9: Timeout wrapper utility
+const withTimeout = async <T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  operationName: string
+): Promise<T> => {
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error(`${operationName} timed out after ${timeoutMs}ms`)), timeoutMs)
+  );
+  return Promise.race([promise, timeoutPromise]);
+};
+
 const handler = async (req: Request): Promise<Response> => {
   const startTime = Date.now();
   const operationId = crypto.randomUUID();
@@ -57,18 +69,27 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Phase 11: Overall function timeout (25 seconds)
+  const functionTimeout = setTimeout(() => {
+    console.error(`[${operationId}] CRITICAL: Function timeout reached (25s)`);
+  }, 25000);
+
   try {
+    console.log(`[${operationId}] Step 1: Creating Supabase client`);
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
+    console.log(`[${operationId}] Step 1: ✓ Supabase client created`);
 
+    console.log(`[${operationId}] Step 2: Parsing request body`);
     const { hotel_name, owner_email, owner_name, city, country, phone, password }: TrialSignupRequest = await req.json();
+    console.log(`[${operationId}] Step 2: ✓ Request parsed`, { hotel_name, owner_email, owner_name });
 
-    console.log('Starting trial signup:', { hotel_name, owner_email, owner_name });
-
+    console.log(`[${operationId}] Step 3: Validating required fields`);
     // Validate required fields
     if (!hotel_name || !owner_email || !owner_name || !password) {
+      console.error(`[${operationId}] Step 3: ✗ Validation failed - missing fields`);
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'Hotel name, owner email, owner name, and password are required' 
@@ -77,9 +98,12 @@ const handler = async (req: Request): Promise<Response> => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    console.log(`[${operationId}] Step 3: ✓ Required fields validated`);
 
+    console.log(`[${operationId}] Step 4: Validating password strength`);
     // Validate password strength
     if (password.length < 8) {
+      console.error(`[${operationId}] Step 4: ✗ Password too short`);
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'Password must be at least 8 characters long' 
@@ -88,44 +112,97 @@ const handler = async (req: Request): Promise<Response> => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    console.log(`[${operationId}] Step 4: ✓ Password validated`);
 
-    // Phase 7: Check if user already exists in public users table only
-    // Removed blocking listUsers() call - rely on PostgreSQL unique constraints
-    const { data: existingPublicUser } = await supabaseAdmin
-      .from('users')
-      .select('id, email')
-      .eq('email', owner_email)
-      .maybeSingle();
-    
-    if (existingPublicUser) {
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: 'A user with this email already exists. Please use a different email or try signing in.' 
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // Phase 9: Check if user already exists with timeout protection
+    console.log(`[${operationId}] Step 5: Checking for existing user with email: ${owner_email}`);
+    try {
+      const existingUserCheck = await withTimeout(
+        supabaseAdmin
+          .from('users')
+          .select('id, email')
+          .eq('email', owner_email)
+          .maybeSingle(),
+        5000,
+        'User existence check'
+      );
+      console.log(`[${operationId}] Step 5: ✓ User check completed`, { found: !!existingUserCheck.data });
+      
+      if (existingUserCheck.data) {
+        console.warn(`[${operationId}] Step 5: User already exists`);
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: 'A user with this email already exists. Please use a different email or try signing in.' 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } catch (existingUserError: any) {
+      console.error(`[${operationId}] Step 5: ✗ User check failed:`, {
+        message: existingUserError.message,
+        code: existingUserError.code,
+        hint: existingUserError.hint,
+        isTimeout: existingUserError.message?.includes('timed out')
       });
+      
+      // Phase 9: Specific RLS error handling
+      if (existingUserError.code === 'PGRST301' || existingUserError.message?.includes('RLS')) {
+        console.error(`[${operationId}] RLS policy blocking user check`);
+        // Continue anyway - let auth.createUser handle duplicate detection
+      } else if (existingUserError.message?.includes('timed out')) {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: 'Service temporarily unavailable. Please try again in a moment.',
+          debug_info: { operation_id: operationId, error: 'user_check_timeout' }
+        }), {
+          status: 503,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      // Continue anyway for other errors
     }
 
     // Get the Starter plan (case-insensitive)
-    console.log(`[${operationId}] Looking up Starter plan...`);
-    const { data: starterPlan, error: planError } = await supabaseAdmin
-      .from('plans')
-      .select('id, name')
-      .ilike('name', 'Starter')
-      .maybeSingle();
-
-    if (planError) {
-      console.error(`[${operationId}] Plan lookup error:`, planError);
+    console.log(`[${operationId}] Step 6: Looking up Starter plan...`);
+    
+    let starterPlan: any = null;
+    try {
+      const planQuery = await withTimeout(
+        supabaseAdmin
+          .from('plans')
+          .select('id, name')
+          .ilike('name', 'Starter')
+          .maybeSingle(),
+        5000,
+        'Plan lookup'
+      );
+      
+      if (planQuery.error) {
+        console.error(`[${operationId}] Step 6: ✗ Plan lookup error:`, planQuery.error);
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: `Database error looking up plan: ${planQuery.error.message}`,
+          debug_info: {
+            operation_id: operationId,
+            error_details: planQuery.error
+          }
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      starterPlan = planQuery.data;
+      console.log(`[${operationId}] Step 6: Plan query completed`, { found: !!starterPlan });
+    } catch (planError: any) {
+      console.error(`[${operationId}] Step 6: ✗ Plan lookup timeout:`, planError.message);
       return new Response(JSON.stringify({ 
         success: false, 
-        error: `Database error looking up plan: ${planError.message}`,
-        debug_info: {
-          operation_id: operationId,
-          error_details: planError
-        }
+        error: 'Service temporarily unavailable. Please try again.',
+        debug_info: { operation_id: operationId, error: 'plan_lookup_timeout' }
       }), {
-        status: 500,
+        status: 503,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -203,8 +280,9 @@ const handler = async (req: Request): Promise<Response> => {
     let authUserId: string | undefined;
 
     try {
-      // Step 1: Create tenant
-      const { data: tenant, error: tenantError } = await supabaseAdmin
+      // Step 1: Create tenant with timeout protection
+      console.log(`[${operationId}] Step 7: Creating tenant record...`);
+      const tenantCreatePromise = supabaseAdmin
         .from('tenants')
         .insert({
           hotel_name,
@@ -226,6 +304,16 @@ const handler = async (req: Request): Promise<Response> => {
         })
         .select()
         .maybeSingle();
+      
+      const { data: tenant, error: tenantError } = await withTimeout(
+        tenantCreatePromise,
+        10000,
+        'Tenant creation'
+      );
+      console.log(`[${operationId}] Step 7: Tenant creation completed`, { 
+        success: !tenantError, 
+        tenantId: tenant?.tenant_id 
+      });
 
       if (tenantError || !tenant) {
         console.error('Tenant creation error:', {
@@ -249,20 +337,30 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       tenantId = tenant.tenant_id;
-      console.log('Tenant created:', tenantId);
+      console.log(`[${operationId}] Step 7: ✓ Tenant created:`, tenantId);
 
-      // Create default roles for this tenant
-      const { error: defaultRolesError } = await supabaseAdmin.rpc('create_default_tenant_roles', {
+      // Create default roles for this tenant with timeout
+      console.log(`[${operationId}] Step 8: Creating default tenant roles...`);
+      const rolesPromise = supabaseAdmin.rpc('create_default_tenant_roles', {
         tenant_uuid: tenantId
       });
+      
+      const { error: defaultRolesError } = await withTimeout(
+        rolesPromise,
+        10000,
+        'Default roles creation'
+      );
+      console.log(`[${operationId}] Step 8: Roles creation completed`, { success: !defaultRolesError });
 
       if (defaultRolesError) {
-        console.error('Failed to create default roles:', defaultRolesError);
+        console.error(`[${operationId}] Step 8: ✗ Failed to create default roles:`, defaultRolesError);
         throw new Error(`Failed to create default tenant roles: ${defaultRolesError.message}`);
       }
+      console.log(`[${operationId}] Step 8: ✓ Default roles created`);
 
-      // Step 2: Create user in Supabase Auth
-      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      // Step 2: Create user in Supabase Auth with timeout
+      console.log(`[${operationId}] Step 9: Creating auth user...`);
+      const authUserPromise = supabaseAdmin.auth.admin.createUser({
         email: owner_email,
         password: userPassword, // Use the user's chosen password
         email_confirm: true, // Auto-confirm email
@@ -272,23 +370,44 @@ const handler = async (req: Request): Promise<Response> => {
           tenant_id: tenantId
         }
       });
+      
+      const { data: authUser, error: authError } = await withTimeout(
+        authUserPromise,
+        10000,
+        'Auth user creation'
+      );
+      console.log(`[${operationId}] Step 9: Auth user creation completed`, { 
+        success: !authError, 
+        userId: authUser?.user?.id 
+      });
 
       if (authError) {
-        console.error('Auth user creation error:', authError);
+        console.error(`[${operationId}] Step 9: ✗ Auth user creation error:`, authError);
         throw new Error(`Failed to create auth user: ${authError.message}`);
       }
 
       authUserId = authUser.user.id;
-      console.log('Auth user created:', authUserId);
+      console.log(`[${operationId}] Step 9: ✓ Auth user created:`, authUserId);
 
       // Step 3: Get Owner role for this tenant (case-insensitive)
-      const { data: ownerRole, error: roleError } = await supabaseAdmin
+      console.log(`[${operationId}] Step 10: Finding Owner role for tenant...`);
+      const ownerRolePromise = supabaseAdmin
         .from('roles')
         .select('id')
         .ilike('name', 'Owner')
         .eq('scope', 'tenant')
         .eq('tenant_id', tenantId)
         .maybeSingle();
+      
+      const { data: ownerRole, error: roleError } = await withTimeout(
+        ownerRolePromise,
+        5000,
+        'Owner role lookup'
+      );
+      console.log(`[${operationId}] Step 10: Owner role lookup completed`, { 
+        success: !roleError, 
+        roleId: ownerRole?.id 
+      });
 
       if (roleError || !ownerRole) {
         console.error(`[${operationId}] Failed to find Owner role for tenant:`, roleError);
@@ -410,12 +529,15 @@ const handler = async (req: Request): Promise<Response> => {
           }
         });
 
-      console.log(`[${operationId}] Trial signup completed successfully`, {
+      console.log(`[${operationId}] Step 11: Trial signup completed successfully`, {
         tenant_id: tenantId,
         user_id: authUserId,
         email_sent: emailSent,
         duration_ms: Date.now() - startTime
       });
+
+      // Phase 11: Clear timeout on success
+      clearTimeout(functionTimeout);
 
       return new Response(JSON.stringify({
         success: true,
@@ -446,20 +568,21 @@ const handler = async (req: Request): Promise<Response> => {
       });
 
     } catch (error) {
-      console.error('Trial signup error during transaction:', error);
+      console.error(`[${operationId}] Trial signup error during transaction:`, error);
       
       // Rollback: Clean up in reverse order
+      console.log(`[${operationId}] Starting rollback...`);
       if (authUserId) {
         try {
           // Delete from public.users first
           await supabaseAdmin.from('users').delete().eq('id', authUserId);
-          console.log('Public user record rolled back');
+          console.log(`[${operationId}] Public user record rolled back`);
           
           // Then delete from auth
           await supabaseAdmin.auth.admin.deleteUser(authUserId);
-          console.log('Auth user rolled back');
+          console.log(`[${operationId}] Auth user rolled back`);
         } catch (rollbackError) {
-          console.error('Failed to rollback auth user:', rollbackError);
+          console.error(`[${operationId}] Failed to rollback auth user:`, rollbackError);
         }
       }
       
@@ -467,22 +590,32 @@ const handler = async (req: Request): Promise<Response> => {
         try {
           // Delete roles first (if any were created)
           await supabaseAdmin.from('roles').delete().eq('tenant_id', tenantId);
-          console.log('Tenant roles rolled back');
+          console.log(`[${operationId}] Tenant roles rolled back`);
           
           // Then delete tenant
           await supabaseAdmin.from('tenants').delete().eq('tenant_id', tenantId);
-          console.log('Tenant rolled back');
+          console.log(`[${operationId}] Tenant rolled back`);
         } catch (rollbackError) {
-          console.error('Failed to rollback tenant:', rollbackError);
+          console.error(`[${operationId}] Failed to rollback tenant:`, rollbackError);
         }
       }
+      console.log(`[${operationId}] Rollback completed`);
       
       throw error;
     }
 
   } catch (error: any) {
+    // Phase 11: Clear timeout on error
+    clearTimeout(functionTimeout);
+    
     const endTime = Date.now();
     const duration = endTime - startTime;
+    
+    console.error(`[${operationId}] Fatal error after ${duration}ms:`, {
+      message: error.message,
+      stack: error.stack,
+      code: error.code
+    });
     
     console.error(`[${operationId}] Error in trial-signup function:`, {
       error: error.message,

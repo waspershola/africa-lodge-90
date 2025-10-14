@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { retryWithBackoff, getUserFriendlyErrorMessage, isRetryableError } from '@/lib/retry-utils';
+import { toast } from '@/hooks/use-toast';
 
 export interface TrialStatus {
   id: string;
@@ -87,29 +89,72 @@ export const useTrialStatus = (): UseTrialStatusReturn => {
   };
 
   const startTrial = async (planId: string) => {
+    const operationId = crypto.randomUUID();
+    console.log(`[useTrialStatus][${operationId}] Starting trial signup:`, { planId });
+    
     try {
       setLoading(true);
       setError(null);
       
-      // Make API call to trial-signup function
-      const { data: result, error } = await supabase.functions.invoke('trial-signup', {
-        body: {
-          hotel_name: 'Demo Hotel', // These will be provided by signup form
-          owner_email: 'demo@example.com',
-          owner_name: 'Demo Owner',
-          plan_id: planId
+      // Show loading toast for long operations
+      const loadingTimeout = setTimeout(() => {
+        toast({
+          title: "Processing...",
+          description: "This is taking longer than expected. Please wait...",
+        });
+      }, 5000);
+      
+      // Make API call with retry logic
+      const result = await retryWithBackoff(
+        async () => {
+          console.log(`[useTrialStatus][${operationId}] Invoking trial-signup function...`);
+          
+          const { data, error } = await supabase.functions.invoke('trial-signup', {
+            body: {
+              hotel_name: 'Demo Hotel', // These will be provided by signup form
+              owner_email: 'demo@example.com',
+              owner_name: 'Demo Owner',
+              plan_id: planId
+            }
+          });
+
+          console.log(`[useTrialStatus][${operationId}] Function response:`, { 
+            success: data?.success, 
+            error_code: data?.error_code,
+            error: error?.message || data?.error,
+            status: data?.status
+          });
+
+          if (error) {
+            console.error(`[useTrialStatus][${operationId}] Edge function error:`, error);
+            throw new Error(error.message || 'Failed to start trial');
+          }
+
+          if (!data?.success) {
+            console.error(`[useTrialStatus][${operationId}] Function returned error:`, data);
+            const errorMsg = data?.error || 'Failed to start trial signup';
+            const err = new Error(errorMsg);
+            (err as any).error_code = data?.error_code;
+            throw err;
+          }
+          
+          return data;
+        },
+        {
+          maxAttempts: 3,
+          initialDelayMs: 1000,
+          onRetry: (attempt, error) => {
+            console.warn(`[useTrialStatus][${operationId}] Retry attempt ${attempt}:`, error.message);
+            toast({
+              title: "Retrying...",
+              description: `Attempt ${attempt} of 3. Please wait...`,
+              variant: "default",
+            });
+          }
         }
-      });
-
-      if (error) {
-        console.error('Edge function error:', error);
-        throw new Error(error.message || 'Failed to start trial');
-      }
-
-      if (!result?.success) {
-        console.error('Function returned error:', result);
-        throw new Error(result?.error || 'Failed to start trial signup');
-      }
+      );
+      
+      clearTimeout(loadingTimeout);
       
       // SECURITY: Use secure storage for trial status
       const { SecureStorage } = await import('../lib/secure-storage');
@@ -128,23 +173,32 @@ export const useTrialStatus = (): UseTrialStatusReturn => {
         status: 'active'
       };
       
-      setTrial(newTrial);
-    } catch (err: any) {
-      console.error('Error starting trial:', err);
+      console.log(`[useTrialStatus][${operationId}] Trial created successfully:`, result);
       
-      // Show more specific error messages
-      let errorMessage = 'Failed to start trial';
-      if (err.message?.includes('already exists')) {
-        errorMessage = 'An account with this email already exists';
-      } else if (err.message?.includes('plan not available')) {
-        errorMessage = 'The selected plan is not available';
-      } else if (err.message?.includes('tenant')) {
-        errorMessage = 'Failed to create hotel account';
-      } else if (err.message) {
-        errorMessage = err.message;
-      }
+      setTrial(newTrial);
+      
+      toast({
+        title: "Success!",
+        description: "Your free trial has been activated. Welcome!",
+      });
+    } catch (err: any) {
+      console.error(`[useTrialStatus][${operationId}] Error starting trial:`, {
+        error: err.message,
+        error_code: err.error_code,
+        stack: err.stack
+      });
+      
+      // Get user-friendly error message
+      const errorMessage = getUserFriendlyErrorMessage(err);
       
       setError(errorMessage);
+      
+      // Show error toast
+      toast({
+        title: "Trial Signup Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }

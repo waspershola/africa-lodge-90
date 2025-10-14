@@ -36,18 +36,31 @@ export function PricingSection({ onPlanSelect }: PricingSectionProps) {
   };
 
   const handlePlanAction = async (planId: string, actionType: 'trial' | 'purchase') => {
+    const operationId = crypto.randomUUID();
+    console.log(`[PricingSection][${operationId}] Plan action:`, { planId, actionType });
+    
     if (actionType === 'trial') {
       setStartingTrial(planId);
       try {
+        console.log(`[PricingSection][${operationId}] Starting trial for plan:`, planId);
         await startTrial(planId);
+        
+        console.log(`[PricingSection][${operationId}] Trial started successfully, redirecting...`);
         // Redirect to appropriate dashboard after trial starts
         window.location.href = '/owner-dashboard';
-      } catch (error) {
-        console.error('Failed to start trial:', error);
+      } catch (error: any) {
+        console.error(`[PricingSection][${operationId}] Failed to start trial:`, {
+          error: error.message,
+          error_code: error.error_code,
+          stack: error.stack
+        });
+        
+        // Error toast already handled by useTrialStatus hook
       } finally {
         setStartingTrial(null);
       }
     } else {
+      console.log(`[PricingSection][${operationId}] Proceeding to purchase for plan:`, planId);
       onPlanSelect?.(planId);
     }
   };

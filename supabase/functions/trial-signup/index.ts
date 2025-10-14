@@ -2,7 +2,16 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+// Defensive initialization - don't fail on module load if RESEND_API_KEY is missing
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+let resend: Resend | null = null;
+
+if (RESEND_API_KEY) {
+  resend = new Resend(RESEND_API_KEY);
+  console.log('[trial-signup] Resend initialized successfully');
+} else {
+  console.warn('[trial-signup] RESEND_API_KEY not configured - emails will not be sent');
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -319,9 +328,14 @@ const handler = async (req: Request): Promise<Response> => {
       let emailError = null;
       
       try {
-        const loginUrl = `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '')}.lovable.app`;
-        
-        const emailResult = await resend.emails.send({
+        // Only attempt email if resend is configured
+        if (!resend) {
+          console.warn('[trial-signup] Skipping email - Resend not configured');
+          emailError = 'Email service not configured';
+        } else {
+          const loginUrl = `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '')}.lovable.app`;
+          
+          const emailResult = await resend.emails.send({
           from: 'LUXURYHOTELPRO <noreply@mail.luxuryhotelpro.com>',
           to: [owner_email],
           subject: 'Welcome to Your 14-Day Free Trial!',
@@ -354,10 +368,11 @@ const handler = async (req: Request): Promise<Response> => {
               <p>Best regards,<br>The LUXURYHOTELPRO Team</p>
             </div>
           `,
-        });
+          });
 
-        console.log('Welcome email sent successfully:', emailResult);
-        emailSent = true;
+          console.log('Welcome email sent successfully:', emailResult);
+          emailSent = true;
+        }
       } catch (error) {
         console.error('Failed to send welcome email (non-critical):', error);
         emailError = (error as Error).message;
@@ -391,6 +406,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       return new Response(JSON.stringify({
         success: true,
+        error_code: null,
         tenant: {
           id: tenantId,
           hotel_name,
@@ -408,7 +424,8 @@ const handler = async (req: Request): Promise<Response> => {
           : 'Trial account created successfully! You can now sign in.',
         debug_info: {
           operation_id: operationId,
-          duration_ms: Date.now() - startTime
+          duration_ms: Date.now() - startTime,
+          email_error: emailError
         }
       }), {
         status: 200,
@@ -461,8 +478,24 @@ const handler = async (req: Request): Promise<Response> => {
       timestamp: new Date().toISOString()
     });
     
+    // Determine error code for better client handling
+    let errorCode = 'INTERNAL_ERROR';
+    let statusCode = 500;
+    
+    if (error.message?.includes('already exists')) {
+      errorCode = 'USER_EXISTS';
+      statusCode = 400;
+    } else if (error.message?.includes('plan')) {
+      errorCode = 'PLAN_NOT_FOUND';
+      statusCode = 500;
+    } else if (error.message?.includes('tenant')) {
+      errorCode = 'TENANT_CREATION_FAILED';
+      statusCode = 500;
+    }
+    
     return new Response(JSON.stringify({ 
-      success: false, 
+      success: false,
+      error_code: errorCode,
       error: error.message || 'Trial signup failed',
       debug_info: {
         operation_id: operationId,
@@ -470,7 +503,7 @@ const handler = async (req: Request): Promise<Response> => {
         timestamp: new Date().toISOString()
       }
     }), {
-      status: 500,
+      status: statusCode,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

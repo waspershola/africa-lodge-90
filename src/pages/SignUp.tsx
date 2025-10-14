@@ -34,18 +34,26 @@ const SignUp = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    const operationId = crypto.randomUUID();
+    console.log(`[SignUp][${operationId}] Starting signup process:`, {
+      email: formData.email,
+      hotelName: formData.hotelName
+    });
     
     if (!formData.hotelName || !formData.ownerName || !formData.email || !formData.password) {
+      console.warn(`[SignUp][${operationId}] Required fields validation failed`);
       toast.error('Please fill in all required fields');
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
+      console.warn(`[SignUp][${operationId}] Password mismatch validation failed`);
       toast.error('Passwords do not match');
       return;
     }
 
     if (formData.password.length < 8) {
+      console.warn(`[SignUp][${operationId}] Password length validation failed`);
       toast.error('Password must be at least 8 characters long');
       return;
     }
@@ -53,6 +61,8 @@ const SignUp = () => {
     setIsLoading(true);
 
     try {
+      console.log(`[SignUp][${operationId}] Invoking trial-signup function...`);
+      
       // Create trial account using the trial-signup edge function
       const { data, error } = await supabase.functions.invoke('trial-signup', {
         body: {
@@ -66,16 +76,35 @@ const SignUp = () => {
         }
       });
 
+      console.log(`[SignUp][${operationId}] Function response:`, {
+        success: data?.success,
+        error_code: data?.error_code,
+        has_error: !!error
+      });
+
       if (error) {
-        console.error('Trial signup error:', error);
+        console.error(`[SignUp][${operationId}] Edge function error:`, error);
         throw error;
       }
 
       if (!data?.success) {
-        throw new Error(data?.error || 'Failed to create trial account');
+        console.error(`[SignUp][${operationId}] Signup failed:`, data);
+        
+        // Use error_code for more specific handling
+        let errorMessage = data?.error || 'Failed to create trial account';
+        if (data?.error_code === 'USER_EXISTS') {
+          errorMessage = 'An account with this email already exists. Please use a different email or try signing in.';
+        } else if (data?.error_code === 'PLAN_NOT_FOUND') {
+          errorMessage = 'Unable to activate trial plan. Please contact support.';
+        }
+        
+        throw new Error(errorMessage);
       }
 
-      toast.success('Trial account created successfully! You can now sign in with your credentials.');
+      console.log(`[SignUp][${operationId}] Signup successful, redirecting...`);
+      toast.success(data.email_sent 
+        ? 'Trial account created! Check your email for login instructions.'
+        : 'Trial account created successfully! You can now sign in with your credentials.');
       
       // Redirect to login page
       navigate('/', { 
@@ -86,7 +115,10 @@ const SignUp = () => {
       });
 
     } catch (error: any) {
-      console.error('Trial signup failed:', error);
+      console.error(`[SignUp][${operationId}] Signup failed:`, {
+        error: error.message,
+        stack: error.stack
+      });
       
       // Handle specific error cases
       if (error.message?.includes('already exists')) {

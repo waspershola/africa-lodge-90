@@ -169,7 +169,14 @@ export const BillingOverview = ({ bill }: BillingOverviewProps) => {
           showZeroRates={false}
         />
         
-        {bill.pending_balance > 0 && (
+        {/* PHASE 1: Fixed display logic for overpayment */}
+        {bill.payment_status === 'overpaid' && (
+          <div className="flex justify-between text-lg font-bold text-green-600 pt-2 border-t mt-2">
+            <span>Credit Balance:</span>
+            <span>₦{Math.abs(bill.total_amount - bill.pending_balance).toLocaleString()}</span>
+          </div>
+        )}
+        {bill.pending_balance > 0 && bill.payment_status !== 'overpaid' && (
           <div className="flex justify-between text-lg font-bold text-destructive pt-2 border-t mt-2">
             <span>Pending Balance:</span>
             <span>₦{bill.pending_balance.toLocaleString()}</span>

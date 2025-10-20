@@ -389,7 +389,7 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId, onCheckoutComplete 
             </Button>
           </div>
 
-          {/* BILLING LOGIC FIX: Checkout Status with correct logic */}
+          {/* PHASE 1: Fixed overpayment display logic */}
           {!canCheckout && guest_bill.pending_balance > 0 && (
             <Card className="mt-4 border-amber-200 bg-amber-50">
               <CardContent className="pt-4">
@@ -405,8 +405,41 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId, onCheckoutComplete 
               </CardContent>
             </Card>
           )}
-          {/* Show success message for paid guests */}
-          {canCheckout && (
+          
+          {/* PHASE 1 & 5: Show credit balance for overpaid guests */}
+          {guest_bill.payment_status === 'overpaid' && (
+            <Card className="mt-4 border-green-200 bg-green-50">
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2 text-green-800">
+                  <CheckCircle className="h-4 w-4" />
+                  <span className="font-medium">
+                    Credit Balance: ₦{Math.abs(checkoutSession.guest_bill.total_amount - checkoutSession.guest_bill.pending_balance - (checkoutSession.payment_records.reduce((sum, p) => sum + p.amount, 0))).toLocaleString()}
+                  </span>
+                </div>
+                <p className="text-sm text-green-700 mt-1">
+                  Guest has overpaid. You can refund to wallet or apply to next stay.
+                </p>
+                <div className="flex gap-2 mt-3">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => {/* TODO: Implement refund to wallet */}}
+                  >
+                    Refund to Wallet
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                  >
+                    Apply to Next Stay
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Show success message for paid guests (not overpaid) */}
+          {canCheckout && guest_bill.payment_status !== 'overpaid' && (
             <Card className="mt-4 border-green-200 bg-green-50">
               <CardContent className="pt-4">
                 <div className="flex items-center gap-2 text-green-800">

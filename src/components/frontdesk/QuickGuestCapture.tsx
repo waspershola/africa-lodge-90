@@ -171,7 +171,7 @@ export const QuickGuestCapture = ({
       occupation: '',
       idType: 'national-id',
       idNumber: '',
-      paymentMode: 'cash',
+      paymentMode: '', // PHASE 2: Initialize empty, will be set by useEffect
       depositAmount: '0',
       departmentId: '',
       terminalId: '',
@@ -184,6 +184,17 @@ export const QuickGuestCapture = ({
       numberOfNights: 1,
     };
   });
+
+  // PHASE 2: Auto-select default payment method when enabled methods load
+  useEffect(() => {
+    if (enabledMethods.length > 0 && !formData.paymentMode) {
+      console.log('[PAYMENT-SETUP] Setting default payment method');
+      // Find first cash method, or first enabled method
+      const defaultMethod = enabledMethods.find(m => m.type === 'cash') || enabledMethods[0];
+      setFormData(prev => ({ ...prev, paymentMode: defaultMethod.id }));
+      console.log('[PAYMENT-SETUP] Default payment method set:', defaultMethod.name);
+    }
+  }, [enabledMethods, formData.paymentMode]);
 
   // Detect reserved room and auto-set to existing guest mode ONLY for reserved rooms during check-in
   useEffect(() => {
@@ -379,6 +390,32 @@ export const QuickGuestCapture = ({
       return;
     }
 
+    // PHASE 2: Validate payment method before submission
+    const depositAmount = parseFloat(formData.depositAmount) || 0;
+    if (depositAmount > 0) {
+      if (!formData.paymentMode) {
+        toast({
+          title: "Validation Error",
+          description: "Please select a payment method for the deposit",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validate payment method exists and is enabled
+      const selectedMethod = enabledMethods.find(m => m.id === formData.paymentMode);
+      if (!selectedMethod || !selectedMethod.enabled) {
+        toast({
+          title: "Invalid Payment Method",
+          description: "Please select a valid payment method",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      console.log('[PAYMENT-VALIDATION] Payment method validated:', selectedMethod.name);
+    }
+
     if (isProcessing || isAtomicCheckInLoading) {
       return;
     }
@@ -497,12 +534,18 @@ export const QuickGuestCapture = ({
 
         if (folioError) throw folioError;
 
-        // Record deposit payment if made
+        // PHASE 2 & 3: Validate payment method FIRST before any operations
         const depositAmount = parseFloat(formData.depositAmount) || 0;
+        let selectedMethod = null;
+        
+        console.log('[ASSIGN-FLOW] Step 1: Validating payment method', {
+          depositAmount,
+          paymentMode: formData.paymentMode
+        });
+        
         if (depositAmount > 0) {
-          const selectedMethod = enabledMethods.find(m => m.id === formData.paymentMode);
+          selectedMethod = enabledMethods.find(m => m.id === formData.paymentMode);
           
-          // PHASE 1 FIX: No hardcoded fallbacks - enforce method existence
           if (!selectedMethod) {
             throw new Error('Selected payment method not found. Please refresh and try again.');
           }
@@ -511,9 +554,29 @@ export const QuickGuestCapture = ({
             throw new Error(`${selectedMethod.name} is currently disabled. Please select another payment method.`);
           }
           
+          console.log('[ASSIGN-FLOW] Payment method validated:', selectedMethod.name);
+        }
+        
+        // PHASE 7: Log start of assignment process
+        console.log('[ASSIGN-FLOW] Starting room assignment', {
+          roomId: room?.id,
+          roomNumber: room?.room_number,
+          guestName: formData.guestName,
+          depositAmount,
+          paymentMethodName: selectedMethod?.name,
+          checkInDate: formData.checkInDate,
+          checkOutDate: formData.checkOutDate
+        });
+          
           // PHASE 4: Apply latest payment logic
           const canonicalMethod = mapPaymentMethodWithLogging(selectedMethod.type || selectedMethod.name, 'QuickGuestCapture-Assign');
           const paymentStatus = determinePaymentStatus(selectedMethod.type);
+          
+          console.log('[ASSIGN-FLOW] Step 4: Recording payment', {
+            amount: depositAmount,
+            method: canonicalMethod,
+            folioId: folio.id
+          });
           
           const { error: paymentError } = await supabase
             .from('payments')
@@ -537,14 +600,15 @@ export const QuickGuestCapture = ({
             }]);
 
           if (paymentError) {
-            console.error('Payment recording error:', paymentError);
-            // Don't throw - room is assigned, just log the payment error
-            toast({
-              title: "Warning",
-              description: "Room assigned but payment recording failed. Please verify in folio.",
-              variant: "default"
-            });
+            console.error('[ASSIGN-FLOW] CRITICAL: Payment recording failed:', paymentError);
+            // PHASE 6: Rollback on payment failure
+            console.log('[ASSIGN-FLOW] Rolling back folio and reservation...');
+            await supabase.from('folios').delete().eq('id', folio.id);
+            await supabase.from('reservations').delete().eq('id', reservation.id);
+            throw new Error(`Payment recording failed: ${paymentError.message}`);
           }
+          
+          console.log('[ASSIGN-FLOW] Step 4: Payment recorded successfully');
         }
 
         // Add initial room charge to folio WITH TAX CALCULATION
@@ -576,9 +640,9 @@ export const QuickGuestCapture = ({
           } as any
         });
 
-        console.log('[Assign] Tax calculation:', taxCalc);
+        console.log('[ASSIGN-FLOW] Step 5: Tax calculation:', taxCalc);
 
-        const { error: chargeError } = await supabase
+        const { data: chargeData, error: chargeError } = await supabase
           .from('folio_charges')
           .insert([{
             tenant_id: user.user_metadata?.tenant_id,
@@ -592,11 +656,22 @@ export const QuickGuestCapture = ({
             is_taxable: true,
             is_service_chargeable: true,
             posted_by: user.id
-          }]);
+          }])
+          .select();
 
         if (chargeError) {
-          console.error('Charge posting error:', chargeError);
+          console.error('[ASSIGN-FLOW] CRITICAL: Charge posting failed:', chargeError);
+          // PHASE 6: Enhanced rollback logic
+          console.log('[ASSIGN-FLOW] Rolling back all operations...');
+          if (depositAmount > 0) {
+            await supabase.from('payments').delete().eq('folio_id', folio.id);
+          }
+          await supabase.from('folios').delete().eq('id', folio.id);
+          await supabase.from('reservations').delete().eq('id', reservation.id);
+          throw new Error(`Failed to post room charges: ${chargeError.message}`);
         }
+        
+        console.log('[ASSIGN-FLOW] Step 5: Charges posted successfully:', chargeData);
 
         // Update room status to reserved with validation
         const validStatuses = ['available', 'occupied', 'reserved', 'out_of_service', 'oos', 'overstay', 'dirty', 'clean', 'maintenance', 'checkout'];
@@ -605,6 +680,8 @@ export const QuickGuestCapture = ({
         if (!validStatuses.includes(newStatus)) {
           throw new Error(`Invalid room status: ${newStatus}`);
         }
+        
+        console.log('[ASSIGN-FLOW] Step 6: Updating room status to reserved');
         
         const { error: roomError } = await supabase
           .from('rooms')
@@ -615,8 +692,14 @@ export const QuickGuestCapture = ({
           .eq('id', room?.id);
 
         if (roomError) {
-          console.error('Room status update error:', roomError);
-          throw new Error(`Failed to update room status: ${roomError.message}`);
+          console.error('[ASSIGN-FLOW] CRITICAL: Room status update failed:', roomError);
+          // PHASE 6: Don't throw here - charges and payments are already posted
+          // Just log the error and notify user
+          toast({
+            title: "Warning",
+            description: "Reservation created but room status may need manual update",
+            variant: "default"
+          });
         }
 
         updatedRoom.status = 'reserved';
@@ -624,7 +707,13 @@ export const QuickGuestCapture = ({
         updatedRoom.checkIn = formData.checkInDate;
         updatedRoom.checkOut = formData.checkOutDate;
         
-        } else if (action === 'walkin' || action === 'check-in') {
+        console.log('[ASSIGN-FLOW] SUCCESS: Room assignment complete', {
+          reservationId: reservation.id,
+          folioId: folio.id,
+          roomStatus: updatedRoom.status
+        });
+        
+      } else if (action === 'walkin' || action === 'check-in') {
         // PHASE 1 FIX: Use atomic check-in for reliable, single-transaction check-in
         let reservationId: string;
         
@@ -912,7 +1001,7 @@ export const QuickGuestCapture = ({
         setShowOptionalFields(false);
 
         onOpenChange(false);
-    } catch (error) {
+      } catch (error) {
       console.error('Error processing guest capture:', error);
       let errorMessage = "Failed to process guest information. Please try again.";
       

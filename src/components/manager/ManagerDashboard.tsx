@@ -13,7 +13,8 @@ import {
   UserCheck,
   FileText,
   TrendingUp,
-  Settings
+  Settings,
+  Wallet
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
@@ -168,9 +169,9 @@ export function ManagerDashboard() {
                 <AlertTriangle className="h-6 w-6" />
                 <span className="text-sm">Issues Report</span>
               </Button>
-              <Button variant="outline" className="h-20 flex flex-col gap-2">
-                <DollarSign className="h-6 w-6" />
-                <span className="text-sm">Budget Review</span>
+              <Button variant="outline" className="h-20 flex flex-col gap-2" onClick={() => window.location.href = '/owner-dashboard/wallet-management'}>
+                <Wallet className="h-6 w-6" />
+                <span className="text-sm">Wallet Management</span>
               </Button>
             </CardContent>
           </Card>

@@ -10,6 +10,7 @@ import { StaffManagementDashboard } from '@/components/owner/staff/StaffManageme
 import { EnhancedBillingInterface } from '@/components/owner/EnhancedBillingInterface';
 import UtilityCostTracking from '@/components/owner/utilities/UtilityCostTracking';
 import { OwnerProfileSettings } from '@/components/owner/profile/OwnerProfileSettings';
+import { WalletManagementDashboard } from '@/components/wallet/WalletManagementDashboard';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 
 export function OwnerDashboardRouter() {
@@ -39,6 +40,7 @@ export function OwnerDashboardRouter() {
         <Route path="/staff" element={<StaffManagementDashboard />} />
         <Route path="/billing" element={<EnhancedBillingInterface />} />
         <Route path="/utilities" element={<UtilityCostTracking />} />
+        <Route path="/wallet-management" element={<WalletManagementDashboard />} />
         <Route path="/profile" element={<OwnerProfileSettings />} />
       </Routes>
     </div>

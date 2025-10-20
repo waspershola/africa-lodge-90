@@ -34,7 +34,8 @@ import {
   Hotel,
   UserCircle,
   Building2,
-  QrCode
+  QrCode,
+  Wallet
 } from "lucide-react";
 
 
@@ -81,6 +82,11 @@ const sidebarItems = [
     title: "Billing & Payments",
     icon: CreditCard,
     href: "/owner-dashboard/billing"
+  },
+  {
+    title: "Wallet Management",
+    icon: Wallet,
+    href: "/owner-dashboard/wallet-management"
   },
   {
     title: "Reports",

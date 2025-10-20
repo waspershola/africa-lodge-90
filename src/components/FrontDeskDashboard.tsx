@@ -31,7 +31,8 @@ import {
   FileText,
   UserPlus,
   User,
-  CheckCircle
+  CheckCircle,
+  Wallet
 } from "lucide-react";
 import { RoomGrid } from "./frontdesk/RoomGrid";
 import { ActionQueue } from "./frontdesk/ActionQueue";
@@ -366,6 +367,15 @@ const FrontDeskDashboard = () => {
                 {hasDataIssues && (
                   <span className="absolute -top-1 -right-1 h-3 w-3 bg-yellow-500 rounded-full animate-pulse" />
                 )}
+              </Button>
+              
+              <Button
+                variant="outline"
+                onClick={() => window.location.href = '/owner-dashboard/wallet-management'}
+                title="Wallet Management"
+              >
+                <Wallet className="h-4 w-4 mr-2" />
+                Wallets
               </Button>
               
               <DashboardNotificationBar />

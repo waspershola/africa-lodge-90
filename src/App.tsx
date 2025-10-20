@@ -30,6 +30,7 @@ import StaffManagement from "./pages/owner/StaffManagement";
 import { OnboardingWizard } from "./components/onboarding/OnboardingWizard";
 import QRManager from "./pages/owner/QRManager";
 import QRPortal from "./pages/guest/QRPortal";
+import { WalletManagementDashboard } from "./components/wallet/WalletManagementDashboard";
 import Reports from "./pages/owner/Reports";
 import Reservations from "./pages/owner/Reservations";
 import Guests from "./pages/owner/Guests";
@@ -169,6 +170,13 @@ const App = () => (
           <Route path="/dashboard/*" element={
             <TenantAwareLayout allowedRoles={['OWNER', 'MANAGER', 'ACCOUNTANT', 'HOUSEKEEPING', 'MAINTENANCE', 'POS', 'FRONT_DESK']}>
               <DynamicDashboardShell useJsonConfig={true} />
+            </TenantAwareLayout>
+          } />
+          
+          {/* Wallet Management Route - Accessible to all staff roles */}
+          <Route path="/dashboard/wallet-management" element={
+            <TenantAwareLayout allowedRoles={['OWNER', 'MANAGER', 'ACCOUNTANT', 'FRONT_DESK']}>
+              <WalletManagementDashboard />
             </TenantAwareLayout>
           } />
           

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -76,6 +76,7 @@ import { useToast } from "@/hooks/use-toast";
 const FrontDeskDashboard = () => {
   const { data: tenantInfo } = useTenantInfo();
   const { logout } = useAuth();
+  const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -371,7 +372,7 @@ const FrontDeskDashboard = () => {
               
               <Button
                 variant="outline"
-                onClick={() => window.location.href = '/owner-dashboard/wallet-management'}
+                onClick={() => navigate('/dashboard/wallet-management')}
                 title="Wallet Management"
               >
                 <Wallet className="h-4 w-4 mr-2" />

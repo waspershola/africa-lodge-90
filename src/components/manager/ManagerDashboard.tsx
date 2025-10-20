@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useNavigate } from 'react-router-dom';
 import { 
   Users, 
   CheckCircle, 
@@ -23,6 +24,7 @@ import { SalaryApprovalWorkflow } from '@/components/owner/staff/SalaryApprovalW
 export function ManagerDashboard() {
   const { user, tenant } = useAuth();
   const { stats, loading } = useDashboardStats();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
 
   const managerKPIs = [
@@ -169,7 +171,7 @@ export function ManagerDashboard() {
                 <AlertTriangle className="h-6 w-6" />
                 <span className="text-sm">Issues Report</span>
               </Button>
-              <Button variant="outline" className="h-20 flex flex-col gap-2" onClick={() => window.location.href = '/owner-dashboard/wallet-management'}>
+              <Button variant="outline" className="h-20 flex flex-col gap-2" onClick={() => navigate('/dashboard/wallet-management')}>
                 <Wallet className="h-6 w-6" />
                 <span className="text-sm">Wallet Management</span>
               </Button>

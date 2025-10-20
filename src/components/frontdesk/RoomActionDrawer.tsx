@@ -91,8 +91,12 @@ export const RoomActionDrawer = ({
     
     const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
       if (event.type === 'updated' && event.query.queryKey[0] === 'rooms') {
-        const updatedRooms = event.query.state.data as any[];
-        const updatedRoom = updatedRooms?.find((r: any) => r.id === room.id);
+        const updatedRooms = event.query.state.data;
+        
+        // Ensure updatedRooms is an array before calling .find()
+        if (!Array.isArray(updatedRooms)) return;
+        
+        const updatedRoom = updatedRooms.find((r: any) => r.id === room.id);
         
         // Auto-close if room transitioned from occupied to available
         if (updatedRoom && 

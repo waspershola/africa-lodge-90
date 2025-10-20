@@ -567,7 +567,8 @@ export const QuickGuestCapture = ({
           checkInDate: formData.checkInDate,
           checkOutDate: formData.checkOutDate
         });
-          
+        
+        if (depositAmount > 0) {
           // PHASE 4: Apply latest payment logic
           const canonicalMethod = mapPaymentMethodWithLogging(selectedMethod.type || selectedMethod.name, 'QuickGuestCapture-Assign');
           const paymentStatus = determinePaymentStatus(selectedMethod.type);
@@ -1001,7 +1002,7 @@ export const QuickGuestCapture = ({
         setShowOptionalFields(false);
 
         onOpenChange(false);
-      } catch (error) {
+    } catch (error) {
       console.error('Error processing guest capture:', error);
       let errorMessage = "Failed to process guest information. Please try again.";
       

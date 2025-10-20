@@ -31,7 +31,7 @@ export function CancelIncompleteReservationDialog({
   guestName,
   onSuccess
 }: CancelIncompleteReservationDialogProps) {
-  const { user } = useAuth();
+  const { user, tenant } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handleCancel = async () => {
@@ -92,7 +92,7 @@ export function CancelIncompleteReservationDialog({
           actor_id: user?.id,
           actor_email: user?.email,
           actor_role: user?.role,
-          tenant_id: user?.user_metadata?.tenant_id,
+          tenant_id: tenant?.tenant_id,
           description: `Canceled incomplete reservation for ${guestName}`,
           metadata: {
             room_id: roomId,

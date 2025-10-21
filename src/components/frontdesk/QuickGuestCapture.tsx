@@ -832,13 +832,20 @@ export const QuickGuestCapture = ({
                         p_transaction_type: 'deposit',
                         p_amount: overpayment,
                         p_description: `Overpayment credit from Room ${room?.number} check-in`,
-                        p_payment_method_id: formData.paymentMode,
+                        p_payment_method: formData.paymentMode,
                         p_reference_type: 'folio',
-                        p_reference_id: result.folio_id
+                        p_reference_id: result.folio_id,
+                        p_metadata: {}
                       });
                       
                       if (walletError) {
-                        console.error('[Check-in] Wallet deposit error:', walletError);
+                        console.error('[Check-in] Wallet deposit error details:', {
+                          error: walletError,
+                          walletId: walletData.id,
+                          amount: overpayment,
+                          paymentMethod: formData.paymentMode,
+                          folioId: result.folio_id
+                        });
                         toast({
                           title: "Overpayment Notice",
                           description: `Payment successful. Overpayment of ₦${overpayment.toLocaleString()} could not be added to wallet. Please add manually.`,

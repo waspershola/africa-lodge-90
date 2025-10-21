@@ -85,8 +85,9 @@ export function useAtomicCheckoutV3() {
       });
 
       // Allow checkout if balance is 0 or nearly 0 (within ₦0.01 tolerance)
+      // Only block if balance is POSITIVE (unpaid) - negative means overpaid/credit
       const balanceTolerance = 0.01;
-      if (Math.abs(folio.balance) > balanceTolerance) {
+      if (folio.balance > balanceTolerance) {
         const message = `Cannot checkout: Outstanding balance of ₦${folio.balance.toFixed(2)}. Please settle all charges before checkout.`;
         console.error('[Atomic Checkout V3] Pre-checkout validation failed:', message);
         
@@ -103,7 +104,12 @@ export function useAtomicCheckoutV3() {
         };
       }
 
-      console.log('[Atomic Checkout V3] ✅ Pre-checkout validation passed!');
+      // Log if guest has credit balance (overpayment)
+      if (folio.balance < -balanceTolerance) {
+        console.log('[Atomic Checkout V3] ✅ Checkout allowed with credit balance:', folio.balance);
+      } else {
+        console.log('[Atomic Checkout V3] ✅ Pre-checkout validation passed!');
+      }
 
       // Call atomic checkout database function
       const { data, error: rpcError } = await supabase.rpc('atomic_checkout_v3', {

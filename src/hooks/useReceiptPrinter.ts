@@ -1,11 +1,27 @@
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
+interface HotelInfo {
+  hotel_name: string;
+  logo_url?: string | null;
+  address?: string | null;
+  city?: string | null;
+  country?: string | null;
+  phone?: string | null;
+  email?: string | null;
+}
+
 interface PrintOptions {
   copies?: number;
   paperSize?: 'thermal-58' | 'thermal-80' | 'a4';
   autoOpen?: boolean;
   showPreview?: boolean;
+  hotelInfo?: HotelInfo;
+  taxBreakdown?: Array<{
+    label: string;
+    rate: number;
+    amount: number;
+  }>;
 }
 
 interface ReceiptData {
@@ -48,6 +64,14 @@ interface ReceiptData {
   
   // QR verification
   verificationUrl?: string;
+  
+  // Hotel info
+  hotelInfo?: HotelInfo;
+  taxBreakdown?: Array<{
+    label: string;
+    rate: number;
+    amount: number;
+  }>;
 }
 
 export const useReceiptPrinter = () => {
@@ -120,8 +144,17 @@ export const useReceiptPrinter = () => {
       copies = 1,
       paperSize = 'thermal-80',
       autoOpen = true,
-      showPreview = false
+      showPreview = false,
+      hotelInfo,
+      taxBreakdown
     } = options;
+    
+    // Merge hotel info and tax breakdown into receipt data
+    const enrichedReceiptData = {
+      ...receiptData,
+      hotelInfo: hotelInfo || receiptData.hotelInfo,
+      taxBreakdown: taxBreakdown || receiptData.taxBreakdown
+    };
 
     setIsPrinting(true);
 
@@ -134,7 +167,7 @@ export const useReceiptPrinter = () => {
       }
 
       // Generate print HTML
-      const printHTML = generatePrintHTML(receiptData, paperSize);
+      const printHTML = generatePrintHTML(enrichedReceiptData, paperSize);
       
       printWindow.document.write(printHTML);
       printWindow.document.close();
@@ -259,9 +292,25 @@ export const useReceiptPrinter = () => {
       <div class="receipt">
         <!-- Header -->
         <div class="header">
-          <div class="bold">LUXURY HOTEL PRO</div>
-          <div class="small">123 Business District, Lagos</div>
-          <div class="small">+234 800 LUXURY</div>
+          ${receiptData.hotelInfo?.logo_url ? `
+            <img src="${receiptData.hotelInfo.logo_url}" 
+                 alt="Hotel Logo" 
+                 style="max-width: 40mm; max-height: 15mm; margin: 0 auto 2mm; display: block;" 
+                 onerror="this.style.display='none'" />
+          ` : ''}
+          <div class="bold">${receiptData.hotelInfo?.hotel_name || 'HOTEL'}</div>
+          ${receiptData.hotelInfo?.address ? `
+            <div class="small">${receiptData.hotelInfo.address}</div>
+          ` : ''}
+          ${receiptData.hotelInfo?.city || receiptData.hotelInfo?.country ? `
+            <div class="small">${[receiptData.hotelInfo?.city, receiptData.hotelInfo?.country].filter(Boolean).join(', ')}</div>
+          ` : ''}
+          ${receiptData.hotelInfo?.phone ? `
+            <div class="small">Tel: ${receiptData.hotelInfo.phone}</div>
+          ` : ''}
+          ${receiptData.hotelInfo?.email ? `
+            <div class="small">${receiptData.hotelInfo.email}</div>
+          ` : ''}
         </div>
         
         <div class="separator"></div>
@@ -317,10 +366,21 @@ export const useReceiptPrinter = () => {
           <span>Subtotal:</span>
           <span>₦${receiptData.subtotal.toLocaleString()}</span>
         </div>
-        ${receiptData.tax ? `
+        ${receiptData.taxBreakdown?.map(tax => `
+        <div class="row small">
+          <span>${tax.label} (${tax.rate}%):</span>
+          <span>₦${tax.amount.toLocaleString()}</span>
+        </div>
+        `).join('') || (receiptData.tax ? `
         <div class="row small">
           <span>VAT (7.5%):</span>
           <span>₦${receiptData.tax.toLocaleString()}</span>
+        </div>
+        ` : '')}
+        ${receiptData.serviceCharge ? `
+        <div class="row small">
+          <span>Service Charge:</span>
+          <span>₦${receiptData.serviceCharge.toLocaleString()}</span>
         </div>
         ` : ''}
         <div class="separator"></div>

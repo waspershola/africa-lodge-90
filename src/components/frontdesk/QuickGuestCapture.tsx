@@ -57,6 +57,7 @@ import { useGuestContactManager } from "@/hooks/useGuestContactManager";
 import { useAtomicCheckIn } from "@/hooks/useAtomicCheckIn";
 import { useConfiguration } from "@/hooks/useConfiguration";
 import { useReceiptPrinter } from "@/hooks/useReceiptPrinter";
+import { useTenantInfo } from "@/hooks/useTenantInfo";
 import { RateSelectionComponent } from "./RateSelectionComponent";
 import { ProcessingStateManager } from "./ProcessingStateManager";
 import { calculateTaxesAndCharges } from "@/lib/tax-calculator";
@@ -89,6 +90,7 @@ interface GuestFormData {
   departmentId: string;
   terminalId: string;
   printNow: boolean;
+  paperSize?: 'thermal-58' | 'thermal-80' | 'a4';
   notes: string;
   checkInDate: string;
   checkOutDate: string;
@@ -145,6 +147,7 @@ export const QuickGuestCapture = ({
   const { configuration } = useConfiguration();
   const queryClient = useQueryClient();
   const { printCheckInReceipt } = useReceiptPrinter();
+  const { data: tenantInfo } = useTenantInfo();
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStartTime, setProcessingStartTime] = useState<number | undefined>();
   const [showOptionalFields, setShowOptionalFields] = useState(false);
@@ -1181,6 +1184,11 @@ export const QuickGuestCapture = ({
       if (formData.printNow) {
         console.log('[Check-in] Printing check-in receipt...');
         try {
+          // Calculate tax breakdown
+          const baseAmount = formData.totalAmount / (1 + (configuration?.tax?.vat_rate || 7.5) / 100 + (configuration?.tax?.service_charge_rate || 10) / 100);
+          const vatAmount = baseAmount * ((configuration?.tax?.vat_rate || 7.5) / 100);
+          const serviceChargeAmount = baseAmount * ((configuration?.tax?.service_charge_rate || 10) / 100);
+          
           await printCheckInReceipt({
             guestName: formData.guestName,
             roomNumber: room?.number || 'N/A',
@@ -1191,8 +1199,29 @@ export const QuickGuestCapture = ({
             amountPaid: parseFloat(formData.depositAmount) || 0,
             notes: formData.notes || undefined
           }, {
-            paperSize: 'thermal-80',
-            showPreview: false
+            paperSize: formData.paperSize || 'thermal-80',
+            showPreview: false,
+            hotelInfo: tenantInfo ? {
+              hotel_name: tenantInfo.hotel_name || 'Hotel',
+              logo_url: tenantInfo.logo_url,
+              address: tenantInfo.address,
+              city: tenantInfo.city,
+              country: tenantInfo.country,
+              phone: tenantInfo.phone,
+              email: tenantInfo.email
+            } : undefined,
+            taxBreakdown: [
+              {
+                label: 'Service Charge',
+                rate: configuration?.tax?.service_charge_rate || 10,
+                amount: serviceChargeAmount
+              },
+              {
+                label: 'VAT',
+                rate: configuration?.tax?.vat_rate || 7.5,
+                amount: vatAmount
+              }
+            ]
           });
           
           console.log('[Check-in] Receipt printed successfully');
@@ -1674,7 +1703,7 @@ export const QuickGuestCapture = ({
           {/* Print Options - Only show if enabled in configuration */}
           {configuration?.guest_experience?.print_settings?.auto_print_checkin !== false && (
             <Card>
-              <CardContent className="pt-4">
+              <CardContent className="pt-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Printer className="h-4 w-4" />
@@ -1686,8 +1715,28 @@ export const QuickGuestCapture = ({
                     onCheckedChange={(checked) => handleInputChange('printNow', checked)}
                   />
                 </div>
+                
+                {formData.printNow && (
+                  <div>
+                    <Label htmlFor="paperSize" className="text-sm">Paper Size</Label>
+                    <Select
+                      value={formData.paperSize || 'thermal-80'}
+                      onValueChange={(value) => handleInputChange('paperSize', value)}
+                    >
+                      <SelectTrigger id="paperSize" className="mt-1">
+                        <SelectValue placeholder="Select paper size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="thermal-58">58mm Thermal</SelectItem>
+                        <SelectItem value="thermal-80">80mm Thermal (Default)</SelectItem>
+                        <SelectItem value="a4">A4 Paper</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                
                 {configuration?.guest_experience?.print_settings?.default_printer && (
-                  <p className="text-xs text-muted-foreground mt-2">
+                  <p className="text-xs text-muted-foreground">
                     Will print to: {configuration.guest_experience.print_settings.default_printer}
                   </p>
                 )}

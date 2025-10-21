@@ -94,6 +94,7 @@ interface GuestFormData {
   roomRate: number;
   totalAmount: number;
   numberOfNights: number;
+  roomTypeId?: string;
 }
 
 interface RecentGuest {
@@ -390,6 +391,16 @@ export const QuickGuestCapture = ({
       toast({
         title: "Validation Error",
         description: "Check-out date must be after check-in date",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate room type selection for assign and walk-in actions
+    if ((action === 'walkin' || action === 'assign') && !formData.roomTypeId) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a room type to proceed with check-in",
         variant: "destructive",
       });
       return;

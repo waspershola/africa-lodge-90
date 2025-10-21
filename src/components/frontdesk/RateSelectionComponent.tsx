@@ -157,55 +157,42 @@ export const RateSelectionComponent = ({
           </div>
         )}
 
-        {/* Custom Rate Input */}
-        <div>
-          <Label htmlFor="customRate">
-            {selectedRoomType ? 'Override Rate' : 'Room Rate'} (₦/night)
-          </Label>
-          {!canOverrideRate && selectedRoomType && (
+        {/* Override Rate Input - Only show for Owner/Manager when room type selected */}
+        {selectedRoomType && canOverrideRate && (
+          <div>
+            <Label htmlFor="customRate">Override Rate (₦/night)</Label>
             <p className="text-xs text-muted-foreground mt-1">
-              Only Owners and Managers can override rates
+              Change the default room rate if needed
             </p>
-          )}
-          <Input
-            id="customRate"
-            type="number"
-            value={customRate}
-            onChange={(e) => handleCustomRateChange(e.target.value)}
-            placeholder="Enter rate per night"
-            className="mt-1"
-            min="0"
-            step="100"
-            disabled={selectedRoomType && !canOverrideRate}
-            readOnly={selectedRoomType && !canOverrideRate}
-          />
-          {selectedRoomType && !canOverrideRate && (
-            <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
-              <Lock className="h-3 w-3" />
-              Rate locked to room type default
+            <Input
+              id="customRate"
+              type="number"
+              value={customRate}
+              onChange={(e) => handleCustomRateChange(e.target.value)}
+              placeholder="Enter custom rate"
+              className="mt-1"
+              min="0"
+              step="100"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Default: {formatPrice(roomTypeDetails?.base_rate || 0)}
             </p>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Rate Summary with Tax Breakdown */}
         {baseRate > 0 && (
           <div className="space-y-3">
-            <div className="p-3 bg-primary/5 rounded-lg space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Rate per night:</span>
-                <span className="font-medium">{formatPrice(baseRate)}</span>
+            {/* Compact Room Info - Single line */}
+            {roomTypeDetails && (
+              <div className="p-2 bg-muted rounded-md text-xs text-muted-foreground">
+                <span>Max occupancy: {roomTypeDetails.max_occupancy} guest{roomTypeDetails.max_occupancy !== 1 ? 's' : ''}</span>
+                <span className="mx-2">•</span>
+                <span>{nights} night{nights !== 1 ? 's' : ''} @ {formatPrice(baseRate)}/night</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span>Number of nights:</span>
-                <span className="font-medium">{nights}</span>
-              </div>
-              {roomTypeDetails && (
-                <div className="text-xs text-muted-foreground">
-                  Max occupancy: {roomTypeDetails.max_occupancy} guest{roomTypeDetails.max_occupancy !== 1 ? 's' : ''}
-                </div>
-              )}
-            </div>
+            )}
 
+            {/* Tax Breakdown - This shows all the details needed */}
             <TaxBreakdownDisplay
               breakdown={taxCalculation.breakdown}
               totalAmount={taxCalculation.totalAmount}

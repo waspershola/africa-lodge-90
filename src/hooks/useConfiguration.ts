@@ -245,7 +245,7 @@ export const useConfiguration = () => {
             default_services: ['wifi', 'room_service', 'housekeeping', 'maintenance']
           },
           print_settings: {
-            auto_print_checkin: false,
+            auto_print_checkin: true,
             print_on_checkout: false,
             default_printer: null,
             include_qr_on_slip: true

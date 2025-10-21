@@ -257,8 +257,7 @@ export const QuickGuestCapture = ({
         
         setFormData(prev => ({
           ...prev,
-          ...baseFormData,
-          depositAmount: folios ? Math.max(0, (folios.balance || 0)).toString() : (reservation.total_amount?.toString() || '0')
+          ...baseFormData
         }));
       } else {
         // For non-reserved rooms or other actions, ensure form is clean

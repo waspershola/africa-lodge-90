@@ -26,7 +26,8 @@ import {
   AlertTriangle,
   Edit3,
   Receipt,
-  History
+  History,
+  Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { QuickGuestCapture } from "./QuickGuestCapture";
@@ -46,7 +47,8 @@ import { useTenantInfo } from "@/hooks/useTenantInfo";
 import { AuditTrailDisplay } from "./AuditTrailDisplay";
 import { useAuditLog } from "@/hooks/useAuditLog";
 import { useAuth } from '@/hooks/useAuth';
-import { MarkAsCleanedButton } from "./MarkAsCleanedButton";
+import { PrintReportDialog } from "./PrintReportDialog";
+import { useRoomStatusManager } from "@/hooks/useRoomStatusManager";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
@@ -71,8 +73,8 @@ export const RoomActionDrawer = ({
   const { logEvent } = useAuditLog();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { printRoomReport } = useReceiptPrinter();
   const { data: tenantInfo } = useTenantInfo();
+  const { updateRoomStatusAsync } = useRoomStatusManager();
   const [isProcessing, setIsProcessing] = useState(false);
   const [showQuickCapture, setShowQuickCapture] = useState(false);
   const [captureAction, setCaptureAction] = useState<'assign' | 'walkin' | 'check-in' | 'check-out' | 'assign-room' | 'extend-stay' | 'transfer-room' | 'add-service' | 'work-order' | 'housekeeping'>('assign');
@@ -87,6 +89,7 @@ export const RoomActionDrawer = ({
   const [overstayAction, setOverstayAction] = useState<'overstay-charge' | 'send-reminder' | 'escalate-manager' | 'force-checkout'>('overstay-charge');
   const [showAddService, setShowAddService] = useState(false);
   const [showCancelReservation, setShowCancelReservation] = useState(false);
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
 
   // Auto-close drawer when room becomes available after checkout/cancel
   useEffect(() => {
@@ -334,57 +337,9 @@ export const RoomActionDrawer = ({
           break;
 
         case 'Print Report':
-          // Generate and print room report
-          try {
-            await printRoomReport({
-              roomNumber: room.number,
-              roomType: room.type,
-              roomName: room.name,
-              status: room.status,
-              guestName: room.guest,
-              checkInDate: room.checkIn,
-              checkOutDate: room.checkOut,
-              folioBalance: room.folio?.balance,
-              totalCharges: room.folio?.total_charges,
-              totalPayments: room.folio?.total_payments,
-              notes: 'Room report generated for internal use'
-            }, {
-              paperSize: 'a4',
-              showPreview: false,
-              hotelInfo: tenantInfo ? {
-                hotel_name: tenantInfo.hotel_name || 'Hotel',
-                logo_url: tenantInfo.logo_url,
-                address: tenantInfo.address,
-                city: tenantInfo.city,
-                country: tenantInfo.country,
-                phone: tenantInfo.phone,
-                email: tenantInfo.email
-              } : undefined
-            });
-
-            // Log report generation
-            await supabase
-              .from('audit_log')
-              .insert({
-                action: 'room_report_printed',
-                resource_type: 'ROOM',
-                resource_id: room.id,
-                actor_id: user.id,
-                actor_email: user.email,
-                actor_role: user.user_metadata?.role,
-                tenant_id: user.user_metadata?.tenant_id,
-                description: `Room report printed for Room ${room.number}`,
-                metadata: { room_number: room.number }
-              });
-          } catch (error) {
-            console.error('Print error:', error);
-            toast({
-              title: "Print Error",
-              description: "Failed to print room report.",
-              variant: "destructive",
-            });
-          }
-          break;
+          // Open print dialog to select paper size
+          setShowPrintDialog(true);
+          return; // Don't close drawer yet
 
         case 'Send Email':
           // Send room status email (if guest exists)
@@ -539,6 +494,44 @@ export const RoomActionDrawer = ({
     }
     
     return actions;
+  };
+
+  const handleCleanRoom = async () => {
+    if (!room) return;
+    
+    setIsProcessing(true);
+    try {
+      await updateRoomStatusAsync({
+        roomId: room.id,
+        newStatus: 'available',
+        reason: 'Room cleaned and ready for guests',
+        metadata: {
+          cleaned_by: user?.email,
+          cleaned_at: new Date().toISOString(),
+          previous_status: room.status
+        }
+      });
+      
+      // Refresh room data
+      await queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      
+      toast({
+        title: "Room Cleaned ✓",
+        description: `Room ${room.number} is now available for guests.`,
+      });
+      
+      // Auto-close drawer
+      setTimeout(() => onClose(), 1000);
+    } catch (error) {
+      console.error('Clean room error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to mark room as cleaned. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -773,15 +766,6 @@ export const RoomActionDrawer = ({
           <div className="space-y-3">
             <h3 className="font-medium">Quick Actions</h3>
             
-            {/* Mark as Cleaned Button - Show prominently for dirty rooms */}
-            {room.status === 'dirty' && (
-              <MarkAsCleanedButton
-                room={room}
-                onRoomUpdate={onRoomUpdate}
-                onComplete={onClose}
-              />
-            )}
-            
             <div className="grid grid-cols-2 gap-2">
               <Button 
                 variant="outline" 
@@ -821,6 +805,30 @@ export const RoomActionDrawer = ({
               </Button>
             </div>
           </div>
+
+          {/* Clean Room Button - Always visible for dirty rooms */}
+          {room.status === 'dirty' && (
+            <div className="pt-4 border-t border-green-200 bg-green-50/50 -mx-6 px-6 pb-4 dark:bg-green-950/20 dark:border-green-900">
+              <Button
+                onClick={handleCleanRoom}
+                disabled={isProcessing}
+                className="w-full bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-800"
+                size="lg"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    Cleaning...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-5 w-5 mr-2" />
+                    Mark Room as Cleaned
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
 
           {/* Audit Trail */}
           <div className="pt-4 border-t text-xs text-muted-foreground">
@@ -926,6 +934,22 @@ export const RoomActionDrawer = ({
             onClose();
           }, 600);
         }}
+      />
+
+      {/* Print Report Dialog */}
+      <PrintReportDialog
+        room={room}
+        open={showPrintDialog}
+        onOpenChange={setShowPrintDialog}
+        hotelInfo={tenantInfo ? {
+          hotel_name: tenantInfo.hotel_name || 'Hotel',
+          logo_url: tenantInfo.logo_url,
+          address: tenantInfo.address,
+          city: tenantInfo.city,
+          country: tenantInfo.country,
+          phone: tenantInfo.phone,
+          email: tenantInfo.email
+        } : undefined}
       />
     </>
   );

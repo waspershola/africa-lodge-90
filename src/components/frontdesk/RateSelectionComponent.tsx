@@ -4,12 +4,13 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, DollarSign } from 'lucide-react';
+import { Calendar, DollarSign, Lock } from 'lucide-react';
 import { useRooms } from '@/hooks/useRooms';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useConfiguration } from '@/hooks/useConfiguration';
 import { calculateTaxesAndCharges } from '@/lib/tax-calculator';
 import { TaxBreakdownDisplay } from './TaxBreakdownDisplay';
+import { useAuth } from '@/hooks/useAuth';
 
 interface RateSelectionComponentProps {
   checkInDate: string;
@@ -29,10 +30,14 @@ export const RateSelectionComponent = ({
   const { data: roomsData } = useRooms();
   const { formatPrice } = useCurrency();
   const { configuration } = useConfiguration();
+  const { user } = useAuth();
   const [customRate, setCustomRate] = useState(defaultRate?.toString() || '');
   const [selectedRoomType, setSelectedRoomType] = useState(selectedRoomTypeId || '');
 
   const roomTypes = roomsData?.roomTypes || [];
+  
+  // Check if user can override rates
+  const canOverrideRate = user?.role === 'Owner' || user?.role === 'Manager';
 
   // Calculate number of nights
   const calculateNights = () => {
@@ -154,6 +159,11 @@ export const RateSelectionComponent = ({
           <Label htmlFor="customRate">
             {selectedRoomType ? 'Override Rate' : 'Room Rate'} (₦/night)
           </Label>
+          {!canOverrideRate && selectedRoomType && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Only Owners and Managers can override rates
+            </p>
+          )}
           <Input
             id="customRate"
             type="number"
@@ -163,7 +173,15 @@ export const RateSelectionComponent = ({
             className="mt-1"
             min="0"
             step="100"
+            disabled={selectedRoomType && !canOverrideRate}
+            readOnly={selectedRoomType && !canOverrideRate}
           />
+          {selectedRoomType && !canOverrideRate && (
+            <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+              <Lock className="h-3 w-3" />
+              Rate locked to room type default
+            </p>
+          )}
         </div>
 
         {/* Rate Summary with Tax Breakdown */}

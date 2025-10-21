@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { HotelConfiguration } from '@/types/configuration';
-import { Users, ClipboardList, QrCode, Wifi, UtensilsCrossed, Sparkles, Wrench } from 'lucide-react';
+import { Users, ClipboardList, QrCode, Wifi, UtensilsCrossed, Sparkles, Wrench, Printer } from 'lucide-react';
 
 interface GuestExperienceProps {
   config: HotelConfiguration['guest_experience'];
@@ -78,6 +79,16 @@ export const GuestExperience = ({ config, onUpdate, loading }: GuestExperiencePr
         default_services: checked
           ? [...prev.qr_defaults.default_services, serviceId]
           : prev.qr_defaults.default_services.filter(s => s !== serviceId)
+      }
+    }));
+  };
+
+  const updatePrintSettings = (field: keyof HotelConfiguration['guest_experience']['print_settings'], value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      print_settings: {
+        ...prev.print_settings,
+        [field]: value
       }
     }));
   };
@@ -291,6 +302,74 @@ export const GuestExperience = ({ config, onUpdate, loading }: GuestExperiencePr
                   </div>
                 </div>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Print Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Printer className="h-5 w-5" />
+              Print & Document Settings
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Configure print behavior for check-in and check-out processes
+            </p>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Auto-print check-in slip</Label>
+                <p className="text-xs text-muted-foreground">
+                  Automatically show print option during check-in
+                </p>
+              </div>
+              <Switch
+                checked={formData.print_settings.auto_print_checkin}
+                onCheckedChange={(checked) => updatePrintSettings('auto_print_checkin', checked)}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Auto-print on checkout</Label>
+                <p className="text-xs text-muted-foreground">
+                  Automatically show print option during checkout
+                </p>
+              </div>
+              <Switch
+                checked={formData.print_settings.print_on_checkout}
+                onCheckedChange={(checked) => updatePrintSettings('print_on_checkout', checked)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Include QR code on slip</Label>
+                <p className="text-xs text-muted-foreground">
+                  Add QR code for guest services on printed slips
+                </p>
+              </div>
+              <Switch
+                checked={formData.print_settings.include_qr_on_slip}
+                onCheckedChange={(checked) => updatePrintSettings('include_qr_on_slip', checked)}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="default_printer">Default Printer (Optional)</Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                Name of the default printer for check-in slips
+              </p>
+              <Input
+                id="default_printer"
+                placeholder="e.g., Front Desk Printer 1"
+                value={formData.print_settings.default_printer || ''}
+                onChange={(e) => updatePrintSettings('default_printer', e.target.value || null)}
+                className="mt-2"
+              />
             </div>
           </CardContent>
         </Card>

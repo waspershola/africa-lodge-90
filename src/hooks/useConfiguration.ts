@@ -68,6 +68,12 @@ const defaultConfiguration: HotelConfiguration = {
       include_hotel_name: true,
       qr_size: 'medium',
       default_services: ['wifi', 'room_service', 'housekeeping', 'maintenance']
+    },
+    print_settings: {
+      auto_print_checkin: false,
+      print_on_checkout: false,
+      default_printer: null,
+      include_qr_on_slip: true
     }
   },
   permissions: {
@@ -237,6 +243,12 @@ export const useConfiguration = () => {
             include_hotel_name: true,
             qr_size: 'medium',
             default_services: ['wifi', 'room_service', 'housekeeping', 'maintenance']
+          },
+          print_settings: {
+            auto_print_checkin: false,
+            print_on_checkout: false,
+            default_printer: null,
+            include_qr_on_slip: true
           }
         },
         permissions: {

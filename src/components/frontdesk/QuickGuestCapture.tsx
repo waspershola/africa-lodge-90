@@ -1501,7 +1501,6 @@ export const QuickGuestCapture = ({
                     roomRate: rate,
                     numberOfNights: nights,
                     totalAmount: total,
-                    depositAmount: total.toString(),
                     ...(roomTypeId && { roomTypeId })
                   }));
                 }}
@@ -1567,22 +1566,29 @@ export const QuickGuestCapture = ({
             </CardContent>
           </Card>
 
-          {/* Print Options */}
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Printer className="h-4 w-4" />
-                  <Label htmlFor="printNow" className="text-sm">Print check-in slip now</Label>
+          {/* Print Options - Only show if enabled in configuration */}
+          {configuration?.guest_experience?.print_settings?.auto_print_checkin !== false && (
+            <Card>
+              <CardContent className="pt-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Printer className="h-4 w-4" />
+                    <Label htmlFor="printNow" className="text-sm">Print check-in slip now</Label>
+                  </div>
+                  <Switch
+                    id="printNow"
+                    checked={formData.printNow}
+                    onCheckedChange={(checked) => handleInputChange('printNow', checked)}
+                  />
                 </div>
-                <Switch
-                  id="printNow"
-                  checked={formData.printNow}
-                  onCheckedChange={(checked) => handleInputChange('printNow', checked)}
-                />
-              </div>
-            </CardContent>
-          </Card>
+                {configuration?.guest_experience?.print_settings?.default_printer && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Will print to: {configuration.guest_experience.print_settings.default_printer}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           <Separator />
 

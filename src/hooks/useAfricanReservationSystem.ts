@@ -374,7 +374,7 @@ export const useHardAssignReservation = () => {
         currency: { default_currency: 'NGN', currency_symbol: '₦', symbol_position: 'before' as const, decimal_places: 2, thousand_separator: ',' as const, decimal_separator: '.' as const },
         branding: { primary_color: '', secondary_color: '', accent_color: '', receipt_header_text: '', receipt_footer_text: '', font_style: 'giveny' as const },
         documents: { default_receipt_template: 'A4' as const, invoice_prefix: '', receipt_prefix: '', digital_signature_enabled: false, include_qr_code: false },
-        guest_experience: { checkin_slip_fields: { guest_id_required: false, phone_required: false, email_required: false, address_required: false }, qr_defaults: { include_logo: false, include_hotel_name: false, qr_size: 'medium' as const, default_services: [] } },
+        guest_experience: { checkin_slip_fields: { guest_id_required: false, phone_required: false, email_required: false, address_required: false }, qr_defaults: { include_logo: false, include_hotel_name: false, qr_size: 'medium' as const, default_services: [] }, print_settings: { auto_print_checkin: false, print_on_checkout: false, default_printer: null, include_qr_on_slip: false } },
         permissions: { pricing_changes_require_approval: false, discount_approval_threshold: 0, refund_approval_threshold: 0, service_price_edits_require_approval: false, manager_can_override_rates: false },
         tax: {
           vat_rate: hotelSettings?.tax_rate || 7.5,

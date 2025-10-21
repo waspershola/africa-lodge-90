@@ -74,6 +74,12 @@ export interface HotelConfiguration {
       qr_size: 'small' | 'medium' | 'large';
       default_services: string[];
     };
+    print_settings: {
+      auto_print_checkin: boolean;
+      print_on_checkout: boolean;
+      default_printer: string | null;
+      include_qr_on_slip: boolean;
+    };
   };
 
   // Staff Permissions

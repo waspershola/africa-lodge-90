@@ -128,9 +128,9 @@ export const PaymentFormFields = ({
 
       {/* Payment Amount - Editable Input */}
       <div>
-        <Label htmlFor="payment-amount">Payment Amount</Label>
+        <Label htmlFor="payment-amount">{amountLabel || 'Actual Amount Paid'}</Label>
         <p className="text-xs text-muted-foreground mt-1">
-          Enter the amount you wish to collect from the guest
+          {amountHint || 'Enter the amount guest is paying now (can be less than, equal to, or more than balance due)'}
         </p>
         <Input
           id="payment-amount"

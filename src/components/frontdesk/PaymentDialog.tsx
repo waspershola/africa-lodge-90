@@ -224,7 +224,13 @@ export const PaymentDialog = ({
       }
 
       if (!wallet || wallet.balance < paymentAmount) {
-        toast.error("Insufficient wallet balance");
+        const availableBalance = wallet?.balance || 0;
+        const shortfall = paymentAmount - availableBalance;
+        toast.error(
+          availableBalance > 0 
+            ? `Insufficient wallet balance. Available: ₦${availableBalance.toLocaleString()}, Required: ₦${paymentAmount.toLocaleString()}, Shortfall: ₦${shortfall.toLocaleString()}. Please select another payment method or reduce the amount.`
+            : "Insufficient wallet balance. Please select another payment method."
+        );
         setIsProcessing(false);
         return;
       }

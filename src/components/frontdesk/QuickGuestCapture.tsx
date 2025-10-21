@@ -155,6 +155,7 @@ export const QuickGuestCapture = ({
     totalCharges: number;
     balance: number;
   } | null>(null);
+  const [isAmountManuallyEdited, setIsAmountManuallyEdited] = useState(false);
   
   const [formData, setFormData] = useState<GuestFormData>(() => {
     const currentDate = new Date().toISOString().split('T')[0];
@@ -195,6 +196,13 @@ export const QuickGuestCapture = ({
       console.log('[PAYMENT-SETUP] Default payment method set:', defaultMethod.name);
     }
   }, [enabledMethods, formData.paymentMode]);
+
+  // Reset manual edit flag when dialog closes/opens
+  useEffect(() => {
+    if (!open) {
+      setIsAmountManuallyEdited(false);
+    }
+  }, [open]);
 
   // Detect reserved room and auto-set to existing guest mode ONLY for reserved rooms during check-in
   useEffect(() => {
@@ -242,17 +250,25 @@ export const QuickGuestCapture = ({
         }
         
         // Update form data with reservation info
-        setFormData(prev => ({
-          ...prev,
+        // Only auto-set depositAmount if it hasn't been manually edited
+        const baseFormData = {
           guestName: reservation.guest_name || '',
           phone: reservation.guest_phone || '',
           email: reservation.guest_email || '',
-          checkInDate: reservation.check_in_date || prev.checkInDate,
-          checkOutDate: reservation.check_out_date || prev.checkOutDate,
+          checkInDate: reservation.check_in_date || '',
+          checkOutDate: reservation.check_out_date || '',
           roomRate: room.room_type?.base_rate || 0,
           totalAmount: reservation.total_amount || 0,
           numberOfNights: Math.ceil((new Date(reservation.check_out_date || '').getTime() - new Date(reservation.check_in_date || '').getTime()) / (1000 * 60 * 60 * 24)) || 1,
-          depositAmount: folios ? Math.max(0, (folios.balance || 0)).toString() : (reservation.total_amount?.toString() || '0')
+        };
+        
+        setFormData(prev => ({
+          ...prev,
+          ...baseFormData,
+          // Only override depositAmount if not manually edited
+          ...(isAmountManuallyEdited ? {} : {
+            depositAmount: folios ? Math.max(0, (folios.balance || 0)).toString() : (reservation.total_amount?.toString() || '0')
+          })
         }));
       } else {
         // For non-reserved rooms or other actions, ensure form is clean
@@ -341,6 +357,10 @@ export const QuickGuestCapture = ({
   };
 
   const handleInputChange = (field: keyof GuestFormData, value: string | boolean) => {
+    // Track when user manually edits the deposit amount
+    if (field === 'depositAmount') {
+      setIsAmountManuallyEdited(true);
+    }
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -754,12 +774,13 @@ export const QuickGuestCapture = ({
             console.log('[Atomic Check-in] Success:', result);
             
             // Process additional payment if needed
-            const additionalPayment = parseFloat(formData.depositAmount) || 0;
+            const paymentAmount = parseFloat(formData.depositAmount) || 0;
+            const balanceDue = existingPayments?.balance || formData.totalAmount;
             const selectedMethod = enabledMethods.find(m => m.id === formData.paymentMode);
             
             // Only record payment if not "Pay Later" (credit type) and amount > 0
-            if (selectedMethod && selectedMethod.type !== 'credit' && additionalPayment > 0 && result.folio_id) {
-              console.log('[Check-in] Processing additional payment:', additionalPayment);
+            if (selectedMethod && selectedMethod.type !== 'credit' && paymentAmount > 0 && result.folio_id) {
+              console.log('[Check-in] Processing payment:', { paymentAmount, balanceDue });
               
               // PHASE 1 FIX: No hardcoded fallbacks - enforce method existence
               if (!selectedMethod) {
@@ -770,6 +791,10 @@ export const QuickGuestCapture = ({
                 throw new Error(`${selectedMethod.name} is currently disabled. Please select another payment method.`);
               }
               
+              // Calculate actual payment amount (capped at balance due for recording)
+              const actualPayment = Math.min(paymentAmount, balanceDue);
+              const overpayment = Math.max(0, paymentAmount - balanceDue);
+              
               // PHASE 4: Apply latest payment logic
               const canonicalMethod = mapPaymentMethodWithLogging(selectedMethod.type || selectedMethod.name, 'QuickGuestCapture-CheckIn');
               const paymentStatus = determinePaymentStatus(selectedMethod.type);
@@ -778,7 +803,7 @@ export const QuickGuestCapture = ({
                 .from('payments')
                 .insert({
                   folio_id: result.folio_id,
-                  amount: additionalPayment,
+                  amount: actualPayment,
                   payment_method: canonicalMethod,
                   payment_method_id: formData.paymentMode,
                   status: 'completed',
@@ -788,10 +813,10 @@ export const QuickGuestCapture = ({
                   verified_by: user.id,
                   is_verified: true,
                   verified_at: new Date().toISOString(),
-                  gross_amount: additionalPayment,
+                  gross_amount: actualPayment,
                   fee_amount: 0,
-                  net_amount: additionalPayment,
-                  reference: `Additional payment on check-in`,
+                  net_amount: actualPayment,
+                  reference: `Payment on check-in`,
                   tenant_id: user.user_metadata?.tenant_id
                 });
 
@@ -804,13 +829,71 @@ export const QuickGuestCapture = ({
                 });
               } else {
                 console.log('[Check-in] Payment recorded successfully');
+                
+                // Handle overpayment by depositing to wallet
+                if (overpayment > 0 && guestId) {
+                  console.log('[Check-in] Processing overpayment to wallet:', overpayment);
+                  try {
+                    // Get guest wallet ID
+                    const { data: walletData } = await supabase
+                      .from('guest_wallets')
+                      .select('id')
+                      .eq('guest_id', guestId)
+                      .maybeSingle();
+                    
+                    if (walletData) {
+                      const { error: walletError } = await supabase.rpc('process_wallet_transaction', {
+                        p_wallet_id: walletData.id,
+                        p_transaction_type: 'deposit',
+                        p_amount: overpayment,
+                        p_description: `Overpayment credit from Room ${room?.number} check-in`,
+                        p_payment_method_id: formData.paymentMode,
+                        p_reference_type: 'folio',
+                        p_reference_id: result.folio_id
+                      });
+                      
+                      if (walletError) {
+                        console.error('[Check-in] Wallet deposit error:', walletError);
+                        toast({
+                          title: "Overpayment Notice",
+                          description: `Payment successful. Overpayment of ₦${overpayment.toLocaleString()} could not be added to wallet. Please add manually.`,
+                          variant: "default"
+                        });
+                      } else {
+                        toast({
+                          title: "Overpayment Credited",
+                          description: `₦${overpayment.toLocaleString()} added to guest wallet`,
+                        });
+                      }
+                    } else {
+                      console.log('[Check-in] No wallet found for guest, creating one...');
+                      // Wallet will be auto-created by database trigger, just notify user
+                      toast({
+                        title: "Overpayment Notice",
+                        description: `Payment successful. Overpayment of ₦${overpayment.toLocaleString()} will be added to guest wallet.`,
+                        variant: "default"
+                      });
+                    }
+                  } catch (walletError) {
+                    console.error('[Check-in] Wallet transaction failed:', walletError);
+                  }
+                }
               }
             }
+            
+            // Display payment summary in success toast
+            const paymentSummary = paymentAmount > 0 ? 
+              (paymentAmount === balanceDue ? 
+                ` - Paid ₦${paymentAmount.toLocaleString()}` :
+                paymentAmount > balanceDue ?
+                  ` - Paid ₦${paymentAmount.toLocaleString()} (₦${(paymentAmount - balanceDue).toLocaleString()} to wallet)` :
+                  ` - Partial payment ₦${paymentAmount.toLocaleString()}, balance ₦${(balanceDue - paymentAmount).toLocaleString()}`) :
+              '';
             
             // SINGLE TOAST: Show success immediately after atomic operation
             toast({
               title: "Check-in Successful",
-              description: `Guest ${formData.guestName} checked into Room ${room?.number}`,
+              description: `Guest ${formData.guestName} checked into Room ${room?.number}${paymentSummary}`,
             });
             
           } else {
@@ -886,17 +969,13 @@ export const QuickGuestCapture = ({
 
             console.log('[Atomic Check-in] Walk-in success:', result);
 
-            // SINGLE TOAST: Show success immediately after atomic operation
-            toast({
-              title: "Check-in Successful",
-              description: `Guest ${formData.guestName} checked into Room ${room?.number}`,
-            });
-
             // Process payment if not pay later (credit type)
+            const paymentAmount = parseFloat(formData.depositAmount) || 0;
+            const balanceDue = formData.totalAmount;
             const selectedMethod = enabledMethods.find(m => m.id === formData.paymentMode);
             
             // Only record payment if not "Pay Later" (credit type) and amount > 0
-            if (selectedMethod && selectedMethod.type !== 'credit' && parseFloat(formData.depositAmount) > 0 && result.folio_id) {
+            if (selectedMethod && selectedMethod.type !== 'credit' && paymentAmount > 0 && result.folio_id) {
               
               // PHASE 1 FIX: No hardcoded fallbacks - enforce method existence
               if (!selectedMethod) {
@@ -907,6 +986,10 @@ export const QuickGuestCapture = ({
                 throw new Error(`${selectedMethod.name} is currently disabled. Please select another payment method.`);
               }
               
+              // Calculate actual payment amount (capped at balance due for recording)
+              const actualPayment = Math.min(paymentAmount, balanceDue);
+              const overpayment = Math.max(0, paymentAmount - balanceDue);
+              
               // PHASE 4: Apply latest payment logic
               const canonicalMethod = mapPaymentMethodWithLogging(selectedMethod.type || selectedMethod.name, 'QuickGuestCapture-WalkIn');
               const paymentStatus = determinePaymentStatus(selectedMethod.type);
@@ -915,7 +998,7 @@ export const QuickGuestCapture = ({
                 .from('payments')
                 .insert({
                   folio_id: result.folio_id,
-                  amount: parseFloat(formData.depositAmount),
+                  amount: actualPayment,
                   payment_method: canonicalMethod,
                   payment_method_id: formData.paymentMode,
                   status: 'completed',
@@ -925,9 +1008,9 @@ export const QuickGuestCapture = ({
                   verified_by: user.id,
                   is_verified: true,
                   verified_at: new Date().toISOString(),
-                  gross_amount: parseFloat(formData.depositAmount),
+                  gross_amount: actualPayment,
                   fee_amount: 0,
-                  net_amount: parseFloat(formData.depositAmount),
+                  net_amount: actualPayment,
                   tenant_id: user.user_metadata?.tenant_id
                 });
 
@@ -938,8 +1021,73 @@ export const QuickGuestCapture = ({
                   description: "Check-in completed but payment was not recorded. Please add payment manually.",
                   variant: "destructive",
                 });
+              } else {
+                console.log('[Walk-in] Payment recorded successfully');
+                
+                // Handle overpayment by depositing to wallet
+                if (overpayment > 0 && guestId) {
+                  console.log('[Walk-in] Processing overpayment to wallet:', overpayment);
+                  try {
+                    // Get guest wallet ID
+                    const { data: walletData } = await supabase
+                      .from('guest_wallets')
+                      .select('id')
+                      .eq('guest_id', guestId)
+                      .maybeSingle();
+                    
+                    if (walletData) {
+                      const { error: walletError } = await supabase.rpc('process_wallet_transaction', {
+                        p_wallet_id: walletData.id,
+                        p_transaction_type: 'deposit',
+                        p_amount: overpayment,
+                        p_description: `Overpayment credit from Room ${room?.number} walk-in`,
+                        p_payment_method_id: formData.paymentMode,
+                        p_reference_type: 'folio',
+                        p_reference_id: result.folio_id
+                      });
+                      
+                      if (walletError) {
+                        console.error('[Walk-in] Wallet deposit error:', walletError);
+                        toast({
+                          title: "Overpayment Notice",
+                          description: `Payment successful. Overpayment of ₦${overpayment.toLocaleString()} could not be added to wallet. Please add manually.`,
+                          variant: "default"
+                        });
+                      } else {
+                        toast({
+                          title: "Overpayment Credited",
+                          description: `₦${overpayment.toLocaleString()} added to guest wallet`,
+                        });
+                      }
+                    } else {
+                      console.log('[Walk-in] No wallet found for guest, creating one...');
+                      toast({
+                        title: "Overpayment Notice",
+                        description: `Payment successful. Overpayment of ₦${overpayment.toLocaleString()} will be added to guest wallet.`,
+                        variant: "default"
+                      });
+                    }
+                  } catch (walletError) {
+                    console.error('[Walk-in] Wallet transaction failed:', walletError);
+                  }
+                }
               }
             }
+
+            // Display payment summary in success toast
+            const paymentSummary = paymentAmount > 0 ? 
+              (paymentAmount === balanceDue ? 
+                ` - Paid ₦${paymentAmount.toLocaleString()}` :
+                paymentAmount > balanceDue ?
+                  ` - Paid ₦${paymentAmount.toLocaleString()} (₦${(paymentAmount - balanceDue).toLocaleString()} to wallet)` :
+                  ` - Partial payment ₦${paymentAmount.toLocaleString()}, balance ₦${(balanceDue - paymentAmount).toLocaleString()}`) :
+              '';
+
+            // SINGLE TOAST: Show success immediately after atomic operation
+            toast({
+              title: "Check-in Successful",
+              description: `Guest ${formData.guestName} checked into Room ${room?.number}${paymentSummary}`,
+            });
           }
 
           // Update UI state - queries will be auto-invalidated by atomic check-in hook

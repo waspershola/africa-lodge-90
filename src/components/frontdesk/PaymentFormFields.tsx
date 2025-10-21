@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Banknote, Building, CreditCard, Smartphone, Wallet, Info } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Banknote, Building, CreditCard, Smartphone, Wallet, Info, CheckCircle, AlertCircle } from 'lucide-react';
 import { usePaymentMethodsContext } from '@/contexts/PaymentMethodsContext';
 import { useActiveDepartments, useDefaultDepartment } from '@/hooks/data/useDepartments';
 import { useActiveTerminals, useDefaultTerminal } from '@/hooks/data/useTerminals';
@@ -67,6 +68,41 @@ export const PaymentFormFields = ({
     }
   }, [departmentId, defaultTerminalId, terminalId, onTerminalChange]);
 
+  // Calculate payment scenario (overpayment, partial, or full)
+  const paymentScenario = useMemo(() => {
+    const amountNum = parseFloat(amount) || 0;
+    if (!totalAmount || totalAmount <= 0) return null;
+    
+    if (amountNum > totalAmount) {
+      const overpayment = amountNum - totalAmount;
+      return {
+        type: 'overpayment',
+        message: `Overpayment: ₦${overpayment.toLocaleString()} will be added to guest wallet`,
+        icon: <Info className="h-4 w-4" />,
+        color: 'text-blue-600',
+        bgColor: 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'
+      };
+    } else if (amountNum < totalAmount && amountNum > 0) {
+      const remaining = totalAmount - amountNum;
+      return {
+        type: 'partial',
+        message: `Partial Payment: ₦${remaining.toLocaleString()} remaining balance`,
+        icon: <AlertCircle className="h-4 w-4" />,
+        color: 'text-orange-600',
+        bgColor: 'bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800'
+      };
+    } else if (amountNum === totalAmount) {
+      return {
+        type: 'full',
+        message: 'Full Payment',
+        icon: <CheckCircle className="h-4 w-4" />,
+        color: 'text-green-600',
+        bgColor: 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'
+      };
+    }
+    return null;
+  }, [amount, totalAmount]);
+
   const getPaymentMethodIcon = (iconName: string) => {
     switch (iconName) {
       case 'Banknote': return <Banknote className="h-4 w-4" />;
@@ -92,14 +128,33 @@ export const PaymentFormFields = ({
             value={amount}
             onChange={(e) => onAmountChange(e.target.value)}
             placeholder="Enter amount"
-            className={showTotalHint && totalAmount ? "pr-24" : ""}
+            step="0.01"
+            min="0"
           />
-          {showTotalHint && totalAmount && totalAmount > 0 && (
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-              / ₦{totalAmount.toLocaleString()}
-            </div>
-          )}
         </div>
+        
+        {/* Payment Scenario Feedback */}
+        {paymentScenario && (
+          <div className={`mt-2 flex items-start gap-2 p-2 rounded-md border ${paymentScenario.bgColor}`}>
+            <span className={paymentScenario.color}>{paymentScenario.icon}</span>
+            <div className={`text-xs font-medium ${paymentScenario.color}`}>
+              {paymentScenario.message}
+            </div>
+          </div>
+        )}
+        
+        {/* Pay Exact Balance Button */}
+        {totalAmount && totalAmount > 0 && parseFloat(amount) !== totalAmount && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onAmountChange(totalAmount.toString())}
+            className="mt-2 w-full"
+          >
+            Pay Exact Balance (₦{totalAmount.toLocaleString()})
+          </Button>
+        )}
       </div>
 
       <div>

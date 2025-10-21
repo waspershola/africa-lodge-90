@@ -56,6 +56,7 @@ import { useGuestSearch, useRecentGuests } from "@/hooks/useGuestSearch";
 import { useGuestContactManager } from "@/hooks/useGuestContactManager";
 import { useAtomicCheckIn } from "@/hooks/useAtomicCheckIn";
 import { useConfiguration } from "@/hooks/useConfiguration";
+import { useReceiptPrinter } from "@/hooks/useReceiptPrinter";
 import { RateSelectionComponent } from "./RateSelectionComponent";
 import { ProcessingStateManager } from "./ProcessingStateManager";
 import { calculateTaxesAndCharges } from "@/lib/tax-calculator";
@@ -143,6 +144,7 @@ export const QuickGuestCapture = ({
   const { checkIn: atomicCheckIn, isLoading: isAtomicCheckInLoading, error: checkInError } = useAtomicCheckIn();
   const { configuration } = useConfiguration();
   const queryClient = useQueryClient();
+  const { printCheckInReceipt } = useReceiptPrinter();
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStartTime, setProcessingStartTime] = useState<number | undefined>();
   const [showOptionalFields, setShowOptionalFields] = useState(false);
@@ -1174,6 +1176,35 @@ export const QuickGuestCapture = ({
         queryClient.invalidateQueries({ queryKey: ['folios'] }),
         queryClient.invalidateQueries({ queryKey: ['overstays'] })
       ]);
+
+      // Print check-in receipt if requested
+      if (formData.printNow) {
+        console.log('[Check-in] Printing check-in receipt...');
+        try {
+          await printCheckInReceipt({
+            guestName: formData.guestName,
+            roomNumber: room?.number || 'N/A',
+            checkInDate: formData.checkInDate,
+            checkOutDate: formData.checkOutDate,
+            paymentMethod: formData.paymentMode,
+            totalAmount: formData.totalAmount,
+            amountPaid: parseFloat(formData.depositAmount) || 0,
+            notes: formData.notes || undefined
+          }, {
+            paperSize: 'thermal-80',
+            showPreview: false
+          });
+          
+          console.log('[Check-in] Receipt printed successfully');
+        } catch (printError) {
+          console.error('[Check-in] Failed to print receipt:', printError);
+          toast({
+            title: "Print Failed",
+            description: "Check-in successful but receipt failed to print. You can print it from the folio.",
+            variant: "default"
+          });
+        }
+      }
 
       // Success - clear timeout and reset processing state
       clearTimeout(processingTimeout);

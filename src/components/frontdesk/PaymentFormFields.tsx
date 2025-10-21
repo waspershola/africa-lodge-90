@@ -116,32 +116,22 @@ export const PaymentFormFields = ({
 
   return (
     <div className="space-y-3">
-      {/* Balance Due - Read-only Display */}
-      {totalAmount !== undefined && totalAmount > 0 && (
-        <div>
-          <Label>Balance Due</Label>
-          <div className="mt-1 p-3 bg-muted rounded-md border">
-            <div className="text-2xl font-bold">₦{totalAmount.toLocaleString()}</div>
-          </div>
-        </div>
-      )}
-
-      {/* Payment Amount - Editable Input */}
       <div>
-        <Label htmlFor="payment-amount">Payment Amount</Label>
-        <p className="text-xs text-muted-foreground mt-1">
-          Enter the amount you wish to collect from the guest
-        </p>
-        <Input
-          id="payment-amount"
-          type="number"
-          value={amount}
-          onChange={(e) => onAmountChange(e.target.value)}
-          placeholder="Enter payment amount"
-          step="0.01"
-          min="0"
-          className="mt-1"
-        />
+        <Label htmlFor="amount">{amountLabel}</Label>
+        {amountHint && (
+          <p className="text-xs text-muted-foreground mt-1">{amountHint}</p>
+        )}
+        <div className="relative mt-1">
+          <Input
+            id="amount"
+            type="number"
+            value={amount}
+            onChange={(e) => onAmountChange(e.target.value)}
+            placeholder="Enter amount"
+            step="0.01"
+            min="0"
+          />
+        </div>
         
         {/* Payment Scenario Feedback */}
         {paymentScenario && (

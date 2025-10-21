@@ -827,7 +827,18 @@ export const QuickGuestCapture = ({
                       .maybeSingle();
                     
                     if (walletData) {
-                      const { error: walletError } = await supabase.rpc('process_wallet_transaction', {
+                      // Get current auth user for logging
+                      const { data: authData } = await supabase.auth.getUser();
+                      console.log('[Check-in] About to call process_wallet_transaction:', {
+                        wallet_id: walletData.id,
+                        transaction_type: 'deposit',
+                        amount: overpayment,
+                        payment_method: formData.paymentMode,
+                        folio_id: result.folio_id,
+                        current_auth_user: authData.user?.id
+                      });
+
+                      const { error: walletError, data: walletResult } = await supabase.rpc('process_wallet_transaction', {
                         p_wallet_id: walletData.id,
                         p_transaction_type: 'deposit',
                         p_amount: overpayment,
@@ -838,6 +849,8 @@ export const QuickGuestCapture = ({
                         p_metadata: {}
                       });
                       
+                      console.log('[Check-in] RPC result:', { error: walletError, data: walletResult });
+                      
                       if (walletError) {
                         console.error('[Check-in] Wallet deposit error details:', {
                           error: walletError,
@@ -846,15 +859,58 @@ export const QuickGuestCapture = ({
                           paymentMethod: formData.paymentMode,
                           folioId: result.folio_id
                         });
-                        toast({
-                          title: "Overpayment Notice",
-                          description: `Payment successful. Overpayment of ₦${overpayment.toLocaleString()} could not be added to wallet. Please add manually.`,
-                          variant: "default"
-                        });
+                        
+                        // Fallback: Try direct insert if RPC fails
+                        console.log('[Check-in] Attempting fallback direct insert...');
+                        const { data: walletBalance } = await supabase
+                          .from('guest_wallets')
+                          .select('balance')
+                          .eq('id', walletData.id)
+                          .single();
+                        
+                        const currentBalance = walletBalance?.balance || 0;
+                        
+                        const { error: insertError } = await supabase
+                          .from('wallet_transactions')
+                          .insert({
+                            tenant_id: user.user_metadata?.tenant_id,
+                            wallet_id: walletData.id,
+                            guest_id: guestId,
+                            transaction_type: 'deposit',
+                            amount: overpayment,
+                            balance_before: currentBalance,
+                            balance_after: currentBalance + overpayment,
+                            description: `Overpayment credit from Room ${room?.number} check-in`,
+                            reference_type: 'folio',
+                            reference_id: result.folio_id,
+                            payment_method: formData.paymentMode,
+                            metadata: {}
+                          });
+                        
+                        if (!insertError) {
+                          // Update wallet balance
+                          await supabase
+                            .from('guest_wallets')
+                            .update({ balance: currentBalance + overpayment })
+                            .eq('id', walletData.id);
+                          
+                          console.log('[Check-in] ✅ Fallback direct insert successful');
+                          toast({
+                            title: "Overpayment Credited",
+                            description: `₦${overpayment.toLocaleString()} has been added to guest's wallet.`
+                          });
+                        } else {
+                          console.error('[Check-in] Fallback direct insert also failed:', insertError);
+                          toast({
+                            title: "Overpayment Notice",
+                            description: `Payment successful. Overpayment of ₦${overpayment.toLocaleString()} could not be added to wallet. Please add manually.`,
+                            variant: "destructive"
+                          });
+                        }
                       } else {
                         toast({
                           title: "Overpayment Credited",
-                          description: `₦${overpayment.toLocaleString()} added to guest wallet`,
+                          description: `₦${overpayment.toLocaleString()} has been added to guest's wallet.`
                         });
                       }
                     } else {

@@ -133,10 +133,13 @@ export const RateSelectionComponent = ({
         {/* Room Type Selection */}
         {roomTypes.length > 0 && (
           <div>
-            <Label htmlFor="roomType">Room Type (Optional)</Label>
-            <Select value={selectedRoomType} onValueChange={handleRoomTypeChange}>
+            <Label htmlFor="roomType">Room Type *</Label>
+            <p className="text-xs text-muted-foreground mt-1">
+              Select a room type to proceed with check-in
+            </p>
+            <Select value={selectedRoomType} onValueChange={handleRoomTypeChange} required>
               <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Select room type or enter custom rate" />
+                <SelectValue placeholder="Select a room type" />
               </SelectTrigger>
               <SelectContent>
                 {roomTypes.map((roomType) => (

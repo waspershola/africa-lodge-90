@@ -32,7 +32,7 @@ interface WalletStats {
 }
 
 export function WalletManagementDashboard() {
-  const { tenant } = useAuth();
+  const { tenant, user } = useAuth();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -211,14 +211,23 @@ export function WalletManagementDashboard() {
 
       {/* Back Button */}
       <div className="flex justify-center">
-        <Button
-          variant="outline"
-          onClick={() => navigate(-1)}
-          className="w-full md:w-auto"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Dashboard
-        </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              // Navigate to appropriate dashboard based on role
+              if (user?.role === 'FRONT_DESK') {
+                navigate('/front-desk');
+              } else if (user?.role === 'OWNER' || user?.role === 'MANAGER') {
+                navigate('/dashboard');
+              } else {
+                navigate('/dashboard');
+              }
+            }}
+            className="w-full md:w-auto"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Button>
       </div>
     </div>
   );

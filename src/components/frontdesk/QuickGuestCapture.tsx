@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -155,7 +155,6 @@ export const QuickGuestCapture = ({
     totalCharges: number;
     balance: number;
   } | null>(null);
-  const isAmountManuallyEditedRef = useRef(false);
   
   const [formData, setFormData] = useState<GuestFormData>(() => {
     const currentDate = new Date().toISOString().split('T')[0];
@@ -197,13 +196,6 @@ export const QuickGuestCapture = ({
     }
   }, [enabledMethods, formData.paymentMode]);
 
-  // Reset manual edit flag when dialog closes/opens
-  useEffect(() => {
-    if (!open) {
-      console.log('[DEPOSIT-AMOUNT-RESET] Dialog closed, resetting manual edit flag');
-      isAmountManuallyEditedRef.current = false;
-    }
-  }, [open]);
 
   // Detect reserved room and auto-set to existing guest mode ONLY for reserved rooms during check-in
   useEffect(() => {
@@ -263,23 +255,9 @@ export const QuickGuestCapture = ({
           numberOfNights: Math.ceil((new Date(reservation.check_out_date || '').getTime() - new Date(reservation.check_in_date || '').getTime()) / (1000 * 60 * 60 * 24)) || 1,
         };
         
-        const newDepositAmount = folios ? Math.max(0, (folios.balance || 0)).toString() : (reservation.total_amount?.toString() || '0');
-        
-        console.log('[DEPOSIT-AMOUNT-RESET] Effect running:', {
-          room: room?.id,
-          action,
-          isManuallyEdited: isAmountManuallyEditedRef.current,
-          currentDepositAmount: formData.depositAmount,
-          calculatedAmount: newDepositAmount
-        });
-        
         setFormData(prev => ({
           ...prev,
-          ...baseFormData,
-          // Only override depositAmount if not manually edited
-          ...(isAmountManuallyEditedRef.current ? {} : {
-            depositAmount: newDepositAmount
-          })
+          ...baseFormData
         }));
       } else {
         // For non-reserved rooms or other actions, ensure form is clean
@@ -368,15 +346,6 @@ export const QuickGuestCapture = ({
   };
 
   const handleInputChange = (field: keyof GuestFormData, value: string | boolean) => {
-    // Track when user manually edits the deposit amount
-    if (field === 'depositAmount') {
-      console.log('[DEPOSIT-AMOUNT-CHANGE] User editing:', {
-        field,
-        value,
-        wasManuallyEdited: isAmountManuallyEditedRef.current
-      });
-      isAmountManuallyEditedRef.current = true;
-    }
     setFormData(prev => ({
       ...prev,
       [field]: value

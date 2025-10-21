@@ -524,6 +524,44 @@ export const useReceiptPrinter = () => {
     return await printReceipt(receiptData, options);
   };
 
+  const printRoomReport = async (roomData: {
+    roomNumber: string;
+    roomType: string;
+    roomName?: string;
+    status: string;
+    guestName?: string;
+    checkInDate?: string;
+    checkOutDate?: string;
+    folioBalance?: number;
+    totalCharges?: number;
+    totalPayments?: number;
+    notes?: string;
+  }, options?: PrintOptions) => {
+    const receiptData = createReceiptData('service', {
+      guestName: roomData.guestName || 'N/A',
+      roomNumber: roomData.roomNumber,
+      description: `Room Report - ${roomData.roomName || roomData.roomType}`,
+      paymentMethod: 'N/A',
+      subtotal: roomData.totalCharges || 0,
+      totalAmount: roomData.folioBalance || 0,
+      amountPaid: roomData.totalPayments || 0,
+      balance: roomData.folioBalance,
+      checkInDate: roomData.checkInDate,
+      checkOutDate: roomData.checkOutDate,
+      notes: roomData.notes || `Room Status: ${roomData.status.toUpperCase()}`,
+      items: roomData.totalCharges ? [
+        {
+          description: `${roomData.roomType} - ${roomData.status.toUpperCase()}`,
+          quantity: 1,
+          unitPrice: roomData.totalCharges,
+          total: roomData.totalCharges
+        }
+      ] : undefined
+    });
+    
+    return await printReceipt(receiptData, options);
+  };
+
   // Add to print queue for batch processing
   const addToQueue = (receiptData: ReceiptData) => {
     setPrintQueue(prev => [...prev, receiptData]);
@@ -547,6 +585,7 @@ export const useReceiptPrinter = () => {
     printCheckInReceipt,
     printPaymentReceipt,
     printServiceReceipt,
+    printRoomReport,
     addToQueue,
     processQueue,
     generateReceiptNumber,

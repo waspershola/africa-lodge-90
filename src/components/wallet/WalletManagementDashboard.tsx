@@ -13,10 +13,12 @@ import {
   Users, 
   ArrowUpCircle, 
   Search,
-  Download
+  Download,
+  ArrowLeft
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useNavigate } from 'react-router-dom';
 
 interface WalletStats {
   totalBalance: number;
@@ -31,6 +33,7 @@ interface WalletStats {
 
 export function WalletManagementDashboard() {
   const { tenant } = useAuth();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch wallet statistics
@@ -205,6 +208,18 @@ export function WalletManagementDashboard() {
           </ScrollArea>
         </CardContent>
       </Card>
+
+      {/* Back Button */}
+      <div className="flex justify-center">
+        <Button
+          variant="outline"
+          onClick={() => navigate(-1)}
+          className="w-full md:w-auto"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Dashboard
+        </Button>
+      </div>
     </div>
   );
 }

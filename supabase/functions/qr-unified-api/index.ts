@@ -93,7 +93,11 @@ serve(async (req) => {
 
       // Check if data exists and has results
       if (!data || data.length === 0) {
-        console.warn('No validation data returned', { qrToken: qrToken.substring(0, 10) + '...' });
+        console.error('❌ QR Validation failed - No data returned:', {
+          qrToken: qrToken.substring(0, 20) + '...',
+          timestamp: new Date().toISOString(),
+          clientIp
+        });
         return new Response(
           JSON.stringify({ error: 'Invalid or expired QR code' }),
           { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -102,13 +106,29 @@ serve(async (req) => {
 
       const result = data[0];
       if (!result || !result.is_valid) {
-        // Log failed attempt
-        console.warn('Invalid QR validation attempt', { qrToken: qrToken.substring(0, 10) + '...', clientIp });
+        console.error('❌ QR Validation failed - Invalid result:', {
+          qrToken: qrToken.substring(0, 20) + '...',
+          isValid: result?.is_valid,
+          clientIp,
+          timestamp: new Date().toISOString()
+        });
         return new Response(
           JSON.stringify({ error: 'Invalid or expired QR code' }),
           { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      // ✅ Log successful validation
+      console.log('✅ QR Validated successfully:', {
+        qrCodeId: result.qr_code_id,
+        sessionId: result.session_id,
+        tenantId: result.tenant_id,
+        hasRoomNumber: !!result.room_number,
+        roomNumber: result.room_number || 'Location QR (no room)',
+        serviceCount: result.services?.length || 0,
+        services: result.services,
+        timestamp: new Date().toISOString()
+      });
 
       // Sign JWT token
       const jwt = await signJWT({
@@ -334,7 +354,14 @@ serve(async (req) => {
       });
 
       if (error) {
-        console.error('Request creation error:', error);
+        console.error('❌ Request creation failed:', {
+          error: error.message,
+          code: error.code,
+          sessionId,
+          requestType,
+          priority,
+          timestamp: new Date().toISOString()
+        });
         return new Response(
           JSON.stringify({ error: 'Failed to create request', details: error.message }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -342,6 +369,16 @@ serve(async (req) => {
       }
 
       const result = data[0];
+
+      // ✅ Log successful request creation
+      console.log('✅ Request created successfully:', {
+        requestId: result.request_id,
+        trackingNumber: result.tracking_number,
+        requestType,
+        priority,
+        sessionId,
+        timestamp: new Date().toISOString()
+      });
 
       // 🔔 NOTIFICATION: Send real-time notification to staff
       // This notifies the appropriate department about the new guest request

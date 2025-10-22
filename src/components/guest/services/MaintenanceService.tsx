@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useUnifiedQR } from '@/hooks/useUnifiedQR';
 
 interface MaintenanceServiceProps {
   qrToken: string;
@@ -18,6 +19,7 @@ export default function MaintenanceService({ qrToken, sessionToken }: Maintenanc
   const [priority, setPriority] = useState('normal');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const { createRequest } = useUnifiedQR();
 
   const issueTypes = [
     { id: 'electrical', label: 'Electrical Issue', description: 'Lights, outlets, switches' },
@@ -44,25 +46,18 @@ export default function MaintenanceService({ qrToken, sessionToken }: Maintenanc
 
     setSubmitting(true);
     try {
-      const response = await fetch(`https://dxisnnjsbuuiunjmzzqj.supabase.co/functions/v1/qr-guest-portal/guest/qr/${qrToken}/maintenance`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          guest_session_id: sessionToken,
+      await createRequest.mutateAsync({
+        sessionId: sessionToken,
+        requestType: 'maintenance',
+        requestData: {
           issue_type: issueType,
+          issue_label: issueTypes.find(t => t.id === issueType)?.label,
           description: description,
-          priority: priority === 'urgent' ? 3 : priority === 'normal' ? 2 : 1,
           notes: `${issueTypes.find(t => t.id === issueType)?.label}: ${description}`
-        })
+        },
+        priority: priority
       });
-
-      if (response.ok) {
-        setSubmitted(true);
-      } else {
-        throw new Error('Failed to submit request');
-      }
+      setSubmitted(true);
     } catch (error) {
       console.error('Error submitting maintenance request:', error);
       alert('Failed to submit your request. Please try again or contact the front desk.');

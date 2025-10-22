@@ -3,6 +3,7 @@ import { Wifi, Copy, Check, Crown, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useUnifiedQR } from '@/hooks/useUnifiedQR';
 
 interface WiFiServiceProps {
   qrToken: string;
@@ -14,6 +15,7 @@ export default function WiFiService({ qrToken, sessionToken, hotelName }: WiFiSe
   const [copied, setCopied] = useState<string | null>(null);
   const [requesting, setRequesting] = useState(false);
   const [requested, setRequested] = useState(false);
+  const { createRequest } = useUnifiedQR();
 
   // Default WiFi credentials
   const wifiCredentials = {
@@ -36,23 +38,16 @@ export default function WiFiService({ qrToken, sessionToken, hotelName }: WiFiSe
     
     setRequesting(true);
     try {
-      const response = await fetch(`https://dxisnnjsbuuiunjmzzqj.supabase.co/functions/v1/qr-guest-portal/guest/qr/${qrToken}/wifi-request`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          guest_session_id: sessionToken,
+      await createRequest.mutateAsync({
+        sessionId: sessionToken,
+        requestType: 'wifi_support',
+        requestData: {
           message: 'Guest requested WiFi support',
-          priority: 2
-        })
+          issue: 'Connection assistance needed'
+        },
+        priority: 'normal'
       });
-
-      if (response.ok) {
-        setRequested(true);
-      } else {
-        throw new Error('Failed to submit request');
-      }
+      setRequested(true);
     } catch (error) {
       console.error('Error requesting WiFi support:', error);
       alert('Failed to request support. Please try again or contact the front desk.');

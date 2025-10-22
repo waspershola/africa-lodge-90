@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useUnifiedQR } from '@/hooks/useUnifiedQR';
 
 interface FeedbackServiceProps {
   qrToken: string;
@@ -15,6 +16,7 @@ export default function FeedbackService({ qrToken, sessionToken }: FeedbackServi
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const { createRequest } = useUnifiedQR();
 
   const submitFeedback = async () => {
     if (rating === 0) {
@@ -24,25 +26,17 @@ export default function FeedbackService({ qrToken, sessionToken }: FeedbackServi
 
     setSubmitting(true);
     try {
-      const response = await fetch(`https://dxisnnjsbuuiunjmzzqj.supabase.co/functions/v1/qr-guest-portal/guest/qr/${qrToken}/feedback`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          guest_session_id: sessionToken,
+      await createRequest.mutateAsync({
+        sessionId: sessionToken,
+        requestType: 'feedback',
+        requestData: {
           rating: rating,
           comment: comment,
-          priority: 1,
-          notes: `Guest feedback: ${rating}/5 stars - ${comment}`
-        })
+          notes: `Guest feedback: ${rating}/5 stars${comment ? ` - ${comment}` : ''}`
+        },
+        priority: 'low'
       });
-
-      if (response.ok) {
-        setSubmitted(true);
-      } else {
-        throw new Error('Failed to submit feedback');
-      }
+      setSubmitted(true);
     } catch (error) {
       console.error('Error submitting feedback:', error);
       alert('Failed to submit feedback. Please try again or contact the front desk.');

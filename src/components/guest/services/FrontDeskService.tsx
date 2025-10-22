@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useUnifiedQR } from '@/hooks/useUnifiedQR';
 
 interface FrontDeskServiceProps {
   qrToken: string;
@@ -15,6 +16,7 @@ export default function FrontDeskService({ qrToken, sessionToken, hotelPhone }: 
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const { createRequest } = useUnifiedQR();
 
   const callFrontDesk = () => {
     window.location.href = `tel:${hotelPhone}`;
@@ -28,25 +30,17 @@ export default function FrontDeskService({ qrToken, sessionToken, hotelPhone }: 
 
     setSubmitting(true);
     try {
-      const response = await fetch(`https://dxisnnjsbuuiunjmzzqj.supabase.co/functions/v1/qr-guest-portal/guest/qr/${qrToken}/front-desk-call`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          guest_session_id: sessionToken,
+      await createRequest.mutateAsync({
+        sessionId: sessionToken,
+        requestType: 'front_desk',
+        requestData: {
           message: message,
-          priority: 2,
           notes: 'Guest requested front desk assistance'
-        })
+        },
+        priority: 'normal'
       });
-
-      if (response.ok) {
-        setSubmitted(true);
-        setMessage('');
-      } else {
-        throw new Error('Failed to submit request');
-      }
+      setSubmitted(true);
+      setMessage('');
     } catch (error) {
       console.error('Error sending message to front desk:', error);
       alert('Failed to send message. Please try calling directly.');

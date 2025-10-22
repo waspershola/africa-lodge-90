@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useUnifiedQR } from '@/hooks/useUnifiedQR';
 
 interface HousekeepingServiceProps {
   qrToken: string;
@@ -16,6 +17,7 @@ export default function HousekeepingService({ qrToken, sessionToken }: Housekeep
   const [specialRequests, setSpecialRequests] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const { createRequest } = useUnifiedQR();
 
   const housekeepingOptions = [
     { id: 'room_cleaning', label: 'Room Cleaning', description: 'Full room cleaning service' },
@@ -44,28 +46,18 @@ export default function HousekeepingService({ qrToken, sessionToken }: Housekeep
 
     setSubmitting(true);
     try {
-      const response = await fetch(`https://dxisnnjsbuuiunjmzzqj.supabase.co/functions/v1/qr-guest-portal/guest/qr/${qrToken}/requests`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      await createRequest.mutateAsync({
+        sessionId: sessionToken,
+        requestType: 'housekeeping',
+        requestData: {
+          services: selectedServices,
+          service_labels: selectedServices.map(s => housekeepingOptions.find(o => o.id === s)?.label).filter(Boolean),
+          special_requests: specialRequests,
+          notes: specialRequests || `Housekeeping request: ${selectedServices.map(s => housekeepingOptions.find(o => o.id === s)?.label).join(', ')}`
         },
-        body: JSON.stringify({
-          session_id: sessionToken,
-          service_type: 'housekeeping',
-          request_details: {
-            services: selectedServices,
-            service_labels: selectedServices.map(s => housekeepingOptions.find(o => o.id === s)?.label).filter(Boolean)
-          },
-          notes: specialRequests || `Housekeeping request: ${selectedServices.map(s => housekeepingOptions.find(o => o.id === s)?.label).join(', ')}`,
-          priority: 1
-        })
+        priority: 'low'
       });
-
-      if (response.ok) {
-        setSubmitted(true);
-      } else {
-        throw new Error('Failed to submit request');
-      }
+      setSubmitted(true);
     } catch (error) {
       console.error('Error submitting housekeeping request:', error);
       alert('Failed to submit your request. Please try again or contact the front desk.');

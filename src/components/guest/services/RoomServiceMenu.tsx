@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import ChatInterface from '@/components/guest/messaging/ChatInterface';
-import { QRPortalAPI } from '@/lib/qr-api';
+import { useUnifiedQR } from '@/hooks/useUnifiedQR';
 
 interface RoomServiceMenuProps {
   qrToken: string;
@@ -33,6 +33,7 @@ export default function RoomServiceMenu({ qrToken, sessionToken }: RoomServiceMe
   const [submitted, setSubmitted] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [showChat, setShowChat] = useState(false);
+  const { createRequest } = useUnifiedQR();
 
   // Luxury menu items
   const menuItems: MenuItem[] = [
@@ -138,20 +139,21 @@ export default function RoomServiceMenu({ qrToken, sessionToken }: RoomServiceMe
         currency: 'NGN'
       };
 
-      const result = await QRPortalAPI.createRequest(sessionToken, 'room-service', {
-        guest_session_id: sessionToken,
-        order_details: orderDetails,
-        total_amount: getTotalPrice(),
-        priority: 2,
-        notes: `Room service order: ${cart.length} items, Total: ₦${getTotalPrice().toLocaleString()}`
+      const result = await createRequest.mutateAsync({
+        sessionId: sessionToken,
+        requestType: 'room_service',
+        requestData: {
+          order_details: orderDetails,
+          total_amount: getTotalPrice(),
+          notes: `Room service order: ${cart.length} items, Total: ₦${getTotalPrice().toLocaleString()}`
+        },
+        priority: 'normal'
       });
 
-      if (result.status === 200) {
-        setOrderId(result.data?.request_id);
+      if (result.success && result.request) {
+        setOrderId(result.request.requestId);
         setSubmitted(true);
         setShowChat(true);
-      } else {
-        throw new Error(result.error || 'Failed to submit order');
       }
     } catch (error) {
       console.error('Error submitting room service order:', error);

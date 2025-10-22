@@ -7,6 +7,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useUnifiedQR } from '@/hooks/useUnifiedQR';
+import { SMSOptIn } from '@/components/guest/SMSOptIn';
 
 interface MaintenanceServiceProps {
   qrToken: string;
@@ -19,6 +20,7 @@ export default function MaintenanceService({ qrToken, sessionToken }: Maintenanc
   const [priority, setPriority] = useState('normal');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [smsData, setSmsData] = useState({ phone: '', enabled: false });
   const { createRequest } = useUnifiedQR();
 
   const issueTypes = [
@@ -55,7 +57,9 @@ export default function MaintenanceService({ qrToken, sessionToken }: Maintenanc
           description: description,
           notes: `${issueTypes.find(t => t.id === issueType)?.label}: ${description}`
         },
-        priority: priority
+        priority: priority,
+        smsEnabled: smsData.enabled,
+        guestPhone: smsData.enabled ? smsData.phone : undefined,
       });
       setSubmitted(true);
     } catch (error) {
@@ -150,7 +154,9 @@ export default function MaintenanceService({ qrToken, sessionToken }: Maintenanc
         </CardContent>
       </Card>
 
-      <Button 
+      <SMSOptIn value={smsData} onChange={setSmsData} />
+
+      <Button
         onClick={submitRequest}
         disabled={submitting || !issueType || !description.trim()}
         className="w-full"

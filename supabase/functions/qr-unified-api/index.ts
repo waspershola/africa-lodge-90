@@ -23,6 +23,8 @@ interface RequestCreationPayload {
   requestType: string;
   requestData: Record<string, any>;
   priority?: string;
+  smsEnabled?: boolean;
+  guestPhone?: string;
 }
 
 serve(async (req) => {
@@ -342,7 +344,7 @@ serve(async (req) => {
         );
       }
 
-      const { sessionId, requestType, priority = 'normal' } = body;
+      const { sessionId, requestType, priority = 'normal', smsEnabled = false, guestPhone } = body;
       const requestData = sanitizeRequestData(body.requestData);
 
       // Call database function to create request
@@ -370,6 +372,25 @@ serve(async (req) => {
 
       const result = data[0];
 
+      // Update request with SMS data if provided
+      if (smsEnabled && guestPhone) {
+        await supabaseClient
+          .from('qr_requests')
+          .update({
+            guest_phone: guestPhone,
+            sms_enabled: true
+          })
+          .eq('id', result.request_id);
+
+        // Trigger SMS sending asynchronously
+        supabaseClient.functions.invoke('send-request-sms', {
+          body: {
+            request_id: result.request_id,
+            tenant_id: result.tenant_id
+          }
+        }).catch(err => console.error('SMS send error (non-blocking):', err));
+      }
+
       // ✅ Log successful request creation
       console.log('✅ Request created successfully:', {
         requestId: result.request_id,
@@ -377,6 +398,7 @@ serve(async (req) => {
         requestType,
         priority,
         sessionId,
+        smsEnabled,
         timestamp: new Date().toISOString()
       });
 

@@ -103,6 +103,7 @@ import AddonCatalog from "./pages/sa/AddonCatalog";
 import SMSManagement from "./pages/superadmin/SMSManagement";
 import FeatureFlagsPage from "./pages/sa/FeatureFlags";
 import StagingVerification from "./pages/sa/StagingVerification";
+import SMSTemplates from "./pages/owner/SMSTemplates";
 
 import SupportAdminLayout from "./components/layout/SupportAdminLayout";
 import SupportStaffLayout from "./components/layout/SupportStaffLayout";
@@ -167,6 +168,11 @@ const App = () => (
             </TenantAwareLayout>
           } />
           <Route path="/reports" element={<ReportsInterface />} />
+          <Route path="/sms-templates" element={
+            <TenantAwareLayout allowedRoles={['OWNER', 'MANAGER']}>
+              <SMSTemplates />
+            </TenantAwareLayout>
+          } />
           
           {/* UNIFIED STAFF DASHBOARD - ALL ROLES */}
           <Route path="/dashboard/*" element={

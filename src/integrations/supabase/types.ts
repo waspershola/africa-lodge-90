@@ -3293,6 +3293,9 @@ export type Database = {
           room_id: string | null
           session_id: string | null
           session_token: string | null
+          sms_enabled: boolean | null
+          sms_sent: boolean | null
+          sms_sent_at: string | null
           status: string
           tenant_id: string
           updated_at: string | null
@@ -3316,6 +3319,9 @@ export type Database = {
           room_id?: string | null
           session_id?: string | null
           session_token?: string | null
+          sms_enabled?: boolean | null
+          sms_sent?: boolean | null
+          sms_sent_at?: string | null
           status?: string
           tenant_id: string
           updated_at?: string | null
@@ -3339,6 +3345,9 @@ export type Database = {
           room_id?: string | null
           session_id?: string | null
           session_token?: string | null
+          sms_enabled?: boolean | null
+          sms_sent?: boolean | null
+          sms_sent_at?: string | null
           status?: string
           tenant_id?: string
           updated_at?: string | null

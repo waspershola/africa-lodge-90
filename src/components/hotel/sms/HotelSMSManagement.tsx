@@ -1,10 +1,10 @@
-import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HotelSMSDashboard } from "./HotelSMSDashboard";
-import { HotelSMSTemplates } from "./HotelSMSTemplates";
+import { SMSTemplateManager } from "@/components/owner/SMSTemplateManager";
 import { HotelSMSCredits } from "./HotelSMSCredits";
-import { HotelSMSHistory } from "./HotelSMSHistory";
+import { SMSActivityLog } from "./SMSActivityLog";
 import { HotelSMSSettings } from "./HotelSMSSettings";
+import { HotelSMSUsage } from "./HotelSMSUsage";
 
 export function HotelSMSManagement() {
   return (
@@ -20,8 +20,8 @@ export function HotelSMSManagement() {
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
-          <TabsTrigger value="credits">Credits</TabsTrigger>
-          <TabsTrigger value="history">History</TabsTrigger>
+          <TabsTrigger value="usage">Usage</TabsTrigger>
+          <TabsTrigger value="activity">Activity</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
@@ -30,15 +30,15 @@ export function HotelSMSManagement() {
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-6">
-          <HotelSMSTemplates />
+          <SMSTemplateManager />
         </TabsContent>
 
-        <TabsContent value="credits" className="space-y-6">
-          <HotelSMSCredits />
+        <TabsContent value="usage" className="space-y-6">
+          <HotelSMSUsage />
         </TabsContent>
 
-        <TabsContent value="history" className="space-y-6">
-          <HotelSMSHistory />
+        <TabsContent value="activity" className="space-y-6">
+          <SMSActivityLog />
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-6">

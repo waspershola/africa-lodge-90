@@ -223,21 +223,11 @@ export default function QRManagerPage() {
     if (!user?.tenant_id) return;
     
     const queryClient = useQueryClient();
-    const tempId = `temp-${Date.now()}`;
     
-    // Optimistic update - add to list immediately
-    queryClient.setQueryData(['qr-codes', user.tenant_id], (old: QRCodeData[] = []) => {
-      return [{
-        id: tempId,
-        scope: newQRData.scope,
-        assignedTo: newQRData.assignedTo,
-        servicesEnabled: newQRData.servicesEnabled,
-        status: newQRData.status,
-        pendingRequests: 0,
-        createdAt: new Date().toISOString(),
-        createdBy: 'System'
-      }, ...old];
-    });
+    // PHASE 2 FIX: Clear any stale cache first
+    queryClient.removeQueries({ queryKey: ['qr-codes', user.tenant_id] });
+    
+    const tempId = `temp-${Date.now()}`;
     
     try {
       const qrToken = `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -247,20 +237,45 @@ export default function QRManagerPage() {
       if (newQRData.scope === 'Room' && newQRData.assignedTo) {
         // Try to find matching room by room number
         const roomNumber = newQRData.assignedTo.replace('Room ', '').trim();
-        const { data: room } = await supabase
+        const { data: room, error: roomError } = await supabase
           .from('rooms')
           .select('id')
           .eq('tenant_id', user.tenant_id)
           .eq('room_number', roomNumber)
           .single();
         
-        roomId = room?.id || null;
+        // PHASE 2 FIX: Validate room exists before creating QR
+        if (!room || roomError) {
+          console.error('Room not found:', { roomNumber, roomError });
+          toast({
+            title: "Room Not Found",
+            description: `Room ${roomNumber} doesn't exist. Please create it in Room Management first.`,
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        roomId = room.id;
       }
+      
+      // PHASE 2 FIX: Only add optimistic update after validation passes
+      queryClient.setQueryData(['qr-codes', user.tenant_id], (old: QRCodeData[] = []) => {
+        return [{
+          id: tempId,
+          scope: newQRData.scope,
+          assignedTo: newQRData.assignedTo,
+          servicesEnabled: newQRData.servicesEnabled,
+          status: newQRData.status,
+          pendingRequests: 0,
+          createdAt: new Date().toISOString(),
+          createdBy: 'System'
+        }, ...old];
+      });
 
       // Generate QR code URL - permanent, no expiry
       const qrCodeUrl = QRSecurity.generateQRUrl(qrToken);
       
-      const { error } = await supabase
+      const { data: insertedData, error } = await supabase
         .from('qr_codes')
         .insert([{
           tenant_id: user.tenant_id,
@@ -271,18 +286,47 @@ export default function QRManagerPage() {
           qr_code_url: qrCodeUrl,
           label: newQRData.assignedTo,
           scan_type: newQRData.scope.toLowerCase()
-        }]);
+        }])
+        .select();
 
+      // PHASE 2 FIX: Better error handling with detailed logging
       if (error) {
+        console.error('QR creation database error:', {
+          error,
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          roomId,
+          qrToken
+        });
+        
+        // Rollback optimistic update
+        await queryClient.invalidateQueries({ queryKey: ['qr-codes', user.tenant_id] });
+        
         // Check if it's a duplicate room constraint error
         if (error.code === '23505' && error.message.includes('unique_active_room_per_tenant')) {
-          throw new Error(`QR code already exists for ${newQRData.assignedTo}. Please deactivate the existing QR code first.`);
+          toast({
+            title: "Duplicate QR Code",
+            description: `QR code already exists for ${newQRData.assignedTo}. Please deactivate the existing QR code first.`,
+            variant: "destructive"
+          });
+          return;
         }
-        throw error;
+        
+        toast({
+          title: "Database Error",
+          description: error.message || "Failed to create QR code in database",
+          variant: "destructive"
+        });
+        return;
       }
       
-      // Immediate invalidation to get real data
-      await queryClient.invalidateQueries({ queryKey: ['qr-codes', user.tenant_id] });
+      console.log('QR code created successfully:', insertedData);
+      
+      // PHASE 2 FIX: Force aggressive refetch with cache reset
+      await queryClient.resetQueries({ queryKey: ['qr-codes', user.tenant_id] });
+      await refetch(); // Force manual refetch
       
       toast({
         title: "QR Code Created",
@@ -294,7 +338,7 @@ export default function QRManagerPage() {
       
       console.error('QR creation error:', err);
       toast({
-        title: "Error", 
+        title: "Error Creating QR Code", 
         description: err.message || "Failed to create QR code",
         variant: "destructive"
       });

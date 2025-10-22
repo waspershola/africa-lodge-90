@@ -144,25 +144,25 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
         shouldNotify = true;
         title = 'New Guest Request';
         description = `${record.request_type?.replace('_', ' ') || 'Service'} request received`;
-        soundType = record.priority === 'high' ? 'alert-high' : 'alert-medium';
+        soundType = 'alert-high'; // Thai bell sound for all QR requests
         break;
       case 'guest_messages':
         shouldNotify = record.sender_type === 'guest';
         title = 'New Guest Message';
         description = 'A guest has sent a new message';
-        soundType = 'alert-medium';
+        soundType = 'alert-high'; // Thai bell sound for guest messages
         break;
       case 'qr_orders':
         shouldNotify = true;
         title = 'New Order';
         description = 'New order received from guest';
-        soundType = 'alert-medium';
+        soundType = 'alert-high'; // Thai bell sound for orders
         break;
       case 'payments':
         shouldNotify = true;
         title = 'Payment Received';
         description = `Payment of ${record.amount || '0'} received`;
-        soundType = 'alert-medium';
+        soundType = 'alert-high'; // Thai bell sound for payments
         break;
     }
 
@@ -184,7 +184,14 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
   }, [enableSound, enableToast]);
 
   // Event coalescing - batch multiple events within a short window (Phase 3.2)
+  // Skip coalescing for high-priority notification tables
   const shouldCoalesceEvent = useCallback((table: string): boolean => {
+    // Never coalesce QR requests, orders, or other high-priority notification tables
+    const noCoalesceTables = ['qr_requests', 'qr_orders', 'guest_messages', 'staff_notifications'];
+    if (noCoalesceTables.includes(table)) {
+      return false; // Always process these immediately
+    }
+
     const now = Date.now();
     const coalescingWindow = 50; // 50ms window for coalescing
     

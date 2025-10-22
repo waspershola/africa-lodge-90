@@ -79,13 +79,18 @@ export function useStaffNotifications(options: UseStaffNotificationsOptions = {}
   const handleNewNotification = useCallback(async (notification: StaffNotification) => {
     console.log('[useStaffNotifications] New notification:', notification);
 
+    // Check if notification permissions have been granted
+    const hasPermission = localStorage.getItem('notification_permission_granted') === 'true';
+    
     // Add to list
     setNotifications(prev => [notification, ...prev].slice(0, 50));
     setUnreadCount(prev => prev + 1);
 
-    // Play sound
-    if (playSound) {
-      await soundManager.play(notification.sound_type);
+    // Play sound if permissions granted
+    if (playSound && hasPermission) {
+      // Use alert-high (Thai bell) for all staff notifications unless specified otherwise
+      const soundType = notification.sound_type !== 'none' ? notification.sound_type : 'alert-high';
+      await soundManager.play(soundType);
     }
 
     // Show toast

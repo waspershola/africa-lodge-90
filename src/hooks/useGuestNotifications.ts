@@ -68,10 +68,10 @@ export function useGuestNotifications({
     }
 
     if (shouldPlaySound && title) {
-      // Play gentle notification sound for guests
+      // Play Thai bell notification sound for guests
       if (enableSound) {
-        // Use medium alert for guest notifications (gentle chime)
-        await soundManager.play('alert-medium', 0.6); // Lower volume for guests
+        // Use alert-high (Thai bell) for guest notifications
+        await soundManager.play('alert-high', 0.6); // Lower volume for guests
       }
 
       // Show toast notification

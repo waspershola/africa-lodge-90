@@ -47,17 +47,27 @@ export default function DynamicDashboardShell({
     const hasPermission = localStorage.getItem('notification_permission_granted');
     const wasDismissed = localStorage.getItem('notification_permission_dismissed');
     
-    if (!hasPermission && !wasDismissed && user) {
+    // Only show for staff roles that need notifications
+    const shouldShowForRole = userRole && ['FRONT_DESK', 'HOUSEKEEPING', 'POS', 'MANAGER'].includes(userRole);
+    
+    if (!hasPermission && !wasDismissed && user && shouldShowForRole) {
+      console.log('[DynamicDashboard] Showing notification permission dialog for role:', userRole);
       // Show dialog after a short delay to let the UI settle
       const timer = setTimeout(() => {
         setShowPermissionDialog(true);
-      }, 1000);
+      }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [user]);
+  }, [user, userRole]);
 
   const handleEnableNotifications = () => {
-    console.log('[NotificationPermission] Notifications enabled by user');
+    console.log('[DynamicDashboard] Notifications enabled by user, preloading sounds...');
+    // Preload all sounds when user enables notifications
+    import('@/utils/soundManager').then(({ soundManager }) => {
+      soundManager.preloadAll().then(() => {
+        console.log('[DynamicDashboard] All notification sounds preloaded');
+      });
+    });
   };
 
   // Load JSON config if enabled (with inheritance)

@@ -3,9 +3,10 @@ import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, Clock, CheckCircle, XCircle, MessageSquare } from 'lucide-react';
+import { Loader2, Clock, CheckCircle, XCircle, MessageSquare, Volume2, VolumeX } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
+import { useGuestNotifications } from '@/hooks/useGuestNotifications';
 
 interface Request {
   id: string;
@@ -25,6 +26,13 @@ export default function RequestHistory() {
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Enable guest notifications with sound
+  const { toggleMute, isMuted } = useGuestNotifications({
+    sessionToken,
+    enableSound: true,
+    enableToast: true
+  });
 
   useEffect(() => {
     if (!sessionToken) {
@@ -140,7 +148,27 @@ export default function RequestHistory() {
       <div className="max-w-3xl mx-auto space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Your Request History</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Your Request History</CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => toggleMute()}
+                className="gap-2"
+              >
+                {isMuted ? (
+                  <>
+                    <VolumeX className="h-4 w-4" />
+                    <span className="text-sm">Unmute</span>
+                  </>
+                ) : (
+                  <>
+                    <Volume2 className="h-4 w-4" />
+                    <span className="text-sm">Mute</span>
+                  </>
+                )}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {requests.length === 0 ? (

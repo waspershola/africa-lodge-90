@@ -32,12 +32,15 @@ export function NotificationPermissionDialog({
 
   const handleEnable = () => {
     setHasInteracted(true);
+    console.log('[NotificationPermission] User granted permission');
     localStorage.setItem('notification_permission_granted', 'true');
+    localStorage.removeItem('notification_permission_dismissed'); // Clear any previous dismissal
     onEnable();
     onOpenChange(false);
   };
 
   const handleDismiss = () => {
+    console.log('[NotificationPermission] User dismissed dialog');
     localStorage.setItem('notification_permission_dismissed', 'true');
     onOpenChange(false);
   };

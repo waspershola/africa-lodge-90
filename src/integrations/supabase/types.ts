@@ -1477,13 +1477,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_guest_sessions_qr_code"
-            columns: ["qr_code_id"]
-            isOneToOne: false
-            referencedRelation: "qr_codes"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "fk_guest_sessions_room"
             columns: ["room_id"]
             isOneToOne: false
@@ -1503,6 +1496,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "guest_sessions_qr_code_id_fkey"
+            columns: ["qr_code_id"]
+            isOneToOne: false
+            referencedRelation: "qr_codes"
+            referencedColumns: ["id"]
           },
         ]
       }

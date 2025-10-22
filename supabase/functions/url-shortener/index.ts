@@ -48,7 +48,7 @@ serve(async (req) => {
 
     // Create: POST /shorten
     if (path === '/shorten' && req.method === 'POST') {
-      const { url: targetUrl, tenantId } = await req.json();
+      const { url: targetUrl, tenantId, sessionToken, linkType } = await req.json();
 
       if (!targetUrl || !tenantId) {
         return new Response(
@@ -57,13 +57,15 @@ serve(async (req) => {
         );
       }
 
-      // Generate unique short code
+      // Generate unique 6-char short code with safe alphabet (no 0/O, I/l confusion)
+      // Safe alphabet: abcdefghjkmnpqrstuvwxyz23456789 (30 chars)
+      // 6 chars = 30^6 = ~729M combinations
       let shortCode: string;
       let attempts = 0;
       const maxAttempts = 10;
 
       do {
-        const { data: codeData } = await supabase.rpc('generate_short_code', { length: 8 });
+        const { data: codeData } = await supabase.rpc('generate_short_code', { length: 6 });
         shortCode = codeData as string;
 
         const { data: existing } = await supabase
@@ -89,6 +91,8 @@ serve(async (req) => {
           short_code: shortCode,
           target_url: targetUrl,
           tenant_id: tenantId,
+          session_token: sessionToken || null,
+          link_type: linkType || 'qr_redirect',
         });
 
       if (insertError) {

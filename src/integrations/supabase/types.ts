@@ -4539,8 +4539,11 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           expires_at: string | null
+          link_type: string | null
           metadata: Json | null
+          session_token: string | null
           short_code: string
+          short_domain: string | null
           target_url: string
           tenant_id: string | null
         }
@@ -4549,8 +4552,11 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           expires_at?: string | null
+          link_type?: string | null
           metadata?: Json | null
+          session_token?: string | null
           short_code: string
+          short_domain?: string | null
           target_url: string
           tenant_id?: string | null
         }
@@ -4559,8 +4565,11 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           expires_at?: string | null
+          link_type?: string | null
           metadata?: Json | null
+          session_token?: string | null
           short_code?: string
+          short_domain?: string | null
           target_url?: string
           tenant_id?: string | null
         }

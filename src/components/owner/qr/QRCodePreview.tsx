@@ -3,9 +3,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Trash2, Download, Printer } from 'lucide-react';
 import type { BrandingSettings } from './GlobalSettingsDialog';
-import QRCode from 'qrcode';
 import { useTenantInfo } from '@/hooks/useTenantInfo';
 import { PrintableQRCode } from './PrintableQRCode';
+import { generateQRCodeCanvas } from '@/utils/qrGenerator';
 
 interface QRCodePreviewProps {
   qrId: string;
@@ -45,18 +45,13 @@ export const QRCodePreview = ({
       if (!qrUrl || !canvasRef.current) return;
       
       try {
-        // Generate QR code with branding colors
-        const qrOptions = {
-          width: size,
-          margin: 2,
-          color: {
-            dark: branding?.primaryColor || '#000000',
-            light: '#FFFFFF'
-          },
-          errorCorrectionLevel: 'M' as const
-        };
-        
-        await QRCode.toCanvas(canvasRef.current, qrUrl, qrOptions);
+        // Generate high-quality QR code optimized for low-end phones
+        await generateQRCodeCanvas(canvasRef.current, qrUrl, {
+          size,
+          errorCorrectionLevel: 'H', // High error correction (30% recovery)
+          primaryColor: branding?.primaryColor || '#000000',
+          margin: 4, // Larger quiet zone for better scanning
+        });
         
         // Convert to data URL for download functionality
         const dataUrl = canvasRef.current.toDataURL('image/png');
@@ -154,16 +149,23 @@ export const QRCodePreview = ({
           </div>
           
           {/* Instructions */}
-          <div className="text-center">
+          <div className="text-center space-y-2">
             <p className="text-xs text-muted-foreground">
               Scan to access hotel services
             </p>
             {qrUrl && (
-              <p className="text-xs text-muted-foreground mt-1 break-all">
-                URL: {qrUrl}
-              </p>
+              <>
+                <div className="bg-muted/50 px-3 py-2 rounded-md">
+                  <p className="text-sm font-medium text-foreground">
+                    {qrUrl.replace(/^https?:\/\//, '').replace(/^www\./, '').split('?')[0]}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Type this if camera fails
+                  </p>
+                </div>
+              </>
             )}
-            <p className="text-xs font-mono text-muted-foreground mt-1">
+            <p className="text-xs font-mono text-muted-foreground">
               ID: {qrId}
             </p>
           </div>

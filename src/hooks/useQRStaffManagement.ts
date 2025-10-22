@@ -67,6 +67,13 @@ export function useQRStaffManagement() {
           *,
           rooms:room_id (
             room_number
+          ),
+          guest_sessions!inner (
+            guest_phone,
+            guest_email,
+            qr_codes (
+              label
+            )
           )
         `)
         .eq('tenant_id', user.tenant_id)

@@ -96,6 +96,17 @@ export default function QRPortal() {
           roomNumber = result.session.roomNumber;
         }
 
+        // Fetch QR code details to get the actual label
+        const { data: qrData, error: qrError } = await supabase
+          .from('qr_codes')
+          .select('label, qr_type')
+          .eq('id', result.session.qrCodeId)
+          .single();
+
+        if (qrError) {
+          console.warn('Failed to fetch QR label:', qrError);
+        }
+
         // Get QR settings for hotel branding
         const { data: qrSettings } = await supabase
           .from('qr_settings')
@@ -103,13 +114,17 @@ export default function QRPortal() {
           .eq('tenant_id', result.session.tenantId)
           .maybeSingle();
 
+        // Use actual QR label or fallback
+        const displayLabel = qrData?.label || 
+                            (roomNumber ? `Room ${roomNumber}` : 'Guest Services');
+
         return {
           qr_token: qrToken,
           room_number: roomNumber,
           hotel_name: result.session.hotelName || qrSettings?.hotel_name || 'Hotel',
           services: result.session.services || [],
           is_active: true,
-          label: 'Guest Services',
+          label: displayLabel, // ✅ Use actual label
           tenant_id: result.session.tenantId,
           hotel_logo: qrSettings?.show_logo_on_qr ? qrSettings?.hotel_logo_url : undefined,
           front_desk_phone: qrSettings?.front_desk_phone || '+2347065937769',

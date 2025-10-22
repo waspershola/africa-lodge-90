@@ -7,10 +7,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { BulkActionsBar } from './BulkActionsBar';
+import { RequestMessageFormatter } from './RequestMessageFormatter';
 import { 
   Clock, 
   CheckCircle, 
-  MapPin, 
   AlertTriangle,
   Search,
   Filter,
@@ -255,43 +255,31 @@ export function EnhancedQRStaffDashboard() {
                   className="cursor-pointer hover:shadow-md transition-shadow"
                 >
                   <CardContent className="p-4">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-start gap-4">
                       <Checkbox
                         checked={selectedRequests.has(request.id)}
                         onCheckedChange={() => toggleRequestSelection(request.id)}
                         onClick={(e) => e.stopPropagation()}
+                        className="mt-1"
                       />
 
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-3">
                           {getPriorityIcon(request.priority)}
-                          <h3 className="font-semibold capitalize">
-                            {request.request_type.replace('_', ' ')}
-                          </h3>
                           <Badge className={getStatusColor(request.status)}>
                             {request.status}
                           </Badge>
                         </div>
 
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            Room {request.rooms?.room_number || 'Unknown'}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {new Date(request.created_at).toLocaleTimeString([], {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </span>
-                        </div>
-
-                        {request.notes && (
-                          <p className="text-sm text-muted-foreground mt-2 line-clamp-1">
-                            {request.notes}
-                          </p>
-                        )}
+                        {/* ✅ Use new formatter */}
+                        <RequestMessageFormatter 
+                          request={request}
+                          guestSession={{
+                            guest_phone: (request as any).guest_sessions?.guest_phone,
+                            guest_email: (request as any).guest_sessions?.guest_email,
+                            qr_code_label: (request as any).guest_sessions?.qr_codes?.label
+                          }}
+                        />
                       </div>
 
                       <div className="flex items-center gap-2">

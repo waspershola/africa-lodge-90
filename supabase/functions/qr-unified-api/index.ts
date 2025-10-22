@@ -347,6 +347,9 @@ serve(async (req) => {
       const { sessionId, requestType, priority = 'normal', smsEnabled = false, guestPhone } = body;
       const requestData = sanitizeRequestData(body.requestData);
 
+      // Extract session token from headers (Phase 2)
+      const sessionToken = req.headers.get('x-session-token');
+
       // Call database function to create request
       const { data, error } = await supabaseClient.rpc('create_unified_qr_request', {
         p_session_id: sessionId,
@@ -372,23 +375,43 @@ serve(async (req) => {
 
       const result = data[0];
 
-      // Update request with SMS data if provided
+      // Phase 2: Update request with session token, persistence flag, and resume URL
+      const updateData: any = {};
+      
+      if (sessionToken) {
+        updateData.session_token = sessionToken;
+        updateData.is_persistent = true;
+        updateData.resume_short_url = `/guest/request-history?s=${sessionToken}`;
+      }
+      
       if (smsEnabled && guestPhone) {
+        updateData.guest_phone = guestPhone;
+        updateData.sms_enabled = true;
+      }
+
+      // Apply updates if any
+      if (Object.keys(updateData).length > 0) {
         await supabaseClient
           .from('qr_requests')
-          .update({
-            guest_phone: guestPhone,
-            sms_enabled: true
-          })
+          .update(updateData)
           .eq('id', result.request_id);
 
-        // Trigger SMS sending asynchronously
-        supabaseClient.functions.invoke('send-request-sms', {
-          body: {
-            request_id: result.request_id,
-            tenant_id: result.tenant_id
-          }
-        }).catch(err => console.error('SMS send error (non-blocking):', err));
+        console.log('✅ Request updated with session tracking:', {
+          requestId: result.request_id,
+          hasSessionToken: !!sessionToken,
+          isPersistent: updateData.is_persistent,
+          hasSMS: smsEnabled
+        });
+
+        // Trigger SMS sending asynchronously if enabled
+        if (smsEnabled && guestPhone) {
+          supabaseClient.functions.invoke('send-request-sms', {
+            body: {
+              request_id: result.request_id,
+              tenant_id: result.tenant_id
+            }
+          }).catch(err => console.error('SMS send error (non-blocking):', err));
+        }
       }
 
       // ✅ Log successful request creation

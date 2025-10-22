@@ -24,25 +24,22 @@ export const useGuestMessaging = ({ qrOrderId, qrToken, sessionToken }: UseGuest
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
 
-  // Fetch messages
+  // Fetch messages - UPDATED to query database directly
   const fetchMessages = useCallback(async () => {
     if (!qrOrderId) return;
     
     setLoading(true);
     try {
-      const response = await fetch(
-        `https://dxisnnjsbuuiunjmzzqj.supabase.co/functions/v1/qr-guest-portal/messages?qr_order_id=${qrOrderId}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      const { data, error } = await supabase
+        .from('guest_messages')
+        .select('*')
+        .eq('qr_order_id', qrOrderId)
+        .order('created_at', { ascending: true });
 
-      if (response.ok) {
-        const data = await response.json();
-        setMessages(data.messages || []);
+      if (error) {
+        console.error('Error fetching messages:', error);
+      } else {
+        setMessages((data as any[]) || []);
       }
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -51,33 +48,43 @@ export const useGuestMessaging = ({ qrOrderId, qrToken, sessionToken }: UseGuest
     }
   }, [qrOrderId]);
 
-  // Send message
+  // Send message - UPDATED to insert directly to database with tenant_id lookup
   const sendMessage = useCallback(async (message: string) => {
     if (!qrOrderId || !message.trim()) return false;
     
     setSending(true);
     try {
-      const response = await fetch(
-        `https://dxisnnjsbuuiunjmzzqj.supabase.co/functions/v1/qr-guest-portal/messages`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            qr_order_id: qrOrderId,
-            message: message,
-            guest_session_id: sessionToken
-          })
-        }
-      );
+      // First, get the tenant_id from the qr_request
+      const { data: requestData } = await supabase
+        .from('qr_requests')
+        .select('tenant_id')
+        .eq('id', qrOrderId)
+        .single();
 
-      if (response.ok) {
-        // Refresh messages to get the new one
-        await fetchMessages();
-        return true;
+      if (!requestData) {
+        console.error('Could not find request to get tenant_id');
+        return false;
       }
-      return false;
+
+      const { error } = await supabase
+        .from('guest_messages')
+        .insert([{
+          qr_order_id: qrOrderId,
+          sender_type: 'guest' as const,
+          message: message,
+          message_type: 'text' as const,
+          metadata: { session_token: sessionToken },
+          tenant_id: requestData.tenant_id
+        }]);
+
+      if (error) {
+        console.error('Error sending message:', error);
+        return false;
+      }
+
+      // Refresh messages to get the new one
+      await fetchMessages();
+      return true;
     } catch (error) {
       console.error('Error sending message:', error);
       return false;

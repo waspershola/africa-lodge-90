@@ -55,7 +55,7 @@ export default function QRManagerPage() {
         .select(`
           *,
           rooms:room_id (room_number),
-          qr_orders:qr_orders!qr_code_id (id, status, service_type, created_at)
+          qr_requests:qr_requests!qr_code_id (id, status, request_type, created_at)
         `)
         .eq('tenant_id', user.tenant_id)
         .order('created_at', { ascending: false })
@@ -72,13 +72,14 @@ export default function QRManagerPage() {
         assignedTo: qr.rooms?.room_number ? `Room ${qr.rooms.room_number}` : (qr.label || 'Location'),
         servicesEnabled: qr.services || [],
         status: (qr.is_active ? 'Active' : 'Inactive') as 'Active' | 'Inactive',
-        pendingRequests: qr.qr_orders?.filter(order => order.status === 'pending').length || 0,
+        pendingRequests: qr.qr_requests?.filter((req: any) => req.status === 'pending').length || 0,
         createdAt: qr.created_at || '',
         createdBy: 'System'
       }));
     },
     enabled: !!user?.tenant_id,
-    staleTime: 0 // Always fresh for real-time updates
+    staleTime: 0, // Always fresh for real-time updates
+    refetchInterval: 5000 // Poll every 5 seconds for new QR codes
   });
 
   // Get branding settings from tenant info

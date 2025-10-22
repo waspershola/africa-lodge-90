@@ -91,8 +91,17 @@ serve(async (req) => {
         );
       }
 
+      // Check if data exists and has results
+      if (!data || data.length === 0) {
+        console.warn('No validation data returned', { qrToken: qrToken.substring(0, 10) + '...' });
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired QR code' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       const result = data[0];
-      if (!result.is_valid) {
+      if (!result || !result.is_valid) {
         // Log failed attempt
         console.warn('Invalid QR validation attempt', { qrToken: qrToken.substring(0, 10) + '...', clientIp });
         return new Response(

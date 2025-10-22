@@ -104,6 +104,8 @@ import SMSManagement from "./pages/superadmin/SMSManagement";
 import FeatureFlagsPage from "./pages/sa/FeatureFlags";
 import StagingVerification from "./pages/sa/StagingVerification";
 import SMSTemplates from "./pages/owner/SMSTemplates";
+import QRSystemGuidePage from "./pages/owner/QRSystemGuide";
+import QRSystemTestPage from "./pages/owner/QRSystemTest";
 
 import SupportAdminLayout from "./components/layout/SupportAdminLayout";
 import SupportStaffLayout from "./components/layout/SupportStaffLayout";
@@ -171,6 +173,16 @@ const App = () => (
           <Route path="/sms-templates" element={
             <TenantAwareLayout allowedRoles={['OWNER', 'MANAGER']}>
               <SMSTemplates />
+            </TenantAwareLayout>
+          } />
+          <Route path="/qr-system-guide" element={
+            <TenantAwareLayout allowedRoles={['OWNER', 'MANAGER', 'FRONT_DESK']}>
+              <QRSystemGuidePage />
+            </TenantAwareLayout>
+          } />
+          <Route path="/qr-system-test" element={
+            <TenantAwareLayout allowedRoles={['OWNER', 'MANAGER']}>
+              <QRSystemTestPage />
             </TenantAwareLayout>
           } />
           

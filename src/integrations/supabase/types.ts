@@ -141,7 +141,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           new_values: Json | null
           old_values: Json | null
@@ -158,7 +158,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           metadata?: Json | null
           new_values?: Json | null
           old_values?: Json | null
@@ -175,7 +175,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           metadata?: Json | null
           new_values?: Json | null
           old_values?: Json | null
@@ -914,7 +914,7 @@ export type Database = {
           device_fingerprint: Json | null
           failure_reason: string | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           success: boolean
           user_agent: string | null
           user_id: string | null
@@ -926,7 +926,7 @@ export type Database = {
           device_fingerprint?: Json | null
           failure_reason?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           success?: boolean
           user_agent?: string | null
           user_id?: string | null
@@ -938,7 +938,7 @@ export type Database = {
           device_fingerprint?: Json | null
           failure_reason?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           success?: boolean
           user_agent?: string | null
           user_id?: string | null
@@ -1886,7 +1886,7 @@ export type Database = {
           ended_at: string | null
           id: string
           impersonator_id: string
-          ip_address: unknown | null
+          ip_address: unknown
           reason: string | null
           session_token: string
           started_at: string
@@ -1900,7 +1900,7 @@ export type Database = {
           ended_at?: string | null
           id?: string
           impersonator_id: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           reason?: string | null
           session_token: string
           started_at?: string
@@ -1914,7 +1914,7 @@ export type Database = {
           ended_at?: string | null
           id?: string
           impersonator_id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           reason?: string | null
           session_token?: string
           started_at?: string
@@ -3389,7 +3389,7 @@ export type Database = {
           scanned_at: string | null
           scanned_by: string | null
           session_id: string | null
-          source_ip: unknown | null
+          source_ip: unknown
           tenant_id: string
         }
         Insert: {
@@ -3401,7 +3401,7 @@ export type Database = {
           scanned_at?: string | null
           scanned_by?: string | null
           session_id?: string | null
-          source_ip?: unknown | null
+          source_ip?: unknown
           tenant_id: string
         }
         Update: {
@@ -3413,7 +3413,7 @@ export type Database = {
           scanned_at?: string | null
           scanned_by?: string | null
           session_id?: string | null
-          source_ip?: unknown | null
+          source_ip?: unknown
           tenant_id?: string
         }
         Relationships: [
@@ -3747,7 +3747,7 @@ export type Database = {
           created_at: string | null
           expires_at: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           required_steps: Json
           session_token: string
           steps_completed: Json | null
@@ -3759,7 +3759,7 @@ export type Database = {
           created_at?: string | null
           expires_at?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           required_steps?: Json
           session_token: string
           steps_completed?: Json | null
@@ -3771,7 +3771,7 @@ export type Database = {
           created_at?: string | null
           expires_at?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           required_steps?: Json
           session_token?: string
           steps_completed?: Json | null
@@ -5911,7 +5911,7 @@ export type Database = {
           expires_at: string
           heartbeat_count: number
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           is_active: boolean
           last_activity_at: string
           max_idle_hours: number
@@ -5938,7 +5938,7 @@ export type Database = {
           expires_at: string
           heartbeat_count?: number
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           is_active?: boolean
           last_activity_at?: string
           max_idle_hours?: number
@@ -5965,7 +5965,7 @@ export type Database = {
           expires_at?: string
           heartbeat_count?: number
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           is_active?: boolean
           last_activity_at?: string
           max_idle_hours?: number
@@ -6614,12 +6614,9 @@ export type Database = {
           success: boolean
         }[]
       }
-      auto_expire_reservations: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      auto_expire_reservations: { Args: never; Returns: undefined }
       bulk_seed_existing_tenants: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           seeded_count: number
           tenant_id: string
@@ -6659,10 +6656,7 @@ export type Database = {
         Args: { p_reservation_id: string }
         Returns: boolean
       }
-      can_access_tenant: {
-        Args: { tenant_uuid: string }
-        Returns: boolean
-      }
+      can_access_tenant: { Args: { tenant_uuid: string }; Returns: boolean }
       cancel_reservation_atomic: {
         Args: {
           p_cancelled_by?: string
@@ -6709,10 +6703,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      cleanup_old_sessions: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
+      cleanup_old_sessions: { Args: never; Returns: number }
       consume_sms_credits: {
         Args: {
           p_credits: number
@@ -6758,7 +6749,7 @@ export type Database = {
         }[]
       }
       debug_auth_context: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           auth_uid_result: string
           debug_message: string
@@ -6767,7 +6758,7 @@ export type Database = {
         }[]
       }
       debug_auth_state: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           current_auth_uid: string
           is_super_admin_result: boolean
@@ -6797,14 +6788,8 @@ export type Database = {
         }
         Returns: string
       }
-      escalate_unacknowledged_notifications: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      expire_stale_sessions: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
+      escalate_unacknowledged_notifications: { Args: never; Returns: undefined }
+      expire_stale_sessions: { Args: never; Returns: number }
       fix_double_taxed_charges: {
         Args: { p_tenant_id: string }
         Returns: {
@@ -6853,14 +6838,8 @@ export type Database = {
         Args: { user_uuid: string }
         Returns: string[]
       }
-      generate_short_code: {
-        Args: { length?: number }
-        Returns: string
-      }
-      get_active_session_count: {
-        Args: { p_user_id: string }
-        Returns: number
-      }
+      generate_short_code: { Args: { length?: number }; Returns: string }
+      get_active_session_count: { Args: { p_user_id: string }; Returns: number }
       get_available_rooms: {
         Args: {
           p_check_in_date: string
@@ -6899,10 +6878,7 @@ export type Database = {
           unique_guests: number
         }[]
       }
-      get_default_department: {
-        Args: { p_tenant_id: string }
-        Returns: string
-      }
+      get_default_department: { Args: { p_tenant_id: string }; Returns: string }
       get_default_terminal: {
         Args: { p_department_id?: string; p_tenant_id: string }
         Returns: string
@@ -7052,10 +7028,7 @@ export type Database = {
           theme: string
         }[]
       }
-      get_recovery_codes_count: {
-        Args: { user_uuid: string }
-        Returns: number
-      }
+      get_recovery_codes_count: { Args: { user_uuid: string }; Returns: number }
       get_revenue_by_payment_method: {
         Args: {
           p_end_date?: string
@@ -7090,7 +7063,7 @@ export type Database = {
         }[]
       }
       get_secure_daily_revenue: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           avg_revenue_per_reservation: number | null
           reservation_count: number | null
@@ -7099,9 +7072,15 @@ export type Database = {
           total_revenue: number | null
           unique_guests: number | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "mv_daily_revenue_by_tenant"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_secure_folio_balances: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           balance: number | null
           check_in_date: string | null
@@ -7116,9 +7095,15 @@ export type Database = {
           total_charges: number | null
           total_payments: number | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "folio_balances"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_secure_guest_stats_monthly: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           avg_reservation_value: number | null
           avg_stay_length: number | null
@@ -7130,9 +7115,15 @@ export type Database = {
           total_revenue: number | null
           unique_guests: number | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "guest_stats_monthly"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_secure_occupancy_stats: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           month_year: string | null
           occupancy_rate: number | null
@@ -7142,13 +7133,19 @@ export type Database = {
           total_rooms: number | null
           week_start: string | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "occupancy_stats"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_sms_credits_balance: {
         Args: { p_tenant_id: string }
         Returns: number
       }
       get_system_default_email_provider: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           config: Json
           provider_type: string
@@ -7186,32 +7183,17 @@ export type Database = {
           role: string
         }[]
       }
-      get_user_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_user_id: { Args: never; Returns: string }
       get_user_permissions: {
         Args: { user_uuid: string }
         Returns: {
           permission_name: string
         }[]
       }
-      get_user_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_user_role_secure: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_user_tenant_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_user_tenant_id_secure: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_user_role: { Args: never; Returns: string }
+      get_user_role_secure: { Args: never; Returns: string }
+      get_user_tenant_id: { Args: never; Returns: string }
+      get_user_tenant_id_secure: { Args: never; Returns: string }
       handle_multiple_folios: {
         Args: { p_reservation_id: string }
         Returns: string
@@ -7220,26 +7202,11 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: undefined
       }
-      is_background_jobs_enabled: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      is_super_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      is_super_admin_direct: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      is_super_admin_with_session: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      is_system_owner: {
-        Args: { user_uuid?: string }
-        Returns: boolean
-      }
+      is_background_jobs_enabled: { Args: never; Returns: boolean }
+      is_super_admin: { Args: never; Returns: boolean }
+      is_super_admin_direct: { Args: never; Returns: boolean }
+      is_super_admin_with_session: { Args: never; Returns: boolean }
+      is_system_owner: { Args: { user_uuid?: string }; Returns: boolean }
       log_security_event: {
         Args: { event_description: string; event_type: string; metadata?: Json }
         Returns: undefined
@@ -7248,18 +7215,9 @@ export type Database = {
         Args: { p_method_type: string }
         Returns: string
       }
-      monitor_sms_credits: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      process_auto_checkouts: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      process_trial_expiry: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      monitor_sms_credits: { Args: never; Returns: Json }
+      process_auto_checkouts: { Args: never; Returns: Json }
+      process_trial_expiry: { Args: never; Returns: Json }
       process_wallet_transaction: {
         Args: {
           p_amount: number
@@ -7306,18 +7264,9 @@ export type Database = {
           was_corrected: boolean
         }[]
       }
-      refresh_reporting_views: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      refresh_revenue_views: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      refresh_revenue_views_safe: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      refresh_reporting_views: { Args: never; Returns: undefined }
+      refresh_revenue_views: { Args: never; Returns: undefined }
+      refresh_revenue_views_safe: { Args: never; Returns: Json }
       revoke_all_user_sessions: {
         Args: { p_reason?: string; p_user_id: string }
         Returns: number
@@ -7396,7 +7345,7 @@ export type Database = {
         Returns: boolean
       }
       validate_security_definer_functions: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           function_name: string
           is_secure: boolean

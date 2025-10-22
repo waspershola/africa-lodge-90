@@ -1,251 +1,47 @@
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, Wifi, Phone, Utensils, Wrench, MessageCircle, Star } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 
-interface QRData {
-  id: string;
-  tenant_id: string;
-  room_id: string | null;
-  room_number?: string;
-  hotel_name: string;
-  services: string[];
-  is_active: boolean;
-}
-
-interface ServiceConfig {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  color: string;
-  description: string;
-}
-
-const serviceConfigs: Record<string, ServiceConfig> = {
-  'wifi_support': { icon: Wifi, label: 'Wi-Fi Support', color: 'bg-blue-500', description: 'Get help with internet connection' },
-  'room_service': { icon: Utensils, label: 'Room Service', color: 'bg-green-500', description: 'Order food & beverages' },
-  'housekeeping': { icon: Phone, label: 'Housekeeping', color: 'bg-purple-500', description: 'Request cleaning services' },
-  'maintenance': { icon: Wrench, label: 'Maintenance', color: 'bg-orange-500', description: 'Report room issues' },
-  'concierge': { icon: MessageCircle, label: 'Concierge', color: 'bg-teal-500', description: 'Local recommendations & assistance' },
-  'feedback': { icon: Star, label: 'Feedback', color: 'bg-yellow-500', description: 'Share your experience' }
-};
+/**
+ * OLD QR PORTAL - DEPRECATED
+ * 
+ * This component is kept for backward compatibility only.
+ * It immediately redirects to the new unified QR portal at /guest/qr/{token}.
+ * 
+ * Migration Note (2025-01-22):
+ * - Old portal used qr_orders table
+ * - Old portal didn't properly handle guest sessions
+ * - New portal uses qr_requests table with proper session validation
+ * 
+ * Action Required: Remove this file after verifying all QR links use /guest/qr/ format
+ */
 
 export default function QRPortal() {
   const { slug } = useParams<{ slug: string }>();
-  const [qrData, setQrData] = useState<QRData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [submittingService, setSubmittingService] = useState<string | null>(null);
-  const { toast } = useToast();
+  const navigate = useNavigate();
 
+  // IMMEDIATE REDIRECT TO NEW UNIFIED PORTAL
   useEffect(() => {
-    if (!slug) return;
-    
-    fetchQRData();
-  }, [slug]);
-
-  const fetchQRData = async () => {
-    try {
-      setLoading(true);
-      
-      // Call the guest portal API
-      const response = await fetch(`https://dxisnnjsbuuiunjmzzqj.supabase.co/functions/v1/qr-guest-portal/guest/qr/${slug}`, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('QR code not found or invalid');
-      }
-
-      const data = await response.json();
-      setQrData(data);
-    } catch (err) {
-      console.error('Failed to fetch QR data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load QR code');
-    } finally {
-      setLoading(false);
+    if (slug) {
+      console.log('🔄 [QR Migration] Redirecting from old portal to unified portal');
+      console.log(`   Old: /qr-portal/${slug}`);
+      console.log(`   New: /guest/qr/${slug}`);
+      navigate(`/guest/qr/${slug}`, { replace: true });
+    } else {
+      console.error('❌ [QR Migration] No token provided, redirecting to 404');
+      navigate('/404', { replace: true });
     }
-  };
+  }, [slug, navigate]);
 
-  const handleServiceRequest = async (serviceType: string) => {
-    if (!qrData || submittingService) return;
-
-    try {
-      setSubmittingService(serviceType);
-
-      const response = await fetch(`https://dxisnnjsbuuiunjmzzqj.supabase.co/functions/v1/qr-guest-portal/guest/qr/${slug}/requests`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          service_type: serviceType,
-          request_details: {
-            timestamp: new Date().toISOString(),
-            source: 'qr_portal'
-          }
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to submit request');
-      }
-
-      const result = await response.json();
-      
-      toast({
-        title: "Request Submitted",
-        description: `Your ${serviceConfigs[serviceType]?.label} request has been sent to hotel staff.`,
-      });
-
-    } catch (err) {
-      console.error('Failed to submit service request:', err);
-      toast({
-        title: "Request Failed",
-        description: "Unable to submit request. Please try again or contact front desk.",
-        variant: "destructive"
-      });
-    } finally {
-      setSubmittingService(null);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="flex items-center justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin" />
-            <span className="ml-2">Loading...</span>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (error || !qrData) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-destructive/5 to-destructive/10 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md border-destructive/20">
-          <CardHeader className="text-center">
-            <CardTitle className="text-destructive">QR Code Invalid</CardTitle>
-          </CardHeader>
-          <CardContent className="text-center">
-            <p className="text-muted-foreground mb-4">
-              {error || 'This QR code is not valid or has expired.'}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Please contact the front desk for assistance.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!qrData.is_active) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-destructive/5 to-destructive/10 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md border-destructive/20">
-          <CardHeader className="text-center">
-            <CardTitle className="text-destructive">Service Unavailable</CardTitle>
-          </CardHeader>
-          <CardContent className="text-center">
-            <p className="text-muted-foreground mb-4">
-              This QR service is currently inactive.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Please contact the front desk for assistance.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
+  // Show loading while redirecting
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5 p-4">
-      <div className="max-w-2xl mx-auto space-y-6">
-        {/* Header */}
-        <Card className="border-primary/20">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-primary">
-              {qrData.hotel_name}
-            </CardTitle>
-            {qrData.room_number && (
-              <Badge variant="outline" className="w-fit mx-auto">
-                Room {qrData.room_number}
-              </Badge>
-            )}
-            <p className="text-muted-foreground">
-              Select a service to get started
-            </p>
-          </CardHeader>
-        </Card>
-
-        {/* Services Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {qrData.services.map((service) => {
-            const config = serviceConfigs[service];
-            if (!config) return null;
-
-            const IconComponent = config.icon;
-            const isSubmitting = submittingService === service;
-
-            return (
-              <Card 
-                key={service}
-                className="hover:shadow-lg transition-all duration-200 cursor-pointer border-2 hover:border-primary/30"
-                onClick={() => handleServiceRequest(service)}
-              >
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-4">
-                    <div className={`p-3 rounded-full ${config.color} text-white`}>
-                      <IconComponent className="h-6 w-6" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg">{config.label}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {config.description}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <Button 
-                    className="w-full mt-4" 
-                    disabled={isSubmitting || submittingService !== null}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleServiceRequest(service);
-                    }}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Submitting...
-                      </>
-                    ) : (
-                      `Request ${config.label}`
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-
-        {/* Footer */}
-        <Card className="border-muted">
-          <CardContent className="text-center py-4">
-            <p className="text-sm text-muted-foreground">
-              Need immediate assistance? Call the front desk or visit the lobby.
-            </p>
-          </CardContent>
-        </Card>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5">
+      <div className="text-center space-y-4">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+        <p className="text-muted-foreground">Redirecting to guest portal...</p>
+        <p className="text-xs text-muted-foreground">
+          If you are not redirected, please contact support.
+        </p>
       </div>
     </div>
   );

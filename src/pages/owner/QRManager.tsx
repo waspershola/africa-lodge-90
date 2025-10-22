@@ -40,6 +40,7 @@ export default function QRManagerPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const { data: tenantInfo } = useTenantInfo();
+  const queryClient = useQueryClient();
   
   // Enable unified real-time updates for QR codes
   useUnifiedRealtime({ verbose: false });
@@ -140,8 +141,6 @@ export default function QRManagerPage() {
   const handleUpdateQR = async (updatedQR: QRCodeData) => {
     if (!user?.tenant_id) return;
     
-    const queryClient = useQueryClient();
-    
     // Optimistic update
     queryClient.setQueryData(['qr-codes', user.tenant_id], (old: QRCodeData[] = []) => {
       return old.map(qr => 
@@ -184,8 +183,6 @@ export default function QRManagerPage() {
   const handleDeleteQR = async (qrCode: QRCodeData) => {
     if (!user?.tenant_id) return;
     
-    const queryClient = useQueryClient();
-    
     // Optimistic update - remove from list immediately
     queryClient.setQueryData(['qr-codes', user.tenant_id], (old: QRCodeData[] = []) => {
       return old.filter(qr => qr.id !== qrCode.id);
@@ -221,8 +218,6 @@ export default function QRManagerPage() {
 
   const handleCreateQR = async (newQRData: Omit<QRCodeData, 'id' | 'createdAt' | 'createdBy' | 'pendingRequests'>) => {
     if (!user?.tenant_id) return;
-    
-    const queryClient = useQueryClient();
     
     // PHASE 2 FIX: Clear any stale cache first
     queryClient.removeQueries({ queryKey: ['qr-codes', user.tenant_id] });

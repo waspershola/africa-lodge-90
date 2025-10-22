@@ -1,10 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import UnifiedDashboardLayout from './UnifiedDashboardLayout';
 import ProtectedModule from './ProtectedModule';
 import { TrialBanner } from '@/components/trial/TrialBanner';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useTenantInfo } from '@/hooks/useTenantInfo';
+import { useUnifiedRealtime } from '@/hooks/useUnifiedRealtime';
+import { NotificationPermissionDialog } from '@/components/staff/NotificationPermissionDialog';
 import { 
   getDashboardConfig, 
   usesUnifiedDashboard, 
@@ -27,9 +29,36 @@ export default function DynamicDashboardShell({
 }: DynamicDashboardShellProps) {
   const { user } = useAuth();
   const { data: tenantInfo } = useTenantInfo();
+  const [showPermissionDialog, setShowPermissionDialog] = useState(false);
 
   // Determine the role to use (prop takes precedence, then user role)
   const userRole = propRole || (user?.role as UserRole);
+
+  // Enable unified realtime with sound and toast notifications
+  useUnifiedRealtime({
+    roleBasedFiltering: true,
+    enableSound: true,
+    enableToast: true,
+    verbose: false,
+  });
+
+  // Check if we should show the notification permission dialog
+  useEffect(() => {
+    const hasPermission = localStorage.getItem('notification_permission_granted');
+    const wasDismissed = localStorage.getItem('notification_permission_dismissed');
+    
+    if (!hasPermission && !wasDismissed && user) {
+      // Show dialog after a short delay to let the UI settle
+      const timer = setTimeout(() => {
+        setShowPermissionDialog(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [user]);
+
+  const handleEnableNotifications = () => {
+    console.log('[NotificationPermission] Notifications enabled by user');
+  };
 
   // Load JSON config if enabled (with inheritance)
   const { modules: jsonModules, roleConfig: jsonRoleConfig } = useMenuLoader(
@@ -104,6 +133,13 @@ export default function DynamicDashboardShell({
 
   return (
     <>
+      {/* Notification Permission Dialog */}
+      <NotificationPermissionDialog
+        open={showPermissionDialog}
+        onOpenChange={setShowPermissionDialog}
+        onEnable={handleEnableNotifications}
+      />
+
       {/* Trial Banner - Only for Owner */}
       {showTrialBanner && (
         <div className="bg-background border-b">

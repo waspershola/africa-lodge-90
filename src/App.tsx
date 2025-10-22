@@ -30,6 +30,7 @@ import StaffManagement from "./pages/owner/StaffManagement";
 import { OnboardingWizard } from "./components/onboarding/OnboardingWizard";
 import QRManager from "./pages/owner/QRManager";
 import QRPortal from "./pages/guest/QRPortal";
+import RequestHistory from "./pages/guest/RequestHistory";
 import { WalletManagementDashboard } from "./components/wallet/WalletManagementDashboard";
 import Reports from "./pages/owner/Reports";
 import Reservations from "./pages/owner/Reservations";
@@ -144,6 +145,7 @@ const App = () => (
             </TenantAwareLayout>
           } />
           <Route path="/guest/qr/:qrToken" element={<QRPortal />} />
+          <Route path="/guest/request-history" element={<RequestHistory />} />
           
           <Route path="/front-desk" element={
             <TenantAwareLayout requiredRole="FRONT_DESK">

@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { soundManager } from '@/utils/soundManager';
+import { toast } from '@/hooks/use-toast';
 
 /**
  * Phase 1: Unified Real-Time Subscription Manager
@@ -27,6 +29,10 @@ interface RealtimeConfig {
   errorRecovery?: boolean;
   /** Log real-time events (default: false in production) */
   verbose?: boolean;
+  /** Enable sound notifications (default: true) */
+  enableSound?: boolean;
+  /** Enable toast notifications (default: true) */
+  enableToast?: boolean;
 }
 
 interface SubscriptionState {
@@ -99,7 +105,9 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
     roleBasedFiltering = true,
     debounceDelay = 300,
     errorRecovery = true,
-    verbose = false
+    verbose = false,
+    enableSound = true,
+    enableToast = true
   } = config;
 
   const queryClient = useQueryClient();
@@ -116,6 +124,64 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
   const invalidationTimeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const eventCoalescingRef = useRef<Record<string, { count: number; firstEvent: number }>>({});
+
+  // Handle notifications for important realtime events
+  const handleRealtimeNotification = useCallback(async (table: string, eventType: string, record: any) => {
+    // Only notify for INSERTs on important tables
+    if (eventType !== 'INSERT') return;
+
+    // Check if notification permissions have been granted
+    const hasPermission = localStorage.getItem('notification_permission_granted') === 'true';
+    if (!hasPermission) return;
+
+    let shouldNotify = false;
+    let title = '';
+    let description = '';
+    let soundType: 'alert-medium' | 'alert-high' | 'alert-critical' = 'alert-medium';
+
+    switch (table) {
+      case 'qr_requests':
+        shouldNotify = true;
+        title = 'New Guest Request';
+        description = `${record.request_type?.replace('_', ' ') || 'Service'} request received`;
+        soundType = record.priority === 'high' ? 'alert-high' : 'alert-medium';
+        break;
+      case 'guest_messages':
+        shouldNotify = record.sender_type === 'guest';
+        title = 'New Guest Message';
+        description = 'A guest has sent a new message';
+        soundType = 'alert-medium';
+        break;
+      case 'qr_orders':
+        shouldNotify = true;
+        title = 'New Order';
+        description = 'New order received from guest';
+        soundType = 'alert-medium';
+        break;
+      case 'payments':
+        shouldNotify = true;
+        title = 'Payment Received';
+        description = `Payment of ${record.amount || '0'} received`;
+        soundType = 'alert-medium';
+        break;
+    }
+
+    if (shouldNotify) {
+      // Play sound
+      if (enableSound) {
+        await soundManager.play(soundType);
+      }
+
+      // Show toast
+      if (enableToast) {
+        toast({
+          title,
+          description,
+          duration: 5000,
+        });
+      }
+    }
+  }, [enableSound, enableToast]);
 
   // Event coalescing - batch multiple events within a short window (Phase 3.2)
   const shouldCoalesceEvent = useCallback((table: string): boolean => {
@@ -265,7 +331,7 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
           table,
           filter: `tenant_id=eq.${tenant.tenant_id}`
         },
-        (payload) => {
+        async (payload) => {
           if (verbose) {
             const recordId = payload.new && typeof payload.new === 'object' && 'id' in payload.new 
               ? payload.new.id 
@@ -276,6 +342,11 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
           // Event coalescing - skip if within coalescing window
           if (shouldCoalesceEvent(table)) {
             return;
+          }
+
+          // Handle notifications for high-priority events
+          if (enableSound || enableToast) {
+            await handleRealtimeNotification(table, payload.eventType, payload.new);
           }
 
           // Get all related query keys for this table

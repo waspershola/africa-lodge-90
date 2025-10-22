@@ -3283,13 +3283,16 @@ export type Database = {
           guest_name: string | null
           guest_phone: string | null
           id: string
+          is_persistent: boolean | null
           notes: string | null
           priority: string | null
           qr_code_id: string | null
           request_data: Json
           request_type: string
+          resume_short_url: string | null
           room_id: string | null
           session_id: string | null
+          session_token: string | null
           status: string
           tenant_id: string
           updated_at: string | null
@@ -3303,13 +3306,16 @@ export type Database = {
           guest_name?: string | null
           guest_phone?: string | null
           id?: string
+          is_persistent?: boolean | null
           notes?: string | null
           priority?: string | null
           qr_code_id?: string | null
           request_data?: Json
           request_type: string
+          resume_short_url?: string | null
           room_id?: string | null
           session_id?: string | null
+          session_token?: string | null
           status?: string
           tenant_id: string
           updated_at?: string | null
@@ -3323,13 +3329,16 @@ export type Database = {
           guest_name?: string | null
           guest_phone?: string | null
           id?: string
+          is_persistent?: boolean | null
           notes?: string | null
           priority?: string | null
           qr_code_id?: string | null
           request_data?: Json
           request_type?: string
+          resume_short_url?: string | null
           room_id?: string | null
           session_id?: string | null
+          session_token?: string | null
           status?: string
           tenant_id?: string
           updated_at?: string | null

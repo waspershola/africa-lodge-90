@@ -20,8 +20,8 @@ serve(async (req) => {
     const url = new URL(req.url);
     const path = url.pathname;
 
-    // Redirect: GET /q/:code
-    if (path.match(/^\/q\/[a-zA-Z0-9]+$/)) {
+    // Redirect: GET /q/:code (for direct HTTP access only, not via invoke)
+    if (req.method === 'GET' && path.match(/\/q\/[a-zA-Z0-9]+$/)) {
       const code = path.split('/').pop();
       
       const { data, error } = await supabase
@@ -46,8 +46,8 @@ serve(async (req) => {
       return Response.redirect(data.target_url, 307);
     }
 
-    // Create: POST /shorten
-    if (path === '/shorten' && req.method === 'POST') {
+    // Create: POST (handles both /shorten path and root/invoke calls)
+    if (req.method === 'POST') {
       const { url: targetUrl, tenantId, sessionToken, linkType } = await req.json();
 
       if (!targetUrl || !tenantId) {

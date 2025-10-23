@@ -15,6 +15,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTenantInfo } from '@/hooks/useTenantInfo';
 import { QRSecurity } from '@/lib/qr-security';
 import { useUnifiedRealtime } from '@/hooks/useUnifiedRealtime';
+import { useShortUrl } from '@/hooks/useShortUrl';
 
 export interface QRCodeData {
   id: string;
@@ -41,6 +42,7 @@ export default function QRManagerPage() {
   const { user } = useAuth();
   const { data: tenantInfo } = useTenantInfo();
   const queryClient = useQueryClient();
+  const { createShortUrl } = useShortUrl();
   
   // Enable unified real-time updates for QR codes
   useUnifiedRealtime({ verbose: false });
@@ -268,7 +270,22 @@ export default function QRManagerPage() {
       });
 
       // Generate QR code URL - permanent, no expiry
-      const qrCodeUrl = QRSecurity.generateQRUrl(qrToken);
+      const fullQrUrl = QRSecurity.generateQRUrl(qrToken);
+      
+      // Try to create short URL
+      let qrCodeUrl = fullQrUrl;
+      try {
+        const { short_url } = await createShortUrl({
+          url: fullQrUrl,
+          tenantId: user.tenant_id,
+          sessionToken: qrToken,
+          linkType: 'qr_redirect'
+        });
+        qrCodeUrl = short_url;
+        console.log(`QR URL shortened: ${fullQrUrl.length} → ${short_url.length} chars (saved ${fullQrUrl.length - short_url.length})`);
+      } catch (shortUrlError) {
+        console.warn('Failed to create short URL, using full URL:', shortUrlError);
+      }
       
       const { data: insertedData, error } = await supabase
         .from('qr_codes')

@@ -156,9 +156,16 @@ export const QRCodePreview = ({
             {qrUrl && (
               <>
                 <div className="bg-muted/50 px-3 py-2 rounded-md">
-                  <p className="text-sm font-medium text-foreground">
-                    {qrUrl.replace(/^https?:\/\//, '').replace(/^www\./, '').split('?')[0]}
-                  </p>
+                  <div className="flex items-center justify-center gap-2">
+                    <p className="text-sm font-medium text-foreground">
+                      {qrUrl.replace(/^https?:\/\//, '').replace(/^www\./, '').split('?')[0]}
+                    </p>
+                    {qrUrl.includes('/q/') && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                        ✓ Short
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     Type this if camera fails
                   </p>

@@ -29,35 +29,30 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
   const [selectedRequest, setSelectedRequest] = useState<QRRequest | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   
-  console.log('🔍 MyRequestsPanel rendered - sessionToken:', sessionToken, 'qrToken:', qrToken);
+  // 🔧 Phase 1: Try localStorage as fallback if sessionToken is empty
+  const effectiveSessionToken = sessionToken || localStorage.getItem('qr_session_token') || '';
   
-  // If no session token, still render button but show message
-  if (!sessionToken) {
-    console.warn('⚠️ MyRequestsPanel: No sessionToken provided');
-    return (
-      <Button
-        variant="outline"
-        size="lg"
-        className="relative bg-white/90 backdrop-blur-sm border-primary/20 hover:bg-primary/5 hover:border-primary/40 shadow-lg opacity-50"
-        disabled
-      >
-        <MessageCircle className="h-5 w-5 mr-2" />
-        My Requests (Session Required)
-      </Button>
-    );
-  }
+  console.log('🔍 MyRequestsPanel - sessionToken:', sessionToken, 'effectiveToken:', effectiveSessionToken);
 
-  // Fetch all requests for this session
+  // 🔧 Phase 1: Fetch all requests for this session using effective token
   const { data: requests = [], isLoading, refetch } = useQuery({
-    queryKey: ['guest-requests', sessionToken],
+    queryKey: ['guest-requests', effectiveSessionToken],
     queryFn: async () => {
+      if (!effectiveSessionToken) {
+        console.warn('⚠️ No session token available for fetching requests');
+        return [];
+      }
+
       const { data: session } = await supabase
         .from('guest_sessions')
         .select('id')
-        .eq('session_id', sessionToken)
+        .eq('session_id', effectiveSessionToken)
         .single();
 
-      if (!session) return [];
+      if (!session) {
+        console.warn('⚠️ No guest session found for token:', effectiveSessionToken);
+        return [];
+      }
 
       const { data, error } = await supabase
         .from('qr_requests')
@@ -65,10 +60,15 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
         .eq('session_id', session.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error fetching requests:', error);
+        throw error;
+      }
+      
+      console.log('✅ Fetched requests:', data?.length || 0);
       return (data || []) as QRRequest[];
     },
-    enabled: !!sessionToken,
+    enabled: !!effectiveSessionToken,
     refetchInterval: 10000 // Refresh every 10 seconds
   });
 
@@ -126,6 +126,9 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
     refetch();
   };
 
+  // 🔧 Phase 1: Always render button, show loading/disabled states appropriately
+  const isSessionValid = !!effectiveSessionToken;
+  
   return (
     <>
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -134,13 +137,19 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
             variant="outline"
             size="lg"
             className="relative bg-white/90 backdrop-blur-sm border-primary/20 hover:bg-primary/5 hover:border-primary/40 shadow-lg"
+            disabled={!isSessionValid}
+            title={!isSessionValid ? 'Initializing session...' : 'View your requests'}
           >
-            <MessageCircle className="h-5 w-5 mr-2" />
+            {isLoading && isSessionValid ? (
+              <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+            ) : (
+              <MessageCircle className="h-5 w-5 mr-2" />
+            )}
             My Requests
             {unreadCount > 0 && (
               <Badge 
                 variant="destructive" 
-                className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center"
+                className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center animate-pulse"
               >
                 {unreadCount}
               </Badge>

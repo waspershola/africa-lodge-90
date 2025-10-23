@@ -66,8 +66,31 @@ export default function QRPortal() {
   const [showScanner, setShowScanner] = useState(!qrToken);
   const { queueOfflineRequest } = useOfflineSync();
   
+  // 🔧 Phase 1: Load session from localStorage on mount
+  useEffect(() => {
+    const storedSessionId = localStorage.getItem('qr_session_token');
+    const storedExpiry = localStorage.getItem('qr_session_expiry');
+    
+    if (storedSessionId && storedExpiry) {
+      const expiryDate = new Date(storedExpiry);
+      const now = new Date();
+      
+      if (expiryDate > now) {
+        console.log('✅ Restored session from localStorage:', storedSessionId);
+        setSessionData({ 
+          sessionId: storedSessionId,
+          expiresAt: storedExpiry 
+        });
+      } else {
+        console.log('⚠️ Session expired, clearing localStorage');
+        localStorage.removeItem('qr_session_token');
+        localStorage.removeItem('qr_session_expiry');
+      }
+    }
+  }, []);
+  
   // Debug logging
-  console.log('🔍 QRPortal sessionData:', sessionData, 'sessionId:', sessionData?.sessionId);
+  console.log('🔍 QRPortal render - sessionData:', sessionData, 'sessionId:', sessionData?.sessionId);
 
   // Get QR info using unified QR system
   const { data: qrInfo, isLoading } = useQuery({
@@ -91,15 +114,25 @@ export default function QRPortal() {
           return null;
         }
 
-        // Store session data for request creation
-        setSessionData(result.session);
+        // 🔧 Phase 1: Store complete session data with all fields
+        const sessionInfo = {
+          sessionId: result.session.sessionId,
+          tenantId: result.session.tenantId,
+          qrCodeId: result.session.qrCodeId,
+          hotelName: result.session.hotelName,
+          roomNumber: result.session.roomNumber,
+          services: result.session.services,
+          expiresAt: result.session.expiresAt,
+          token: result.session.token
+        };
         
-        // 🔒 Phase 3.1: Store session token in localStorage for persistent tracking
-        if (result.session?.sessionId) {
-          localStorage.setItem('qr_session_token', result.session.sessionId);
-          localStorage.setItem('qr_session_expiry', result.session.expiresAt || '');
-          console.log('✅ Session token stored in localStorage:', result.session.sessionId);
-        }
+        setSessionData(sessionInfo);
+        
+        // Store session token in localStorage for persistent tracking
+        localStorage.setItem('qr_session_token', result.session.sessionId);
+        localStorage.setItem('qr_session_expiry', result.session.expiresAt || '');
+        localStorage.setItem('qr_session_data', JSON.stringify(sessionInfo));
+        console.log('✅ Complete session stored:', sessionInfo);
 
         // Get room number if room_id exists
         let roomNumber = null;

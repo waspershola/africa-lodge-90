@@ -89,6 +89,13 @@ export default function QRPortal() {
 
         // Store session data for request creation
         setSessionData(result.session);
+        
+        // 🔒 Phase 3.1: Store session token in localStorage for persistent tracking
+        if (result.session?.sessionId) {
+          localStorage.setItem('qr_session_token', result.session.sessionId);
+          localStorage.setItem('qr_session_expiry', result.session.expiresAt || '');
+          console.log('✅ Session token stored in localStorage:', result.session.sessionId);
+        }
 
         // Get room number if room_id exists
         let roomNumber = null;

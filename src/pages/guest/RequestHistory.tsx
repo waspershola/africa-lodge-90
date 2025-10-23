@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, Clock, CheckCircle, XCircle, MessageSquare, Volume2, VolumeX } from 'lucide-react';
+import { Loader2, Clock, CheckCircle, XCircle, MessageSquare, Volume2, VolumeX, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { useGuestNotifications } from '@/hooks/useGuestNotifications';
@@ -26,6 +26,8 @@ export default function RequestHistory() {
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sessionValid, setSessionValid] = useState<boolean>(true);
+  const [sessionExpiry, setSessionExpiry] = useState<string | null>(null);
 
   // Enable guest notifications with sound
   const { toggleMute, isMuted } = useGuestNotifications({
@@ -34,15 +36,33 @@ export default function RequestHistory() {
     enableToast: true
   });
 
+  // 🔒 Phase 3.2 & 3.3: Validate session and check expiry
   useEffect(() => {
-    if (!sessionToken) {
-      setError('No session token provided');
-      setLoading(false);
-      return;
-    }
+    const validateAndFetchRequests = async () => {
+      if (!sessionToken) {
+        setError('No session token provided');
+        setLoading(false);
+        return;
+      }
 
-    const fetchRequests = async () => {
       try {
+        // Check session expiry from localStorage
+        const storedExpiry = localStorage.getItem('qr_session_expiry');
+        if (storedExpiry) {
+          const expiryDate = new Date(storedExpiry);
+          const now = new Date();
+          
+          if (now > expiryDate) {
+            setSessionValid(false);
+            setError('Your session has expired. Please scan the QR code again.');
+            setLoading(false);
+            return;
+          }
+          
+          setSessionExpiry(storedExpiry);
+        }
+
+        // Fetch persistent requests
         const { data, error: fetchError } = await supabase
           .from('qr_requests')
           .select('*')
@@ -52,15 +72,16 @@ export default function RequestHistory() {
 
         if (fetchError) throw fetchError;
         setRequests(data || []);
+        setSessionValid(true);
       } catch (err) {
-        console.error('Error fetching requests:', err);
+        console.error('Error fetching request history:', err);
         setError('Failed to load request history');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchRequests();
+    validateAndFetchRequests();
 
     // Subscribe to realtime updates for this session
     const channel = supabase
@@ -74,6 +95,7 @@ export default function RequestHistory() {
           filter: `session_token=eq.${sessionToken}`,
         },
         (payload) => {
+          console.log('Real-time update:', payload);
           if (payload.eventType === 'INSERT') {
             setRequests((prev) => [payload.new as Request, ...prev]);
           } else if (payload.eventType === 'UPDATE') {
@@ -89,6 +111,19 @@ export default function RequestHistory() {
       supabase.removeChannel(channel);
     };
   }, [sessionToken]);
+
+  // 🔒 Phase 3.3: Session expiry helper
+  const getSessionTimeRemaining = () => {
+    if (!sessionExpiry) return null;
+    const expiry = new Date(sessionExpiry);
+    const now = new Date();
+    const diffMs = expiry.getTime() - now.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (diffHours < 1) return `${diffMins}m`;
+    return `${diffHours}h ${diffMins}m`;
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -122,21 +157,30 @@ export default function RequestHistory() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20 flex items-center justify-center p-4">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary mb-4" />
+          <p className="text-muted-foreground">Loading your requests...</p>
+        </div>
       </div>
     );
   }
 
-  if (error) {
+  if (error || !sessionValid) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <XCircle className="h-12 w-12 text-destructive mx-auto" />
-              <p className="text-muted-foreground">{error}</p>
-            </div>
+      <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20 flex items-center justify-center p-4">
+        <Card className="w-full max-w-2xl">
+          <CardContent className="p-8 text-center">
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <h2 className="text-2xl font-bold mb-2">
+              {!sessionValid ? 'Session Expired' : 'Unable to Load Requests'}
+            </h2>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            {!sessionValid && (
+              <p className="text-sm text-muted-foreground">
+                Please scan the QR code in your room to create a new session.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -144,42 +188,48 @@ export default function RequestHistory() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-3xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
+      <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">My Requests</h1>
+            <p className="text-muted-foreground">Track all your service requests in real-time</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {sessionExpiry && sessionValid && (
+              <Badge variant="outline" className="text-xs">
+                <Clock className="h-3 w-3 mr-1" />
+                Session expires in {getSessionTimeRemaining()}
+              </Badge>
+            )}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => toggleMute()}
+              className="relative"
+            >
+              {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+            </Button>
+          </div>
+        </div>
+
+        {/* Request List */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Your Request History</CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleMute()}
-                className="gap-2"
-              >
-                {isMuted ? (
-                  <>
-                    <VolumeX className="h-4 w-4" />
-                    <span className="text-sm">Unmute</span>
-                  </>
-                ) : (
-                  <>
-                    <Volume2 className="h-4 w-4" />
-                    <span className="text-sm">Mute</span>
-                  </>
-                )}
-              </Button>
-            </div>
+            <CardTitle>Request History</CardTitle>
           </CardHeader>
           <CardContent>
             {requests.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p>No requests yet</p>
+              <div className="text-center py-12 text-muted-foreground">
+                <MessageSquare className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                <p className="text-lg font-medium">No requests yet</p>
+                <p className="text-sm mt-2">Your service requests will appear here</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {requests.map((request) => (
-                  <Card key={request.id}>
+                  <Card key={request.id} className="shadow-sm">
                     <CardContent className="pt-6">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
@@ -196,7 +246,7 @@ export default function RequestHistory() {
                               </span>
                             </Badge>
                           </div>
-                          <h3 className="font-medium capitalize">
+                          <h3 className="font-semibold text-lg capitalize">
                             {request.request_type.replace('_', ' ')}
                           </h3>
                           {request.request_data?.notes && (
@@ -206,8 +256,9 @@ export default function RequestHistory() {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground pt-3 border-t">
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
                           Created {formatDistanceToNow(new Date(request.created_at))} ago
                         </span>
                         {request.resume_short_url && (
@@ -215,6 +266,7 @@ export default function RequestHistory() {
                             variant="ghost"
                             size="sm"
                             onClick={() => window.open(request.resume_short_url!, '_blank')}
+                            className="h-7"
                           >
                             View Details
                           </Button>

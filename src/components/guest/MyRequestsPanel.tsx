@@ -151,7 +151,7 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
           <Button
             variant="default"
             size="lg"
-            className="relative bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 animate-pulse border-2 border-primary/20"
+            className="relative bg-[hsl(45,100%,50%)] hover:bg-[hsl(45,100%,45%)] text-black shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-[hsl(45,100%,40%)]"
             title="View your service requests"
             onClick={() => console.log('🔍 [MyRequestsPanel] Button clicked')}
           >
@@ -164,7 +164,7 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
             {unreadCount > 0 && (
               <Badge 
                 variant="destructive" 
-                className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center animate-pulse"
+                className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center"
               >
                 {unreadCount}
               </Badge>

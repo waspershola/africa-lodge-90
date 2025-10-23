@@ -114,7 +114,27 @@ export const useGuestMessaging = ({ qrRequestId, qrToken, sessionToken }: UseGue
         (payload) => {
           console.log('New message received:', payload);
           const newMessage = payload.new as GuestMessage;
-          setMessages(prev => [...prev, newMessage]);
+          setMessages(prev => {
+            // Avoid duplicates
+            if (prev.some(msg => msg.id === newMessage.id)) return prev;
+            return [...prev, newMessage];
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'guest_messages',
+          filter: `qr_request_id=eq.${qrRequestId}`
+        },
+        (payload) => {
+          console.log('Message updated:', payload);
+          const updatedMessage = payload.new as GuestMessage;
+          setMessages(prev => prev.map(msg => 
+            msg.id === updatedMessage.id ? updatedMessage : msg
+          ));
         }
       )
       .subscribe();

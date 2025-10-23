@@ -112,9 +112,8 @@ export default function QRPortal() {
         );
         
         // Call the edge function with timeout
-        const edgeFunctionCall = supabase.functions.invoke('qr-unified-api', {
+        const edgeFunctionCall = supabase.functions.invoke('qr-unified-api/validate', {
           body: {
-            action: 'validate',
             qrToken,
             deviceInfo: {
               userAgent: navigator.userAgent,

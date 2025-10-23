@@ -44,10 +44,34 @@ export class QRSecurity {
 
   // Generate permanent QR URL using the QR token (no expiry)
   static generateQRUrl(qrToken: string): string {
-    // Always use Supabase URL for consistency across domains
-    const baseUrl = 'https://dxisnnjsbuuiunjmzzqj.supabase.co';
+    let baseUrl: string;
+    
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname;
+      
+      // Production domain
+      if (hostname === 'luxuryhotelpro.com' || hostname === 'www.luxuryhotelpro.com') {
+        baseUrl = 'https://luxuryhotelpro.com';
+      }
+      // Lovable preview environment
+      else if (hostname.includes('lovable.app')) {
+        baseUrl = window.location.origin;
+      }
+      // Vercel preview deployments
+      else if (hostname.includes('vercel.app')) {
+        baseUrl = window.location.origin;
+      }
+      // Fallback to Supabase
+      else {
+        baseUrl = 'https://dxisnnjsbuuiunjmzzqj.supabase.co';
+      }
+    } else {
+      // Server-side fallback to production
+      baseUrl = 'https://luxuryhotelpro.com';
+    }
+    
     const url = `${baseUrl}/guest/qr/${qrToken}`;
-    console.log('🔧 QRSecurity.generateQRUrl called:', { qrToken, baseUrl, url });
+    console.log('🔧 QRSecurity.generateQRUrl called:', { qrToken, hostname: typeof window !== 'undefined' ? window.location.hostname : 'server', baseUrl, url });
     return url;
   }
 

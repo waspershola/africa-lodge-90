@@ -44,10 +44,8 @@ export class QRSecurity {
 
   // Generate permanent QR URL using the QR token (no expiry)
   static generateQRUrl(qrToken: string): string {
-    // For production, use the current domain. For development, use localhost
-    const baseUrl = typeof window !== 'undefined' && window.location 
-      ? window.location.origin 
-      : 'https://yourapp.com'; // Fallback for SSR
+    // Always use Supabase URL for consistency across domains
+    const baseUrl = 'https://dxisnnjsbuuiunjmzzqj.supabase.co';
     return `${baseUrl}/guest/qr/${qrToken}`;
   }
 

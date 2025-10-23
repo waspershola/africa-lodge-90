@@ -57,6 +57,13 @@ serve(async (req) => {
         );
       }
 
+      // Validate that URL is from Supabase domain
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      if (!targetUrl.startsWith(supabaseUrl)) {
+        console.warn(`⚠️ Non-Supabase URL provided: ${targetUrl} (expected ${supabaseUrl})`);
+        // Still allow it but log for debugging
+      }
+
       // Generate unique 6-char short code with safe alphabet (no 0/O, I/l confusion)
       // Safe alphabet: abcdefghjkmnpqrstuvwxyz23456789 (30 chars)
       // 6 chars = 30^6 = ~729M combinations

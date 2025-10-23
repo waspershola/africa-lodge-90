@@ -289,7 +289,16 @@ export default function QRManagerPage() {
           shortCode: short_url.split('/q/')[1]
         });
       } catch (shortUrlError) {
-        console.warn('⚠️ Failed to create short URL, using full URL:', shortUrlError);
+        console.error('❌ Short URL creation failed:', {
+          error: shortUrlError,
+          fullUrl: fullQrUrl,
+          tenantId: user.tenant_id
+        });
+        toast({
+          title: "QR Code Created (Full URL)",
+          description: "Short URL generation failed, using full URL",
+          variant: "default"
+        });
       }
       
       const { data: insertedData, error } = await supabase

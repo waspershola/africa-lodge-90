@@ -441,9 +441,22 @@ serve(async (req) => {
             .eq('id', sessionData.room_id)
             .single();
 
-          const department = requestType === 'food' || requestType === 'beverage' 
-            ? 'RESTAURANT' 
-            : 'HOUSEKEEPING';
+          // Map request types to appropriate departments
+          // Multiple departments can receive the same notification
+          const departmentMap: Record<string, string[]> = {
+            'ROOM_SERVICE': ['FRONT_DESK', 'POS', 'RESTAURANT'],
+            'HOUSEKEEPING': ['HOUSEKEEPING', 'FRONT_DESK'],
+            'MAINTENANCE': ['MAINTENANCE', 'FRONT_DESK'],
+            'CONCIERGE': ['FRONT_DESK', 'CONCIERGE'],
+            'SPA': ['SPA', 'FRONT_DESK'],
+            'LAUNDRY': ['HOUSEKEEPING', 'FRONT_DESK'],
+            'FEEDBACK': ['FRONT_DESK', 'MANAGEMENT'],
+            'COMPLAINT': ['FRONT_DESK', 'MANAGEMENT'],
+            'OTHER': ['FRONT_DESK']
+          };
+
+          const recipients = departmentMap[requestType.toUpperCase()] || ['FRONT_DESK'];
+          const primaryDepartment = recipients[0];
 
           await supabaseClient.from('staff_notifications').insert({
             tenant_id: sessionData.tenant_id,
@@ -452,8 +465,8 @@ serve(async (req) => {
             notification_type: 'guest_request',
             priority: priority === 'urgent' ? 'high' : 'medium',
             sound_type: priority === 'urgent' ? 'alert-critical' : 'alert-high',
-            department: department,
-            recipients: [department],
+            department: primaryDepartment,
+            recipients: recipients,
             reference_type: 'qr_request',
             reference_id: result.request_id,
             actions: ['acknowledge', 'view_details', 'assign'],

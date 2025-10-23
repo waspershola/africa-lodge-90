@@ -60,7 +60,6 @@ export default function QRPortal() {
   const { qrToken } = useParams<{ qrToken: string }>();
   const navigate = useNavigate();
   const [currentService, setCurrentService] = useState<string | null>(null);
-  const { validateQR } = useUnifiedQR();
   const { toast } = useToast();
   const [sessionData, setSessionData] = useState<any>(null);
   const [showScanner, setShowScanner] = useState(!qrToken);
@@ -92,90 +91,105 @@ export default function QRPortal() {
   // Debug logging
   console.log('🔍 QRPortal render - sessionData:', sessionData, 'sessionId:', sessionData?.sessionId);
 
-  // Get QR info using unified QR system
+  // 🔧 FIXED: Call edge function directly instead of using mutation
   const { data: qrInfo, isLoading } = useQuery({
     queryKey: ['qr-portal', qrToken],
     queryFn: async () => {
-      if (!qrToken) return null;
+      if (!qrToken) {
+        console.log('❌ [QRPortal Query] No qrToken provided');
+        return null;
+      }
+
+      console.log('🔍 [QRPortal Query] Starting validation for token:', qrToken);
 
       try {
-        // Use unified QR validation which creates session and logs scan
-        const result = await validateQR.mutateAsync({
-          qrToken,
-          deviceInfo: {
-            userAgent: navigator.userAgent,
-            language: navigator.language,
-            timestamp: new Date().toISOString()
+        // ✅ Direct edge function call (no mutation)
+        const { data, error } = await supabase.functions.invoke('qr-unified-api', {
+          body: {
+            action: 'validate',
+            qrToken,
+            deviceInfo: {
+              userAgent: navigator.userAgent,
+              language: navigator.language,
+              timestamp: new Date().toISOString()
+            }
           }
         });
 
-        if (!result.success || !result.session) {
-          console.error('QR validation failed');
+        if (error) {
+          console.error('❌ [QRPortal Query] Edge function error:', error);
+          throw error;
+        }
+
+        if (!data?.success || !data?.session) {
+          console.error('❌ [QRPortal Query] Validation failed:', data);
           return null;
         }
 
-        // 🔧 Phase 1: Store complete session data with all fields
+        console.log('✅ [QRPortal Query] Validation successful:', data.session);
+
+        // 🔧 Store complete session data
         const sessionInfo = {
-          sessionId: result.session.sessionId,
-          tenantId: result.session.tenantId,
-          qrCodeId: result.session.qrCodeId,
-          hotelName: result.session.hotelName,
-          roomNumber: result.session.roomNumber,
-          services: result.session.services,
-          expiresAt: result.session.expiresAt,
-          token: result.session.token
+          sessionId: data.session.sessionId,
+          tenantId: data.session.tenantId,
+          qrCodeId: data.session.qrCodeId,
+          hotelName: data.session.hotelName,
+          roomNumber: data.session.roomNumber,
+          services: data.session.services,
+          expiresAt: data.session.expiresAt,
+          token: data.session.token
         };
         
         setSessionData(sessionInfo);
         
         // Store session token in localStorage for persistent tracking
-        localStorage.setItem('qr_session_token', result.session.sessionId);
-        localStorage.setItem('qr_session_expiry', result.session.expiresAt || '');
+        localStorage.setItem('qr_session_token', data.session.sessionId);
+        localStorage.setItem('qr_session_expiry', data.session.expiresAt || '');
         localStorage.setItem('qr_session_data', JSON.stringify(sessionInfo));
-        console.log('✅ Complete session stored:', sessionInfo);
+        console.log('✅ [QRPortal Query] Complete session stored:', sessionInfo);
 
         // Get room number if room_id exists
-        let roomNumber = null;
-        if (result.session.roomNumber) {
-          roomNumber = result.session.roomNumber;
-        }
+        let roomNumber = data.session.roomNumber || null;
 
         // Fetch QR code details to get the actual label
         const { data: qrData, error: qrError } = await supabase
           .from('qr_codes')
           .select('label, qr_type')
-          .eq('id', result.session.qrCodeId)
+          .eq('id', data.session.qrCodeId)
           .single();
 
         if (qrError) {
-          console.warn('Failed to fetch QR label:', qrError);
+          console.warn('⚠️ [QRPortal Query] Failed to fetch QR label:', qrError);
         }
 
         // Get QR settings for hotel branding
         const { data: qrSettings } = await supabase
           .from('qr_settings')
           .select('hotel_name, hotel_logo_url, primary_color, show_logo_on_qr, front_desk_phone, theme')
-          .eq('tenant_id', result.session.tenantId)
+          .eq('tenant_id', data.session.tenantId)
           .maybeSingle();
 
         // Use actual QR label or fallback
         const displayLabel = qrData?.label || 
                             (roomNumber ? `Room ${roomNumber}` : 'Guest Services');
 
-        return {
+        const qrInfo = {
           qr_token: qrToken,
           room_number: roomNumber,
-          hotel_name: result.session.hotelName || qrSettings?.hotel_name || 'Hotel',
-          services: result.session.services || [],
+          hotel_name: data.session.hotelName || qrSettings?.hotel_name || 'Hotel',
+          services: data.session.services || [],
           is_active: true,
-          label: displayLabel, // ✅ Use actual label
-          tenant_id: result.session.tenantId,
+          label: displayLabel,
+          tenant_id: data.session.tenantId,
           hotel_logo: qrSettings?.show_logo_on_qr ? qrSettings?.hotel_logo_url : undefined,
           front_desk_phone: qrSettings?.front_desk_phone || '+2347065937769',
           theme: qrSettings?.theme || 'classic-luxury-gold'
         } as QRCodeInfo;
+
+        console.log('✅ [QRPortal Query] Final qrInfo:', qrInfo);
+        return qrInfo;
       } catch (error) {
-        console.error('QR lookup error:', error);
+        console.error('❌ [QRPortal Query] Exception:', error);
         toast({
           title: 'Session Error',
           description: 'Failed to validate QR code. Please try scanning again.',
@@ -185,7 +199,8 @@ export default function QRPortal() {
       }
     },
     enabled: !!qrToken,
-    retry: false
+    retry: 1,
+    staleTime: 0
   });
 
   const selectService = (service: string) => {

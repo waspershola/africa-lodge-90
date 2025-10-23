@@ -270,36 +270,13 @@ export default function QRManagerPage() {
       });
 
       // Generate QR code URL - permanent, no expiry
-      const fullQrUrl = QRSecurity.generateQRUrl(qrToken);
-      
-      // Try to create short URL
-      let qrCodeUrl = fullQrUrl;
-      try {
-        const { short_url } = await createShortUrl({
-          url: fullQrUrl,
-          tenantId: user.tenant_id,
-          sessionToken: qrToken,
-          linkType: 'qr_redirect'
-        });
-        qrCodeUrl = short_url;
-        console.log(`✅ Short URL created:`, {
-          original: fullQrUrl,
-          shortened: short_url,
-          saved: `${fullQrUrl.length - short_url.length} chars`,
-          shortCode: short_url.split('/q/')[1]
-        });
-      } catch (shortUrlError) {
-        console.error('❌ Short URL creation failed:', {
-          error: shortUrlError,
-          fullUrl: fullQrUrl,
-          tenantId: user.tenant_id
-        });
-        toast({
-          title: "QR Code Created (Full URL)",
-          description: "Short URL generation failed, using full URL",
-          variant: "default"
-        });
-      }
+      // Use Supabase URL directly (no short URLs for QR codes)
+      const qrCodeUrl = QRSecurity.generateQRUrl(qrToken);
+      console.log('✅ QR URL generated:', {
+        qrToken,
+        url: qrCodeUrl,
+        baseUrl: 'https://dxisnnjsbuuiunjmzzqj.supabase.co'
+      });
       
       const { data: insertedData, error } = await supabase
         .from('qr_codes')

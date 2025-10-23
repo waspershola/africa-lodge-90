@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Wifi, Coffee, Home, Wrench, MessageCircle, Star, Phone, Clock, User, ArrowLeft, Crown, Sparkles } from 'lucide-react';
+import { Wifi, Coffee, Home, Wrench, MessageCircle, Star, Phone, Clock, User, ArrowLeft, Crown, Sparkles, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -91,20 +91,28 @@ export default function QRPortal() {
   // Debug logging
   console.log('🔍 QRPortal render - sessionData:', sessionData, 'sessionId:', sessionData?.sessionId);
 
-  // 🔧 FIXED: Call edge function directly instead of using mutation
-  const { data: qrInfo, isLoading } = useQuery({
+  // Phase 1: Call edge function with timeout protection
+  const { data: qrInfo, isLoading, error: qrError, refetch } = useQuery({
     queryKey: ['qr-portal', qrToken],
     queryFn: async () => {
+      console.log('[QRPortal] 🚀 Phase 1: Starting QR validation for token:', qrToken);
+      const startTime = Date.now();
+      
       if (!qrToken) {
         console.log('❌ [QRPortal Query] No qrToken provided');
         return null;
       }
 
-      console.log('🔍 [QRPortal Query] Starting validation for token:', qrToken);
-
       try {
-        // ✅ Direct edge function call (no mutation)
-        const { data, error } = await supabase.functions.invoke('qr-unified-api', {
+        console.log('[QRPortal] 📡 Calling edge function qr-unified-api/validate...');
+        
+        // Phase 2: Create timeout promise (10 second timeout)
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout after 10 seconds')), 10000)
+        );
+        
+        // Call the edge function with timeout
+        const edgeFunctionCall = supabase.functions.invoke('qr-unified-api', {
           body: {
             action: 'validate',
             qrToken,
@@ -115,20 +123,28 @@ export default function QRPortal() {
             }
           }
         });
+        
+        const { data, error } = await Promise.race([
+          edgeFunctionCall,
+          timeoutPromise
+        ]) as any;
+
+        const duration = Date.now() - startTime;
+        console.log(`[QRPortal] 📥 Edge function response (${duration}ms):`, { data, error });
 
         if (error) {
-          console.error('❌ [QRPortal Query] Edge function error:', error);
+          console.error('[QRPortal] ❌ Edge function error:', error);
           throw error;
         }
 
         if (!data?.success || !data?.session) {
-          console.error('❌ [QRPortal Query] Validation failed:', data);
+          console.error('[QRPortal] ❌ Validation failed:', data);
           return null;
         }
 
-        console.log('✅ [QRPortal Query] Validation successful:', data.session);
+        console.log('[QRPortal] ✅ Validation successful:', data.session);
 
-        // 🔧 Store complete session data
+        // Phase 1: Store complete session data
         const sessionInfo = {
           sessionId: data.session.sessionId,
           tenantId: data.session.tenantId,
@@ -146,7 +162,7 @@ export default function QRPortal() {
         localStorage.setItem('qr_session_token', data.session.sessionId);
         localStorage.setItem('qr_session_expiry', data.session.expiresAt || '');
         localStorage.setItem('qr_session_data', JSON.stringify(sessionInfo));
-        console.log('✅ [QRPortal Query] Complete session stored:', sessionInfo);
+        console.log('[QRPortal] 💾 Complete session stored:', sessionInfo);
 
         // Get room number if room_id exists
         let roomNumber = data.session.roomNumber || null;
@@ -186,21 +202,24 @@ export default function QRPortal() {
           theme: qrSettings?.theme || 'classic-luxury-gold'
         } as QRCodeInfo;
 
-        console.log('✅ [QRPortal Query] Final qrInfo:', qrInfo);
+        console.log('[QRPortal] ✅ Final qrInfo:', qrInfo);
         return qrInfo;
       } catch (error) {
-        console.error('❌ [QRPortal Query] Exception:', error);
-        toast({
-          title: 'Session Error',
-          description: 'Failed to validate QR code. Please try scanning again.',
-          variant: 'destructive'
-        });
-        return null;
+        console.error('[QRPortal] 💥 Query exception:', error);
+        const duration = Date.now() - startTime;
+        console.log(`[QRPortal] ⏱️ Failed after ${duration}ms`);
+        throw error;
       }
     },
     enabled: !!qrToken,
-    retry: 1,
-    staleTime: 0
+    retry: 2, // Phase 4: Retry twice on failure
+    retryDelay: (attemptIndex) => {
+      const delay = Math.min(1000 * 2 ** attemptIndex, 5000);
+      console.log(`[QRPortal] 🔄 Retry ${attemptIndex + 1} after ${delay}ms`);
+      return delay;
+    }, // Exponential backoff
+    staleTime: 0,
+    gcTime: 0
   });
 
   const selectService = (service: string) => {
@@ -219,23 +238,80 @@ export default function QRPortal() {
   // Get theme class name using utility function
   const themeClassName = getThemeClassName(qrInfo?.theme);
 
-  // Loading state
+  console.log('[QRPortal] 🎨 Render state:', {
+    isLoading,
+    hasError: !!qrError,
+    hasQrInfo: !!qrInfo,
+    hasSessionData: !!sessionData,
+    qrToken,
+    storedToken: localStorage.getItem('qr_session_token')
+  });
+
+  // Phase 2: Loading state with button visible
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-amber-100 to-amber-200 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md shadow-2xl border-amber-200/50 bg-white/90 backdrop-blur-sm">
-          <CardContent className="p-8 text-center">
-            <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center shadow-lg">
-              <Crown className="h-10 w-10 text-white animate-pulse" />
-            </div>
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <Sparkles className="h-5 w-5 text-amber-600 animate-pulse" />
-              <h3 className="text-lg font-serif text-amber-900">Loading Services</h3>
-              <Sparkles className="h-5 w-5 text-amber-600 animate-pulse" />
-            </div>
-            <p className="text-amber-700/70">Preparing your luxury experience...</p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-amber-100 to-amber-200">
+        <div className="flex items-center justify-center min-h-screen p-4">
+          <Card className="w-full max-w-md shadow-2xl border-amber-200/50 bg-white/90 backdrop-blur-sm">
+            <CardContent className="p-8 text-center">
+              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center shadow-lg">
+                <Crown className="h-10 w-10 text-white animate-pulse" />
+              </div>
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Sparkles className="h-5 w-5 text-amber-600 animate-pulse" />
+                <h3 className="text-lg font-serif text-amber-900">Loading Services</h3>
+                <Sparkles className="h-5 w-5 text-amber-600 animate-pulse" />
+              </div>
+              <p className="text-amber-700/70">Preparing your luxury experience...</p>
+            </CardContent>
+          </Card>
+        </div>
+        
+        {/* Phase 2 & 5: Show My Requests button even while loading */}
+        <div className="fixed bottom-8 right-8 z-50 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <MyRequestsPanel 
+            sessionToken={localStorage.getItem('qr_session_token') || ''} 
+            qrToken={qrToken || ''}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Phase 4: Error state with retry button
+  if (qrError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-amber-100 to-amber-200">
+        <div className="flex items-center justify-center min-h-screen p-4">
+          <Card className="w-full max-w-md shadow-2xl border-red-200/50 bg-white/90 backdrop-blur-sm">
+            <CardContent className="p-8 text-center">
+              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center shadow-lg">
+                <AlertCircle className="h-10 w-10 text-white" />
+              </div>
+              <h3 className="text-xl font-serif text-amber-900 mb-4">Connection Failed</h3>
+              <p className="text-amber-700/70 mb-4">
+                {qrError instanceof Error ? qrError.message : 'Unable to connect to room services'}
+              </p>
+              <p className="text-sm text-muted-foreground mb-6">
+                Please check your internet connection and try again.
+              </p>
+              <Button 
+                onClick={() => refetch()} 
+                className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-medium px-8 py-3 rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+              >
+                Retry Connection
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+        
+        {/* Phase 2: Show My Requests button even on error */}
+        <div className="fixed bottom-8 right-8 z-50 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <MyRequestsPanel 
+            sessionToken={localStorage.getItem('qr_session_token') || ''} 
+            qrToken={qrToken || ''}
+          />
+        </div>
       </div>
     );
   }
@@ -398,6 +474,7 @@ export default function QRPortal() {
     );
   }
 
+  // Phase 5: Main portal with fixed button
   return (
     <div className={`qr-portal ${themeClassName}`}>
       {/* Luxury Header */}
@@ -563,6 +640,14 @@ export default function QRPortal() {
       
       {/* Offline Indicator */}
       <OfflineIndicator />
+      
+      {/* Phase 5: Fixed position "My Requests" button - always visible above the fold */}
+      <div className="fixed bottom-8 right-8 z-50 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <MyRequestsPanel 
+          sessionToken={sessionData?.sessionId || localStorage.getItem('qr_session_token') || ''} 
+          qrToken={qrToken || ''}
+        />
+      </div>
     </div>
   );
 }

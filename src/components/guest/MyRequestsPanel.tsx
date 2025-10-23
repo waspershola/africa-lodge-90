@@ -34,26 +34,37 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
   
   console.log('🔍 MyRequestsPanel - sessionToken:', sessionToken, 'effectiveToken:', effectiveSessionToken);
 
-  // 🔧 Phase 1: Fetch all requests for this session using effective token
-  const { data: requests = [], isLoading, refetch } = useQuery({
+  // Phase 3: Fetch all requests for this session with improved error handling
+  const { data: requests = [], isLoading, refetch, error: requestError } = useQuery({
     queryKey: ['guest-requests', effectiveSessionToken],
     queryFn: async () => {
+      console.log('🔍 [MyRequestsPanel] Starting request fetch for token:', effectiveSessionToken);
+      
       if (!effectiveSessionToken) {
         console.warn('⚠️ No session token available for fetching requests');
         return [];
       }
 
-      const { data: session } = await supabase
+      // Phase 3: Query guest_sessions using session_id (text column)
+      const { data: session, error: sessionError } = await supabase
         .from('guest_sessions')
-        .select('id')
+        .select('id, session_id')
         .eq('session_id', effectiveSessionToken)
         .single();
+
+      if (sessionError) {
+        console.error('❌ Error fetching guest session:', sessionError);
+        throw sessionError;
+      }
 
       if (!session) {
         console.warn('⚠️ No guest session found for token:', effectiveSessionToken);
         return [];
       }
 
+      console.log('✅ Found guest session:', session.id);
+
+      // Phase 3: Use session.id (UUID) for qr_requests query
       const { data, error } = await supabase
         .from('qr_requests')
         .select('*, room:rooms(room_number)')
@@ -65,10 +76,12 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
         throw error;
       }
       
-      console.log('✅ Fetched requests:', data?.length || 0);
+      console.log('✅ Fetched requests:', data?.length || 0, 'requests');
       return (data || []) as QRRequest[];
     },
     enabled: !!effectiveSessionToken,
+    retry: 2, // Phase 4: Retry on failure
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000), // Exponential backoff
     refetchInterval: 10000 // Refresh every 10 seconds
   });
 

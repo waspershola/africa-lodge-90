@@ -65,6 +65,9 @@ export default function QRPortal() {
   const [sessionData, setSessionData] = useState<any>(null);
   const [showScanner, setShowScanner] = useState(!qrToken);
   const { queueOfflineRequest } = useOfflineSync();
+  
+  // Debug logging
+  console.log('🔍 QRPortal sessionData:', sessionData, 'sessionId:', sessionData?.sessionId);
 
   // Get QR info using unified QR system
   const { data: qrInfo, isLoading } = useQuery({

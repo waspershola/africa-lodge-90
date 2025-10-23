@@ -28,6 +28,24 @@ interface QRRequest {
 export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps) {
   const [selectedRequest, setSelectedRequest] = useState<QRRequest | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  
+  console.log('🔍 MyRequestsPanel rendered - sessionToken:', sessionToken, 'qrToken:', qrToken);
+  
+  // If no session token, still render button but show message
+  if (!sessionToken) {
+    console.warn('⚠️ MyRequestsPanel: No sessionToken provided');
+    return (
+      <Button
+        variant="outline"
+        size="lg"
+        className="relative bg-white/90 backdrop-blur-sm border-primary/20 hover:bg-primary/5 hover:border-primary/40 shadow-lg opacity-50"
+        disabled
+      >
+        <MessageCircle className="h-5 w-5 mr-2" />
+        My Requests (Session Required)
+      </Button>
+    );
+  }
 
   // Fetch all requests for this session
   const { data: requests = [], isLoading, refetch } = useQuery({

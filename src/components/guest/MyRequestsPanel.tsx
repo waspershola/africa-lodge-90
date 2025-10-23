@@ -130,7 +130,7 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
           </Button>
         </SheetTrigger>
 
-        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto flex flex-col">
           {!selectedRequest ? (
             <>
               <SheetHeader>
@@ -198,22 +198,24 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
               </div>
             </>
           ) : (
-            <>
+            <div className="flex flex-col h-full">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleBackToList}
-                className="mb-4"
+                className="mb-4 flex-shrink-0"
               >
                 ← Back to requests
               </Button>
-              <RequestChatView
-                request={selectedRequest}
-                qrToken={qrToken}
-                sessionToken={sessionToken}
-                onClose={handleBackToList}
-              />
-            </>
+              <div className="flex-1 min-h-0">
+                <RequestChatView
+                  request={selectedRequest}
+                  qrToken={qrToken}
+                  sessionToken={sessionToken}
+                  onClose={handleBackToList}
+                />
+              </div>
+            </div>
           )}
         </SheetContent>
       </Sheet>

@@ -59,9 +59,9 @@ export function RequestChatView({ request, qrToken, sessionToken }: RequestChatV
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)]">
+    <div className="flex flex-col h-full">
       {/* Request Summary Header */}
-      <Card className="mb-4">
+      <Card className="mb-4 flex-shrink-0">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-3">
@@ -158,7 +158,7 @@ export function RequestChatView({ request, qrToken, sessionToken }: RequestChatV
       </div>
 
       {/* Message Input */}
-      <div className="border-t pt-4">
+      <div className="border-t pt-4 flex-shrink-0 mt-auto">
         <form onSubmit={handleSendMessage} className="flex gap-2">
           <Input
             value={messageInput}

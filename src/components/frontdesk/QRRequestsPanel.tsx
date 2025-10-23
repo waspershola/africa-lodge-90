@@ -26,6 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUnifiedQR } from "@/hooks/useUnifiedQR";
 import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
 import { StaffRequestChatView } from "@/components/staff/StaffRequestChatView";
+import { useUnreadMessagesForRequests } from "@/hooks/useUnreadMessages";
 
 interface QRRequest {
   id: string;
@@ -77,6 +78,10 @@ export const QRRequestsPanel = () => {
   // USE REAL DATA from unified QR hook
   const { useAllQRRequests, updateRequestStatus } = useUnifiedQR();
   const { data: qrOrders = [], isLoading } = useAllQRRequests(user?.tenant_id || null);
+  
+  // Get unread message counts for all requests
+  const requestIds = qrOrders.map(o => o.id);
+  const { data: unreadCounts = {} } = useUnreadMessagesForRequests(requestIds);
 
   // Map real QR orders to display format
   const requests = useMemo(() => {
@@ -431,9 +436,15 @@ export const QRRequestsPanel = () => {
                     size="sm" 
                     variant="outline"
                     onClick={() => setSelectedRequestForChat(qrOrders.find(o => o.id === request.id))}
+                    className="relative"
                   >
                     <MessageSquare className="h-4 w-4 mr-1" />
                     Chat
+                    {unreadCounts[request.id] > 0 && (
+                      <Badge className="ml-2 h-5 w-5 p-0 flex items-center justify-center bg-red-500 text-white text-xs">
+                        {unreadCounts[request.id]}
+                      </Badge>
+                    )}
                   </Button>
                   {request.status === 'pending' && (
                     <>

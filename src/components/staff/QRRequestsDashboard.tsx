@@ -25,6 +25,7 @@ import {
   MessageCircle
 } from 'lucide-react';
 import { StaffRequestChatView } from '@/components/staff/StaffRequestChatView';
+import { useUnreadMessagesForRequests } from '@/hooks/useUnreadMessages';
 
 interface QRRequest {
   id: string;
@@ -60,6 +61,10 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
   const { useAllQRRequests, updateRequestStatus } = useUnifiedQR();
   const { data: requests = [], isLoading } = useAllQRRequests(user?.tenant_id || null);
   const { processServiceCompletion } = useFolioIntegration();
+  
+  // Get unread message counts for all requests
+  const requestIds = requests.map(r => r.id);
+  const { data: unreadCounts = {} } = useUnreadMessagesForRequests(requestIds);
 
   // Filter requests based on status and role
   const filteredRequests = requests.filter(request => {
@@ -286,9 +291,15 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
                             setSelectedRequest(request);
                             setShowChatView(true);
                           }}
+                          className="relative"
                         >
                           <MessageCircle className="h-4 w-4 mr-1" />
                           Chat
+                          {unreadCounts[request.id] > 0 && (
+                            <Badge className="ml-2 h-5 w-5 p-0 flex items-center justify-center bg-red-500 text-white text-xs">
+                              {unreadCounts[request.id]}
+                            </Badge>
+                          )}
                         </Button>
                         <Button 
                           size="sm" 

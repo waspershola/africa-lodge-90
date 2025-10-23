@@ -8,13 +8,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { BulkActionsBar } from './BulkActionsBar';
 import { RequestMessageFormatter } from './RequestMessageFormatter';
+import { useUnreadMessagesForRequests } from '@/hooks/useUnreadMessages';
 import { 
   Clock, 
   CheckCircle, 
   AlertTriangle,
   Search,
   Filter,
-  TrendingUp
+  TrendingUp,
+  MessageSquare
 } from 'lucide-react';
 
 export function EnhancedQRStaffDashboard() {
@@ -34,6 +36,10 @@ export function EnhancedQRStaffDashboard() {
 
   const [statusFilter, setStatusFilter] = useState<string>('pending');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Get unread message counts for all requests
+  const requestIds = requests.map(r => r.id);
+  const { data: unreadCounts = {} } = useUnreadMessagesForRequests(requestIds);
 
   // Filter requests
   const filteredRequests = requests.filter((request) => {
@@ -313,6 +319,18 @@ export function EnhancedQRStaffDashboard() {
                             Complete
                           </Button>
                         )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="relative"
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                          {unreadCounts[request.id] > 0 && (
+                            <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                              {unreadCounts[request.id]}
+                            </span>
+                          )}
+                        </Button>
                       </div>
                     </div>
                   </CardContent>

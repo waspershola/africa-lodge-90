@@ -122,6 +122,9 @@ export function useStaffNotifications(options: UseStaffNotificationsOptions = {}
         queryClient.invalidateQueries({ queryKey });
       }
     }
+
+    // CRITICAL: Always invalidate QR requests for staff dashboard real-time updates
+    queryClient.invalidateQueries({ queryKey: ['qr-requests-staff'] });
   }, [playSound, showToast, autoAcknowledge, queryClient]);
 
   // Subscribe to realtime notifications
@@ -281,7 +284,7 @@ export function useStaffNotifications(options: UseStaffNotificationsOptions = {}
 function getQueryKeyForReference(referenceType: string): string[] | null {
   const mapping: Record<string, string[]> = {
     'reservation': ['reservations'],
-    'qr_order': ['qr-requests'],
+    'qr_request': ['qr-requests-staff'], // ✅ FIXED: Match edge function reference_type and correct query key
     'payment': ['payments'],
     'maintenance_task': ['maintenance'],
     'housekeeping_task': ['housekeeping-tasks']

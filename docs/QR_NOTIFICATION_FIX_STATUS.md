@@ -88,6 +88,66 @@ useEffect(() => {
 
 ## 📋 CONTINUATION PLAN - Phased Approach
 
+### ✅ PHASE 1 & 2: QR Status Management (HIGH PRIORITY) - COMPLETED ✅
+**Goal:** Add manual controls for QR status and grace period on checkout  
+**Status:** ✅ ALL TASKS COMPLETED  
+**Date Completed:** 2025-10-23
+
+#### Phase 1: Manual QR Status Controls ✅ DONE
+**Implementation:**
+- ✅ Created `toggle_qr_status()` RPC function with permission checks (OWNER, MANAGER, FRONT_DESK, SUPER_ADMIN)
+- ✅ Added `useToggleQRStatus` mutation hook in `src/hooks/data/useQRDirectory.ts`
+- ✅ Added Activate/Deactivate buttons in `src/components/frontdesk/QRDirectoryFD.tsx`
+- ✅ Integrated with audit logging system for all status changes
+- ✅ Added toast notifications for user feedback
+
+**Database Function:**
+```sql
+toggle_qr_status(
+  p_qr_id UUID, 
+  p_is_active BOOLEAN, 
+  p_reason TEXT DEFAULT NULL
+) RETURNS BOOLEAN
+```
+
+**Benefits:**
+- ✅ Front desk can manually activate/deactivate QR codes
+- ✅ Fixes for accidentally deactivated QR codes
+- ✅ All changes logged to audit_log table
+- ✅ Role-based permission checks
+- ✅ Clear UI feedback with visual status indicators
+
+---
+
+#### Phase 2: 24-Hour Grace Period on Checkout ✅ DONE
+**Implementation:**
+- ✅ Modified `auto_expire_qr_on_checkout()` trigger
+- ✅ Changed from immediate deactivation to grace period
+- ✅ QR codes now expire at `checkout_date + 24 hours`
+- ✅ QR stays active during grace period
+- ✅ Grace period activation logged to audit_log
+
+**Behavior Change:**
+```sql
+Old: is_active = false, expires_at = now()
+New: is_active = true, expires_at = checkout_date + interval '24 hours'
+```
+
+**Benefits:**
+- ✅ Guests have 24 hours post-checkout for service requests
+- ✅ No abrupt service cutoff at checkout
+- ✅ Handles forgotten items, late feedback, etc.
+- ✅ Automatic cleanup after grace period
+- ✅ All transitions logged for audit
+
+**Testing:**
+- ✅ Manual activate/deactivate works in QR Directory
+- ✅ Status changes reflected immediately in UI
+- ✅ Audit log entries created correctly
+- ✅ Permission checks working (only staff can toggle)
+
+---
+
 ### ✅ PHASE 3: Session Management (HIGH PRIORITY) - COMPLETED ✅
 **Goal:** Make guest request tracking fully functional  
 **Status:** ✅ ALL TASKS COMPLETED

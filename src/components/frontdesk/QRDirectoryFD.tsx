@@ -20,7 +20,7 @@ import {
   Smartphone
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useQRDirectory } from "@/hooks/data/useQRDirectory";
+import { useQRDirectory, useToggleQRStatus } from "@/hooks/data/useQRDirectory";
 import type { QRCodeInfo } from "@/hooks/data/useQRDirectory";
 
 interface OldQRCodeInfo {
@@ -98,6 +98,7 @@ const mockQRCodes: QRCodeInfo[] = [
 export const QRDirectoryFD = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const { data: qrCodes = [], isLoading } = useQRDirectory();
+  const toggleQRStatus = useToggleQRStatus();
   const [auditLogs, setAuditLogs] = useState<Array<{
     id: string;
     action: string;
@@ -169,6 +170,19 @@ export const QRDirectoryFD = () => {
       title: "QR Code Re-issued",
       description: `Secure link generated and sent to guest in ${qrCode.roomNumber}`,
     });
+  };
+
+  const handleToggleStatus = (qrCode: QRCodeInfo) => {
+    const newStatus = qrCode.qrStatus === 'active' ? false : true;
+    const action = newStatus ? 'Activated' : 'Deactivated';
+    
+    toggleQRStatus.mutate({
+      qrId: qrCode.id,
+      isActive: newStatus,
+      reason: `${action} by front desk staff`
+    });
+    
+    logAction(`${action} QR`, qrCode.roomNumber, `QR code ${action.toLowerCase()}`);
   };
 
   const getStatusIcon = (status: QRCodeInfo['qrStatus']) => {
@@ -329,6 +343,26 @@ export const QRDirectoryFD = () => {
                       <Eye className="h-4 w-4" />
                     </Button>
                   </div>
+                  
+                  {/* Toggle Active/Inactive */}
+                  <Button 
+                    size="sm" 
+                    variant={qrCode.qrStatus === 'active' ? 'destructive' : 'default'}
+                    onClick={() => handleToggleStatus(qrCode)}
+                    disabled={toggleQRStatus.isPending}
+                  >
+                    {qrCode.qrStatus === 'active' ? (
+                      <>
+                        <XCircle className="h-4 w-4 mr-1" />
+                        Deactivate
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Activate
+                      </>
+                    )}
+                  </Button>
                   
                   {qrCode.guestName && (
                     <div className="flex gap-2">

@@ -7310,6 +7310,10 @@ export type Database = {
         Args: { p_global_template_id: string }
         Returns: number
       }
+      toggle_qr_status: {
+        Args: { p_is_active: boolean; p_qr_id: string; p_reason?: string }
+        Returns: boolean
+      }
       try_advisory_lock_with_timeout: {
         Args: { lock_key: number; timeout_seconds?: number }
         Returns: boolean

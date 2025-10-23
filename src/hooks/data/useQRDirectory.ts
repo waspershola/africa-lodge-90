@@ -1,6 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
+import { useToast } from '@/hooks/use-toast';
 
 export interface QRCodeInfo {
   id: string;
@@ -91,5 +92,41 @@ export const useQRDirectory = () => {
     enabled: !!tenant?.tenant_id,
     staleTime: 0, // Always fresh - rely on real-time updates
     refetchInterval: false, // No polling - real-time handles updates
+  });
+};
+
+/**
+ * Hook to toggle QR code active status
+ */
+export const useToggleQRStatus = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { tenant } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ qrId, isActive, reason }: { qrId: string; isActive: boolean; reason?: string }) => {
+      const { data, error } = await supabase.rpc('toggle_qr_status', {
+        p_qr_id: qrId,
+        p_is_active: isActive,
+        p_reason: reason || 'Manual status change'
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['qr-directory', tenant?.tenant_id] });
+      toast({
+        title: variables.isActive ? "QR Code Activated" : "QR Code Deactivated",
+        description: `QR code has been ${variables.isActive ? 'activated' : 'deactivated'} successfully`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to update QR status",
+        description: error.message || "An error occurred",
+        variant: "destructive",
+      });
+    },
   });
 };

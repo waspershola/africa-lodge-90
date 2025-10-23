@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface GuestMessage {
   id: string;
-  qr_order_id: string;
+  qr_request_id: string; // Updated from qr_order_id to support all request types
   sender_type: 'guest' | 'staff';
   sender_id?: string;
   message: string;
@@ -11,29 +11,31 @@ interface GuestMessage {
   metadata: any;
   is_read: boolean;
   created_at: string;
+  attachment_url?: string;
+  attachment_type?: string;
 }
 
 interface UseGuestMessagingProps {
-  qrOrderId: string | null;
+  qrRequestId: string | null; // Updated from qrOrderId to support all request types
   qrToken: string;
   sessionToken: string;
 }
 
-export const useGuestMessaging = ({ qrOrderId, qrToken, sessionToken }: UseGuestMessagingProps) => {
+export const useGuestMessaging = ({ qrRequestId, qrToken, sessionToken }: UseGuestMessagingProps) => {
   const [messages, setMessages] = useState<GuestMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
 
-  // Fetch messages - UPDATED to query database directly
+  // Fetch messages for any request type (not just orders)
   const fetchMessages = useCallback(async () => {
-    if (!qrOrderId) return;
+    if (!qrRequestId) return;
     
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('guest_messages')
         .select('*')
-        .eq('qr_order_id', qrOrderId)
+        .eq('qr_request_id', qrRequestId)
         .order('created_at', { ascending: true });
 
       if (error) {
@@ -46,19 +48,19 @@ export const useGuestMessaging = ({ qrOrderId, qrToken, sessionToken }: UseGuest
     } finally {
       setLoading(false);
     }
-  }, [qrOrderId]);
+  }, [qrRequestId]);
 
-  // Send message - UPDATED to insert directly to database with tenant_id lookup
+  // Send message for any request type
   const sendMessage = useCallback(async (message: string) => {
-    if (!qrOrderId || !message.trim()) return false;
+    if (!qrRequestId || !message.trim()) return false;
     
     setSending(true);
     try {
-      // First, get the tenant_id from the qr_request
+      // Get the tenant_id from the qr_request
       const { data: requestData } = await supabase
         .from('qr_requests')
         .select('tenant_id')
-        .eq('id', qrOrderId)
+        .eq('id', qrRequestId)
         .single();
 
       if (!requestData) {
@@ -69,7 +71,7 @@ export const useGuestMessaging = ({ qrOrderId, qrToken, sessionToken }: UseGuest
       const { error } = await supabase
         .from('guest_messages')
         .insert([{
-          qr_order_id: qrOrderId,
+          qr_request_id: qrRequestId,
           sender_type: 'guest' as const,
           message: message,
           message_type: 'text' as const,
@@ -91,23 +93,23 @@ export const useGuestMessaging = ({ qrOrderId, qrToken, sessionToken }: UseGuest
     } finally {
       setSending(false);
     }
-  }, [qrOrderId, sessionToken, fetchMessages]);
+  }, [qrRequestId, sessionToken, fetchMessages]);
 
-  // Set up real-time subscription
+  // Set up real-time subscription for all request types
   useEffect(() => {
-    if (!qrOrderId) return;
+    if (!qrRequestId) return;
 
-    console.log('Setting up real-time subscription for order:', qrOrderId);
+    console.log('Setting up real-time subscription for request:', qrRequestId);
     
     const channel = supabase
-      .channel(`guest_messages_${qrOrderId}`)
+      .channel(`guest_messages_${qrRequestId}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'guest_messages',
-          filter: `qr_order_id=eq.${qrOrderId}`
+          filter: `qr_request_id=eq.${qrRequestId}`
         },
         (payload) => {
           console.log('New message received:', payload);
@@ -124,7 +126,7 @@ export const useGuestMessaging = ({ qrOrderId, qrToken, sessionToken }: UseGuest
       console.log('Cleaning up real-time subscription');
       supabase.removeChannel(channel);
     };
-  }, [qrOrderId, fetchMessages]);
+  }, [qrRequestId, fetchMessages]);
 
   return {
     messages,

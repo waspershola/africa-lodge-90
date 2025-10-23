@@ -204,7 +204,7 @@ export default function RoomServiceMenu({ qrToken, sessionToken }: RoomServiceMe
         {/* Chat Interface */}
         {showChat && orderId && (
           <ChatInterface 
-            qrOrderId={orderId}
+            qrRequestId={orderId}
             qrToken={qrToken}
             sessionToken={sessionToken}
             orderStatus="pending"

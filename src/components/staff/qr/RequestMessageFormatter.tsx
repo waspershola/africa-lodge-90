@@ -1,6 +1,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, User, Star, ShoppingCart, Wrench, Home } from 'lucide-react';
+import { formatRequestMessage, type QRRequest } from '@/lib/messageFormatter';
 
 interface RequestMessageFormatterProps {
   request: {
@@ -23,6 +24,9 @@ interface RequestMessageFormatterProps {
 export function RequestMessageFormatter({ request, guestSession }: RequestMessageFormatterProps) {
   const isLocationRequest = !request.room_id;
   
+  // Use the new message formatter utility for clean formatting
+  const formattedMessage = formatRequestMessage(request as any);
+  
   // Format location/room info
   const locationInfo = isLocationRequest
     ? guestSession?.qr_code_label || 'Common Area'
@@ -35,7 +39,7 @@ export function RequestMessageFormatter({ request, guestSession }: RequestMessag
     ? `Guest (${guestSession.guest_email})`
     : 'Anonymous Guest';
 
-  // Format request content based on type
+  // Format request content based on type (keeping legacy for backwards compatibility)
   const formatRequestContent = () => {
     const data = request.request_data || {};
 

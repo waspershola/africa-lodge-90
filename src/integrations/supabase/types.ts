@@ -1381,39 +1381,45 @@ export type Database = {
       }
       guest_messages: {
         Row: {
+          attachment_type: string | null
+          attachment_url: string | null
           created_at: string
           id: string
           is_read: boolean | null
           message: string
           message_type: string | null
           metadata: Json | null
-          qr_order_id: string
+          qr_request_id: string
           sender_id: string | null
           sender_type: string
           tenant_id: string
           updated_at: string
         }
         Insert: {
+          attachment_type?: string | null
+          attachment_url?: string | null
           created_at?: string
           id?: string
           is_read?: boolean | null
           message: string
           message_type?: string | null
           metadata?: Json | null
-          qr_order_id: string
+          qr_request_id: string
           sender_id?: string | null
           sender_type: string
           tenant_id: string
           updated_at?: string
         }
         Update: {
+          attachment_type?: string | null
+          attachment_url?: string | null
           created_at?: string
           id?: string
           is_read?: boolean | null
           message?: string
           message_type?: string | null
           metadata?: Json | null
-          qr_order_id?: string
+          qr_request_id?: string
           sender_id?: string | null
           sender_type?: string
           tenant_id?: string
@@ -1422,7 +1428,7 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "guest_messages_qr_order_id_fkey"
-            columns: ["qr_order_id"]
+            columns: ["qr_request_id"]
             isOneToOne: false
             referencedRelation: "qr_orders"
             referencedColumns: ["id"]
@@ -2065,6 +2071,60 @@ export type Database = {
           },
           {
             foreignKeyName: "menu_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
+      message_templates: {
+        Row: {
+          category: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          request_types: string[] | null
+          sort_order: number | null
+          template_key: string
+          template_text: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          request_types?: string[] | null
+          sort_order?: number | null
+          template_key: string
+          template_text: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          request_types?: string[] | null
+          sort_order?: number | null
+          template_key?: string
+          template_text?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "occupancy_stats"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "message_templates_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -3279,6 +3339,7 @@ export type Database = {
           cancelled_at: string | null
           completed_at: string | null
           created_at: string | null
+          formatted_summary: string | null
           guest_email: string | null
           guest_name: string | null
           guest_phone: string | null
@@ -3305,6 +3366,7 @@ export type Database = {
           cancelled_at?: string | null
           completed_at?: string | null
           created_at?: string | null
+          formatted_summary?: string | null
           guest_email?: string | null
           guest_name?: string | null
           guest_phone?: string | null
@@ -3331,6 +3393,7 @@ export type Database = {
           cancelled_at?: string | null
           completed_at?: string | null
           created_at?: string | null
+          formatted_summary?: string | null
           guest_email?: string | null
           guest_name?: string | null
           guest_phone?: string | null
@@ -6868,6 +6931,10 @@ export type Database = {
       fn_revpar: {
         Args: { end_date?: string; start_date?: string; tenant_uuid: string }
         Returns: number
+      }
+      format_request_message: {
+        Args: { request_data: Json; request_type: string; room_number?: string }
+        Returns: string
       }
       generate_recovery_codes: {
         Args: { user_uuid: string }

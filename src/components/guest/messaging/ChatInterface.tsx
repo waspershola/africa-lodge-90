@@ -7,17 +7,17 @@ import { Badge } from '@/components/ui/badge';
 import { useGuestMessaging } from '@/hooks/useGuestMessaging';
 
 interface ChatInterfaceProps {
-  qrOrderId: string;
+  qrRequestId: string; // Updated to support all request types, not just orders
   qrToken: string;
   sessionToken: string;
   orderStatus?: string;
 }
 
-export default function ChatInterface({ qrOrderId, qrToken, sessionToken, orderStatus }: ChatInterfaceProps) {
+export default function ChatInterface({ qrRequestId, qrToken, sessionToken, orderStatus }: ChatInterfaceProps) {
   const [messageInput, setMessageInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const { messages, loading, sending, sendMessage } = useGuestMessaging({ 
-    qrOrderId, 
+    qrRequestId, 
     qrToken, 
     sessionToken 
   });

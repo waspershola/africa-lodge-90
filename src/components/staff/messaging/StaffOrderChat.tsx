@@ -15,7 +15,7 @@ interface StaffOrderChatProps {
 
 interface Message {
   id: string;
-  qr_order_id: string;
+  qr_request_id: string; // Updated from qr_order_id to support all request types
   sender_type: 'guest' | 'staff';
   sender_id?: string;
   message: string;
@@ -23,6 +23,8 @@ interface Message {
   metadata: any;
   is_read: boolean;
   created_at: string;
+  attachment_url?: string;
+  attachment_type?: string;
 }
 
 export default function StaffOrderChat({ orderId, orderDetails, onStatusChange }: StaffOrderChatProps) {
@@ -48,7 +50,7 @@ export default function StaffOrderChat({ orderId, orderDetails, onStatusChange }
       const { data: messagesData, error } = await supabase
         .from('guest_messages')
         .select('*')
-        .eq('qr_order_id', orderId)
+        .eq('qr_request_id', orderId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -71,8 +73,8 @@ export default function StaffOrderChat({ orderId, orderDetails, onStatusChange }
       
       const messageData = {
         tenant_id: orderDetails?.tenant_id,
-        qr_order_id: orderId,
-        sender_type: 'staff',
+        qr_request_id: orderId,
+        sender_type: 'staff' as const,
         sender_id: user?.id,
         message: messageInput || 'Menu suggestion sent',
         message_type: messageType,
@@ -81,7 +83,7 @@ export default function StaffOrderChat({ orderId, orderDetails, onStatusChange }
 
       const { error } = await supabase
         .from('guest_messages')
-        .insert(messageData);
+        .insert([messageData]);
 
       if (error) throw error;
 
@@ -108,7 +110,7 @@ export default function StaffOrderChat({ orderId, orderDetails, onStatusChange }
           event: 'INSERT',
           schema: 'public',
           table: 'guest_messages',
-          filter: `qr_order_id=eq.${orderId}`
+          filter: `qr_request_id=eq.${orderId}`
         },
         (payload) => {
           const newMessage = payload.new as Message;

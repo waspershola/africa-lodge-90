@@ -21,28 +21,37 @@ interface MessageTemplate {
 }
 
 export function QuickReplyBar({ requestType, onSelectTemplate, tenantId }: QuickReplyBarProps) {
-  // Fetch message templates for this request type
+  // Fetch message templates for this request type (server-side filtering)
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ['message-templates', tenantId, requestType],
     queryFn: async () => {
       if (!tenantId) return [];
 
+      // Use Supabase .contains() for server-side filtering
+      // This queries where request_types array contains either 'all' or the specific requestType
       const { data, error } = await supabase
         .from('message_templates')
         .select('*')
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
+        .contains('request_types', [requestType])
         .order('sort_order', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        // If the specific type query fails, try fetching 'all' templates as fallback
+        const { data: allData, error: allError } = await supabase
+          .from('message_templates')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true)
+          .contains('request_types', ['all'])
+          .order('sort_order', { ascending: true });
+        
+        if (allError) throw allError;
+        return allData as MessageTemplate[];
+      }
 
-      // Filter templates that match this request type or are for 'all' types
-      const filtered = (data || []).filter((template: MessageTemplate) => 
-        template.request_types.includes('all') || 
-        template.request_types.includes(requestType)
-      );
-
-      return filtered as MessageTemplate[];
+      return (data || []) as MessageTemplate[];
     },
     enabled: !!tenantId
   });

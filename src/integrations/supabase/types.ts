@@ -1427,10 +1427,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "guest_messages_qr_order_id_fkey"
+            foreignKeyName: "guest_messages_qr_request_id_fkey"
             columns: ["qr_request_id"]
             isOneToOne: false
-            referencedRelation: "qr_orders"
+            referencedRelation: "qr_requests"
             referencedColumns: ["id"]
           },
         ]

@@ -25,6 +25,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useUnifiedQR } from "@/hooks/useUnifiedQR";
 import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
+import { StaffRequestChatView } from "@/components/staff/StaffRequestChatView";
 
 interface QRRequest {
   id: string;
@@ -70,6 +71,7 @@ export const QRRequestsPanel = () => {
   const { user } = useAuth();
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterType, setFilterType] = useState("all");
+  const [selectedRequestForChat, setSelectedRequestForChat] = useState<any>(null);
   const { toast } = useToast();
   
   // USE REAL DATA from unified QR hook
@@ -424,7 +426,15 @@ export const QRRequestsPanel = () => {
                   </div>
                 </div>
                 
-                <div className="flex gap-2 ml-4">
+                <div className="flex flex-col gap-2 ml-4">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => setSelectedRequestForChat(qrOrders.find(o => o.id === request.id))}
+                  >
+                    <MessageSquare className="h-4 w-4 mr-1" />
+                    Chat
+                  </Button>
                   {request.status === 'pending' && (
                     <>
                       <Button size="sm" variant="outline" onClick={() => handleAssignRequest(request.id)}>
@@ -464,6 +474,16 @@ export const QRRequestsPanel = () => {
             </p>
           </CardContent>
         </Card>
+      )}
+
+      {/* Staff Chat View */}
+      {selectedRequestForChat && (
+        <StaffRequestChatView
+          request={selectedRequestForChat}
+          tenantId={user?.tenant_id || ''}
+          isOpen={!!selectedRequestForChat}
+          onClose={() => setSelectedRequestForChat(null)}
+        />
       )}
     </div>
   );

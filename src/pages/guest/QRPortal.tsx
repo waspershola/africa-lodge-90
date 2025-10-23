@@ -435,6 +435,16 @@ export default function QRPortal() {
 
       {/* Content */}
       <div className="max-w-2xl mx-auto p-6 space-y-8">
+        {/* Phase 1C: My Requests Panel - Prominently positioned ABOVE welcome card */}
+        <div className="flex justify-center mb-6">
+          <div className="w-full max-w-sm">
+            <MyRequestsPanel 
+              sessionToken={sessionData?.sessionId || ''} 
+              qrToken={qrInfo.qr_token} 
+            />
+          </div>
+        </div>
+
         {/* Welcome Card */}
         <div className="qr-card shadow-2xl backdrop-blur-sm">
           <div className="p-8 text-center">
@@ -448,14 +458,6 @@ export default function QRPortal() {
               Our dedicated staff is ready to assist you.
             </p>
           </div>
-        </div>
-
-        {/* My Requests Panel - Quick access to all guest requests */}
-        <div className="flex justify-center">
-          <MyRequestsPanel 
-            sessionToken={sessionData?.sessionId || ''} 
-            qrToken={qrInfo.qr_token} 
-          />
         </div>
 
         {/* Service Grid */}

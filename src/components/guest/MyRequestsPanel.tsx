@@ -126,19 +126,21 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
     refetch();
   };
 
-  // 🔧 Phase 1: Always render button, show loading/disabled states appropriately
+  // 🔧 Phase 1A: Always render button visible (never disabled)
   const isSessionValid = !!effectiveSessionToken;
+  
+  console.log('🔍 [MyRequestsPanel] Button render - isSessionValid:', isSessionValid, 'isOpen:', isOpen, 'requests:', requests.length);
   
   return (
     <>
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetTrigger asChild>
           <Button
-            variant="outline"
+            variant="default"
             size="lg"
-            className="relative bg-white/90 backdrop-blur-sm border-primary/20 hover:bg-primary/5 hover:border-primary/40 shadow-lg"
-            disabled={!isSessionValid}
-            title={!isSessionValid ? 'Initializing session...' : 'View your requests'}
+            className="relative bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 animate-pulse border-2 border-primary/20"
+            title="View your service requests"
+            onClick={() => console.log('🔍 [MyRequestsPanel] Button clicked')}
           >
             {isLoading && isSessionValid ? (
               <Loader2 className="h-5 w-5 mr-2 animate-spin" />
@@ -168,7 +170,13 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
               </SheetHeader>
 
               <div className="mt-6 space-y-3">
-                {isLoading ? (
+                {!isSessionValid ? (
+                  <div className="text-center py-12 space-y-3">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+                    <p className="text-muted-foreground">Initializing session...</p>
+                    <p className="text-xs text-muted-foreground">Please wait while we connect to your room</p>
+                  </div>
+                ) : isLoading ? (
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>

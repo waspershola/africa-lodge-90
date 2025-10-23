@@ -282,9 +282,14 @@ export default function QRManagerPage() {
           linkType: 'qr_redirect'
         });
         qrCodeUrl = short_url;
-        console.log(`QR URL shortened: ${fullQrUrl.length} → ${short_url.length} chars (saved ${fullQrUrl.length - short_url.length})`);
+        console.log(`✅ Short URL created:`, {
+          original: fullQrUrl,
+          shortened: short_url,
+          saved: `${fullQrUrl.length - short_url.length} chars`,
+          shortCode: short_url.split('/q/')[1]
+        });
       } catch (shortUrlError) {
-        console.warn('Failed to create short URL, using full URL:', shortUrlError);
+        console.warn('⚠️ Failed to create short URL, using full URL:', shortUrlError);
       }
       
       const { data: insertedData, error } = await supabase

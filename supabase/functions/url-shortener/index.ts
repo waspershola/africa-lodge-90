@@ -102,7 +102,9 @@ serve(async (req) => {
         );
       }
 
-      const shortUrl = `${url.origin}/q/${shortCode}`;
+      // Use SUPABASE_URL for consistent base URL regardless of invocation method
+      const baseUrl = Deno.env.get('SUPABASE_URL') || url.origin;
+      const shortUrl = `${baseUrl}/q/${shortCode}`;
 
       return new Response(
         JSON.stringify({ short_url: shortUrl, short_code: shortCode }),

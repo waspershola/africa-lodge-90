@@ -160,11 +160,16 @@ export const QRCodePreview = ({
                     <p className="text-sm font-medium text-foreground">
                       {qrUrl.replace(/^https?:\/\//, '').replace(/^www\./, '').split('?')[0]}
                     </p>
-                    {qrUrl.includes('/q/') && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
-                        ✓ Short
-                      </span>
-                    )}
+                    {(() => {
+                      const isShort = qrUrl.includes('/q/') && qrUrl.length < 60;
+                      const estimatedOriginalLength = 69; // Typical QR token URL length
+                      const saved = isShort ? estimatedOriginalLength - qrUrl.length : 0;
+                      return isShort && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                          ✓ Short ({saved}+ saved)
+                        </span>
+                      );
+                    })()}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     Type this if camera fails

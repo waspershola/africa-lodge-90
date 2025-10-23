@@ -3359,6 +3359,7 @@ export type Database = {
           sms_sent_at: string | null
           status: string
           tenant_id: string
+          tracking_number: string | null
           updated_at: string | null
         }
         Insert: {
@@ -3386,6 +3387,7 @@ export type Database = {
           sms_sent_at?: string | null
           status?: string
           tenant_id: string
+          tracking_number?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -3413,6 +3415,7 @@ export type Database = {
           sms_sent_at?: string | null
           status?: string
           tenant_id?: string
+          tracking_number?: string | null
           updated_at?: string | null
         }
         Relationships: [

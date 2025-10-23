@@ -21,6 +21,7 @@ import MaintenanceService from '@/components/guest/services/MaintenanceService';
 import FrontDeskService from '@/components/guest/services/FrontDeskService';
 import FeedbackService from '@/components/guest/services/FeedbackService';
 import RoomServiceMenu from '@/components/guest/services/RoomServiceMenu';
+import { MyRequestsPanel } from '@/components/guest/MyRequestsPanel';
 
 interface QRCodeInfo {
   qr_token: string;
@@ -411,6 +412,14 @@ export default function QRPortal() {
               Our dedicated staff is ready to assist you.
             </p>
           </div>
+        </div>
+
+        {/* My Requests Panel - Quick access to all guest requests */}
+        <div className="flex justify-center">
+          <MyRequestsPanel 
+            sessionToken={sessionData?.sessionId || ''} 
+            qrToken={qrInfo.qr_token} 
+          />
         </div>
 
         {/* Service Grid */}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { QRRequest } from '@/components/qr-portal/QRPortal';
+import { useShortUrl } from './useShortUrl';
 
 export interface QRSession {
   id: string;
@@ -27,6 +28,7 @@ export const useQRSession = (sessionToken?: string | null) => {
   const [hotelConfig, setHotelConfig] = useState<HotelConfig | null>(null);
   const [requests, setRequests] = useState<QRRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { createShortUrl } = useShortUrl();
 
   // Load session and hotel config from Supabase
   const loadSession = useCallback(async () => {
@@ -219,6 +221,30 @@ export const useQRSession = (sessionToken?: string | null) => {
         .single();
 
       if (error) throw error;
+
+      // Generate short URL for session resume link
+      try {
+        const baseUrl = window.location.origin;
+        const resumeUrl = `${baseUrl}/guest/qr/${sessionToken || session.id}?request=${orderData.id}`;
+        
+        const { short_url } = await createShortUrl({
+          url: resumeUrl,
+          tenantId: session.hotel_id,
+          sessionToken: sessionToken || session.id,
+          linkType: 'session_resume'
+        });
+
+        // Update the request with the short URL
+        await supabase
+          .from('qr_requests')
+          .update({ resume_short_url: short_url })
+          .eq('id', orderData.id);
+
+        console.log('Short URL created:', short_url);
+      } catch (shortUrlError) {
+        console.error('Failed to create short URL:', shortUrlError);
+        // Continue without short URL - not critical
+      }
 
       const newRequest: QRRequest = {
         id: orderData.id,

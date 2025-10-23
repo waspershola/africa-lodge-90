@@ -24,7 +24,7 @@ import {
   Send,
   MessageCircle
 } from 'lucide-react';
-import StaffOrderChat from '@/components/staff/messaging/StaffOrderChat';
+import { StaffRequestChatView } from '@/components/staff/StaffRequestChatView';
 
 interface QRRequest {
   id: string;
@@ -51,7 +51,7 @@ interface QRRequestsDashboardProps {
 export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRole }) => {
   const { user } = useAuth();
   const [selectedRequest, setSelectedRequest] = useState<QRRequest | null>(null);
-  const [showChat, setShowChat] = useState(false);
+  const [showChatView, setShowChatView] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [responseMessage, setResponseMessage] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('pending');
@@ -283,6 +283,18 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
                           variant="outline"
                           onClick={(e) => {
                             e.stopPropagation();
+                            setSelectedRequest(request);
+                            setShowChatView(true);
+                          }}
+                        >
+                          <MessageCircle className="h-4 w-4 mr-1" />
+                          Chat
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             handleViewDetails(request);
                           }}
                         >
@@ -297,6 +309,19 @@ export const QRRequestsDashboard: React.FC<QRRequestsDashboardProps> = ({ userRo
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Chat View */}
+      {selectedRequest && (
+        <StaffRequestChatView
+          request={selectedRequest}
+          tenantId={user?.tenant_id || ''}
+          isOpen={showChatView}
+          onClose={() => {
+            setShowChatView(false);
+            setSelectedRequest(null);
+          }}
+        />
+      )}
 
       {/* Request Details Dialog */}
       <Dialog open={showDetails} onOpenChange={setShowDetails}>

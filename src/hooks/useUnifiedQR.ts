@@ -77,7 +77,8 @@ export function useUnifiedQR() {
       requestData,
       priority = 'normal',
       smsEnabled = false,
-      guestPhone
+      guestPhone,
+      guestName
     }: {
       sessionId: string;
       requestType: string;
@@ -85,6 +86,7 @@ export function useUnifiedQR() {
       priority?: string;
       smsEnabled?: boolean;
       guestPhone?: string;
+      guestName?: string;
     }) => {
       // Get JWT token
       const token = JWTClient.getToken();
@@ -96,7 +98,7 @@ export function useUnifiedQR() {
       }
 
       const response = await supabase.functions.invoke('qr-unified-api/request', {
-        body: { sessionId, requestType, requestData, priority, smsEnabled, guestPhone },
+        body: { sessionId, requestType, requestData, priority, smsEnabled, guestPhone, guestName },
         headers: token ? { 'x-session-token': token } : {}
       });
 

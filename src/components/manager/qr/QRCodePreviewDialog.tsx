@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
+import { QRSecurity } from '@/lib/qr-security';
 
 interface QRCodePreviewDialogProps {
   trigger: React.ReactNode;
@@ -25,7 +26,7 @@ export const QRCodePreviewDialog = ({
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
 
-  const qrUrl = `${window.location.origin}/guest/qr/${room}`;
+  const qrUrl = QRSecurity.generateQRUrl(room);
 
   const handleDownload = () => {
     toast({

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { QRCodePreview } from '@/components/owner/qr/QRCodePreview';
+import { QRSecurity } from '@/lib/qr-security';
 import type { QRCodeData } from '@/pages/owner/QRManager';
 import type { BrandingSettings } from './GlobalSettingsDialog';
 import { useToast } from '@/hooks/use-toast';
@@ -242,7 +243,7 @@ export const QRCodeDrawer = ({ open, onOpenChange, qrCode, onUpdate, onDelete, b
                 hotelName={branding?.hotelName}
                 roomNumber={qrCode.assignedTo?.includes('Room') ? qrCode.assignedTo.replace('Room ', '') : undefined}
                 services={qrCode.servicesEnabled}
-                qrUrl={`${window.location.origin}/guest/qr/${qrCode.qr_token || qrCode.id}`}
+                qrUrl={QRSecurity.generateQRUrl(qrCode.qr_token || qrCode.id)}
                 isActive={qrCode.status === 'Active'}
                 onDelete={() => onDelete?.(qrCode)}
               />

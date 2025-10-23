@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { QRRequest } from '@/components/qr-portal/QRPortal';
 import { useShortUrl } from './useShortUrl';
+import { QRSecurity } from '@/lib/qr-security';
 
 export interface QRSession {
   id: string;
@@ -224,8 +225,7 @@ export const useQRSession = (sessionToken?: string | null) => {
 
       // Generate short URL for session resume link
       try {
-        const baseUrl = window.location.origin;
-        const resumeUrl = `${baseUrl}/guest/qr/${sessionToken || session.id}?request=${orderData.id}`;
+        const resumeUrl = `${QRSecurity.generateQRUrl(sessionToken || session.id)}?request=${orderData.id}`;
         
         const { short_url } = await createShortUrl({
           url: resumeUrl,

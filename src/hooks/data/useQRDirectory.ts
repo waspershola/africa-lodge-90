@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useToast } from '@/hooks/use-toast';
+import { QRSecurity } from '@/lib/qr-security';
 
 export interface QRCodeInfo {
   id: string;
@@ -84,7 +85,7 @@ export const useQRDirectory = () => {
           guestEmail: activeReservation?.guest_email,
           checkInDate: activeReservation?.check_in_date,
           checkOutDate: activeReservation?.check_out_date,
-          qrUrl: `${window.location.origin}/guest/qr/${qr.qr_token}`,
+          qrUrl: QRSecurity.generateQRUrl(qr.qr_token),
           issuedBy: 'Hotel Manager'
         };
       });

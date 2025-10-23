@@ -46,9 +46,39 @@ serve(async (req) => {
       return Response.redirect(data.target_url, 307);
     }
 
-    // Create: POST (handles both /shorten path and root/invoke calls)
+    // Lookup: POST with shortCode (for client-side redirects)
     if (req.method === 'POST') {
-      const { url: targetUrl, tenantId, sessionToken, linkType } = await req.json();
+      const body = await req.json();
+      
+      // Handle lookup request (client-side redirect)
+      if (body.shortCode) {
+        const { data, error } = await supabase
+          .from('short_urls')
+          .select('target_url, tenant_id')
+          .eq('short_code', body.shortCode)
+          .maybeSingle();
+
+        if (error || !data) {
+          return new Response(
+            JSON.stringify({ error: 'Short URL not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Increment click count
+        await supabase
+          .from('short_urls')
+          .update({ click_count: supabase.sql`click_count + 1` })
+          .eq('short_code', body.shortCode);
+
+        return new Response(
+          JSON.stringify({ target_url: data.target_url }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Handle creation request
+      const { url: targetUrl, tenantId, sessionToken, linkType } = body;
 
       if (!targetUrl || !tenantId) {
         return new Response(

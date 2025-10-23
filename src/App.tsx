@@ -114,6 +114,7 @@ import SupportStaffDashboard from "./pages/support-staff/Dashboard";
 import MenuPreview from "./pages/debug/MenuPreview";
 import PaymentVerification from "./pages/staff/PaymentVerification";
 import QRRequests from "./pages/staff/QRRequests";
+import ShortUrlRedirect from "./pages/ShortUrlRedirect";
 
 // Font manager component to apply global font styles
 const FontManager = () => {
@@ -149,6 +150,9 @@ const App = () => (
           } />
           <Route path="/guest/qr/:qrToken" element={<QRPortal />} />
           <Route path="/guest/request-history" element={<RequestHistory />} />
+          
+          {/* Short URL Redirect Handler */}
+          <Route path="/q/:shortCode" element={<ShortUrlRedirect />} />
           
           <Route path="/front-desk" element={
             <TenantAwareLayout requiredRole="FRONT_DESK">

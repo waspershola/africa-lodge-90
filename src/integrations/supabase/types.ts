@@ -6730,6 +6730,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      cleanup_duplicate_qr_codes: {
+        Args: never
+        Returns: {
+          archived_count: number
+          kept_qr_id: string
+          room_id: string
+        }[]
+      }
       cleanup_old_sessions: { Args: never; Returns: number }
       consume_sms_credits: {
         Args: {

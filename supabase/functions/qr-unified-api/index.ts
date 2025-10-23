@@ -347,8 +347,24 @@ serve(async (req) => {
       const { sessionId, requestType, priority = 'normal', smsEnabled = false, guestPhone } = body;
       const requestData = sanitizeRequestData(body.requestData);
 
+      // Validate sessionId format (must be UUID)
+      if (!sessionId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)) {
+        console.error('❌ Invalid session ID format:', { sessionId });
+        return new Response(
+          JSON.stringify({ error: 'Invalid session ID format' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       // Extract session token from headers (Phase 2)
       const sessionToken = req.headers.get('x-session-token');
+
+      console.log('📝 Creating request with validated session:', {
+        sessionId,
+        requestType,
+        priority,
+        timestamp: new Date().toISOString()
+      });
 
       // Call database function to create request
       const { data, error } = await supabaseClient.rpc('create_unified_qr_request', {

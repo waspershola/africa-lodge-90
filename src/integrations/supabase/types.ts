@@ -6843,6 +6843,7 @@ export type Database = {
         Returns: {
           created_at: string
           request_id: string
+          tenant_id: string
           tracking_number: string
         }[]
       }

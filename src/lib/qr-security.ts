@@ -46,7 +46,9 @@ export class QRSecurity {
   static generateQRUrl(qrToken: string): string {
     // Always use Supabase URL for consistency across domains
     const baseUrl = 'https://dxisnnjsbuuiunjmzzqj.supabase.co';
-    return `${baseUrl}/guest/qr/${qrToken}`;
+    const url = `${baseUrl}/guest/qr/${qrToken}`;
+    console.log('🔧 QRSecurity.generateQRUrl called:', { qrToken, baseUrl, url });
+    return url;
   }
 
   static extractTokenFromUrl(): string | null {

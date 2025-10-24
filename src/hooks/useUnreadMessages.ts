@@ -20,7 +20,7 @@ export const useUnreadMessagesForRequest = (qrRequestId: string | null) => {
       return count || 0;
     },
     enabled: !!qrRequestId,
-    refetchInterval: 5000, // Poll every 5 seconds
+    // Phase 3: Removed polling - real-time updates via useUnifiedRealtime handle freshness
   });
 };
 
@@ -51,6 +51,6 @@ export const useUnreadMessagesForRequests = (requestIds: string[]) => {
       return counts;
     },
     enabled: requestIds.length > 0,
-    refetchInterval: 5000, // Poll every 5 seconds
+    // Phase 3: Removed polling - real-time updates via useUnifiedRealtime handle freshness
   });
 };

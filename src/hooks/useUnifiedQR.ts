@@ -134,7 +134,7 @@ export function useUnifiedQR() {
         return response.data.request as RequestStatus;
       },
       enabled: !!requestId,
-      refetchInterval: 5000, // Poll every 5 seconds
+      // Phase 3: Removed polling - real-time updates via useUnifiedRealtime handle freshness
     });
   };
 
@@ -158,7 +158,7 @@ export function useUnifiedQR() {
         return response.data.requests as RequestStatus[];
       },
       enabled: !!sessionId,
-      refetchInterval: 10000, // Poll every 10 seconds
+      // Phase 3: Removed polling - real-time updates via useUnifiedRealtime handle freshness
     });
   };
 

@@ -82,7 +82,7 @@ export default function QRManagerPage() {
     },
     enabled: !!user?.tenant_id,
     staleTime: 0, // Always fresh for real-time updates
-    refetchInterval: 5000 // Poll every 5 seconds for new QR codes
+    // Phase 3: Removed polling - real-time updates via useUnifiedRealtime handle freshness
   });
 
   // Get branding settings from tenant info

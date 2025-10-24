@@ -3,6 +3,7 @@ import { SystemMonitoring } from '@/components/sa/SystemMonitoring';
 import { EdgeFunctionMonitoring } from '@/components/sa/EdgeFunctionMonitoring';
 import { CanaryDeployment } from '@/components/sa/CanaryDeployment';
 import { ProductionValidation } from '@/components/sa/ProductionValidation';
+import { PerformanceMonitor } from '@/components/sa/PerformanceMonitor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Metrics() {
@@ -18,6 +19,7 @@ export default function Metrics() {
       <Tabs defaultValue="monitoring" className="space-y-6">
         <TabsList>
           <TabsTrigger value="monitoring">System Monitoring</TabsTrigger>
+          <TabsTrigger value="performance">Performance</TabsTrigger>
           <TabsTrigger value="functions">Edge Functions</TabsTrigger>
           <TabsTrigger value="validation">Production Validation</TabsTrigger>
           <TabsTrigger value="deployment">Canary Deployment</TabsTrigger>
@@ -25,6 +27,10 @@ export default function Metrics() {
 
         <TabsContent value="monitoring">
           <SystemMonitoring />
+        </TabsContent>
+
+        <TabsContent value="performance">
+          <PerformanceMonitor />
         </TabsContent>
 
         <TabsContent value="functions">

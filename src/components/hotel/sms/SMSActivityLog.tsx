@@ -38,7 +38,7 @@ export function SMSActivityLog() {
       if (error) throw error;
       return data as SMSLog[];
     },
-    refetchInterval: 15000, // Refresh every 15 seconds
+    // Phase 3: Removed polling - real-time updates handle freshness
   });
 
   const exportToCSV = () => {

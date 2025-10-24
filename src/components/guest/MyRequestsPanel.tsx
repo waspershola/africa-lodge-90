@@ -101,7 +101,7 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
     enabled: !!qrToken,
     retry: 2,
     retryDelay: 1000,
-    refetchInterval: 10000
+    // Phase 3: Removed polling - real-time updates handle freshness
   });
 
   // 🔔 Real-time subscription for ALL requests on this QR code
@@ -214,7 +214,7 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
       return count || 0;
     },
     enabled: requests.length > 0,
-    refetchInterval: 5000
+    // Phase 3: Removed polling - real-time updates handle freshness
   });
 
   const getRequestIcon = (type: string) => {

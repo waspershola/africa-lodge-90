@@ -124,6 +124,10 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
   const invalidationTimeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const eventCoalescingRef = useRef<Record<string, { count: number; firstEvent: number }>>({});
+  
+  // Phase 4: Timeout accumulation prevention
+  const MAX_PENDING_TIMEOUTS = 50;
+  const timeoutCountRef = useRef<number>(0);
 
   // Handle notifications for important realtime events
   const handleRealtimeNotification = useCallback(async (table: string, eventType: string, record: any) => {
@@ -223,16 +227,37 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
     return false;
   }, [verbose]);
 
-  // Debounced invalidation with grouping and tiered delays (Phase 3.2)
+  // Debounced invalidation with grouping and tiered delays (Phase 3.2 + Phase 4)
   const debouncedInvalidate = useCallback((queryKeys: string[], delay: number) => {
+    // Phase 4: Prevent timeout accumulation memory leak
+    if (timeoutCountRef.current >= MAX_PENDING_TIMEOUTS) {
+      if (verbose) {
+        console.warn(`[Realtime] Max pending timeouts (${MAX_PENDING_TIMEOUTS}) reached - forcing flush`);
+      }
+      
+      // Force immediate invalidation for all queued queries
+      Object.entries(invalidationTimeoutsRef.current).forEach(([key, timeout]) => {
+        clearTimeout(timeout);
+        const queryKey = key.includes(',') 
+          ? key.split(',').filter(Boolean)
+          : [key];
+        queryClient.invalidateQueries({ queryKey });
+      });
+      
+      invalidationTimeoutsRef.current = {};
+      timeoutCountRef.current = 0;
+    }
+    
     queryKeys.forEach(key => {
       if (invalidationTimeoutsRef.current[key]) {
         clearTimeout(invalidationTimeoutsRef.current[key]);
+        timeoutCountRef.current--;
       }
 
+      timeoutCountRef.current++;
       invalidationTimeoutsRef.current[key] = setTimeout(() => {
         if (verbose) {
-          console.log(`[Realtime] Invalidating query: ${key} (delay: ${delay}ms)`);
+          console.log(`[Realtime] Invalidating query: ${key} (delay: ${delay}ms, pending: ${timeoutCountRef.current})`);
         }
         
         // Handle query keys that contain tenant IDs (format: "key,tenantId")
@@ -243,6 +268,7 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
         
         queryClient.invalidateQueries({ queryKey });
         delete invalidationTimeoutsRef.current[key];
+        timeoutCountRef.current--;
       }, delay);
     });
   }, [queryClient, verbose]);
@@ -434,11 +460,12 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
         console.log('[Realtime] Cleaning up unified subscriptions');
       }
 
-      // Clear all pending invalidation timeouts
+      // Clear all pending invalidation timeouts (Phase 4: with counter reset)
       Object.values(invalidationTimeoutsRef.current).forEach(timeout => {
         clearTimeout(timeout);
       });
       invalidationTimeoutsRef.current = {};
+      timeoutCountRef.current = 0;
 
       // Clear reconnection timeout
       if (reconnectTimeoutRef.current) {

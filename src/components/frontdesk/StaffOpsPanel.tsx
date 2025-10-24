@@ -79,7 +79,7 @@ export const StaffOpsPanel = () => {
       return data || [];
     },
     enabled: !!tenant?.tenant_id,
-    refetchInterval: 30000
+    // Phase 3: Removed polling - real-time updates handle freshness
   });
   
   // Map real staff with shift status

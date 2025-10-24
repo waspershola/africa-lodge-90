@@ -25,7 +25,8 @@ self.addEventListener('install', (event) => {
         console.log('Service Worker: Caching assets');
         return cache.addAll(ASSETS_TO_CACHE);
       })
-      .then(() => self.skipWaiting())
+      // Phase 5: Removed skipWaiting() - wait for user's next visit to activate new SW
+      // This prevents stale JS/CSS from being served to active sessions
   );
 });
 
@@ -78,11 +79,29 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((networkResponse) => {
-          // Don't cache navigation responses to ensure fresh app bundle
+          // Phase 5: Never cache navigation responses - always fetch fresh HTML/JS/CSS
           return networkResponse;
         })
         .catch(() => {
           return caches.match('/offline.html');
+        })
+    );
+    return;
+  }
+
+  // Phase 5: For JS/CSS bundles - always fetch from network (bypass cache entirely)
+  if (url.pathname.match(/\.(js|css)$/)) {
+    event.respondWith(
+      fetch(request)
+        .catch(() => {
+          // Fallback to cache only if offline and bundle was previously cached
+          return caches.match(request).then((cachedResponse) => {
+            if (cachedResponse) {
+              console.warn('Service Worker: Serving stale JS/CSS from cache (offline)');
+              return cachedResponse;
+            }
+            return new Response('Offline - bundle unavailable', { status: 503 });
+          });
         })
     );
     return;

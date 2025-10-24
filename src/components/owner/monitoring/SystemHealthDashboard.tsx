@@ -38,7 +38,7 @@ export function SystemHealthDashboard() {
       if (error) throw error;
       return data as BackgroundJobLog[];
     },
-    refetchInterval: 30000, // Refetch every 30 seconds
+    // Phase 3: Removed polling - real-time updates handle freshness
   });
 
   if (isLoading) {

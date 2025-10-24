@@ -76,7 +76,7 @@ export const useFrontDeskData = () => {
       return { total, occupied, available, oos, dirty, maintenance };
     },
     enabled: !!tenant?.tenant_id,
-    refetchInterval: 30000, // Refresh every 30 seconds
+    // Phase 8: Removed polling - real-time updates via useUnifiedRealtime handle freshness
   });
 
   // Fetch real-time alerts from multiple sources
@@ -202,7 +202,7 @@ export const useFrontDeskData = () => {
       return alertsList;
     },
     enabled: !!tenant?.tenant_id,
-    refetchInterval: 60000, // Refresh every minute
+    // Phase 8: Removed polling - real-time updates via useUnifiedRealtime handle freshness
   });
 
   // Calculate generator runtime estimate based on fuel level

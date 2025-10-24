@@ -52,7 +52,7 @@ export const useTodayArrivals = () => {
       })) as TodayArrival[];
     },
     enabled: !!tenant?.tenant_id,
-    refetchInterval: 30000, // Refresh every 30 seconds
     staleTime: 120000, // Phase 7: 2 minutes stale time
+    // Phase 8: Removed polling - real-time updates via useUnifiedRealtime handle freshness
   });
 };

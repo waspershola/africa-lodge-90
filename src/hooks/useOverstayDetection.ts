@@ -57,7 +57,7 @@ export function useOverstayDetection(graceHours: number = 3) {
       return overstays || [];
     },
     enabled: !!tenant?.tenant_id,
-    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
-    staleTime: 2 * 60 * 1000, // Consider stale after 2 minutes
+    refetchInterval: 10 * 60 * 1000, // Phase 8: Increased to 10 minutes (computed data, not real-time critical)
+    staleTime: 5 * 60 * 1000, // Consider stale after 5 minutes
   });
 }

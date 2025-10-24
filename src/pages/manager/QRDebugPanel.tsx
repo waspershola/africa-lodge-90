@@ -40,7 +40,7 @@ export default function QRDebugPanel() {
       if (error) throw error;
       return data;
     },
-    refetchInterval: 10000
+    // Phase 8: Removed polling - real-time updates via useUnifiedRealtime handle freshness
   });
 
   // Session Audit Log

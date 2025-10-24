@@ -200,7 +200,7 @@ export const useShiftIntegrationStatus = () => {
       ];
     },
     enabled: !!tenant?.tenant_id,
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 120000, // Phase 8: Increased to 2 minutes (shift status changes infrequently)
   });
 
   const overallProgress = integrationStatus ? 

@@ -62,6 +62,6 @@ export const usePendingPayments = () => {
       return pendingPayments as PendingPayment[];
     },
     enabled: !!tenant?.tenant_id,
-    refetchInterval: 60000, // Refresh every minute
+    // Phase 8: Removed polling - real-time updates via useUnifiedRealtime handle freshness
   });
 };

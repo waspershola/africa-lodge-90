@@ -109,7 +109,7 @@ export function useDashboardAlerts() {
         return levelPriority[b.level] - levelPriority[a.level];
       });
     },
-    refetchInterval: 60000, // Refresh every minute
-    enabled: !!tenant?.tenant_id
+    enabled: !!tenant?.tenant_id,
+    // Phase 8: Removed polling - real-time updates via useUnifiedRealtime handle freshness
   });
 }

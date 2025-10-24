@@ -89,7 +89,7 @@ export function useTodayArrivals() {
     enabled: !!tenantId,
     staleTime: 60000, // 1 minute - arrivals don't change often
     gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
-    refetchInterval: 5 * 60 * 1000, // Auto-refresh every 5 minutes
+    // Phase 8: Removed polling - real-time updates via useUnifiedRealtime handle freshness
   });
 }
 
@@ -122,7 +122,7 @@ export function useTodayDepartures() {
     enabled: !!tenantId,
     staleTime: 60000, // 1 minute - departures don't change often
     gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
-    refetchInterval: 5 * 60 * 1000, // Auto-refresh every 5 minutes
+    // Phase 8: Removed polling - real-time updates via useUnifiedRealtime handle freshness
   });
 }
 

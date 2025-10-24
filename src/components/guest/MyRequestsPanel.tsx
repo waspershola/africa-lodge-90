@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MessageCircle, X, Loader2, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { formatRequestMessage, formatRelativeTime, getStatusColor } from '@/lib/messageFormatter';
 import { RequestChatView } from './RequestChatView';
@@ -28,6 +28,7 @@ interface QRRequest {
 export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps) {
   const [selectedRequest, setSelectedRequest] = useState<QRRequest | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const queryClient = useQueryClient();
   
   // 🔧 Phase 1: Try localStorage as fallback if sessionToken is empty
   const effectiveSessionToken = sessionToken || localStorage.getItem('qr_session_token') || '';
@@ -84,6 +85,43 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000), // Exponential backoff
     refetchInterval: 10000 // Refresh every 10 seconds
   });
+
+  // 🔔 Real-time subscription to instantly show new requests
+  useEffect(() => {
+    if (!effectiveSessionToken) {
+      console.log('⚠️ No session token - skipping real-time subscription');
+      return;
+    }
+
+    console.log('🔔 Setting up real-time subscription for session:', effectiveSessionToken);
+    
+    const channel = supabase
+      .channel('my-requests-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'qr_requests'
+        },
+        (payload) => {
+          console.log('🔔 Real-time update detected:', payload);
+          
+          // Immediately refetch requests to show the new data
+          queryClient.invalidateQueries({ 
+            queryKey: ['guest-requests', effectiveSessionToken] 
+          });
+        }
+      )
+      .subscribe((status) => {
+        console.log('🔔 Real-time subscription status:', status);
+      });
+
+    return () => {
+      console.log('🔌 Cleaning up real-time subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [effectiveSessionToken, queryClient]);
 
   // Count unread messages across all requests
   const { data: unreadCount = 0 } = useQuery({

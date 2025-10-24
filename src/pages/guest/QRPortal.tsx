@@ -104,7 +104,88 @@ export default function QRPortal() {
       }
 
       try {
-        console.log('[QRPortal] 📡 Calling edge function qr-unified-api/validate...');
+        // 🔄 Check if we already have a valid session for this QR code
+        const storedSessionId = localStorage.getItem('qr_session_token');
+        const storedQRToken = localStorage.getItem('qr_token');
+        const storedExpiry = localStorage.getItem('qr_session_expiry');
+        
+        if (storedSessionId && storedQRToken === qrToken && storedExpiry) {
+          const expiryDate = new Date(storedExpiry);
+          const now = new Date();
+          
+          if (expiryDate > now) {
+            console.log('✅ [Session Resume] Reusing existing valid session:', storedSessionId);
+            
+            // Validate that the session still exists in the database
+            const { data: existingSession, error: sessionCheckError } = await supabase
+              .from('guest_sessions')
+              .select('id, session_id, tenant_id, qr_code_id, room_id, expires_at')
+              .eq('session_id', storedSessionId)
+              .gte('expires_at', now.toISOString())
+              .maybeSingle();
+            
+            if (existingSession && !sessionCheckError) {
+              console.log('✅ [Session Resume] Session validated in database, reusing');
+              
+              // Restore session data
+              const storedSessionData = localStorage.getItem('qr_session_data');
+              if (storedSessionData) {
+                try {
+                  const parsedData = JSON.parse(storedSessionData);
+                  setSessionData(parsedData);
+                  
+                  // Fetch QR info for this resumed session
+                  const { data: qrData } = await supabase
+                    .from('qr_codes')
+                    .select('label, qr_type')
+                    .eq('qr_token', qrToken)
+                    .single();
+                  
+                  const { data: qrSettings } = await supabase
+                    .from('qr_settings')
+                    .select('hotel_name, hotel_logo_url, primary_color, show_logo_on_qr, front_desk_phone, theme')
+                    .eq('tenant_id', existingSession.tenant_id)
+                    .maybeSingle();
+                  
+                  const roomNumber = parsedData.roomNumber;
+                  const displayLabel = qrData?.label || (roomNumber ? `Room ${roomNumber}` : 'Guest Services');
+                  
+                  const qrInfo = {
+                    qr_token: qrToken,
+                    room_number: roomNumber,
+                    hotel_name: parsedData.hotelName || qrSettings?.hotel_name || 'Hotel',
+                    services: parsedData.services || [],
+                    is_active: true,
+                    label: displayLabel,
+                    tenant_id: existingSession.tenant_id,
+                    hotel_logo: qrSettings?.show_logo_on_qr ? qrSettings?.hotel_logo_url : undefined,
+                    front_desk_phone: qrSettings?.front_desk_phone || '+2347065937769',
+                    theme: qrSettings?.theme || 'classic-luxury-gold'
+                  } as QRCodeInfo;
+                  
+                  console.log('[QRPortal] ✅ Session resumed successfully:', qrInfo);
+                  return qrInfo;
+                } catch (parseError) {
+                  console.warn('⚠️ [Session Resume] Failed to parse stored session data:', parseError);
+                }
+              }
+            } else {
+              console.log('⚠️ [Session Resume] Session expired or invalid in database, creating new session');
+              localStorage.removeItem('qr_session_token');
+              localStorage.removeItem('qr_session_expiry');
+              localStorage.removeItem('qr_session_data');
+              localStorage.removeItem('qr_token');
+            }
+          } else {
+            console.log('⚠️ [Session Resume] Session expired, creating new session');
+            localStorage.removeItem('qr_session_token');
+            localStorage.removeItem('qr_session_expiry');
+            localStorage.removeItem('qr_session_data');
+            localStorage.removeItem('qr_token');
+          }
+        }
+        
+        console.log('[QRPortal] 📡 Creating new session via edge function qr-unified-api/validate...');
         
         // Phase 2: Create timeout promise (10 second timeout)
         const timeoutPromise = new Promise((_, reject) => 
@@ -161,7 +242,8 @@ export default function QRPortal() {
         localStorage.setItem('qr_session_token', data.session.sessionId);
         localStorage.setItem('qr_session_expiry', data.session.expiresAt || '');
         localStorage.setItem('qr_session_data', JSON.stringify(sessionInfo));
-        console.log('[QRPortal] 💾 Complete session stored:', sessionInfo);
+        localStorage.setItem('qr_token', qrToken); // Store QR token for session resume validation
+        console.log('[QRPortal] 💾 Complete session stored with QR token:', sessionInfo);
 
         // Get room number if room_id exists
         let roomNumber = data.session.roomNumber || null;

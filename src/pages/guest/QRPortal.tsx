@@ -56,6 +56,67 @@ const serviceDescriptions = {
   'Feedback': 'Share your experience'
 };
 
+// 📱 Device fingerprinting for stable cross-session identification
+const getDeviceFingerprint = (): string => {
+  try {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const txt = `${navigator.userAgent}|${navigator.language}|${screen.colorDepth}|${screen.width}x${screen.height}`;
+    return btoa(txt).slice(0, 32);
+  } catch (e) {
+    console.warn('Failed to generate fingerprint:', e);
+    return 'unknown';
+  }
+};
+
+// 💾 Store session in both localStorage and sessionStorage
+const storeSession = (sessionId: string, expiresAt: string, qrToken: string, sessionInfo: any) => {
+  const sessionData = { sessionId, expiresAt, qrToken, ...sessionInfo };
+  
+  try {
+    // LocalStorage (persistent across tabs)
+    localStorage.setItem('qr_session_token', sessionId);
+    localStorage.setItem('qr_session_expiry', expiresAt);
+    localStorage.setItem('qr_session_data', JSON.stringify(sessionInfo));
+    localStorage.setItem('qr_token', qrToken);
+    localStorage.setItem('device_fingerprint', getDeviceFingerprint());
+    
+    // SessionStorage (more reliable on mobile browsers)
+    sessionStorage.setItem('qr_session_data', JSON.stringify(sessionData));
+    
+    console.log('💾 Session stored in localStorage + sessionStorage');
+  } catch (e) {
+    console.error('Failed to store session:', e);
+  }
+};
+
+// 📖 Retrieve session from sessionStorage first, then localStorage
+const getStoredSession = () => {
+  try {
+    // Try sessionStorage first (better mobile support)
+    const sessionData = sessionStorage.getItem('qr_session_data');
+    if (sessionData) {
+      const parsed = JSON.parse(sessionData);
+      console.log('✅ Retrieved session from sessionStorage');
+      return parsed;
+    }
+  } catch (e) {
+    console.warn('Failed to parse sessionStorage:', e);
+  }
+  
+  // Fall back to localStorage
+  try {
+    return {
+      sessionId: localStorage.getItem('qr_session_token'),
+      expiresAt: localStorage.getItem('qr_session_expiry'),
+      qrToken: localStorage.getItem('qr_token')
+    };
+  } catch (e) {
+    console.warn('Failed to read localStorage:', e);
+    return { sessionId: null, expiresAt: null, qrToken: null };
+  }
+};
+
 export default function QRPortal() {
   const { qrToken } = useParams<{ qrToken: string }>();
   const navigate = useNavigate();
@@ -65,28 +126,36 @@ export default function QRPortal() {
   const [showScanner, setShowScanner] = useState(!qrToken);
   const { queueOfflineRequest } = useOfflineSync();
   
-  // 🔧 Phase 1: Load session from localStorage on mount
+  // 🔧 Phase 1: Load session from storage on mount (sessionStorage first, then localStorage)
   useEffect(() => {
-    const storedSessionId = localStorage.getItem('qr_session_token');
-    const storedExpiry = localStorage.getItem('qr_session_expiry');
+    const stored = getStoredSession();
     
-    if (storedSessionId && storedExpiry) {
-      const expiryDate = new Date(storedExpiry);
+    if (stored.sessionId && stored.expiresAt) {
+      const expiryDate = new Date(stored.expiresAt);
       const now = new Date();
       
-      if (expiryDate > now) {
-        console.log('✅ Restored session from localStorage:', storedSessionId);
-        setSessionData({ 
-          sessionId: storedSessionId,
-          expiresAt: storedExpiry 
-        });
+      // Check if session is valid and matches current QR token
+      if (expiryDate > now && stored.qrToken === qrToken) {
+        // Verify device fingerprint for additional security
+        const storedFingerprint = localStorage.getItem('device_fingerprint');
+        const currentFingerprint = getDeviceFingerprint();
+        
+        if (storedFingerprint === currentFingerprint) {
+          console.log('✅ Restored valid session from storage:', stored.sessionId);
+          setSessionData({ 
+            sessionId: stored.sessionId,
+            expiresAt: stored.expiresAt 
+          });
+        } else {
+          console.log('⚠️ Device fingerprint mismatch, creating new session');
+        }
       } else {
-        console.log('⚠️ Session expired, clearing localStorage');
-        localStorage.removeItem('qr_session_token');
-        localStorage.removeItem('qr_session_expiry');
+        console.log('⚠️ Session expired or QR mismatch, clearing storage');
+        localStorage.clear();
+        sessionStorage.clear();
       }
     }
-  }, []);
+  }, [qrToken]);
   
   // Debug logging
   console.log('🔍 QRPortal render - sessionData:', sessionData, 'sessionId:', sessionData?.sessionId);
@@ -224,7 +293,7 @@ export default function QRPortal() {
 
         console.log('[QRPortal] ✅ Validation successful:', data.session);
 
-        // Phase 1: Store complete session data
+        // Phase 1: Store complete session data with enhanced persistence
         const sessionInfo = {
           sessionId: data.session.sessionId,
           tenantId: data.session.tenantId,
@@ -238,12 +307,9 @@ export default function QRPortal() {
         
         setSessionData(sessionInfo);
         
-        // Store session token in localStorage for persistent tracking
-        localStorage.setItem('qr_session_token', data.session.sessionId);
-        localStorage.setItem('qr_session_expiry', data.session.expiresAt || '');
-        localStorage.setItem('qr_session_data', JSON.stringify(sessionInfo));
-        localStorage.setItem('qr_token', qrToken); // Store QR token for session resume validation
-        console.log('[QRPortal] 💾 Complete session stored with QR token:', sessionInfo);
+        // Use enhanced storage with sessionStorage fallback
+        storeSession(data.session.sessionId, data.session.expiresAt || '', qrToken, sessionInfo);
+        console.log('[QRPortal] 💾 Session stored with device fingerprint:', sessionInfo);
 
         // Get room number if room_id exists
         let roomNumber = data.session.roomNumber || null;

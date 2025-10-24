@@ -46,119 +46,104 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
     }
   }, [sessionToken, queryClient]);
 
-  // Phase 3: Fetch all requests for this session with improved error handling
+  // 🔑 NEW STRATEGY: Fetch ALL requests for this QR code (cross-session visibility)
   const { data: requests = [], isLoading, refetch, error: requestError } = useQuery({
-    queryKey: ['guest-requests', effectiveSessionToken],
+    queryKey: ['guest-requests', qrToken, effectiveSessionToken],
     queryFn: async () => {
-      console.log('🔍 [MyRequestsPanel] Starting request fetch for token:', effectiveSessionToken);
+      console.log('🔍 [MyRequestsPanel] Fetching requests by QR token:', qrToken);
       
-      if (!effectiveSessionToken) {
-        console.warn('⚠️ No session token available for fetching requests');
+      if (!qrToken) {
+        console.warn('⚠️ No QR token available for fetching requests');
         return [];
       }
 
-      // Phase 3: Query guest_sessions using session_id (text column)
-      const { data: session, error: sessionError } = await supabase
-        .from('guest_sessions')
-        .select('id, session_id')
-        .eq('session_id', effectiveSessionToken)
-        .single();
+      // Strategy: Show ALL requests for this QR code from last 24 hours
+      // This ensures user sees their requests even if session changed on mobile
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-      if (sessionError) {
-        console.error('❌ Error fetching guest session:', sessionError);
-        throw sessionError;
-      }
-
-      if (!session) {
-        console.warn('⚠️ No guest session found for token:', effectiveSessionToken);
-        return [];
-      }
-
-      console.log('✅ Found guest session:', session.id);
-
-      // Phase 3: Use session.id (UUID) for qr_requests query
       const { data, error } = await supabase
         .from('qr_requests')
-        .select('*, room:rooms(room_number)')
-        .eq('session_id', session.id)
+        .select(`
+          *,
+          room:rooms(room_number),
+          session:guest_sessions!inner(
+            qr_code_id,
+            qr_codes!inner(qr_token)
+          )
+        `)
+        .eq('session.qr_codes.qr_token', qrToken)
+        .gte('created_at', twentyFourHoursAgo)
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ Error fetching requests:', error);
+        console.error('❌ Error fetching requests by QR token:', error);
         throw error;
       }
       
-      console.log('✅ Fetched requests:', data?.length || 0, 'requests');
+      console.log('✅ Fetched requests by QR token:', data?.length || 0, 'requests');
       return (data || []) as QRRequest[];
     },
-    enabled: !!effectiveSessionToken,
-    retry: 2, // Phase 4: Retry on failure
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000), // Exponential backoff
+    enabled: !!qrToken,
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
     refetchInterval: 10000 // Refresh every 10 seconds
   });
 
-  // 🔔 Real-time subscription to instantly show new requests - filtered by session
+  // 🔔 Real-time subscription for ALL requests on this QR code
   useEffect(() => {
-    if (!effectiveSessionToken) {
-      console.log('⚠️ No session token - skipping real-time subscription');
+    if (!qrToken) {
+      console.log('⚠️ No QR token - skipping real-time subscription');
       return;
     }
 
-    console.log('🔔 Setting up real-time subscription for session:', effectiveSessionToken);
-    
-    // First, get the session UUID to filter real-time updates
-    const setupRealtimeSubscription = async () => {
-      const { data: session } = await supabase
-        .from('guest_sessions')
-        .select('id')
-        .eq('session_id', effectiveSessionToken)
-        .single();
+    console.log('🔔 Setting up real-time subscription for QR token:', qrToken);
 
-      if (!session) {
-        console.warn('⚠️ No session found for real-time subscription');
-        return null;
-      }
-
-      console.log('🔔 Subscribing to updates for session UUID:', session.id);
-
-      const channel = supabase
-        .channel(`my-requests-realtime-${session.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*', // Listen to INSERT, UPDATE, DELETE
-            schema: 'public',
-            table: 'qr_requests',
-            filter: `session_id=eq.${session.id}` // Only listen to this session's requests
-          },
-          (payload) => {
-            console.log('🔔 Real-time update detected for our session:', payload);
+    // Subscribe to ALL changes on qr_requests table
+    // We'll filter in the callback to only refresh if it matches our QR code
+    const channel = supabase
+      .channel(`qr-requests-${qrToken}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'qr_requests'
+        },
+        async (payload) => {
+          console.log('🔔 Real-time update detected:', payload);
+          
+          // Verify this request belongs to our QR code before refreshing
+          // This prevents unnecessary refreshes for other QR codes
+          if (payload.new && 'session_id' in payload.new) {
+            const { data: session } = await supabase
+              .from('guest_sessions')
+              .select('qr_codes!inner(qr_token)')
+              .eq('id', payload.new.session_id)
+              .single();
             
-            // Immediately refetch requests to show the new data
+            if (session?.qr_codes?.qr_token === qrToken) {
+              console.log('✅ Update is for our QR code, refreshing requests');
+              queryClient.invalidateQueries({ 
+                queryKey: ['guest-requests', qrToken] 
+              });
+            }
+          } else {
+            // For deletes or updates, just refresh to be safe
             queryClient.invalidateQueries({ 
-              queryKey: ['guest-requests', effectiveSessionToken] 
+              queryKey: ['guest-requests', qrToken] 
             });
           }
-        )
-        .subscribe((status) => {
-          console.log('🔔 Real-time subscription status:', status);
-        });
-
-      return channel;
-    };
-
-    let channel: any = null;
-    setupRealtimeSubscription().then(ch => {
-      channel = ch;
-    });
+        }
+      )
+      .subscribe((status) => {
+        console.log('🔔 Real-time subscription status:', status);
+      });
 
     return () => {
-      if (channel) {
-        console.log('🔌 Cleaning up real-time subscription');
-        supabase.removeChannel(channel);
-      }
+      console.log('🔌 Cleaning up real-time subscription');
+      supabase.removeChannel(channel);
     };
-  }, [effectiveSessionToken, queryClient]);
+  }, [qrToken, queryClient]);
 
   // Count unread messages across all requests
   const { data: unreadCount = 0 } = useQuery({

@@ -90,8 +90,15 @@ export async function validateFolio(folioId: string): Promise<ValidationResult> 
     }
 
     // Validate payment status logic
+    const getExpectedPaymentStatus = (balance: number): string => {
+      if (Math.abs(balance) < 0.01) return 'paid';
+      if (balance < 0) return 'overpaid';
+      return 'partial';
+    };
+    
     const expectedStatus = getExpectedPaymentStatus(folio.balance);
-    if (folio.payment_status !== expectedStatus) {
+    const actualStatus = folio.status || 'unpaid';
+    if (actualStatus !== expectedStatus) {
       discrepancies.push({
         field: 'payment_status',
         expected: 0, // Not a number, but for consistency

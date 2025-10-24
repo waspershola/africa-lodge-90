@@ -88,6 +88,9 @@ export function useUnifiedQR() {
       guestPhone?: string;
       guestName?: string;
     }) => {
+      console.log('[⏱️ Request] Starting creation...', { requestType });
+      const startTime = performance.now();
+      
       // Get JWT token
       const token = JWTClient.getToken();
       
@@ -97,12 +100,23 @@ export function useUnifiedQR() {
         throw new Error('Session expired. Please scan QR code again.');
       }
 
-      const response = await supabase.functions.invoke('qr-unified-api/request', {
+      // Add 10-second timeout to prevent infinite loading
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout after 10 seconds')), 10000)
+      );
+      
+      const requestPromise = supabase.functions.invoke('qr-unified-api/request', {
         body: { sessionId, requestType, requestData, priority, smsEnabled, guestPhone, guestName },
         headers: token ? { 'x-session-token': token } : {}
       });
 
+      const response = await Promise.race([requestPromise, timeoutPromise]);
+
+      const duration = performance.now() - startTime;
+      console.log(`[⏱️ Request] Completed in ${duration.toFixed(0)}ms`);
+
       if (response.error) {
+        console.error('[❌ Request] Failed:', response.error);
         throw new Error(response.error.message);
       }
 
@@ -111,6 +125,10 @@ export function useUnifiedQR() {
     onSuccess: (_, variables) => {
       // Invalidate requests for this session
       queryClient.invalidateQueries({ queryKey: ['qr-requests', variables.sessionId] });
+    },
+    onError: (error) => {
+      console.error('[❌ Request] Submission failed:', error);
+      // Error message will be shown by the component
     }
   });
 

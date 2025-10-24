@@ -141,6 +141,12 @@ export default function QRPortal() {
   const [showScanner, setShowScanner] = useState(!qrToken);
   const { queueOfflineRequest } = useOfflineSync();
   
+  // Circuit breaker state for preventing infinite retries
+  const [retryCount, setRetryCount] = useState(0);
+  const [permanentError, setPermanentError] = useState<string | null>(null);
+  const [loadingTooLong, setLoadingTooLong] = useState(false);
+  const MAX_RETRIES = 3;
+  
   // ✅ Phase 3: Simplified session restoration (removed redundant validation)
   useEffect(() => {
     const stored = getStoredSession();
@@ -157,10 +163,15 @@ export default function QRPortal() {
   // Debug logging
   console.log('🔍 QRPortal render - sessionData:', sessionData, 'sessionId:', sessionData?.sessionId);
 
-  // Phase 1: Call edge function with timeout protection
+  // Phase 1: Call edge function with circuit breaker and timeout protection
   const { data: qrInfo, isLoading, error: qrError, refetch } = useQuery({
-    queryKey: ['qr-portal', qrToken],
+    queryKey: ['qr-portal', qrToken, retryCount],
     queryFn: async () => {
+      // Circuit breaker: Stop after max retries
+      if (retryCount >= MAX_RETRIES) {
+        setPermanentError('Unable to connect after multiple attempts. Please scan QR code again or check your internet connection.');
+        return null;
+      }
       console.log('[QRPortal] 🚀 Phase 1: Starting QR validation for token:', qrToken);
       const startTime = Date.now();
       
@@ -170,19 +181,19 @@ export default function QRPortal() {
       }
 
       try {
-        // ✅ Phase 3: Simplified - trust local storage if valid (removed redundant DB check)
+        // ✅ Simplified session validation - trust localStorage if valid and unexpired
         const stored = getStoredSession();
         if (stored.sessionId && stored.qrToken === qrToken && stored.expiresAt) {
           const expiryDate = new Date(stored.expiresAt);
           if (expiryDate > new Date()) {
-            console.log('✅ Reusing session from storage');
+            console.log('✅ Using cached session, skipping edge function call');
             const storedData = localStorage.getItem('qr_session_data');
             if (storedData) {
               try {
                 const parsedData = JSON.parse(storedData);
                 setSessionData(parsedData);
                 
-                // Quick fetch of QR info without session validation
+                // Just fetch static QR info (no session validation needed)
                 const { data: qrData } = await supabase
                   .from('qr_codes')
                   .select('label, qr_type, tenant_id')
@@ -208,17 +219,19 @@ export default function QRPortal() {
                   theme: qrSettings?.theme
                 } as QRCodeInfo;
               } catch (e) {
-                console.warn('Parse error:', e);
+                console.warn('[⚠️ QRPortal] Parse error, will create new session:', e);
               }
             }
+          } else {
+            console.log('📅 Session expired, creating new session');
           }
         }
         
-        console.log('[QRPortal] 📡 Creating new session via edge function qr-unified-api/validate...');
+        console.log('[QRPortal] 📡 Session expired or missing, validating with edge function...');
         
-        // ✅ Phase 3: Reduced timeout to 5 seconds (was 10s)
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout after 5 seconds')), 5000)
+        // 5-second timeout for edge function call
+        const timeoutPromise = new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Connection timeout after 5 seconds. Please check your internet and try again.')), 5000)
         );
         
         // Call the edge function with device fingerprint
@@ -320,19 +333,24 @@ export default function QRPortal() {
         console.error('[QRPortal] 💥 Query exception:', error);
         const duration = Date.now() - startTime;
         console.log(`[QRPortal] ⏱️ Failed after ${duration}ms`);
+        setRetryCount(prev => prev + 1);
         throw error;
       }
     },
-    enabled: !!qrToken,
-    retry: 2, // Phase 4: Retry twice on failure
-    retryDelay: (attemptIndex) => {
-      const delay = Math.min(1000 * 2 ** attemptIndex, 5000);
-      console.log(`[QRPortal] 🔄 Retry ${attemptIndex + 1} after ${delay}ms`);
-      return delay;
-    }, // Exponential backoff
+    enabled: !!qrToken && retryCount < MAX_RETRIES && !permanentError,
+    retry: false, // Disable React Query retry, using circuit breaker instead
     staleTime: 0,
     gcTime: 0
   });
+
+  // Show loading timeout message after 5 seconds
+  useEffect(() => {
+    if (isLoading) {
+      const timer = setTimeout(() => setLoadingTooLong(true), 5000);
+      return () => clearTimeout(timer);
+    }
+    setLoadingTooLong(false);
+  }, [isLoading]);
 
   const selectService = (service: string) => {
     setCurrentService(service);
@@ -359,13 +377,13 @@ export default function QRPortal() {
     storedToken: localStorage.getItem('qr_session_token')
   });
 
-  // Phase 2: Loading state with button visible
+  // Phase 2: Loading state with timeout warning
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 via-amber-100 to-amber-200">
         <div className="flex items-center justify-center min-h-screen p-4">
           <Card className="w-full max-w-md shadow-2xl border-amber-200/50 bg-white/90 backdrop-blur-sm">
-            <CardContent className="p-8 text-center">
+            <CardContent className="p-8 text-center space-y-4">
               <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center shadow-lg">
                 <Crown className="h-10 w-10 text-white animate-pulse" />
               </div>
@@ -375,6 +393,30 @@ export default function QRPortal() {
                 <Sparkles className="h-5 w-5 text-amber-600 animate-pulse" />
               </div>
               <p className="text-amber-700/70">Preparing your luxury experience...</p>
+              
+              {loadingTooLong && (
+                <Alert className="mt-4">
+                  <Clock className="h-4 w-4" />
+                  <AlertDescription>
+                    This is taking longer than expected. Please check your internet connection.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {loadingTooLong && (
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setRetryCount(0);
+                    setPermanentError(null);
+                    setLoadingTooLong(false);
+                    refetch();
+                  }}
+                  className="mt-4"
+                >
+                  Cancel & Retry
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -391,25 +433,46 @@ export default function QRPortal() {
     );
   }
 
-  // Phase 4: Error state with retry button
-  if (qrError) {
+  // Phase 4: Error state with circuit breaker and specific messages
+  if (qrError || permanentError) {
+    const errorMessage = permanentError || 
+      (qrError instanceof Error && qrError.message.includes('timeout')
+        ? 'Connection timeout. Please check your internet connection and try again.'
+        : qrError instanceof Error && qrError.message.includes('expired')
+        ? 'Session expired. Please scan QR code again.'
+        : qrError instanceof Error 
+        ? qrError.message 
+        : 'Unable to connect to room services. Please try again.');
+    
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 via-amber-100 to-amber-200">
         <div className="flex items-center justify-center min-h-screen p-4">
           <Card className="w-full max-w-md shadow-2xl border-red-200/50 bg-white/90 backdrop-blur-sm">
-            <CardContent className="p-8 text-center">
+            <CardContent className="p-8 text-center space-y-4">
               <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center shadow-lg">
                 <AlertCircle className="h-10 w-10 text-white" />
               </div>
-              <h3 className="text-xl font-serif text-amber-900 mb-4">Connection Failed</h3>
-              <p className="text-amber-700/70 mb-4">
-                {qrError instanceof Error ? qrError.message : 'Unable to connect to room services'}
-              </p>
+              <h3 className="text-xl font-serif text-amber-900 mb-4">
+                {permanentError ? 'Connection Failed' : 'Temporary Issue'}
+              </h3>
+              <p className="text-amber-700/70 mb-4">{errorMessage}</p>
+              {retryCount >= MAX_RETRIES && (
+                <p className="text-sm text-muted-foreground mb-2">
+                  Tried {retryCount} times without success.
+                </p>
+              )}
               <p className="text-sm text-muted-foreground mb-6">
-                Please check your internet connection and try again.
+                {permanentError 
+                  ? 'Try scanning the QR code again or contact front desk for assistance.' 
+                  : 'Please check your internet connection and try again.'}
               </p>
               <Button 
-                onClick={() => refetch()} 
+                onClick={() => {
+                  setRetryCount(0);
+                  setPermanentError(null);
+                  setLoadingTooLong(false);
+                  refetch();
+                }} 
                 className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-medium px-8 py-3 rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
               >
                 Retry Connection

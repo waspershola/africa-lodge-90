@@ -7068,13 +7068,13 @@ export type Database = {
         Returns: {
           balance: number
           charges: Json
-          credit_amount: number
           folio_id: string
           folio_number: string
-          payment_status: string
+          guest_name: string
           payments: Json
           reservation_id: string
-          tax_breakdown: Json
+          room_number: string
+          status: string
           total_charges: number
           total_payments: number
         }[]

@@ -3448,7 +3448,7 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "guest_sessions"
-            referencedColumns: ["id"]
+            referencedColumns: ["session_id"]
           },
           {
             foreignKeyName: "qr_requests_tenant_id_fkey"

@@ -6843,6 +6843,7 @@ export type Database = {
           room_id: string
         }[]
       }
+      cleanup_expired_guest_sessions: { Args: never; Returns: number }
       cleanup_old_sessions: { Args: never; Returns: number }
       consume_sms_credits: {
         Args: {

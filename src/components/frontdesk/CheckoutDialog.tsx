@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription 
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -52,7 +58,12 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId, onCheckoutComplete 
   // Fetch bill data when dialog opens
   React.useEffect(() => {
     if (open && roomId && !checkoutSession) {
+      console.log('[🔍 CheckoutDialog] Dialog opened, fetching bill for room:', roomId);
       fetchGuestBill(roomId);
+    } else if (open && !roomId) {
+      console.warn('[⚠️ CheckoutDialog] Dialog opened but no roomId provided');
+    } else if (open && checkoutSession) {
+      console.log('[ℹ️ CheckoutDialog] Checkout session already exists, skipping fetch');
     }
   }, [open, roomId, checkoutSession, fetchGuestBill]);
 
@@ -179,6 +190,7 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId, onCheckoutComplete 
   };
 
   if (loading && !checkoutSession) {
+    console.log('[ℹ️ CheckoutDialog] Showing loading state...');
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-5xl">
@@ -187,6 +199,9 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId, onCheckoutComplete 
               <Skeleton className="h-5 w-5 rounded" />
               <Skeleton className="h-6 w-32" />
             </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground mt-2">
+              Loading folio data... If this takes more than 5 seconds, please check your connection.
+            </DialogDescription>
           </DialogHeader>
           
           {/* PERFORMANCE FIX: Enhanced skeleton screens for better UX */}

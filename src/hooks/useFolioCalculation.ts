@@ -61,19 +61,36 @@ export function useFolioCalculation(folioId: string | null | undefined) {
   return useQuery({
     queryKey: ['folio-calculation', folioId],
     queryFn: async (): Promise<FolioCalculationResult | null> => {
-      if (!folioId) return null;
+      if (!folioId) {
+        console.log('[useFolioCalculation] No folioId provided');
+        return null;
+      }
 
+      console.log('[🔍 FolioCalculation] Fetching folio breakdown for:', folioId);
+      const startTime = Date.now();
+      
       const { data, error } = await supabase
         .rpc('get_folio_with_breakdown', { p_folio_id: folioId });
+      
+      const fetchTime = Date.now() - startTime;
+      console.log('[⏱️ FolioCalculation] RPC completed in:', fetchTime, 'ms');
 
       if (error) {
-        console.error('[useFolioCalculation] Error fetching folio:', error);
+        console.error('[❌ FolioCalculation] Error fetching folio:', error);
         throw error;
       }
 
       if (!data || data.length === 0) {
+        console.warn('[⚠️ FolioCalculation] No folio data returned for ID:', folioId);
         return null;
       }
+      
+      console.log('[✅ FolioCalculation] Folio data loaded:', {
+        folioNumber: data[0].folio_number,
+        balance: data[0].balance,
+        chargesCount: Array.isArray(data[0].charges) ? data[0].charges.length : 0,
+        paymentsCount: Array.isArray(data[0].payments) ? data[0].payments.length : 0
+      });
 
       const folio = data[0];
 
@@ -95,6 +112,8 @@ export function useFolioCalculation(folioId: string | null | undefined) {
     staleTime: 5000, // Consider data fresh for 5 seconds
     refetchOnMount: true,
     refetchOnWindowFocus: false,
+    retry: 2, // Retry twice on failure
+    retryDelay: 1000, // Wait 1s between retries
   });
 }
 

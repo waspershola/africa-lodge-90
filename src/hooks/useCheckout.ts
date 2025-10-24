@@ -11,12 +11,14 @@ export const useCheckout = (roomId?: string) => {
   const { user } = useAuth();
 
   const fetchGuestBill = useCallback(async (roomId: string) => {
+    console.log('[🔍 Checkout] Starting fetchGuestBill for room:', roomId);
     setLoading(true);
     setError(null);
     
     try {
       // Phase 2: Optimized reservation lookup using proper FK relationship
       // Get room with current reservation via rooms.reservation_id FK
+      console.log('[🔍 Checkout] Step 1: Fetching room data...');
       const { data: room, error: roomError } = await supabase
         .from('rooms')
         .select(`
@@ -27,13 +29,27 @@ export const useCheckout = (roomId?: string) => {
         .eq('id', roomId)
         .single();
 
-      if (roomError) throw roomError;
+      if (roomError) {
+        console.error('[❌ Checkout] Room query error:', roomError);
+        throw roomError;
+      }
+      
+      console.log('[✅ Checkout] Room data fetched:', { 
+        roomNumber: room.room_number, 
+        hasReservation: !!room.current_reservation 
+      });
 
       // Check if room has active reservation via FK
       let reservation = (room as any).current_reservation;
       
+      console.log('[🔍 Checkout] Step 2: Checking reservation...', {
+        hasReservation: !!reservation,
+        status: reservation?.status
+      });
+      
       // Fallback: If no current_reservation via FK, query by room_id for checked-in status
       if (!reservation || reservation.status !== 'checked_in') {
+        console.log('[🔍 Checkout] Fallback: Querying reservations by room_id...');
         const { data: reservations, error: reservationError } = await supabase
           .from('reservations')
           .select('*')
@@ -42,40 +58,85 @@ export const useCheckout = (roomId?: string) => {
           .order('check_in_date', { ascending: false })
           .limit(1);
 
-        if (reservationError) throw reservationError;
+        if (reservationError) {
+          console.error('[❌ Checkout] Reservation query error:', reservationError);
+          throw reservationError;
+        }
         reservation = reservations?.[0];
+        console.log('[✅ Checkout] Fallback reservation found:', !!reservation);
       }
 
       if (!reservation) {
+        console.error('[❌ Checkout] No active reservation found for room');
         throw new Error('No active reservation found for this room');
       }
+      
+      console.log('[✅ Checkout] Active reservation found:', {
+        id: reservation.id,
+        guestName: reservation.guest_name,
+        status: reservation.status
+      });
 
       // Get or create folio for this reservation
+      console.log('[🔍 Checkout] Step 3: Getting or creating folio...');
       const { data: folioId, error: folioIdError } = await supabase
         .rpc('get_or_create_folio', {
           p_reservation_id: reservation.id,
           p_tenant_id: reservation.tenant_id
         });
 
-      if (folioIdError) throw folioIdError;
+      if (folioIdError) {
+        console.error('[❌ Checkout] Folio RPC error:', folioIdError);
+        throw folioIdError;
+      }
       if (!folioId) {
+        console.error('[❌ Checkout] Folio RPC returned null');
         throw new Error('Failed to get or create folio for reservation');
       }
+      
+      console.log('[✅ Checkout] Folio ID obtained:', folioId);
 
       // Get the folio with its charges and payments in parallel
+      console.log('[🔍 Checkout] Step 4: Fetching folio details in parallel...');
+      const startTime = Date.now();
+      
       const [
         { data: folio, error: folioError },
         { data: charges, error: chargesError },
         { data: payments, error: paymentsError }
       ] = await Promise.all([
-        supabase.from('folios').select('*').eq('id', folioId).single(),
+        supabase.from('folios').select('*').eq('id', folioId).maybeSingle(),
         supabase.from('folio_charges').select('*').eq('folio_id', folioId),
         supabase.from('payments').select('*').eq('folio_id', folioId)
       ]);
+      
+      const fetchTime = Date.now() - startTime;
+      console.log('[⏱️ Checkout] Parallel fetch completed in:', fetchTime, 'ms');
 
-      if (folioError) throw folioError;
-      if (chargesError) throw chargesError;
-      if (paymentsError) throw paymentsError;
+      if (folioError) {
+        console.error('[❌ Checkout] Folio query error:', folioError);
+        throw folioError;
+      }
+      if (chargesError) {
+        console.error('[❌ Checkout] Charges query error:', chargesError);
+        throw chargesError;
+      }
+      if (paymentsError) {
+        console.error('[❌ Checkout] Payments query error:', paymentsError);
+        throw paymentsError;
+      }
+      
+      if (!folio) {
+        console.error('[❌ Checkout] No folio data returned for ID:', folioId);
+        throw new Error('Folio not found');
+      }
+      
+      console.log('[✅ Checkout] Folio data loaded:', {
+        folioNumber: folio.folio_number,
+        charges: charges?.length || 0,
+        payments: payments?.length || 0,
+        balance: folio.balance
+      });
 
       const paymentRecords: PaymentRecord[] = payments?.map(payment => ({
         id: payment.id,
@@ -163,10 +224,13 @@ export const useCheckout = (roomId?: string) => {
         checkout_status: balance <= 0 ? 'ready' : 'pending'
       };
 
+      console.log('[✅ Checkout] Session created successfully');
       setCheckoutSession(session);
     } catch (err: any) {
+      console.error('[❌ Checkout] fetchGuestBill failed:', err);
       setError(err.message || 'Failed to fetch guest bill');
     } finally {
+      console.log('[🔍 Checkout] fetchGuestBill completed, loading:', false);
       setLoading(false);
     }
   }, [user]);

@@ -7464,12 +7464,12 @@ export type Database = {
         Args: { p_device_info?: Json; p_qr_token: string }
         Returns: {
           expires_at: string
+          guest_session_id: string
           hotel_name: string
           is_valid: boolean
           qr_code_id: string
           room_number: string
           services: string[]
-          session_id: string
           tenant_id: string
         }[]
       }

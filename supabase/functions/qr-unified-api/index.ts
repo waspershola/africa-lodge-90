@@ -128,7 +128,7 @@ serve(async (req) => {
       // ✅ Log successful validation
       console.log('✅ QR Validated successfully:', {
         qrCodeId: result.qr_code_id,
-        sessionId: result.session_id,
+        sessionId: result.guest_session_id,
         tenantId: result.tenant_id,
         hasRoomNumber: !!result.room_number,
         roomNumber: result.room_number || 'Location QR (no room)',
@@ -139,7 +139,7 @@ serve(async (req) => {
 
       // Sign JWT token
       const jwt = await signJWT({
-        session_id: result.session_id,
+        session_id: result.guest_session_id,
         tenant_id: result.tenant_id,
         qr_code_id: result.qr_code_id
       });
@@ -148,7 +148,7 @@ serve(async (req) => {
         JSON.stringify({
           success: true,
           session: {
-            sessionId: result.session_id,
+            sessionId: result.guest_session_id,
             tenantId: result.tenant_id,
             qrCodeId: result.qr_code_id,
             hotelName: result.hotel_name,

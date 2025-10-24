@@ -56,15 +56,30 @@ const serviceDescriptions = {
   'Feedback': 'Share your experience'
 };
 
-// 📱 Device fingerprinting for stable cross-session identification
+// 📱 Enhanced Device Fingerprinting for stable cross-session identification
+// Combines multiple device characteristics for better uniqueness
 const getDeviceFingerprint = (): string => {
   try {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const txt = `${navigator.userAgent}|${navigator.language}|${screen.colorDepth}|${screen.width}x${screen.height}`;
-    return btoa(txt).slice(0, 32);
+    const components = [
+      navigator.userAgent,
+      navigator.language,
+      navigator.hardwareConcurrency || 0,
+      screen.width,
+      screen.height,
+      screen.colorDepth,
+      new Date().getTimezoneOffset(),
+      !!window.sessionStorage,
+      !!window.localStorage,
+      navigator.maxTouchPoints || 0,
+      navigator.platform
+    ];
+    
+    // Create stable hash from components
+    const fingerprint = btoa(components.join('|')).slice(0, 32);
+    console.log('🔐 [Device Fingerprint] Generated:', fingerprint);
+    return fingerprint;
   } catch (e) {
-    console.warn('Failed to generate fingerprint:', e);
+    console.warn('⚠️ [Device Fingerprint] Failed to generate:', e);
     return 'unknown';
   }
 };
@@ -127,6 +142,7 @@ export default function QRPortal() {
   const { queueOfflineRequest } = useOfflineSync();
   
   // 🔧 Phase 1: Load session from storage on mount (sessionStorage first, then localStorage)
+  // Server now handles device matching, so just restore if valid
   useEffect(() => {
     const stored = getStoredSession();
     
@@ -136,19 +152,11 @@ export default function QRPortal() {
       
       // Check if session is valid and matches current QR token
       if (expiryDate > now && stored.qrToken === qrToken) {
-        // Verify device fingerprint for additional security
-        const storedFingerprint = localStorage.getItem('device_fingerprint');
-        const currentFingerprint = getDeviceFingerprint();
-        
-        if (storedFingerprint === currentFingerprint) {
-          console.log('✅ Restored valid session from storage:', stored.sessionId);
-          setSessionData({ 
-            sessionId: stored.sessionId,
-            expiresAt: stored.expiresAt 
-          });
-        } else {
-          console.log('⚠️ Device fingerprint mismatch, creating new session');
-        }
+        console.log('✅ Restored valid session from storage:', stored.sessionId);
+        setSessionData({ 
+          sessionId: stored.sessionId,
+          expiresAt: stored.expiresAt 
+        });
       } else {
         console.log('⚠️ Session expired or QR mismatch, clearing storage');
         localStorage.clear();
@@ -261,17 +269,22 @@ export default function QRPortal() {
           setTimeout(() => reject(new Error('Request timeout after 10 seconds')), 10000)
         );
         
-        // Call the edge function with timeout
+        // Call the edge function with device fingerprint
+        const deviceFingerprint = getDeviceFingerprint();
         const edgeFunctionCall = supabase.functions.invoke('qr-unified-api/validate', {
           body: {
             qrToken,
             deviceInfo: {
+              fingerprint: deviceFingerprint, // CRITICAL: Server uses this to identify device
               userAgent: navigator.userAgent,
               language: navigator.language,
+              platform: navigator.platform,
               timestamp: new Date().toISOString()
             }
           }
         });
+        
+        console.log('📡 [QRPortal] Calling edge function with fingerprint:', deviceFingerprint);
         
         const { data, error } = await Promise.race([
           edgeFunctionCall,

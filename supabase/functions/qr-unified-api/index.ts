@@ -78,8 +78,13 @@ serve(async (req) => {
 
       const { qrToken } = body;
       const deviceInfo = sanitizeDeviceInfo(body.deviceInfo || {});
+      
+      // Log device fingerprint for debugging
+      console.log('🔐 [Validate] Device fingerprint:', deviceInfo.fingerprint || 'not provided');
 
       // Call database function to validate and create session
+      // The database function will use deviceInfo.fingerprint to determine
+      // whether to resume existing session or create new one
       const { data, error } = await supabaseClient.rpc('validate_qr_and_create_session', {
         p_qr_token: qrToken,
         p_device_info: deviceInfo

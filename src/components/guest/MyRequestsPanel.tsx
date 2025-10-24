@@ -35,16 +35,30 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
   
   console.log('🔍 MyRequestsPanel - sessionToken:', sessionToken, 'effectiveToken:', effectiveSessionToken);
 
-  // 🔄 Watch for sessionToken prop changes and force refetch
+  // 🔄 Enhanced session sync mechanism
+  // Clears old cache and forces refetch when session changes
   useEffect(() => {
     if (sessionToken) {
-      console.log('✅ Session token prop updated in MyRequestsPanel:', sessionToken);
-      // Force immediate query invalidation with new session
-      queryClient.invalidateQueries({ 
-        queryKey: ['guest-requests', sessionToken] 
+      console.log('✅ [Session Sync] Session token updated:', sessionToken);
+      
+      // Step 1: Clear old cached requests for different sessions
+      queryClient.removeQueries({ 
+        queryKey: ['guest-requests'], 
+        predicate: (query) => {
+          const key = query.queryKey as string[];
+          // Remove cache entries that don't match current session
+          return key[2] !== sessionToken;
+        }
       });
+      
+      // Step 2: Force immediate refetch for current QR code
+      queryClient.invalidateQueries({ 
+        queryKey: ['guest-requests', qrToken, sessionToken] 
+      });
+      
+      console.log('🔄 [Session Sync] Cache cleared and refetch triggered');
     }
-  }, [sessionToken, queryClient]);
+  }, [sessionToken, qrToken, queryClient]);
 
   // 🔑 NEW STRATEGY: Fetch ALL requests for this QR code (cross-session visibility)
   const { data: requests = [], isLoading, refetch, error: requestError } = useQuery({

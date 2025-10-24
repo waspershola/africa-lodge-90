@@ -35,6 +35,17 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
   
   console.log('🔍 MyRequestsPanel - sessionToken:', sessionToken, 'effectiveToken:', effectiveSessionToken);
 
+  // 🔄 Watch for sessionToken prop changes and force refetch
+  useEffect(() => {
+    if (sessionToken) {
+      console.log('✅ Session token prop updated in MyRequestsPanel:', sessionToken);
+      // Force immediate query invalidation with new session
+      queryClient.invalidateQueries({ 
+        queryKey: ['guest-requests', sessionToken] 
+      });
+    }
+  }, [sessionToken, queryClient]);
+
   // Phase 3: Fetch all requests for this session with improved error handling
   const { data: requests = [], isLoading, refetch, error: requestError } = useQuery({
     queryKey: ['guest-requests', effectiveSessionToken],
@@ -86,7 +97,7 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
     refetchInterval: 10000 // Refresh every 10 seconds
   });
 
-  // 🔔 Real-time subscription to instantly show new requests
+  // 🔔 Real-time subscription to instantly show new requests - filtered by session
   useEffect(() => {
     if (!effectiveSessionToken) {
       console.log('⚠️ No session token - skipping real-time subscription');
@@ -95,31 +106,57 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
 
     console.log('🔔 Setting up real-time subscription for session:', effectiveSessionToken);
     
-    const channel = supabase
-      .channel('my-requests-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to INSERT, UPDATE, DELETE
-          schema: 'public',
-          table: 'qr_requests'
-        },
-        (payload) => {
-          console.log('🔔 Real-time update detected:', payload);
-          
-          // Immediately refetch requests to show the new data
-          queryClient.invalidateQueries({ 
-            queryKey: ['guest-requests', effectiveSessionToken] 
-          });
-        }
-      )
-      .subscribe((status) => {
-        console.log('🔔 Real-time subscription status:', status);
-      });
+    // First, get the session UUID to filter real-time updates
+    const setupRealtimeSubscription = async () => {
+      const { data: session } = await supabase
+        .from('guest_sessions')
+        .select('id')
+        .eq('session_id', effectiveSessionToken)
+        .single();
+
+      if (!session) {
+        console.warn('⚠️ No session found for real-time subscription');
+        return null;
+      }
+
+      console.log('🔔 Subscribing to updates for session UUID:', session.id);
+
+      const channel = supabase
+        .channel(`my-requests-realtime-${session.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*', // Listen to INSERT, UPDATE, DELETE
+            schema: 'public',
+            table: 'qr_requests',
+            filter: `session_id=eq.${session.id}` // Only listen to this session's requests
+          },
+          (payload) => {
+            console.log('🔔 Real-time update detected for our session:', payload);
+            
+            // Immediately refetch requests to show the new data
+            queryClient.invalidateQueries({ 
+              queryKey: ['guest-requests', effectiveSessionToken] 
+            });
+          }
+        )
+        .subscribe((status) => {
+          console.log('🔔 Real-time subscription status:', status);
+        });
+
+      return channel;
+    };
+
+    let channel: any = null;
+    setupRealtimeSubscription().then(ch => {
+      channel = ch;
+    });
 
     return () => {
-      console.log('🔌 Cleaning up real-time subscription');
-      supabase.removeChannel(channel);
+      if (channel) {
+        console.log('🔌 Cleaning up real-time subscription');
+        supabase.removeChannel(channel);
+      }
     };
   }, [effectiveSessionToken, queryClient]);
 

@@ -351,6 +351,7 @@ export default function QRPortal() {
         {/* Phase 2 & 5: Show My Requests button even while loading */}
         <div className="fixed bottom-8 right-8 z-50 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <MyRequestsPanel 
+            key={localStorage.getItem('qr_session_token') || 'no-session'}
             sessionToken={localStorage.getItem('qr_session_token') || ''} 
             qrToken={qrToken || ''}
           />
@@ -389,6 +390,7 @@ export default function QRPortal() {
         {/* Phase 2: Show My Requests button even on error */}
         <div className="fixed bottom-8 right-8 z-50 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <MyRequestsPanel 
+            key={localStorage.getItem('qr_session_token') || 'no-session'}
             sessionToken={localStorage.getItem('qr_session_token') || ''} 
             qrToken={qrToken || ''}
           />
@@ -612,6 +614,7 @@ export default function QRPortal() {
         <div className="flex justify-center mb-6">
           <div className="w-full max-w-sm">
             <MyRequestsPanel 
+              key={sessionData?.sessionId || 'no-session'}
               sessionToken={sessionData?.sessionId || ''} 
               qrToken={qrInfo.qr_token} 
             />
@@ -725,6 +728,7 @@ export default function QRPortal() {
       {/* Phase 5: Fixed position "My Requests" button - always visible above the fold */}
       <div className="fixed bottom-8 right-8 z-50 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <MyRequestsPanel 
+          key={sessionData?.sessionId || localStorage.getItem('qr_session_token') || 'no-session'}
           sessionToken={sessionData?.sessionId || localStorage.getItem('qr_session_token') || ''} 
           qrToken={qrToken || ''}
         />

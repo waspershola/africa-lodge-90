@@ -24,6 +24,10 @@ export interface HotelConfig {
   room_service_menu?: any[];
 }
 
+/**
+ * DEPRECATED: This hook is kept for backward compatibility with legacy QR portal components.
+ * New implementations should use the unified QR portal at /guest/qr/{token} instead.
+ */
 export const useQRSession = (sessionToken?: string | null) => {
   const [session, setSession] = useState<QRSession | null>(null);
   const [hotelConfig, setHotelConfig] = useState<HotelConfig | null>(null);

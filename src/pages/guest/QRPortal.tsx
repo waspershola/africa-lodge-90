@@ -141,26 +141,15 @@ export default function QRPortal() {
   const [showScanner, setShowScanner] = useState(!qrToken);
   const { queueOfflineRequest } = useOfflineSync();
   
-  // 🔧 Phase 1: Load session from storage on mount (sessionStorage first, then localStorage)
-  // Server now handles device matching, so just restore if valid
+  // ✅ Phase 3: Simplified session restoration (removed redundant validation)
   useEffect(() => {
     const stored = getStoredSession();
     
-    if (stored.sessionId && stored.expiresAt) {
+    if (stored.sessionId && stored.expiresAt && stored.qrToken === qrToken) {
       const expiryDate = new Date(stored.expiresAt);
-      const now = new Date();
-      
-      // Check if session is valid and matches current QR token
-      if (expiryDate > now && stored.qrToken === qrToken) {
-        console.log('✅ Restored valid session from storage:', stored.sessionId);
-        setSessionData({ 
-          sessionId: stored.sessionId,
-          expiresAt: stored.expiresAt 
-        });
-      } else {
-        console.log('⚠️ Session expired or QR mismatch, clearing storage');
-        localStorage.clear();
-        sessionStorage.clear();
+      if (expiryDate > new Date()) {
+        console.log('✅ Restored session:', stored.sessionId);
+        setSessionData({ sessionId: stored.sessionId, expiresAt: stored.expiresAt });
       }
     }
   }, [qrToken]);
@@ -181,92 +170,55 @@ export default function QRPortal() {
       }
 
       try {
-        // 🔄 Check if we already have a valid session for this QR code
-        const storedSessionId = localStorage.getItem('qr_session_token');
-        const storedQRToken = localStorage.getItem('qr_token');
-        const storedExpiry = localStorage.getItem('qr_session_expiry');
-        
-        if (storedSessionId && storedQRToken === qrToken && storedExpiry) {
-          const expiryDate = new Date(storedExpiry);
-          const now = new Date();
-          
-          if (expiryDate > now) {
-            console.log('✅ [Session Resume] Reusing existing valid session:', storedSessionId);
-            
-            // Validate that the session still exists in the database
-            const { data: existingSession, error: sessionCheckError } = await supabase
-              .from('guest_sessions')
-              .select('id, session_id, tenant_id, qr_code_id, room_id, expires_at')
-              .eq('session_id', storedSessionId)
-              .gte('expires_at', now.toISOString())
-              .maybeSingle();
-            
-            if (existingSession && !sessionCheckError) {
-              console.log('✅ [Session Resume] Session validated in database, reusing');
-              
-              // Restore session data
-              const storedSessionData = localStorage.getItem('qr_session_data');
-              if (storedSessionData) {
-                try {
-                  const parsedData = JSON.parse(storedSessionData);
-                  setSessionData(parsedData);
-                  
-                  // Fetch QR info for this resumed session
-                  const { data: qrData } = await supabase
-                    .from('qr_codes')
-                    .select('label, qr_type')
-                    .eq('qr_token', qrToken)
-                    .single();
-                  
-                  const { data: qrSettings } = await supabase
-                    .from('qr_settings')
-                    .select('hotel_name, hotel_logo_url, primary_color, show_logo_on_qr, front_desk_phone, theme')
-                    .eq('tenant_id', existingSession.tenant_id)
-                    .maybeSingle();
-                  
-                  const roomNumber = parsedData.roomNumber;
-                  const displayLabel = qrData?.label || (roomNumber ? `Room ${roomNumber}` : 'Guest Services');
-                  
-                  const qrInfo = {
-                    qr_token: qrToken,
-                    room_number: roomNumber,
-                    hotel_name: parsedData.hotelName || qrSettings?.hotel_name || 'Hotel',
-                    services: parsedData.services || [],
-                    is_active: true,
-                    label: displayLabel,
-                    tenant_id: existingSession.tenant_id,
-                    hotel_logo: qrSettings?.show_logo_on_qr ? qrSettings?.hotel_logo_url : undefined,
-                    front_desk_phone: qrSettings?.front_desk_phone || '+2347065937769',
-                    theme: qrSettings?.theme || 'classic-luxury-gold'
-                  } as QRCodeInfo;
-                  
-                  console.log('[QRPortal] ✅ Session resumed successfully:', qrInfo);
-                  return qrInfo;
-                } catch (parseError) {
-                  console.warn('⚠️ [Session Resume] Failed to parse stored session data:', parseError);
-                }
+        // ✅ Phase 3: Simplified - trust local storage if valid (removed redundant DB check)
+        const stored = getStoredSession();
+        if (stored.sessionId && stored.qrToken === qrToken && stored.expiresAt) {
+          const expiryDate = new Date(stored.expiresAt);
+          if (expiryDate > new Date()) {
+            console.log('✅ Reusing session from storage');
+            const storedData = localStorage.getItem('qr_session_data');
+            if (storedData) {
+              try {
+                const parsedData = JSON.parse(storedData);
+                setSessionData(parsedData);
+                
+                // Quick fetch of QR info without session validation
+                const { data: qrData } = await supabase
+                  .from('qr_codes')
+                  .select('label, qr_type, tenant_id')
+                  .eq('qr_token', qrToken)
+                  .single();
+                
+                const { data: qrSettings } = await supabase
+                  .from('qr_settings')
+                  .select('hotel_name, hotel_logo_url, front_desk_phone, theme')
+                  .eq('tenant_id', qrData?.tenant_id)
+                  .maybeSingle();
+                
+                return {
+                  qr_token: qrToken,
+                  room_number: parsedData.roomNumber,
+                  hotel_name: parsedData.hotelName || qrSettings?.hotel_name || 'Hotel',
+                  services: parsedData.services || [],
+                  is_active: true,
+                  label: qrData?.label || 'Guest Services',
+                  tenant_id: qrData?.tenant_id,
+                  hotel_logo: qrSettings?.hotel_logo_url,
+                  front_desk_phone: qrSettings?.front_desk_phone,
+                  theme: qrSettings?.theme
+                } as QRCodeInfo;
+              } catch (e) {
+                console.warn('Parse error:', e);
               }
-            } else {
-              console.log('⚠️ [Session Resume] Session expired or invalid in database, creating new session');
-              localStorage.removeItem('qr_session_token');
-              localStorage.removeItem('qr_session_expiry');
-              localStorage.removeItem('qr_session_data');
-              localStorage.removeItem('qr_token');
             }
-          } else {
-            console.log('⚠️ [Session Resume] Session expired, creating new session');
-            localStorage.removeItem('qr_session_token');
-            localStorage.removeItem('qr_session_expiry');
-            localStorage.removeItem('qr_session_data');
-            localStorage.removeItem('qr_token');
           }
         }
         
         console.log('[QRPortal] 📡 Creating new session via edge function qr-unified-api/validate...');
         
-        // Phase 2: Create timeout promise (10 second timeout)
+        // ✅ Phase 3: Reduced timeout to 5 seconds (was 10s)
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout after 10 seconds')), 10000)
+          setTimeout(() => reject(new Error('Request timeout after 5 seconds')), 5000)
         );
         
         // Call the edge function with device fingerprint

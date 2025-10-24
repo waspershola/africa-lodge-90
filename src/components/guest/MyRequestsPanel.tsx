@@ -60,85 +60,39 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
     }
   }, [sessionToken, qrToken, queryClient]);
 
-  // 🔑 NEW STRATEGY: Fetch ALL requests for this QR code (cross-session visibility)
+  // ✅ OPTIMIZED: Single JOIN query instead of 3-step approach (Phase 2)
   const { data: requests = [], isLoading, refetch, error: requestError } = useQuery({
     queryKey: ['guest-requests', qrToken, effectiveSessionToken],
     queryFn: async () => {
-      console.log('🔍 [MyRequestsPanel] Fetching requests by QR token:', qrToken);
+      console.log('🚀 [MyRequestsPanel] Fetching requests with optimized query for:', qrToken);
       
       if (!qrToken) {
-        console.warn('⚠️ No QR token available for fetching requests');
+        console.warn('⚠️ No QR token available');
         return [];
       }
 
       try {
-        // Strategy: Show ALL requests for this QR code from last 24 hours
-        // Using 3-step query approach for reliability (PostgREST nested filtering issues)
         const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-
-        // Step 1: Get QR code ID from token
-        console.log('📍 Step 1: Looking up QR code ID for token:', qrToken);
-        const { data: qrCodeData, error: qrCodeError } = await supabase
-          .from('qr_codes')
-          .select('id, label')
-          .eq('qr_token', qrToken)
-          .maybeSingle();
-
-        if (qrCodeError) {
-          console.error('❌ Error fetching QR code:', qrCodeError);
-          throw qrCodeError;
-        }
-
-        if (!qrCodeData) {
-          console.warn('⚠️ QR code not found for token:', qrToken);
-          return [];
-        }
-
-        console.log('✅ Step 1: Found QR code ID:', qrCodeData.id);
-
-        // Step 2: Get all sessions for this QR code
-        console.log('📍 Step 2: Fetching sessions for QR code:', qrCodeData.id);
-        const { data: sessionsData, error: sessionsError } = await supabase
-          .from('guest_sessions')
-          .select('id')
-          .eq('qr_code_id', qrCodeData.id);
-
-        if (sessionsError) {
-          console.error('❌ Error fetching sessions:', sessionsError);
-          throw sessionsError;
-        }
-
-        const sessionIds = sessionsData?.map(s => s.id) || [];
-        console.log('✅ Step 2: Found', sessionIds.length, 'sessions for this QR code');
-
-        if (sessionIds.length === 0) {
-          console.warn('⚠️ No sessions found for QR code');
-          return [];
-        }
-
-        // Step 3: Get all requests for these sessions
-        console.log('📍 Step 3: Fetching requests for', sessionIds.length, 'sessions');
-        const { data: requestsData, error: requestsError } = await supabase
+        
+        // ✅ SINGLE OPTIMIZED QUERY with JOINs (replaces 3-step approach)
+        const { data, error } = await supabase
           .from('qr_requests')
-          .select('*, room:rooms(room_number)')
-          .in('session_id', sessionIds)
+          .select(`
+            *,
+            room:rooms(room_number),
+            guest_sessions!inner(qr_code_id, qr_codes!inner(qr_token))
+          `)
+          .eq('guest_sessions.qr_codes.qr_token', qrToken)
           .gte('created_at', twentyFourHoursAgo)
           .order('created_at', { ascending: false });
 
-        if (requestsError) {
-          console.error('❌ Error fetching requests:', requestsError);
-          throw requestsError;
+        if (error) {
+          console.error('❌ Query error:', error);
+          throw error;
         }
 
-        console.log('✅ Step 3: Fetched', requestsData?.length || 0, 'requests');
-        console.log('📊 Request details:', requestsData?.map(r => ({
-          id: r.id.slice(0, 8),
-          type: r.request_type,
-          status: r.status,
-          created: new Date(r.created_at).toLocaleTimeString()
-        })));
-
-        return (requestsData || []) as QRRequest[];
+        console.log('✅ Fetched', data?.length || 0, 'requests in single query');
+        return (data || []) as QRRequest[];
       } catch (error) {
         console.error('💥 [MyRequestsPanel] Query failed:', error);
         throw error;
@@ -146,8 +100,8 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
     },
     enabled: !!qrToken,
     retry: 2,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
-    refetchInterval: 10000 // Refresh every 10 seconds
+    retryDelay: 1000,
+    refetchInterval: 10000
   });
 
   // 🔔 Real-time subscription for ALL requests on this QR code

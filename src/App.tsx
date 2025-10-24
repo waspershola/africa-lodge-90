@@ -50,6 +50,7 @@ import ManagerRoomStatus from "./pages/manager/RoomStatus";
 import ManagerServiceRequests from "./pages/manager/ServiceRequests";
 import ManagerStaffManagement from "./pages/manager/StaffManagement";
 import ManagerQRManagement from "./pages/manager/QRManagement";
+import QRDebugPanel from "./pages/manager/QRDebugPanel";
 import ManagerDepartmentFinance from "./pages/manager/DepartmentFinance";
 import ManagerReceiptControl from "./pages/manager/ReceiptControl";
 import ManagerEventsPackages from "./pages/manager/EventsPackages";
@@ -233,6 +234,11 @@ const App = () => (
           <Route path="/debug/menu-preview" element={
             <TenantAwareLayout allowedRoles={['OWNER', 'SUPER_ADMIN']}>
               <MenuPreview />
+            </TenantAwareLayout>
+          } />
+          <Route path="/debug/qr-system" element={
+            <TenantAwareLayout allowedRoles={['OWNER', 'MANAGER', 'SUPER_ADMIN']}>
+              <QRDebugPanel />
             </TenantAwareLayout>
           } />
           

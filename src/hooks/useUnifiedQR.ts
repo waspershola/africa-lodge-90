@@ -152,7 +152,16 @@ export function useUnifiedQR() {
         return response.data.request as RequestStatus;
       },
       enabled: !!requestId,
-      // Phase 3: Removed polling - real-time updates via useUnifiedRealtime handle freshness
+      // ✅ PHASE 4: Conservative polling for active request tracking (safety net)
+      refetchInterval: (query) => {
+        // Only poll if request is not completed/cancelled
+        const data = query.state.data;
+        if (!data || data.status === 'completed' || data.status === 'cancelled') {
+          return false;
+        }
+        return 30000; // Poll every 30 seconds for active requests
+      },
+      refetchIntervalInBackground: false,
     });
   };
 
@@ -176,7 +185,9 @@ export function useUnifiedQR() {
         return response.data.requests as RequestStatus[];
       },
       enabled: !!sessionId,
-      // Phase 3: Removed polling - real-time updates via useUnifiedRealtime handle freshness
+      // ✅ PHASE 4: Conservative polling as safety net (only if real-time fails)
+      refetchInterval: 60000, // Poll every 60 seconds as backup
+      refetchIntervalInBackground: false, // Don't poll when tab is hidden
     });
   };
 

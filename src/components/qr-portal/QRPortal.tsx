@@ -52,6 +52,14 @@ const QRPortalWithErrorBoundary = () => {
     updateRequest 
   } = useQRSession(urlToken);
   
+  // ✅ PHASE 1: Enable real-time updates for QR portal
+  useUnifiedRealtime({
+    verbose: false,
+    roleBasedFiltering: false, // Guest portal doesn't use auth roles
+    enableSound: false, // Quiet for guest experience
+    enableToast: true
+  });
+  
   // Simple hook that returns connection status for this mock scenario
   const [isConnected, setIsConnected] = useState(true);
   

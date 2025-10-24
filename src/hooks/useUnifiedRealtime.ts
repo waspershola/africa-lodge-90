@@ -450,15 +450,41 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
     }, delay);
   }, [setupSubscriptions, verbose]);
 
-  // Main effect - setup and cleanup
+  // Main effect - setup and cleanup with visibility handling
   useEffect(() => {
     const channel = setupSubscriptions();
     subscriptionRef.current.channel = channel;
+
+    // ✅ PHASE 2: Handle tab visibility changes
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        if (verbose) {
+          console.log('[Realtime] Tab became visible - checking subscription health');
+        }
+        
+        // Verify subscription is still active
+        const currentChannel = subscriptionRef.current.channel;
+        if (!currentChannel || currentChannel.state !== 'joined') {
+          console.warn('[Realtime] Subscription unhealthy - reconnecting...');
+          
+          // Force reconnection
+          if (currentChannel) {
+            supabase.removeChannel(currentChannel);
+          }
+          const newChannel = setupSubscriptions();
+          subscriptionRef.current.channel = newChannel;
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       if (verbose) {
         console.log('[Realtime] Cleaning up unified subscriptions');
       }
+
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
 
       // Clear all pending invalidation timeouts (Phase 4: with counter reset)
       Object.values(invalidationTimeoutsRef.current).forEach(timeout => {
@@ -503,6 +529,31 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
       updateLastSync();
     }
   }, [isOnline, tenant?.tenant_id, queryClient, updateLastSync, verbose]);
+
+  // ✅ PHASE 2: Heartbeat monitoring to detect dead subscriptions
+  useEffect(() => {
+    if (!subscriptionRef.current.channel) return;
+    
+    const HEARTBEAT_INTERVAL = 30000; // 30 seconds
+    
+    const heartbeatTimer = setInterval(() => {
+      const channel = subscriptionRef.current.channel;
+      if (!channel) return;
+      
+      const state = channel.state;
+      if (verbose) {
+        console.log(`[Realtime Heartbeat] Channel state: ${state}`);
+      }
+      
+      // If channel is in error state or not joined, attempt reconnection
+      if (state !== 'joined' && state !== 'joining') {
+        console.warn(`[Realtime Heartbeat] Unhealthy channel detected (${state}) - reconnecting`);
+        handleConnectionError();
+      }
+    }, HEARTBEAT_INTERVAL);
+    
+    return () => clearInterval(heartbeatTimer);
+  }, [subscriptionRef.current.channel, verbose, handleConnectionError]);
 
   // Return subscription state for debugging
   return {

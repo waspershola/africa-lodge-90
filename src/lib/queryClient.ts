@@ -20,9 +20,10 @@ export const queryClient = new QueryClient({
     queries: {
       staleTime: 2 * 60 * 1000, // 2 minutes - optimized for real-time apps
       gcTime: 10 * 60 * 1000, // 10 minutes - better cache retention
-      refetchOnWindowFocus: false, // Prevent constant refetching
+      refetchOnWindowFocus: true, // ✅ PHASE 3: Refetch when tab gets focus (safety net)
       refetchOnMount: false, // Prevent cache thrashing on navigation
       retry: 1, // Single retry for faster failure detection
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // ✅ Exponential backoff
     },
   },
 });

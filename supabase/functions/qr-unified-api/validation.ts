@@ -53,8 +53,8 @@ export function sanitizeDeviceInfo(deviceInfo: any): Record<string, any> {
     return {};
   }
   
-  // Only allow specific safe fields
-  const allowedFields = ['userAgent', 'language', 'platform', 'screenWidth', 'screenHeight'];
+  // Only allow specific safe fields - CRITICAL: fingerprint must be included!
+  const allowedFields = ['fingerprint', 'userAgent', 'language', 'platform', 'screenWidth', 'screenHeight', 'timestamp'];
   const sanitized: Record<string, any> = {};
   
   for (const field of allowedFields) {

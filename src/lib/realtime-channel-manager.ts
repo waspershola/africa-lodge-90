@@ -72,11 +72,12 @@ class RealtimeChannelManager {
     
     // PHASE F.3: Immediately update status when first channel registers
     if (this.channels.size === 1) {
-      console.log('[RealtimeChannelManager] First channel registered - updating status to connected');
+      console.log('[RealtimeChannelManager] 🎯 First channel registered - updating status to connected');
+      console.log(`[RealtimeChannelManager] Channel ID: ${id}, Type: ${metadata?.type || 'unknown'}`);
       this.updateStatus('connected');
     }
     
-    console.log(`[RealtimeChannelManager] Registered channel: ${id} (type: ${metadata?.type || 'unknown'}, total: ${this.channels.size})`);
+    console.log(`[RealtimeChannelManager] ✅ Registered channel: ${id} (type: ${metadata?.type || 'unknown'}, total: ${this.channels.size})`);
   }
   
   /**

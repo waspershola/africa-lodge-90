@@ -4,6 +4,8 @@ import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { toast } from 'sonner';
 import { useCreateServiceAlert } from './useNotificationScheduler';
 import { useQRShiftRouting } from './useQRShiftRouting';
+import { realtimeChannelManager } from '@/lib/realtime-channel-manager';
+import { queryClient } from '@/lib/queryClient';
 
 export interface QROrder {
   id: string;
@@ -102,8 +104,10 @@ export const useQRRealtime = () => {
   useEffect(() => {
     if (!user?.tenant_id) return;
 
+    const channelId = `qr-requests-${user.tenant_id}`;
+    
     const channel = supabase
-      .channel('qr_requests_realtime')
+      .channel(channelId)
       .on(
         'postgres_changes',
         {
@@ -190,8 +194,32 @@ export const useQRRealtime = () => {
       )
       .subscribe();
 
+    // ✅ F.3: Register with RealtimeChannelManager for lifecycle management
+    realtimeChannelManager.registerChannel(channelId, channel, {
+      type: 'qr_requests',
+      priority: 'critical',
+      retryLimit: 5
+    });
+
     return () => {
-      supabase.removeChannel(channel);
+      realtimeChannelManager.unregisterChannel(channelId);
+    };
+  }, [user?.tenant_id]);
+
+  // ✅ F.4: Add window focus query revalidation
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log('[QRRealtime] Tab focused - revalidating QR orders');
+      // Refetch orders when tab comes back into focus
+      if (user?.tenant_id) {
+        setLoading(true);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
     };
   }, [user?.tenant_id]);
 

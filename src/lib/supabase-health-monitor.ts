@@ -8,6 +8,7 @@ class SupabaseHealthMonitor {
   private lastInvalidation: Date | null = null;
   private consecutiveFailures: number = 0;
   private currentInterval: number = 300000; // Start at 5 minutes
+  private sessionRefreshInterval: NodeJS.Timeout | null = null;
   
   private listeners: Array<(healthy: boolean) => void> = [];
   
@@ -30,6 +31,12 @@ class SupabaseHealthMonitor {
     // Listen for online/offline events
     window.addEventListener('online', this.handleOnline);
     window.addEventListener('offline', this.handleOffline);
+    
+    // ✅ F.7: Refresh session every 10 minutes to prevent expiry
+    this.sessionRefreshInterval = setInterval(() => {
+      console.log('[Supabase Health] Proactively refreshing session (10min interval)');
+      supabase.auth.refreshSession();
+    }, 10 * 60 * 1000);
   }
   
   private scheduleNextCheck() {
@@ -48,6 +55,10 @@ class SupabaseHealthMonitor {
     if (this.healthCheckInterval) {
       clearInterval(this.healthCheckInterval);
       this.healthCheckInterval = null;
+    }
+    if (this.sessionRefreshInterval) {
+      clearInterval(this.sessionRefreshInterval);
+      this.sessionRefreshInterval = null;
     }
     document.removeEventListener('visibilitychange', this.handleVisibilityChange);
     window.removeEventListener('online', this.handleOnline);

@@ -17,23 +17,6 @@ export const ConnectionStatusBanner = () => {
   const realtimeHealthyRef = useRef(true);
   const autoDismissTimer = useRef<NodeJS.Timeout | null>(null);
   
-  // Update banner visibility based on connection states
-  const updateBannerVisibility = useCallback(() => {
-    const shouldShow = !isOnlineRef.current || !realtimeHealthyRef.current;
-    setShowBanner(shouldShow);
-    
-    // Auto-dismiss banner 3 seconds after both connections are healthy
-    if (!shouldShow && autoDismissTimer.current === null) {
-      autoDismissTimer.current = setTimeout(() => {
-        setShowBanner(false);
-        autoDismissTimer.current = null;
-      }, 3000);
-    } else if (shouldShow && autoDismissTimer.current) {
-      clearTimeout(autoDismissTimer.current);
-      autoDismissTimer.current = null;
-    }
-  }, []);
-  
   useEffect(() => {
     let mounted = true;
     
@@ -53,21 +36,60 @@ export const ConnectionStatusBanner = () => {
     // Monitor HTTP connection health
     const unsubscribeHealth = supabaseHealthMonitor.onHealthChange((healthy) => {
       if (!mounted) return;
+      console.log(`[ConnectionBanner] 🌐 HTTP health: ${healthy ? 'healthy' : 'unhealthy'}`);
+      
+      // ✅ F.5: Update ref FIRST, then check visibility inline
       isOnlineRef.current = healthy;
       setIsOnline(healthy);
       if (healthy) {
         setReconnecting(false);
       }
-      updateBannerVisibility();
+      
+      // ✅ Inline visibility check to avoid stale refs
+      const shouldShow = !isOnlineRef.current || !realtimeHealthyRef.current;
+      setShowBanner(shouldShow);
+      
+      // Auto-dismiss logic with proper timer cleanup
+      if (autoDismissTimer.current) {
+        clearTimeout(autoDismissTimer.current);
+        autoDismissTimer.current = null;
+      }
+      
+      if (!shouldShow) {
+        autoDismissTimer.current = setTimeout(() => {
+          setShowBanner(false);
+          autoDismissTimer.current = null;
+        }, 3000);
+      }
     });
     
     // Monitor realtime channel health
     const unsubscribeRealtime = realtimeChannelManager.onStatusChange((status) => {
       if (!mounted) return;
+      console.log(`[ConnectionBanner] 📡 Realtime status: ${status}`);
+      
       const healthy = status === 'connected';
+      
+      // ✅ F.5: Update ref FIRST, then check visibility inline
       realtimeHealthyRef.current = healthy;
       setRealtimeHealthy(healthy);
-      updateBannerVisibility();
+      
+      // ✅ Inline visibility check to avoid stale refs
+      const shouldShow = !isOnlineRef.current || !realtimeHealthyRef.current;
+      setShowBanner(shouldShow);
+      
+      // Auto-dismiss logic with proper timer cleanup
+      if (autoDismissTimer.current) {
+        clearTimeout(autoDismissTimer.current);
+        autoDismissTimer.current = null;
+      }
+      
+      if (!shouldShow) {
+        autoDismissTimer.current = setTimeout(() => {
+          setShowBanner(false);
+          autoDismissTimer.current = null;
+        }, 3000);
+      }
     });
     
     return () => {
@@ -78,7 +100,7 @@ export const ConnectionStatusBanner = () => {
       unsubscribeHealth();
       unsubscribeRealtime();
     };
-  }, [updateBannerVisibility]);
+  }, []);
   
   const handleRetry = async () => {
     setReconnecting(true);

@@ -54,7 +54,7 @@ export function MultiTenantAuthProvider({ children }: MultiTenantAuthProviderPro
         }
       };
 
-      await supabase.from('audit_log').insert([auditEntry]);
+      await supabase.from('audit_log').insert([auditEntry as any]);
     } catch (err) {
       console.error('Error logging audit event:', err);
     }

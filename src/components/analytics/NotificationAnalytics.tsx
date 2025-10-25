@@ -90,7 +90,7 @@ export function NotificationAnalytics() {
       const { data: userData } = await supabase
         .from('users')
         .select('tenant_id')
-        .eq('id', user.id)
+        .eq('id' as any, user.id)
         .single();
 
       if (!userData?.tenant_id) return;
@@ -114,11 +114,11 @@ export function NotificationAnalytics() {
 
       // Calculate overall stats
       const totalEvents = events?.length || 0;
-      const completedEvents = events?.filter(e => e.status === 'completed').length || 0;
-      const failedEvents = events?.filter(e => e.status === 'failed').length || 0;
-      const pendingEvents = events?.filter(e => e.status === 'pending').length || 0;
+      const completedEvents = events?.filter((e: any) => e.status === 'completed').length || 0;
+      const failedEvents = events?.filter((e: any) => e.status === 'failed').length || 0;
+      const pendingEvents = events?.filter((e: any) => e.status === 'pending').length || 0;
 
-      const totalSMSCost = smsLogs?.reduce((acc, log) => acc + (log.credits_used || 0) * 5, 0) || 0; // ₦5 per SMS
+      const totalSMSCost = smsLogs?.reduce((acc: number, log: any) => acc + (log.credits_used || 0) * 5, 0) || 0; // ₦5 per SMS
       const deliveryRate = totalEvents > 0 ? (completedEvents / totalEvents) * 100 : 0;
 
       setStats({
@@ -135,10 +135,10 @@ export function NotificationAnalytics() {
       // Calculate channel stats
       const channels = ['sms', 'email', 'in_app'];
       const channelData: ChannelStats[] = channels.map(channel => {
-        const channelEvents = events?.filter(e => e.channels.includes(channel)) || [];
+        const channelEvents = events?.filter((e: any) => e.channels?.includes(channel)) || [];
         const sent = channelEvents.length;
-        const delivered = channelEvents.filter(e => e.status === 'completed').length;
-        const failed = channelEvents.filter(e => e.status === 'failed').length;
+        const delivered = channelEvents.filter((e: any) => e.status === 'completed').length;
+        const failed = channelEvents.filter((e: any) => e.status === 'failed').length;
         const cost = channel === 'sms' ? sent * 5 : 0; // SMS costs ₦5 each
         
         return {
@@ -160,16 +160,16 @@ export function NotificationAnalytics() {
         date.setDate(date.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
         
-        const dayEvents = events?.filter(e => 
-          e.created_at.split('T')[0] === dateStr
+        const dayEvents = events?.filter((e: any) => 
+          e.created_at?.split('T')[0] === dateStr
         ) || [];
         
         timeData.push({
           date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          sms: dayEvents.filter(e => e.channels.includes('sms')).length,
-          email: dayEvents.filter(e => e.channels.includes('email')).length,
-          delivered: dayEvents.filter(e => e.status === 'completed').length,
-          failed: dayEvents.filter(e => e.status === 'failed').length
+          sms: dayEvents.filter((e: any) => e.channels?.includes('sms')).length,
+          email: dayEvents.filter((e: any) => e.channels?.includes('email')).length,
+          delivered: dayEvents.filter((e: any) => e.status === 'completed').length,
+          failed: dayEvents.filter((e: any) => e.status === 'failed').length
         });
       }
 

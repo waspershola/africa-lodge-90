@@ -298,9 +298,9 @@ export const AddServiceDialog = ({
       const { data: reservation, error: resError } = await supabase
         .from('reservations')
         .select('id, status')
-        .eq('room_id', room.id)
-        .eq('tenant_id', tenantId)
-        .in('status', ['checked_in', 'confirmed'])
+        .eq('room_id' as any, room.id)
+        .eq('tenant_id' as any, tenantId)
+        .in('status' as any, ['checked_in', 'confirmed'])
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -314,9 +314,9 @@ export const AddServiceDialog = ({
       const { data: folio, error: folioError } = await supabase
         .from('folios')
         .select('id')
-        .eq('reservation_id', reservation.id)
-        .eq('tenant_id', tenantId)
-        .eq('status', 'open')
+        .eq('reservation_id' as any, reservation.id)
+        .eq('tenant_id' as any, tenantId)
+        .eq('status' as any, 'open')
         .maybeSingle();
 
       if (folioError) throw folioError;
@@ -366,7 +366,7 @@ export const AddServiceDialog = ({
 
       const { error: chargesError } = await supabase
         .from('folio_charges')
-        .insert(charges);
+        .insert(charges as any);
 
       if (chargesError) throw chargesError;
 

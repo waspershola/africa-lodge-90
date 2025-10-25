@@ -372,6 +372,28 @@ export const QuickGuestCapture = ({
       return;
     }
 
+    // G.2+ DEFENSIVE REHYDRATION: Restore form data if lost during tab switch
+    if (guestMode === 'existing' && selectedGuest && !formData.guestName.trim()) {
+      console.log('[Form Rehydration] Restoring guest data from selected guest');
+      setFormData(prev => ({
+        ...prev,
+        guestName: selectedGuest.name,
+        phone: selectedGuest.phone,
+        email: selectedGuest.email,
+        nationality: selectedGuest.nationality || '',
+        sex: selectedGuest.sex || '',
+        occupation: selectedGuest.occupation || '',
+        idType: selectedGuest.id_type || '',
+        idNumber: selectedGuest.id_number || '',
+      }));
+      
+      toast({
+        title: "Form Data Restored",
+        description: "Guest information has been restored. Please review and submit again.",
+      });
+      return;
+    }
+
     if (!formData.guestName.trim()) {
       toast({
         title: "Validation Error",

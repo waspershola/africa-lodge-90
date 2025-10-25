@@ -14,12 +14,15 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // G.6: Fallback timeout - don't block app indefinitely
+    // G.6+: Only run timeout once on initial mount, not on every loading change
     const loadingTimeout = setTimeout(() => {
-      if (loading) {
-        console.warn('[Auth] Loading timeout - forcing ready state');
-        setLoading(false);
-      }
+      setLoading((currentLoading) => {
+        if (currentLoading) {
+          console.warn('[Auth] Loading timeout - forcing ready state');
+          return false;
+        }
+        return currentLoading;
+      });
     }, 15000); // 15 second max loading time
 
     // Get initial session
@@ -74,7 +77,7 @@ export const useAuth = () => {
       clearTimeout(loadingTimeout);
       subscription.unsubscribe();
     };
-  }, [loading]);
+  }, []); // ✅ Empty deps - run only once on mount
 
   return { user, loading };
 };

@@ -11,6 +11,7 @@
 
 import { queryClient } from './queryClient';
 import { supabaseHealthMonitor } from './supabase-health-monitor';
+import { realtimeChannelManager } from './realtime-channel-manager';
 
 type QueryPriority = 'critical' | 'high' | 'normal';
 
@@ -121,7 +122,7 @@ class ConnectionManager {
   /**
    * Handle tab becoming visible - check for stale data
    */
-  private handleTabBecameVisible() {
+  private async handleTabBecameVisible() {
     console.log('[ConnectionManager] Tab became visible');
 
     // Clear any pending visibility timeout
@@ -130,8 +131,23 @@ class ConnectionManager {
     }
 
     // Debounce: wait 500ms before invalidating (prevents thrashing)
-    this.visibilityTimeout = setTimeout(() => {
+    this.visibilityTimeout = setTimeout(async () => {
+      // STEP 1: Check Supabase connection health
+      const isHealthy = await supabaseHealthMonitor.checkHealth();
+      
+      if (!isHealthy) {
+        console.warn('[ConnectionManager] Connection unhealthy - forcing reconnect');
+        await supabaseHealthMonitor.forceReconnect();
+      }
+      
+      // STEP 2: Reconnect all realtime channels BEFORE query invalidation
+      console.log('[ConnectionManager] Reconnecting realtime channels...');
+      await realtimeChannelManager.reconnectAll();
+      
+      // STEP 3: Invalidate stale critical queries (existing logic)
+      console.log('[ConnectionManager] Invalidating stale critical queries...');
       this.invalidateStaleCriticalQueries();
+      
       this.visibilityTimeout = null;
     }, 500);
   }
@@ -152,15 +168,36 @@ class ConnectionManager {
   /**
    * Handle connection restored - intelligent invalidation
    */
-  private handleConnectionRestored() {
+  private async handleConnectionRestored() {
     // Debounce reconnection - wait 2 seconds
     if (this.reconnectDebounceTimeout) {
       clearTimeout(this.reconnectDebounceTimeout);
     }
 
-    this.reconnectDebounceTimeout = setTimeout(() => {
-      console.log('[ConnectionManager] Executing prioritized invalidation');
-      this.executePrioritizedInvalidation();
+    this.reconnectDebounceTimeout = setTimeout(async () => {
+      if (this.isReconnecting) {
+        console.log('[ConnectionManager] Already reconnecting');
+        return;
+      }
+      
+      this.isReconnecting = true;
+      console.log('[ConnectionManager] Connection restored - full recovery sequence');
+      
+      try {
+        // STEP 1: Reconnect realtime channels FIRST (critical for live updates)
+        console.log('[ConnectionManager] Reconnecting realtime channels...');
+        await realtimeChannelManager.reconnectAll();
+        
+        // STEP 2: Wait 200ms for channels to stabilize
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // STEP 3: Execute prioritized query invalidation
+        console.log('[ConnectionManager] Executing prioritized invalidation');
+        await this.executePrioritizedInvalidation();
+      } finally {
+        this.isReconnecting = false;
+      }
+      
       this.reconnectDebounceTimeout = null;
     }, 2000);
   }
@@ -285,6 +322,9 @@ class ConnectionManager {
     if (this.visibilityTimeout) {
       clearTimeout(this.visibilityTimeout);
     }
+    
+    // Destroy realtime channel manager
+    realtimeChannelManager.destroy();
   }
 }
 

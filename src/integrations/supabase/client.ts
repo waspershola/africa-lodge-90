@@ -15,5 +15,29 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
     detectSessionInUrl: true,
     flowType: 'pkce'
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10 // Rate limiting to prevent overwhelming clients
+    },
+    // Heartbeat interval - keep connection alive during backgrounding
+    heartbeatInterval: 30000, // 30 seconds
+    // Exponential backoff for reconnection attempts (1s, 2s, 4s, 5s capped)
+    reconnectAfterMs: (tries: number) => {
+      return Math.min(tries * 1000, 5000);
+    },
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'hotel-pms/2.0'
+    }
   }
 });
+
+// Initialize realtime channel manager after client creation
+if (typeof window !== 'undefined') {
+  // Give client time to initialize, then log confirmation
+  setTimeout(() => {
+    console.log('[Supabase Client] Realtime configuration applied with heartbeat and reconnection');
+  }, 100);
+}

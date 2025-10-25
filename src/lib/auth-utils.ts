@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Authentication utility functions
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';

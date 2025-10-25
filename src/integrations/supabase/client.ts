@@ -21,7 +21,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       eventsPerSecond: 10 // Rate limiting to prevent overwhelming clients
     },
     // Heartbeat interval - keep connection alive during backgrounding
-    heartbeatInterval: 30000, // 30 seconds
+    heartbeatIntervalMs: 30000, // 30 seconds
     // Exponential backoff for reconnection attempts (1s, 2s, 4s, 5s capped)
     reconnectAfterMs: (tries: number) => {
       return Math.min(tries * 1000, 5000);

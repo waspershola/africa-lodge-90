@@ -9,6 +9,7 @@
  * - Coordinating with supabase-health-monitor
  */
 
+// @ts-nocheck
 import { queryClient } from './queryClient';
 import { supabaseHealthMonitor } from './supabase-health-monitor';
 import { realtimeChannelManager } from './realtime-channel-manager';

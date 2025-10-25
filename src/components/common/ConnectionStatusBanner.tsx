@@ -11,27 +11,29 @@ export const ConnectionStatusBanner = () => {
   const [realtimeHealthy, setRealtimeHealthy] = useState(true);
   const [reconnecting, setReconnecting] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
   
   // Use refs to track connection state without causing re-renders
   const isOnlineRef = useRef(true);
   const realtimeHealthyRef = useRef(true);
   const autoDismissTimer = useRef<NodeJS.Timeout | null>(null);
+  const disconnectedSince = useRef<number | null>(null);
   
   useEffect(() => {
     let mounted = true;
     
-    // Phase 1 Fix: Extended grace period (2s) to allow all channels to register
-    // Prevents premature banner display during initial connection
+    // Phase F.7: Extended grace period (5s) to prevent false alarms
     Promise.all([
       supabaseHealthMonitor.checkHealth(),
-      new Promise(resolve => setTimeout(resolve, 2000))
+      new Promise(resolve => setTimeout(resolve, 5000))
     ]).then(([isHealthy]) => {
       if (!mounted) return;
       // Only show banner if connection is genuinely unhealthy after grace period
       if (!isHealthy) {
-        console.warn('[ConnectionBanner] Initial health check failed after grace period');
+        console.warn('[ConnectionBanner] Initial health check failed after 5s grace period');
         setIsOnline(false);
         isOnlineRef.current = false;
+        disconnectedSince.current = Date.now();
         setShowBanner(true);
       } else {
         console.log('[ConnectionBanner] Initial health check passed');
@@ -39,6 +41,7 @@ export const ConnectionStatusBanner = () => {
     }).catch((error) => {
       console.error('[ConnectionBanner] Initial health check error:', error);
       if (mounted) {
+        disconnectedSince.current = Date.now();
         setShowBanner(true);
       }
     });
@@ -48,28 +51,39 @@ export const ConnectionStatusBanner = () => {
       if (!mounted) return;
       console.log(`[ConnectionBanner] 🌐 HTTP health: ${healthy ? 'healthy' : 'unhealthy'}`);
       
-      // ✅ F.5: Update ref FIRST, then check visibility inline
+      // Update refs and state
       isOnlineRef.current = healthy;
       setIsOnline(healthy);
+      
       if (healthy) {
         setReconnecting(false);
+        setReconnectAttempts(0);
+        disconnectedSince.current = null;
+      } else {
+        if (!disconnectedSince.current) {
+          disconnectedSince.current = Date.now();
+        }
       }
       
-      // ✅ Inline visibility check to avoid stale refs
-      const shouldShow = !isOnlineRef.current || !realtimeHealthyRef.current;
+      // F.7: Only show banner if disconnected for >5 seconds
+      const timeSinceDisconnect = disconnectedSince.current 
+        ? Date.now() - disconnectedSince.current 
+        : 0;
+      
+      const shouldShow = (!isOnlineRef.current || !realtimeHealthyRef.current) && timeSinceDisconnect > 5000;
       setShowBanner(shouldShow);
       
-      // Auto-dismiss logic with proper timer cleanup
+      // F.7: Auto-dismiss with 5s delay + fade-out
       if (autoDismissTimer.current) {
         clearTimeout(autoDismissTimer.current);
         autoDismissTimer.current = null;
       }
       
-      if (!shouldShow) {
+      if (!shouldShow && healthy) {
         autoDismissTimer.current = setTimeout(() => {
           setShowBanner(false);
           autoDismissTimer.current = null;
-        }, 3000);
+        }, 5000);
       }
     });
     
@@ -80,25 +94,35 @@ export const ConnectionStatusBanner = () => {
       
       const healthy = status === 'connected';
       
-      // ✅ F.5: Update ref FIRST, then check visibility inline
+      // Update refs and state
       realtimeHealthyRef.current = healthy;
       setRealtimeHealthy(healthy);
       
-      // ✅ Inline visibility check to avoid stale refs
-      const shouldShow = !isOnlineRef.current || !realtimeHealthyRef.current;
+      if (!healthy && !disconnectedSince.current) {
+        disconnectedSince.current = Date.now();
+      } else if (healthy) {
+        disconnectedSince.current = null;
+      }
+      
+      // F.7: Only show banner if disconnected for >5 seconds
+      const timeSinceDisconnect = disconnectedSince.current 
+        ? Date.now() - disconnectedSince.current 
+        : 0;
+      
+      const shouldShow = (!isOnlineRef.current || !realtimeHealthyRef.current) && timeSinceDisconnect > 5000;
       setShowBanner(shouldShow);
       
-      // Auto-dismiss logic with proper timer cleanup
+      // F.7: Auto-dismiss with 5s delay
       if (autoDismissTimer.current) {
         clearTimeout(autoDismissTimer.current);
         autoDismissTimer.current = null;
       }
       
-      if (!shouldShow) {
+      if (!shouldShow && healthy) {
         autoDismissTimer.current = setTimeout(() => {
           setShowBanner(false);
           autoDismissTimer.current = null;
-        }, 3000);
+        }, 5000);
       }
     });
     
@@ -114,25 +138,48 @@ export const ConnectionStatusBanner = () => {
   
   const handleRetry = async () => {
     setReconnecting(true);
+    setReconnectAttempts(prev => prev + 1);
     
-    // Check HTTP health
-    await supabaseHealthMonitor.checkHealth();
-    
-    // Reconnect realtime channels
-    await realtimeChannelManager.reconnectAll();
-    
-    // Refetch active queries
-    queryClient.refetchQueries({ type: 'active' });
-    
-    setReconnecting(false);
+    try {
+      // Check HTTP health
+      await supabaseHealthMonitor.checkHealth();
+      
+      // Reconnect realtime channels
+      await realtimeChannelManager.reconnectAll();
+      
+      // F.6: Invalidate and refetch critical queries
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0] as string;
+          return ['guests', 'rooms', 'reservations', 'qrRequests'].includes(key);
+        }
+      });
+      
+      // Refetch active queries
+      await queryClient.refetchQueries({ type: 'active', stale: true });
+      
+      console.log('[ConnectionBanner] Reconnection complete, queries refreshed');
+    } catch (error) {
+      console.error('[ConnectionBanner] Reconnection failed:', error);
+    } finally {
+      setReconnecting(false);
+    }
   };
   
   if (!showBanner) return null;
   
-  // Determine message based on what's down
-  const message = !isOnline 
-    ? "Connection lost. Some features may not work until reconnected."
-    : "Live updates paused. Reconnecting...";
+  // F.7: Enhanced message with reconnection progress
+  const getStatusMessage = () => {
+    if (reconnecting && reconnectAttempts > 0) {
+      return `Reconnecting (attempt ${reconnectAttempts}/10)...`;
+    }
+    if (!isOnline) {
+      return "Connection lost. Some features may not work until reconnected.";
+    }
+    return "Live updates paused. Reconnecting...";
+  };
+  
+  const message = getStatusMessage();
   
   return (
     <Alert 

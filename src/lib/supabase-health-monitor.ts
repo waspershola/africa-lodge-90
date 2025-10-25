@@ -9,6 +9,9 @@ class SupabaseHealthMonitor {
   private consecutiveFailures: number = 0;
   private currentInterval: number = 300000; // Start at 5 minutes
   private sessionRefreshInterval: NodeJS.Timeout | null = null;
+  private reconnectionFailures: number = 0;
+  private circuitBreakerActive: boolean = false;
+  private circuitBreakerTimeout: NodeJS.Timeout | null = null;
   
   private listeners: Array<(healthy: boolean) => void> = [];
   
@@ -59,6 +62,10 @@ class SupabaseHealthMonitor {
     if (this.sessionRefreshInterval) {
       clearInterval(this.sessionRefreshInterval);
       this.sessionRefreshInterval = null;
+    }
+    if (this.circuitBreakerTimeout) {
+      clearTimeout(this.circuitBreakerTimeout);
+      this.circuitBreakerTimeout = null;
     }
     document.removeEventListener('visibilitychange', this.handleVisibilityChange);
     window.removeEventListener('online', this.handleOnline);
@@ -201,37 +208,79 @@ class SupabaseHealthMonitor {
       return;
     }
     
+    // F.4: Circuit breaker - pause after 3 consecutive failures
+    if (this.circuitBreakerActive) {
+      console.warn('[Supabase Health] Circuit breaker active - skipping reconnection');
+      return;
+    }
+    
     this.reconnecting = true;
     console.log('[Supabase Health] 🔄 Force reconnecting...');
     
+    // F.4: Timeout wrapper - maximum 15 seconds for entire reconnection
+    const timeoutPromise = new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error('Reconnection timeout after 15s')), 15000)
+    );
+    
     try {
-      // Only refresh auth session - no database queries
-      const { data, error } = await supabase.auth.refreshSession();
+      await Promise.race([
+        this.attemptReconnection(),
+        timeoutPromise
+      ]);
       
-      if (error) {
-        console.error('[Supabase Health] Session refresh failed:', error);
-        throw error;
-      }
-      
-      console.log('[Supabase Health] Session refreshed successfully');
-      
-      // Wait 2 seconds for connection to stabilize
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mark as healthy without additional health check
-      this.consecutiveFailures = 0;
-      this.currentInterval = 300000; // Reset to 5 minutes
-      this.scheduleNextCheck();
-      this.lastHealthCheck = new Date();
-      
+      // Success - reset failure counter
+      this.reconnectionFailures = 0;
       console.log('[Supabase Health] ✅ Reconnection successful');
       this.notifyListeners(true);
     } catch (error) {
       console.error('[Supabase Health] Reconnection failed:', error);
+      this.reconnectionFailures++;
+      
+      // F.4: Activate circuit breaker after 3 failures
+      if (this.reconnectionFailures >= 3) {
+        console.warn('[Supabase Health] ⚠️ Circuit breaker activated - pausing for 60s');
+        this.circuitBreakerActive = true;
+        this.circuitBreakerTimeout = setTimeout(() => {
+          this.circuitBreakerActive = false;
+          this.reconnectionFailures = 0;
+          console.log('[Supabase Health] Circuit breaker reset');
+        }, 60000);
+      }
+      
       this.notifyListeners(false);
     } finally {
+      // F.4: Force-clear reconnecting flag to prevent deadlock
       this.reconnecting = false;
     }
+  }
+  
+  private async attemptReconnection() {
+    // F.4: Check if user is authenticated first
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !userData.user) {
+      console.log('[Supabase Health] No active session - skipping token refresh');
+      return;
+    }
+    
+    // F.4: Only refresh session if user exists
+    const { data, error } = await supabase.auth.refreshSession();
+    
+    if (error) {
+      console.error('[Supabase Health] Session refresh failed:', error);
+      throw error;
+    }
+    
+    console.log('[Supabase Health] Session refreshed successfully');
+    
+    // Wait 2 seconds for connection to stabilize
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Mark as healthy without additional health check
+    this.consecutiveFailures = 0;
+    this.currentInterval = 300000; // Reset to 5 minutes
+    this.scheduleNextCheck();
+    this.lastHealthCheck = new Date();
   }
   
   onHealthChange(callback: (healthy: boolean) => void) {

@@ -38,9 +38,11 @@ class RealtimeChannelManager {
   private statusListeners = new Set<(status: ConnectionStatus) => void>();
   private currentStatus: ConnectionStatus = 'connected';
   private statusDebounceTimeout: NodeJS.Timeout | null = null;
+  private heartbeatInterval: NodeJS.Timeout | null = null;
   
   constructor() {
     this.startHealthMonitoring();
+    this.startHeartbeat();
     console.log('[RealtimeChannelManager] Initialized');
   }
   
@@ -270,7 +272,7 @@ class RealtimeChannelManager {
   
   /**
    * Phase 2: Passive health monitoring (reports status only, doesn't reconnect)
-   * ConnectionManager handles actual reconnection logic
+   * Phase F.5: Enhanced with auto-recovery for closed/errored channels
    */
   private startHealthMonitoring(): void {
     // Check health every 30 seconds
@@ -281,14 +283,28 @@ class RealtimeChannelManager {
       }
       
       const unhealthy = this.getUnhealthyChannels();
+      const now = Date.now();
+      
+      // F.5: Check for dead channels (no activity >2 minutes)
+      for (const [id, { channel, metadata }] of this.channels.entries()) {
+        const timeSinceActivity = now - metadata.lastActivity;
+        
+        if (timeSinceActivity > 120000 && channel.state !== 'closed') {
+          console.warn(`[RealtimeChannelManager] Dead channel detected: ${id} (${Math.floor(timeSinceActivity / 1000)}s inactive)`);
+          this.refreshChannel(id);
+        }
+      }
       
       if (unhealthy.length > 0) {
         console.warn(`[RealtimeChannelManager] Passive monitor: ${unhealthy.length} unhealthy channels detected`);
-        this.updateStatus('disconnected');
         
-        // Phase 2: NO auto-repair - ConnectionManager handles reconnection
-        // Just report status, don't attempt fixes
-        console.log('[RealtimeChannelManager] Passive mode - waiting for ConnectionManager to handle reconnection');
+        // F.5: If >3 channels unhealthy, trigger full reconnection
+        if (unhealthy.length >= 3) {
+          console.error('[RealtimeChannelManager] Critical: >3 channels unhealthy - triggering full reconnect');
+          this.reconnectAll();
+        }
+        
+        this.updateStatus('disconnected');
       } else if (this.channels.size > 0) {
         // All channels healthy
         this.updateStatus('connected');
@@ -300,6 +316,25 @@ class RealtimeChannelManager {
         console.log('[RealtimeChannelManager] Stats:', stats);
       }
     }, 30000);
+  }
+  
+  /**
+   * Phase F.5: Channel heartbeat to keep connections alive
+   */
+  private startHeartbeat(): void {
+    this.heartbeatInterval = setInterval(() => {
+      // Skip heartbeat if tab is hidden (browser optimization)
+      if (document.hidden) {
+        return;
+      }
+      
+      for (const [id, { channel, metadata }] of this.channels.entries()) {
+        if (channel.state === 'joined') {
+          // Update last activity timestamp
+          metadata.lastActivity = Date.now();
+        }
+      }
+    }, 60000); // Every 60 seconds
   }
   
   /**
@@ -385,6 +420,12 @@ class RealtimeChannelManager {
     if (this.healthCheckInterval) {
       clearInterval(this.healthCheckInterval);
       this.healthCheckInterval = null;
+    }
+    
+    // Stop heartbeat
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
     }
     
     // Clear debounce timeout

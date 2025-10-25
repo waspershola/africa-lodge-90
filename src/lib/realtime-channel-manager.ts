@@ -56,8 +56,17 @@ class RealtimeChannelManager {
     metadata?: Partial<ChannelMetadata>
   ): void {
     if (this.channels.has(id)) {
-      console.warn(`[RealtimeChannelManager] Channel ${id} already registered`);
-      return;
+      const existing = this.channels.get(id)!;
+      
+      // F.9.3: Allow re-registration if existing channel is unhealthy
+      if (existing.channel.state === 'joined' || existing.channel.state === 'joining') {
+        console.log(`[RealtimeChannelManager] Channel ${id} already active, skipping re-register`);
+        return;
+      }
+      
+      // Unhealthy channel - allow replacement
+      console.warn(`[RealtimeChannelManager] Replacing unhealthy channel: ${id} (state: ${existing.channel.state})`);
+      this.unregisterChannel(id);
     }
     
     this.channels.set(id, {

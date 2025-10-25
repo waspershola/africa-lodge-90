@@ -85,9 +85,13 @@ class ConnectionManager {
   private lastVisibilityChange = 0;
   private lastRefetchTime = 0;
   
+  // F.9.2: Global reconnection lock (prevents duplicate reconnects)
+  private static reconnectLock = false;
+  
   constructor() {
     this.setupVisibilityHandler();
     this.setupHealthMonitoring();
+    this.setupReconnectCoordination();
   }
 
   /**
@@ -133,6 +137,34 @@ class ConnectionManager {
   }
 
   /**
+   * F.9.2: Setup custom event for reconnection coordination
+   */
+  private setupReconnectCoordination() {
+    window.addEventListener('connection:force-reconnect', ((e: CustomEvent) => {
+      this.triggerReconnect(e.detail || 'custom-event');
+    }) as EventListener);
+  }
+
+  /**
+   * F.9.2: Master reconnection controller (single authority)
+   */
+  async triggerReconnect(reason: string): Promise<void> {
+    if (ConnectionManager.reconnectLock) {
+      console.log(`[ConnectionManager] Reconnect suppressed (${reason}) - already running`);
+      return;
+    }
+    
+    ConnectionManager.reconnectLock = true;
+    console.log(`[ConnectionManager] 🔄 Triggering reconnect: ${reason}`);
+    
+    try {
+      await supabaseHealthMonitor.forceReconnect();
+    } finally {
+      ConnectionManager.reconnectLock = false;
+    }
+  }
+
+  /**
    * Phase F.6: Handle tab becoming visible - fallback refetch mechanism
    */
   private async handleTabBecameVisible() {
@@ -153,7 +185,7 @@ class ConnectionManager {
       
       if (!isHealthy) {
         console.warn('[ConnectionManager] Connection unhealthy - forcing reconnect');
-        await supabaseHealthMonitor.forceReconnect();
+        await this.triggerReconnect('tab-visible');
       }
       
       // STEP 2: Reconnect all realtime channels BEFORE query invalidation

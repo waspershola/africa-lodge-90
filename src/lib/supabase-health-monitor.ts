@@ -74,8 +74,10 @@ class SupabaseHealthMonitor {
   
   
   private handleOnline = async () => {
-    console.log('[Supabase Health] Network came online - reconnecting');
-    await this.forceReconnect();
+    console.log('[Supabase Health] Network came online');
+    window.dispatchEvent(new CustomEvent('connection:force-reconnect', { 
+      detail: 'network-online' 
+    }));
   };
   
   private handleOffline = () => {
@@ -84,7 +86,30 @@ class SupabaseHealthMonitor {
   };
   
   /**
-   * F.8.1: Improved health check with better timeout handling and error classification
+   * F.9.1: CORS preflight check
+   */
+  private async _canReachSupabase(): Promise<boolean> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s max
+      
+      const resp = await fetch(`https://dxisnnjsbuuiunjmzzqj.supabase.co/rest/v1/`, {
+        method: 'GET',
+        mode: 'cors',
+        signal: controller.signal,
+        headers: { 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR4aXNubmpzYnV1aXVuam16enFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyODg2MDMsImV4cCI6MjA3Mzg2NDYwM30.nmuC7AAV-6PMpIPvOed28P0SAlL04PIUNibaq4OogU8' }
+      });
+      
+      clearTimeout(timeoutId);
+      return resp.ok || resp.status === 401; // 401 means API is reachable
+    } catch (err) {
+      console.warn('[Supabase Health] CORS preflight failed:', err);
+      return false;
+    }
+  }
+
+  /**
+   * F.8.1 + F.9.1: Improved health check with CORS guard and better timeout handling
    */
   async checkHealth(): Promise<boolean> {
     const CHECK_TIMEOUT_MS = 20000; // 20s timeout for background tabs
@@ -103,6 +128,15 @@ class SupabaseHealthMonitor {
         console.warn(`[Supabase Health] Circuit breaker active - ${this.FAILURE_THRESHOLD} consecutive failures, entering cooldown`);
         await new Promise(resolve => setTimeout(resolve, this.COOLDOWN_MS));
         this.failureCount = 0;
+      }
+      
+      // F.9.1: CORS preflight check
+      const canReach = await this._canReachSupabase();
+      if (!canReach) {
+        console.warn('[Supabase Health] Supabase unreachable (CORS block) - skipping session check');
+        this.failureCount++;
+        this.notifyListeners(false);
+        return false;
       }
       
       // Quick local session check first (low cost)
@@ -136,10 +170,12 @@ class SupabaseHealthMonitor {
           this.failureCount++;
           this.notifyListeners(false);
           
-          // Auto-attempt reconnection only on first failure
+          // F.9.2: Auto-attempt reconnection only on first failure via event
           if (this.consecutiveFailures === 0 && !this.reconnecting) {
             this.consecutiveFailures++;
-            await this.forceReconnect();
+            window.dispatchEvent(new CustomEvent('connection:force-reconnect', { 
+              detail: 'health-check-failed' 
+            }));
           }
           return false;
         }
@@ -184,9 +220,11 @@ class SupabaseHealthMonitor {
         
         this.notifyListeners(false);
         
-        // Auto-attempt reconnection only on first failure
+        // F.9.2: Auto-attempt reconnection only on first failure via event
         if (this.consecutiveFailures === 1 && !this.reconnecting) {
-          await this.forceReconnect();
+          window.dispatchEvent(new CustomEvent('connection:force-reconnect', { 
+            detail: 'health-check-timeout' 
+          }));
         }
         
         return false;
@@ -229,7 +267,7 @@ class SupabaseHealthMonitor {
   }
   
   /**
-   * F.8.4: Bulletproof reconnecting flag with outer try-catch-finally
+   * F.8.4 + F.9.4: Bulletproof reconnecting flag with abort controller
    */
   async forceReconnect() {
     if (this.reconnecting) {
@@ -243,17 +281,19 @@ class SupabaseHealthMonitor {
       return;
     }
     
+    // F.9.4: Create abort controller for timeout cancellation
+    const controller = new AbortController();
+    
     // F.8.4: Outer try-catch-finally to bulletproof flag clearing
     try {
       this.reconnecting = true;
       console.log('[Supabase Health] 🔄 Force reconnecting...');
       
-      // F.8.1: Increased timeout to 20 seconds
+      const timeoutPromise = timeout(20000, new Error('forceReconnect-timeout'));
+      const reconnectPromise = this.attemptReconnection();
+      
       try {
-        await Promise.race([
-          this.attemptReconnection(),
-          timeout(20000, new Error('forceReconnect-timeout'))
-        ]);
+        await Promise.race([reconnectPromise, timeoutPromise]);
         
         // Success - reset failure counter
         this.reconnectionFailures = 0;
@@ -261,7 +301,14 @@ class SupabaseHealthMonitor {
         console.log('[Supabase Health] ✅ Reconnection successful');
         this.notifyListeners(true);
       } catch (error) {
-        console.error('[Supabase Health] Reconnection failed:', error);
+        // F.9.4: Timeout or error - abort any pending requests
+        if ((error as Error).message === 'forceReconnect-timeout') {
+          controller.abort();
+          console.error('[Supabase Health] Reconnection timed out - aborting');
+        } else {
+          console.error('[Supabase Health] Reconnection failed:', error);
+        }
+        
         this.reconnectionFailures++;
         
         // F.4: Activate circuit breaker after 3 failures

@@ -86,14 +86,33 @@ class SupabaseHealthMonitor {
     try {
       console.log('[Supabase Health] Checking connection...');
       
-      // Use auth session check instead of database query (lighter)
+      // Skip health check if reconnection is already in progress
+      if (this.reconnecting) {
+        console.log('[Supabase Health] Skipping check - reconnection in progress');
+        return true;
+      }
+      
+      // Use auth session check with 10s timeout (increased from 5s)
       const timeoutPromise = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Health check timeout')), 5000)
+        setTimeout(() => reject(new Error('Health check timeout')), 10000)
       );
       
       const healthPromise = supabase.auth.getSession();
       
-      const result = await Promise.race([healthPromise, timeoutPromise]);
+      let result;
+      try {
+        result = await Promise.race([healthPromise, timeoutPromise]);
+      } catch (firstError) {
+        // Retry once after 1 second before declaring unhealthy
+        console.log('[Supabase Health] First check failed, retrying in 1s...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        result = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('Health check timeout on retry')), 10000)
+          )
+        ]);
+      }
       
       // Check if we have a valid session OR if we're not logged in (both are "healthy")
       const isHealthy = !result.error;
@@ -184,6 +203,9 @@ class SupabaseHealthMonitor {
       }
       
       console.log('[Supabase Health] Session refreshed successfully');
+      
+      // Wait 2 seconds for connection to stabilize
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Mark as healthy without additional health check
       this.consecutiveFailures = 0;

@@ -12,20 +12,32 @@ export const ConnectionStatusBanner = () => {
   const [reconnecting, setReconnecting] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
   
-  // PHASE G.2: Use refs to track connection state without causing re-renders
+  // Use refs to track connection state without causing re-renders
   const isOnlineRef = useRef(true);
   const realtimeHealthyRef = useRef(true);
+  const autoDismissTimer = useRef<NodeJS.Timeout | null>(null);
   
   // Update banner visibility based on connection states
   const updateBannerVisibility = useCallback(() => {
     const shouldShow = !isOnlineRef.current || !realtimeHealthyRef.current;
     setShowBanner(shouldShow);
+    
+    // Auto-dismiss banner 3 seconds after both connections are healthy
+    if (!shouldShow && autoDismissTimer.current === null) {
+      autoDismissTimer.current = setTimeout(() => {
+        setShowBanner(false);
+        autoDismissTimer.current = null;
+      }, 3000);
+    } else if (shouldShow && autoDismissTimer.current) {
+      clearTimeout(autoDismissTimer.current);
+      autoDismissTimer.current = null;
+    }
   }, []);
   
   useEffect(() => {
     let mounted = true;
     
-    // PHASE F.2: Add grace period to allow channels to register before showing banner
+    // Add grace period to allow channels to register before showing banner
     Promise.all([
       supabaseHealthMonitor.checkHealth(),
       new Promise(resolve => setTimeout(resolve, 500))
@@ -40,6 +52,7 @@ export const ConnectionStatusBanner = () => {
     
     // Monitor HTTP connection health
     const unsubscribeHealth = supabaseHealthMonitor.onHealthChange((healthy) => {
+      if (!mounted) return;
       isOnlineRef.current = healthy;
       setIsOnline(healthy);
       if (healthy) {
@@ -50,6 +63,7 @@ export const ConnectionStatusBanner = () => {
     
     // Monitor realtime channel health
     const unsubscribeRealtime = realtimeChannelManager.onStatusChange((status) => {
+      if (!mounted) return;
       const healthy = status === 'connected';
       realtimeHealthyRef.current = healthy;
       setRealtimeHealthy(healthy);
@@ -58,6 +72,9 @@ export const ConnectionStatusBanner = () => {
     
     return () => {
       mounted = false;
+      if (autoDismissTimer.current) {
+        clearTimeout(autoDismissTimer.current);
+      }
       unsubscribeHealth();
       unsubscribeRealtime();
     };

@@ -132,6 +132,7 @@ const SentryMonitor = () => {
 // Health Monitor + Connection Manager initialization
 import { supabaseHealthMonitor } from './lib/supabase-health-monitor';
 import { connectionManager } from './lib/connection-manager';
+import './lib/connection-debug'; // Initialize debug utilities
 import { useEffect } from 'react';
 
 const HealthMonitor = () => {

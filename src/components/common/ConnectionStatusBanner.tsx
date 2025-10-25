@@ -10,26 +10,50 @@ export const ConnectionStatusBanner = () => {
   const [isOnline, setIsOnline] = useState(true);
   const [realtimeHealthy, setRealtimeHealthy] = useState(true);
   const [reconnecting, setReconnecting] = useState(false);
+  const [showBanner, setShowBanner] = useState(false);
   
   useEffect(() => {
+    let mounted = true;
+    
+    // PHASE F.2: Add grace period to allow channels to register before showing banner
+    Promise.all([
+      supabaseHealthMonitor.checkHealth(),
+      new Promise(resolve => setTimeout(resolve, 500))
+    ]).then(([isHealthy]) => {
+      if (!mounted) return;
+      if (!isHealthy) {
+        setIsOnline(false);
+        setShowBanner(true);
+      }
+    });
+    
     // Monitor HTTP connection health
     const unsubscribeHealth = supabaseHealthMonitor.onHealthChange((healthy) => {
       setIsOnline(healthy);
       if (healthy) {
         setReconnecting(false);
       }
+      setShowBanner(!healthy);
     });
     
     // Monitor realtime channel health
     const unsubscribeRealtime = realtimeChannelManager.onStatusChange((status) => {
-      setRealtimeHealthy(status === 'connected');
+      const healthy = status === 'connected';
+      setRealtimeHealthy(healthy);
+      // Only show banner for realtime issues if HTTP is also healthy
+      if (!healthy && isOnline) {
+        setShowBanner(true);
+      } else if (healthy && isOnline) {
+        setShowBanner(false);
+      }
     });
     
     return () => {
+      mounted = false;
       unsubscribeHealth();
       unsubscribeRealtime();
     };
-  }, []);
+  }, [isOnline]);
   
   const handleRetry = async () => {
     setReconnecting(true);
@@ -45,9 +69,6 @@ export const ConnectionStatusBanner = () => {
     
     setReconnecting(false);
   };
-  
-  // Show banner if EITHER connection is unhealthy
-  const showBanner = !isOnline || !realtimeHealthy;
   
   if (!showBanner) return null;
   

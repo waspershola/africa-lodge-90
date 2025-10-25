@@ -69,6 +69,12 @@ class RealtimeChannelManager {
       }
     });
     
+    // PHASE F.3: Immediately update status when first channel registers
+    if (this.channels.size === 1) {
+      console.log('[RealtimeChannelManager] First channel registered - updating status to connected');
+      this.updateStatus('connected');
+    }
+    
     console.log(`[RealtimeChannelManager] Registered channel: ${id} (type: ${metadata?.type || 'unknown'}, total: ${this.channels.size})`);
   }
   
@@ -265,6 +271,12 @@ class RealtimeChannelManager {
   private startHealthMonitoring(): void {
     // Check health every 30 seconds
     this.healthCheckInterval = setInterval(() => {
+      // PHASE F.1: Skip health check if no channels registered yet
+      if (this.channels.size === 0) {
+        console.log('[RealtimeChannelManager] No channels registered yet - skipping health check');
+        return; // Keep status as 'connected' (default)
+      }
+      
       const unhealthy = this.getUnhealthyChannels();
       
       if (unhealthy.length > 0) {

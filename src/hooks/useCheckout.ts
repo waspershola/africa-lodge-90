@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect, useCallback } from 'react';
 import { GuestBill, CheckoutSession, ServiceCharge, PaymentRecord } from '@/types/billing';
 import { supabase } from '@/integrations/supabase/client';

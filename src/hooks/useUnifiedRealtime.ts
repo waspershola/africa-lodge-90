@@ -6,6 +6,7 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { soundManager } from '@/utils/soundManager';
 import { toast } from '@/hooks/use-toast';
+import { realtimeChannelManager } from '@/lib/realtime-channel-manager';
 
 /**
  * Phase 1: Unified Real-Time Subscription Manager
@@ -404,6 +405,13 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
       );
     });
 
+    // Register with RealtimeChannelManager for lifecycle management
+    realtimeChannelManager.registerChannel(channelName, channel, {
+      type: 'unified_realtime',
+      priority: 'critical', // Unified channel handles critical data
+      retryLimit: 5
+    });
+
     // Subscribe and handle connection status
     channel.subscribe((status) => {
       if (verbose) {
@@ -449,10 +457,11 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
       
       // Cleanup old channel
       if (state.channel) {
-        supabase.removeChannel(state.channel);
+        const oldChannelName = state.channel.topic;
+        realtimeChannelManager.unregisterChannel(oldChannelName);
       }
       
-      // Setup new channel
+      // Setup new channel (automatically registers with manager)
       const newChannel = setupSubscriptions();
       subscriptionRef.current.channel = newChannel;
     }, delay);
@@ -482,6 +491,13 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
+      }
+
+      // Remove channel (unregister handles supabase.removeChannel)
+      if (subscriptionRef.current.channel) {
+        const channelName = subscriptionRef.current.channel.topic;
+        realtimeChannelManager.unregisterChannel(channelName);
+        subscriptionRef.current.channel = null;
       }
 
       // Remove channel

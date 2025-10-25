@@ -8,6 +8,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { formatRequestMessage, formatRelativeTime, getStatusColor } from '@/lib/messageFormatter';
 import { RequestChatView } from './RequestChatView';
+import { realtimeChannelManager } from '@/lib/realtime-channel-manager';
 
 interface MyRequestsPanelProps {
   sessionToken: string;
@@ -143,9 +144,11 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
         sessionIds = sessionsData?.map(s => s.id) || [];
         console.log('🔔 Monitoring', sessionIds.length, 'sessions for updates');
 
+        const channelId = `qr-requests-${qrToken}`;
+        
         // Subscribe to changes for requests in these sessions
         const channel = supabase
-          .channel(`qr-requests-${qrToken}`)
+          .channel(channelId)
           .on(
             'postgres_changes',
             {
@@ -172,10 +175,18 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
                 console.log('⏭️ Update is for different QR code, ignoring');
               }
             }
-          )
-          .subscribe((status) => {
-            console.log('🔔 Real-time subscription status:', status);
-          });
+          );
+
+        // Register with RealtimeChannelManager for lifecycle management
+        realtimeChannelManager.registerChannel(channelId, channel, {
+          type: 'guest_qr_requests',
+          priority: 'high',
+          retryLimit: 5
+        });
+
+        channel.subscribe((status) => {
+          console.log('🔔 Real-time subscription status:', status);
+        });
 
         // Store channel for cleanup
         return channel;
@@ -191,7 +202,8 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
       console.log('🔌 Cleaning up real-time subscription');
       channelPromise.then(channel => {
         if (channel) {
-          supabase.removeChannel(channel);
+          const channelId = `qr-requests-${qrToken}`;
+          realtimeChannelManager.unregisterChannel(channelId);
         }
       });
     };

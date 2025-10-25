@@ -9,7 +9,7 @@ import { ForcePasswordResetDialog } from '@/components/auth/ForcePasswordResetDi
 import { ImpersonationBanner } from '@/components/auth/ImpersonationBanner';
 import { toast } from 'sonner';
 
-const MultiTenantAuthContext = createContext<UseMultiTenantAuthReturn | undefined>(undefined);
+export const MultiTenantAuthContext = createContext<UseMultiTenantAuthReturn | undefined>(undefined);
 
 interface MultiTenantAuthProviderProps {
   children: ReactNode;

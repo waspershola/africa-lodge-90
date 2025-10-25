@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
+import { MultiTenantAuthContext } from '@/components/auth/MultiTenantAuthProvider';
 import { toast } from 'sonner';
 import type { PaymentMethod } from '@/contexts/PaymentMethodsContext';
 
 export const usePaymentMethodsDB = () => {
-  // Safe access to auth - will be available after MultiTenantAuthProvider renders
-  const auth = useAuth();
+  // Access auth context directly without throwing error if unavailable
+  const auth = useContext(MultiTenantAuthContext);
   const user = auth?.user ?? null;
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);

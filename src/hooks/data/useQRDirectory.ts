@@ -33,6 +33,11 @@ export const useQRDirectory = () => {
   
   return useQuery({
     queryKey: ['qr-directory', tenant?.tenant_id],
+    meta: { 
+      priority: 'high',
+      maxAge: 60000 // 1 minute
+    },
+    staleTime: 60 * 1000, // 1 minute - high priority for QR management
     queryFn: async () => {
       if (!tenant?.tenant_id) return [];
 
@@ -91,7 +96,6 @@ export const useQRDirectory = () => {
       });
     },
     enabled: !!tenant?.tenant_id,
-    staleTime: 0, // Always fresh - rely on real-time updates
     refetchInterval: false, // No polling - real-time handles updates
   });
 };

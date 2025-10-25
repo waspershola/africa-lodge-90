@@ -56,6 +56,11 @@ export const useFrontDeskData = () => {
   // Fetch detailed room counts for accurate statistics
   const { data: roomCounts, isLoading: roomCountsLoading } = useQuery({
     queryKey: ['front-desk-room-counts', tenant?.tenant_id],
+    meta: { 
+      priority: 'critical',
+      maxAge: 30000 // 30 seconds
+    },
+    staleTime: 30 * 1000, // 30 seconds - critical for dashboard
     queryFn: async () => {
       if (!tenant?.tenant_id) return null;
 
@@ -82,6 +87,11 @@ export const useFrontDeskData = () => {
   // Fetch real-time alerts from multiple sources
   const { data: alerts = [], isLoading: alertsLoading } = useQuery({
     queryKey: ['front-desk-alerts', tenant?.tenant_id],
+    meta: { 
+      priority: 'high',
+      maxAge: 60000 // 1 minute
+    },
+    staleTime: 60 * 1000, // 1 minute - high priority for alerts
     queryFn: async () => {
       if (!tenant?.tenant_id) return [];
 

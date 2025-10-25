@@ -103,6 +103,21 @@ class SupabaseHealthMonitor {
         this.consecutiveFailures = 0;
         this.currentInterval = 300000; // 5 minutes when healthy
         this.scheduleNextCheck();
+        
+        // PHASE C.2: Proactively refresh session if expiring soon (< 20 min)
+        if (result.data?.session) {
+          const expiresAt = result.data.session.expires_at;
+          if (expiresAt) {
+            const expiresIn = expiresAt - Math.floor(Date.now() / 1000);
+            const twentyMinutes = 20 * 60;
+            
+            if (expiresIn < twentyMinutes && expiresIn > 0) {
+              console.log(`[Supabase Health] ⚠️ Session expiring in ${Math.floor(expiresIn / 60)} minutes - proactively refreshing`);
+              await this.proactiveSessionRefresh();
+            }
+          }
+        }
+        
         console.log('[Supabase Health] ✅ Connection healthy');
         this.notifyListeners(true);
         return true;
@@ -128,6 +143,25 @@ class SupabaseHealthMonitor {
       }
       
       return false;
+    }
+  }
+  
+  /**
+   * PHASE C.2: Proactively refresh session before expiry
+   * Prevents auth errors due to expired tokens
+   */
+  private async proactiveSessionRefresh() {
+    try {
+      const { data, error } = await supabase.auth.refreshSession();
+      
+      if (error) {
+        console.error('[Supabase Health] Proactive session refresh failed:', error);
+        return;
+      }
+      
+      console.log('[Supabase Health] ✅ Proactive session refresh successful');
+    } catch (error) {
+      console.error('[Supabase Health] Proactive session refresh error:', error);
     }
   }
   

@@ -20,26 +20,46 @@ interface PriorityGroup {
   delay: number;
 }
 
-// Query priority configuration
+// Query priority configuration - expanded to cover all major queries
 const QUERY_PRIORITIES: Record<string, QueryPriority> = {
-  // Critical - must update immediately for UX
+  // Critical - must update immediately for UX (< 30s stale)
   'qr-requests': 'critical',
   'qr-requests-staff': 'critical',
   'rooms': 'critical',
   'reservations': 'critical',
+  'front-desk-room-counts': 'critical',
+  'room-availability': 'critical',
+  'arrivals': 'critical',
+  'departures': 'critical',
   
-  // High - user-facing features
+  // High - user-facing features (< 1 min stale)
   'guests': 'high',
   'guest-search': 'high',
+  'recent-guests': 'high',
   'qr-orders': 'high',
   'qr-codes': 'high',
+  'qr-directory': 'high',
   'housekeeping-tasks': 'high',
   'pos-orders': 'high',
+  'front-desk-alerts': 'high',
+  'work-orders': 'high',
+  'maintenance-issues': 'high',
+  'room-service': 'high',
+  'guest-requests': 'high',
   
-  // Normal - everything else
+  // Normal - everything else (< 2 min stale)
   'payments': 'normal',
   'folios': 'normal',
   'billing': 'normal',
+  'analytics': 'normal',
+  'reports': 'normal',
+  'staff': 'normal',
+  'settings': 'normal',
+  'room-types': 'normal',
+  'amenities': 'normal',
+  'services': 'normal',
+  'inventory': 'normal',
+  'supplies': 'normal',
 };
 
 // Stale time thresholds (ms)

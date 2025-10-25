@@ -21,6 +21,11 @@ export function useReservations(filters?: ReservationFilters) {
 
   return useQuery({
     queryKey: ['reservations', tenantId, filters],
+    meta: { 
+      priority: 'critical',
+      maxAge: 30000 // 30 seconds
+    },
+    staleTime: 30 * 1000, // 30 seconds - critical for booking operations
     queryFn: async () => {
       if (!tenantId) throw new Error('No tenant ID');
 

@@ -4,6 +4,16 @@ import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import type { FrontDeskAlert, FrontDeskOverview } from './useFrontDeskData';
 import { useEffect } from 'react';
 
+// Helper function to add timeout to queries
+const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number = 10000): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error(`Query timeout after ${timeoutMs}ms`)), timeoutMs)
+    )
+  ]);
+};
+
 /**
  * Optimized Front Desk Data Hook
  * 
@@ -46,9 +56,11 @@ export const useFrontDeskDataOptimized = () => {
         queryFn: async () => {
           if (!tenant?.tenant_id) return [];
 
-          const today = new Date().toISOString().split('T')[0];
-          
-          const { data, error } = await supabase
+          return withTimeout(
+            (async () => {
+              const today = new Date().toISOString().split('T')[0];
+              
+              const { data, error } = await supabase
             .from('reservations')
             .select(`
               id,
@@ -63,8 +75,11 @@ export const useFrontDeskDataOptimized = () => {
             .or(`and(check_in_date.eq.${today},status.in.(confirmed,pending)),and(status.eq.checked_in,check_in_date.lte.${today},check_out_date.gt.${today})`)
             .order('check_in_date', { ascending: true });
 
-          if (error) throw error;
-          return data;
+              if (error) throw error;
+              return data;
+            })(),
+            10000
+          );
         },
         enabled: !!tenant?.tenant_id,
         staleTime: 120000, // Phase 7: 2 minutes
@@ -77,9 +92,11 @@ export const useFrontDeskDataOptimized = () => {
         queryFn: async () => {
           if (!tenant?.tenant_id) return [];
 
-          const today = new Date().toISOString().split('T')[0];
-          
-          const { data, error } = await supabase
+          return withTimeout(
+            (async () => {
+              const today = new Date().toISOString().split('T')[0];
+              
+              const { data, error } = await supabase
             .from('reservations')
             .select(`
               id,
@@ -94,8 +111,11 @@ export const useFrontDeskDataOptimized = () => {
             .in('status', ['confirmed', 'checked_in', 'checked_out'])
             .order('check_out_date', { ascending: true });
 
-          if (error) throw error;
-          return data;
+              if (error) throw error;
+              return data;
+            })(),
+            10000
+          );
         },
         enabled: !!tenant?.tenant_id,
         staleTime: 120000, // Phase 7: 2 minutes
@@ -108,9 +128,11 @@ export const useFrontDeskDataOptimized = () => {
         queryFn: async () => {
           if (!tenant?.tenant_id) return [];
 
-          const today = new Date().toISOString().split('T')[0];
-          
-          const { data, error } = await supabase
+          return withTimeout(
+            (async () => {
+              const today = new Date().toISOString().split('T')[0];
+              
+              const { data, error } = await supabase
             .from('reservations')
             .select(`
               id,
@@ -125,8 +147,11 @@ export const useFrontDeskDataOptimized = () => {
             .lt('check_out_date', today)
             .order('check_out_date', { ascending: true });
 
-          if (error) throw error;
-          return data;
+              if (error) throw error;
+              return data;
+            })(),
+            10000
+          );
         },
         enabled: !!tenant?.tenant_id,
         staleTime: 60000, // Phase 7: 1 minute
@@ -138,7 +163,9 @@ export const useFrontDeskDataOptimized = () => {
         queryFn: async () => {
           if (!tenant?.tenant_id) return null;
 
-          const { data, error } = await supabase
+          return withTimeout(
+            (async () => {
+              const { data, error } = await supabase
             .from('rooms')
             .select('status')
             .eq('tenant_id', tenant.tenant_id);
@@ -152,7 +179,10 @@ export const useFrontDeskDataOptimized = () => {
           const dirty = data.filter(r => r.status === 'dirty').length;
           const maintenance = data.filter(r => r.status === 'maintenance').length;
 
-          return { total, occupied, available, oos, dirty, maintenance };
+              return { total, occupied, available, oos, dirty, maintenance };
+            })(),
+            10000
+          );
         },
         enabled: !!tenant?.tenant_id,
         staleTime: 120000, // 2 minutes - room status doesn't change rapidly
@@ -165,8 +195,9 @@ export const useFrontDeskDataOptimized = () => {
         queryFn: async () => {
           if (!tenant?.tenant_id) return [];
 
-          // PHASE 3: Include total_charges and total_payments for real balance calculation
-          const { data, error } = await supabase
+          return withTimeout(
+            (async () => {
+              const { data, error } = await supabase
             .from('folios')
             .select('id, total_charges, total_payments, status')
             .eq('tenant_id', tenant.tenant_id)
@@ -174,11 +205,14 @@ export const useFrontDeskDataOptimized = () => {
 
           if (error) throw error;
           
-          // Calculate real balance client-side
-          return data.map(folio => ({
-            ...folio,
-            balance: Math.max(0, (folio.total_charges || 0) - (folio.total_payments || 0))
-          })).filter(folio => folio.balance > 0);
+              // Calculate real balance client-side
+              return data.map(folio => ({
+                ...folio,
+                balance: Math.max(0, (folio.total_charges || 0) - (folio.total_payments || 0))
+              })).filter(folio => folio.balance > 0);
+            })(),
+            10000
+          );
         },
         enabled: !!tenant?.tenant_id,
         staleTime: 30000, // Phase 7: 30 seconds for frequently updated data
@@ -191,7 +225,9 @@ export const useFrontDeskDataOptimized = () => {
         queryFn: async () => {
           if (!tenant?.tenant_id) return 65;
 
-          const { data, error } = await supabase
+          return withTimeout(
+            (async () => {
+              const { data, error } = await supabase
             .from('fuel_logs')
             .select('quantity_liters')
             .eq('tenant_id', tenant.tenant_id)
@@ -199,10 +235,13 @@ export const useFrontDeskDataOptimized = () => {
             .limit(1)
             .maybeSingle();
 
-          if (error) throw error;
-          
-          // Convert to percentage (assuming 100L = 100%)
-          return data ? Math.min(100, (data.quantity_liters / 100) * 100) : 65;
+              if (error) throw error;
+              
+              // Convert to percentage (assuming 100L = 100%)
+              return data ? Math.min(100, (data.quantity_liters / 100) * 100) : 65;
+            })(),
+            10000
+          );
         },
         enabled: !!tenant?.tenant_id,
         staleTime: 60000, // 1 minute
@@ -215,10 +254,12 @@ export const useFrontDeskDataOptimized = () => {
         queryFn: async () => {
           if (!tenant?.tenant_id) return [];
 
-          const alertsList: FrontDeskAlert[] = [];
+          return withTimeout(
+            (async () => {
+              const alertsList: FrontDeskAlert[] = [];
 
-          // Execute alert queries in parallel
-          const [unpaidFolios, maintenanceIssues, missingIds, urgentCleaning] = await Promise.all([
+              // Execute alert queries in parallel
+              const [unpaidFolios, maintenanceIssues, missingIds, urgentCleaning] = await Promise.all([
             // Payment alerts
             supabase
               .from('folios')
@@ -335,7 +376,10 @@ export const useFrontDeskDataOptimized = () => {
             });
           });
 
-          return alertsList;
+              return alertsList;
+            })(),
+            10000
+          );
         },
         enabled: !!tenant?.tenant_id,
         staleTime: 60000, // 1 minute

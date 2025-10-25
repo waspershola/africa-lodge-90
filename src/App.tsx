@@ -129,6 +129,18 @@ const SentryMonitor = () => {
   return null;
 };
 
+// Health Monitor component to start monitoring
+import { supabaseHealthMonitor } from './lib/supabase-health-monitor';
+import { useEffect } from 'react';
+
+const HealthMonitor = () => {
+  useEffect(() => {
+    supabaseHealthMonitor.start();
+    return () => supabaseHealthMonitor.stop();
+  }, []);
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <MultiTenantAuthProvider>
@@ -136,6 +148,7 @@ const App = () => (
         <TooltipProvider>
           <FontManager />
           <SentryMonitor />
+          <HealthMonitor />
           <Toaster />
           <Sonner />
           <BrowserRouter>

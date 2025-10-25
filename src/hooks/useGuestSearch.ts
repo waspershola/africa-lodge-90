@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -17,8 +18,22 @@ export interface GuestSearchResult {
 }
 
 export const useGuestSearch = (searchTerm: string) => {
+  const [lastVisible, setLastVisible] = useState(Date.now());
+  
+  // Track when tab becomes visible
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        setLastVisible(Date.now());
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+  
   return useQuery({
-    queryKey: ['guest-search', searchTerm],
+    queryKey: ['guest-search', searchTerm, lastVisible],
     queryFn: async () => {
       if (!searchTerm || searchTerm.length < 2) {
         return [];
@@ -77,12 +92,27 @@ export const useGuestSearch = (searchTerm: string) => {
       }) || [];
     },
     enabled: searchTerm.length >= 2,
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   });
 };
 
 export const useRecentGuests = () => {
+  const [lastVisible, setLastVisible] = useState(Date.now());
+  
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        setLastVisible(Date.now());
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+  
   return useQuery({
-    queryKey: ['recent-guests'],
+    queryKey: ['recent-guests', lastVisible],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('guests')
@@ -120,5 +150,7 @@ export const useRecentGuests = () => {
         reservation_status: undefined
       })) || [];
     },
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   });
 };

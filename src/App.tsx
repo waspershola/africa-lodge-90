@@ -141,17 +141,27 @@ const HealthMonitor = () => {
   return null;
 };
 
+// Wrapper to ensure auth context is available before PaymentMethodsProvider
+const AppProviders = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <PaymentMethodsProvider>
+      <TooltipProvider>
+        {children}
+      </TooltipProvider>
+    </PaymentMethodsProvider>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <MultiTenantAuthProvider>
-      <PaymentMethodsProvider>
-        <TooltipProvider>
-          <FontManager />
-          <SentryMonitor />
-          <HealthMonitor />
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
+      <AppProviders>
+        <FontManager />
+        <SentryMonitor />
+        <HealthMonitor />
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<AuthPage />} />
@@ -330,8 +340,7 @@ const App = () => (
         </Routes>
         <SecurityDebugPanel />
         </BrowserRouter>
-        </TooltipProvider>
-      </PaymentMethodsProvider>
+      </AppProviders>
     </MultiTenantAuthProvider>
   </QueryClientProvider>
 );

@@ -5,7 +5,9 @@ import { toast } from 'sonner';
 import type { PaymentMethod } from '@/contexts/PaymentMethodsContext';
 
 export const usePaymentMethodsDB = () => {
-  const { user } = useAuth();
+  // Safe access to auth - will be available after MultiTenantAuthProvider renders
+  const auth = useAuth();
+  const user = auth?.user ?? null;
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
 

@@ -4,6 +4,7 @@ import { WifiOff, Wifi, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabaseHealthMonitor } from '@/lib/supabase-health-monitor';
 import { realtimeChannelManager } from '@/lib/realtime-channel-manager';
+import { tabCoordinator } from '@/lib/tab-coordinator';
 import { queryClient } from '@/lib/queryClient';
 
 export const ConnectionStatusBanner = () => {
@@ -21,6 +22,22 @@ export const ConnectionStatusBanner = () => {
   
   useEffect(() => {
     let mounted = true;
+    
+    // F.10.6: Listen for health updates from other tabs
+    const unsubscribeTabHealth = tabCoordinator.onHealthStatus((data) => {
+      if (!mounted) return;
+      console.log('[ConnectionBanner] Health update from tab:', data.tabId, 'healthy:', data.healthy);
+      
+      if (data.healthy) {
+        isOnlineRef.current = true;
+        realtimeHealthyRef.current = true;
+        setIsOnline(true);
+        setRealtimeHealthy(true);
+        setShowBanner(false);
+        setReconnectAttempts(0);
+        disconnectedSince.current = null;
+      }
+    });
     
     // Phase F.7: Extended grace period (5s) to prevent false alarms
     Promise.all([
@@ -133,6 +150,7 @@ export const ConnectionStatusBanner = () => {
       }
       unsubscribeHealth();
       unsubscribeRealtime();
+      unsubscribeTabHealth();
     };
   }, []);
   

@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { timeout } from '@/lib/timeout';
+import { tabCoordinator } from '@/lib/tab-coordinator';
 
 class SupabaseHealthMonitor {
   private healthCheckInterval: NodeJS.Timeout | null = null;
@@ -86,35 +87,70 @@ class SupabaseHealthMonitor {
   };
   
   /**
-   * F.9.1: CORS preflight check
+   * F.9.1 + F.10.4: CORS preflight check with retry logic
    */
   private async _canReachSupabase(): Promise<boolean> {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s max
-      
-      const resp = await fetch(`https://dxisnnjsbuuiunjmzzqj.supabase.co/rest/v1/`, {
-        method: 'GET',
-        mode: 'cors',
-        signal: controller.signal,
-        headers: { 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR4aXNubmpzYnV1aXVuam16enFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyODg2MDMsImV4cCI6MjA3Mzg2NDYwM30.nmuC7AAV-6PMpIPvOed28P0SAlL04PIUNibaq4OogU8' }
-      });
-      
-      clearTimeout(timeoutId);
-      return resp.ok || resp.status === 401; // 401 means API is reachable
-    } catch (err) {
-      console.warn('[Supabase Health] CORS preflight failed:', err);
-      return false;
+    // Try up to 3 times with 1s delay
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s max
+        
+        const resp = await fetch(`https://dxisnnjsbuuiunjmzzqj.supabase.co/rest/v1/`, {
+          method: 'GET',
+          mode: 'cors',
+          signal: controller.signal,
+          headers: { 
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR4aXNubmpzYnV1aXVuam16enFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyODg2MDMsImV4cCI6MjA3Mzg2NDYwM30.nmuC7AAV-6PMpIPvOed28P0SAlL04PIUNibaq4OogU8',
+            'x-tab-id': tabCoordinator.tabId
+          }
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (resp.ok || resp.status === 401) {
+          return true; // 401 means API is reachable
+        }
+        
+        // Non-fatal error, retry
+        if (attempt < 3) {
+          console.warn(`[Supabase Health] Preflight attempt ${attempt} failed (status ${resp.status}), retrying...`);
+          await new Promise(r => setTimeout(r, 1000));
+        }
+      } catch (err: any) {
+        if (attempt === 3) {
+          console.error('[Supabase Health] CORS preflight failed after 3 attempts:', err);
+          
+          // F.10.4: Show user-friendly message for CORS issues
+          if (err.name === 'TypeError' && err.message?.includes('CORS')) {
+            console.warn('[Supabase Health] 💡 CORS block detected - this is a known Lovable preview issue.');
+            console.warn('   Try: 1) Close all tabs except one  2) Hard refresh (Ctrl+Shift+R)  3) Test on production domain');
+          }
+          return false;
+        }
+        
+        // Retry on error
+        console.warn(`[Supabase Health] Preflight attempt ${attempt} error, retrying...`);
+        await new Promise(r => setTimeout(r, 1000));
+      }
     }
+    
+    return false;
   }
 
   /**
-   * F.8.1 + F.9.1: Improved health check with CORS guard and better timeout handling
+   * F.8.1 + F.9.1 + F.10.3: Improved health check with tab coordination
    */
   async checkHealth(): Promise<boolean> {
     const CHECK_TIMEOUT_MS = 20000; // 20s timeout for background tabs
     
     try {
+      // F.10.3: Only leader or visible tab runs health checks
+      if (!tabCoordinator.shouldRunHealthCheck()) {
+        console.log('[Supabase Health] Skipping check - not leader tab');
+        return true;
+      }
+      
       console.log('[Supabase Health] Checking connection...');
       
       // Skip health check if reconnection is already in progress
@@ -203,6 +239,10 @@ class SupabaseHealthMonitor {
         
         console.log('[Supabase Health] ✅ Connection healthy');
         this.notifyListeners(true);
+        
+        // F.10.3: Broadcast health status to other tabs
+        tabCoordinator.broadcastHealthStatus(true);
+        
         return true;
         
       } catch (err) {
@@ -404,6 +444,9 @@ class SupabaseHealthMonitor {
     
     // Notify all listeners
     this.listeners.forEach(callback => callback(healthy));
+    
+    // F.10.3: Broadcast to other tabs
+    tabCoordinator.broadcastHealthStatus(healthy);
   }
 }
 

@@ -51,8 +51,8 @@ export function useRevenueAnalytics(days = 30) {
 
       return {
         dailyRevenue: dailyRevenue || [],
-        adr: adrData || 0,
-        revpar: revparData || 0,
+        adr: Number(adrData) || 0,
+        revpar: Number(revparData) || 0,
         totalRevenue,
         avgDailyRevenue,
         chartData: dailyRevenue?.map((day: any) => ({

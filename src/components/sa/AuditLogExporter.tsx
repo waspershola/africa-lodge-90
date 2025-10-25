@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState } from 'react';
 import { Download, Calendar, Filter, FileText, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';

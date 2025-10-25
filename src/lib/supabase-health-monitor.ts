@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { timeout } from '@/lib/timeout';
 
 class SupabaseHealthMonitor {
   private healthCheckInterval: NodeJS.Timeout | null = null;
@@ -12,6 +13,9 @@ class SupabaseHealthMonitor {
   private reconnectionFailures: number = 0;
   private circuitBreakerActive: boolean = false;
   private circuitBreakerTimeout: NodeJS.Timeout | null = null;
+  private failureCount: number = 0;
+  private readonly FAILURE_THRESHOLD = 3;
+  private readonly COOLDOWN_MS = 60000;
   
   private listeners: Array<(healthy: boolean) => void> = [];
   
@@ -28,10 +32,7 @@ class SupabaseHealthMonitor {
     // Dynamic health checks
     this.scheduleNextCheck();
     
-    // Listen for tab visibility changes
-    document.addEventListener('visibilitychange', this.handleVisibilityChange);
-    
-    // Listen for online/offline events
+    // Listen for online/offline events (NO visibility handler - ConnectionManager handles it)
     window.addEventListener('online', this.handleOnline);
     window.addEventListener('offline', this.handleOffline);
     
@@ -67,28 +68,10 @@ class SupabaseHealthMonitor {
       clearTimeout(this.circuitBreakerTimeout);
       this.circuitBreakerTimeout = null;
     }
-    document.removeEventListener('visibilitychange', this.handleVisibilityChange);
     window.removeEventListener('online', this.handleOnline);
     window.removeEventListener('offline', this.handleOffline);
   }
   
-  private handleVisibilityChange = async () => {
-    if (document.visibilityState === 'visible') {
-      console.log('[Supabase Health] Tab became visible - checking connection');
-      
-      const timeSinceLastCheck = this.lastHealthCheck 
-        ? Date.now() - this.lastHealthCheck.getTime()
-        : Infinity;
-      
-      // If more than 2 minutes since last check, force reconnection
-      if (timeSinceLastCheck > 120000) {
-        console.warn('[Supabase Health] Stale connection detected, forcing reconnection');
-        await this.forceReconnect();
-      } else {
-        await this.checkHealth();
-      }
-    }
-  };
   
   private handleOnline = async () => {
     console.log('[Supabase Health] Network came online - reconnecting');
@@ -100,7 +83,12 @@ class SupabaseHealthMonitor {
     this.notifyListeners(false);
   };
   
+  /**
+   * F.8.1: Improved health check with better timeout handling and error classification
+   */
   async checkHealth(): Promise<boolean> {
+    const CHECK_TIMEOUT_MS = 20000; // 20s timeout for background tabs
+    
     try {
       console.log('[Supabase Health] Checking connection...');
       
@@ -110,40 +98,62 @@ class SupabaseHealthMonitor {
         return true;
       }
       
-      // Use auth session check with 10s timeout (increased from 5s)
-      const timeoutPromise = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Health check timeout')), 10000)
-      );
-      
-      const healthPromise = supabase.auth.getSession();
-      
-      let result;
-      try {
-        result = await Promise.race([healthPromise, timeoutPromise]);
-      } catch (firstError) {
-        // Retry once after 1 second before declaring unhealthy
-        console.log('[Supabase Health] First check failed, retrying in 1s...');
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        result = await Promise.race([
-          supabase.auth.getSession(),
-          new Promise<never>((_, reject) => 
-            setTimeout(() => reject(new Error('Health check timeout on retry')), 10000)
-          )
-        ]);
+      // F.8.6: Circuit breaker - check failure count
+      if (this.failureCount >= this.FAILURE_THRESHOLD) {
+        console.warn(`[Supabase Health] Circuit breaker active - ${this.FAILURE_THRESHOLD} consecutive failures, entering cooldown`);
+        await new Promise(resolve => setTimeout(resolve, this.COOLDOWN_MS));
+        this.failureCount = 0;
       }
       
-      // Check if we have a valid session OR if we're not logged in (both are "healthy")
-      const isHealthy = !result.error;
+      // Quick local session check first (low cost)
+      const sessionResp: any = await Promise.race([
+        supabase.auth.getSession(),
+        timeout(CHECK_TIMEOUT_MS, new Error('session-get-timeout'))
+      ]);
       
-      if (isHealthy) {
+      const session = sessionResp.data?.session;
+      if (!session) {
+        console.warn('[Supabase Health] No session found - treating as offline but not panicking');
+        this.failureCount++;
+        this.notifyListeners(false);
+        return false;
+      }
+      
+      // If session exists, do a lightweight health probe
+      try {
+        const healthResp: any = await Promise.race([
+          supabase
+            .from('tenants')
+            .select('tenant_id')
+            .limit(1)
+            .maybeSingle(),
+          timeout(CHECK_TIMEOUT_MS, new Error('health-query-timeout'))
+        ]);
+        
+        if (healthResp.error) {
+          console.warn('[Supabase Health] Lightweight health query error:', healthResp.error);
+          // Network errors => treat as transient
+          this.failureCount++;
+          this.notifyListeners(false);
+          
+          // Auto-attempt reconnection only on first failure
+          if (this.consecutiveFailures === 0 && !this.reconnecting) {
+            this.consecutiveFailures++;
+            await this.forceReconnect();
+          }
+          return false;
+        }
+        
+        // Success - reset counters
         this.lastHealthCheck = new Date();
         this.consecutiveFailures = 0;
+        this.failureCount = 0;
         this.currentInterval = 300000; // 5 minutes when healthy
         this.scheduleNextCheck();
         
-        // PHASE C.2: Proactively refresh session if expiring soon (< 20 min)
-        if (result.data?.session) {
-          const expiresAt = result.data.session.expires_at;
+        // Proactively refresh session if expiring soon (< 20 min)
+        if (session) {
+          const expiresAt = session.expires_at;
           if (expiresAt) {
             const expiresIn = expiresAt - Math.floor(Date.now() / 1000);
             const twentyMinutes = 20 * 60;
@@ -158,27 +168,43 @@ class SupabaseHealthMonitor {
         console.log('[Supabase Health] ✅ Connection healthy');
         this.notifyListeners(true);
         return true;
-      } else {
-        throw result.error;
+        
+      } catch (err) {
+        const msg = (err as Error).message || String(err);
+        console.error('[Supabase Health] health query timed out or threw:', msg);
+        this.failureCount++;
+        
+        // Exponential backoff on failures
+        this.consecutiveFailures++;
+        this.currentInterval = Math.min(
+          30000 * Math.pow(2, this.consecutiveFailures),
+          300000
+        );
+        this.scheduleNextCheck();
+        
+        this.notifyListeners(false);
+        
+        // Auto-attempt reconnection only on first failure
+        if (this.consecutiveFailures === 1 && !this.reconnecting) {
+          await this.forceReconnect();
+        }
+        
+        return false;
       }
-    } catch (error) {
-      console.error('[Supabase Health] ❌ Connection unhealthy:', error);
+    } catch (err) {
+      const msg = (err as Error).message || String(err);
+      console.error('[Supabase Health] checkHealth failed:', msg);
+      this.failureCount++;
       
-      // Exponential backoff on failures
+      // Exponential backoff
       this.consecutiveFailures++;
       this.currentInterval = Math.min(
-        30000 * Math.pow(2, this.consecutiveFailures), // 30s, 60s, 120s, etc.
-        300000 // Max 5 minutes
+        30000 * Math.pow(2, this.consecutiveFailures),
+        300000
       );
       this.scheduleNextCheck();
       
       this.notifyListeners(false);
-      
-      // Auto-attempt reconnection only on first failure
-      if (this.consecutiveFailures === 1 && !this.reconnecting) {
-        await this.forceReconnect();
-      }
-      
       return false;
     }
   }
@@ -202,7 +228,10 @@ class SupabaseHealthMonitor {
     }
   }
   
-  private async forceReconnect() {
+  /**
+   * F.8.4: Bulletproof reconnecting flag with outer try-catch-finally
+   */
+  async forceReconnect() {
     if (this.reconnecting) {
       console.log('[Supabase Health] Reconnection already in progress');
       return;
@@ -214,73 +243,88 @@ class SupabaseHealthMonitor {
       return;
     }
     
-    this.reconnecting = true;
-    console.log('[Supabase Health] 🔄 Force reconnecting...');
-    
-    // F.4: Timeout wrapper - maximum 15 seconds for entire reconnection
-    const timeoutPromise = new Promise<never>((_, reject) => 
-      setTimeout(() => reject(new Error('Reconnection timeout after 15s')), 15000)
-    );
-    
+    // F.8.4: Outer try-catch-finally to bulletproof flag clearing
     try {
-      await Promise.race([
-        this.attemptReconnection(),
-        timeoutPromise
-      ]);
+      this.reconnecting = true;
+      console.log('[Supabase Health] 🔄 Force reconnecting...');
       
-      // Success - reset failure counter
-      this.reconnectionFailures = 0;
-      console.log('[Supabase Health] ✅ Reconnection successful');
-      this.notifyListeners(true);
-    } catch (error) {
-      console.error('[Supabase Health] Reconnection failed:', error);
-      this.reconnectionFailures++;
-      
-      // F.4: Activate circuit breaker after 3 failures
-      if (this.reconnectionFailures >= 3) {
-        console.warn('[Supabase Health] ⚠️ Circuit breaker activated - pausing for 60s');
-        this.circuitBreakerActive = true;
-        this.circuitBreakerTimeout = setTimeout(() => {
-          this.circuitBreakerActive = false;
-          this.reconnectionFailures = 0;
-          console.log('[Supabase Health] Circuit breaker reset');
-        }, 60000);
+      // F.8.1: Increased timeout to 20 seconds
+      try {
+        await Promise.race([
+          this.attemptReconnection(),
+          timeout(20000, new Error('forceReconnect-timeout'))
+        ]);
+        
+        // Success - reset failure counter
+        this.reconnectionFailures = 0;
+        this.failureCount = 0;
+        console.log('[Supabase Health] ✅ Reconnection successful');
+        this.notifyListeners(true);
+      } catch (error) {
+        console.error('[Supabase Health] Reconnection failed:', error);
+        this.reconnectionFailures++;
+        
+        // F.4: Activate circuit breaker after 3 failures
+        if (this.reconnectionFailures >= 3) {
+          console.warn('[Supabase Health] ⚠️ Circuit breaker activated - pausing for 60s');
+          this.circuitBreakerActive = true;
+          this.circuitBreakerTimeout = setTimeout(() => {
+            this.circuitBreakerActive = false;
+            this.reconnectionFailures = 0;
+            console.log('[Supabase Health] Circuit breaker reset');
+          }, 60000);
+        }
+        
+        this.notifyListeners(false);
       }
-      
-      this.notifyListeners(false);
     } finally {
-      // F.4: Force-clear reconnecting flag to prevent deadlock
-      this.reconnecting = false;
+      // F.8.4: Ensure flag cleared no matter what
+      try {
+        this.reconnecting = false;
+      } catch (e) {
+        console.error('[Supabase Health] clearing reconnecting flag failed', e);
+        this.reconnecting = false; // Force it
+      }
     }
   }
   
+  /**
+   * F.8.1: Improved reconnection with better error handling
+   */
   private async attemptReconnection() {
-    // F.4: Check if user is authenticated first
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-    
-    if (userError || !userData.user) {
-      console.log('[Supabase Health] No active session - skipping token refresh');
-      return;
-    }
-    
-    // F.4: Only refresh session if user exists
-    const { data, error } = await supabase.auth.refreshSession();
-    
-    if (error) {
-      console.error('[Supabase Health] Session refresh failed:', error);
+    try {
+      // Check if user is authenticated first
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !userData.user) {
+        console.log('[Supabase Health] No active session - skipping token refresh');
+        return;
+      }
+      
+      // Only refresh session if user exists
+      const { data, error } = await supabase.auth.refreshSession();
+      
+      if (error) {
+        console.error('[Supabase Health] Session refresh failed:', error);
+        throw error;
+      }
+      
+      console.log('[Supabase Health] Session refreshed successfully');
+      
+      // Wait 2 seconds for connection to stabilize
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Mark as healthy without additional health check
+      this.consecutiveFailures = 0;
+      this.failureCount = 0;
+      this.currentInterval = 300000; // Reset to 5 minutes
+      this.scheduleNextCheck();
+      this.lastHealthCheck = new Date();
+    } catch (error) {
+      // Catch and rethrow so we don't have uncaught promises
+      console.error('[Supabase Health] attemptReconnection threw:', error);
       throw error;
     }
-    
-    console.log('[Supabase Health] Session refreshed successfully');
-    
-    // Wait 2 seconds for connection to stabilize
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Mark as healthy without additional health check
-    this.consecutiveFailures = 0;
-    this.currentInterval = 300000; // Reset to 5 minutes
-    this.scheduleNextCheck();
-    this.lastHealthCheck = new Date();
   }
   
   onHealthChange(callback: (healthy: boolean) => void) {

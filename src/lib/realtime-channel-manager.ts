@@ -22,6 +22,7 @@ interface ChannelMetadata {
   lastActivity: number;
   reconnectAttempts: number;
   retryLimit: number;
+  errored?: boolean; // F.8.2: Track errored state
 }
 
 interface ChannelRegistration {
@@ -163,7 +164,7 @@ class RealtimeChannelManager {
   }
   
   /**
-   * Phase F.5: Force refresh a single channel with recreation for errored state
+   * F.8.2: Force refresh a single channel with IN-PLACE recreation (no removal)
    */
   async refreshChannel(id: string): Promise<boolean> {
     const entry = this.channels.get(id);
@@ -185,19 +186,18 @@ class RealtimeChannelManager {
     
     // Check retry limit
     if (metadata.reconnectAttempts >= metadata.retryLimit) {
-      console.error(`[RealtimeChannelManager] Channel ${id} exceeded retry limit (${metadata.retryLimit}) - removing`);
-      this.unregisterChannel(id);
+      console.error(`[RealtimeChannelManager] Channel ${id} exceeded retry limit (${metadata.retryLimit})`);
+      metadata.errored = true;
       return false;
     }
     
     metadata.reconnectAttempts++;
     
     try {
-      // Phase F.5: For errored channels, fully remove and let hook recreate
+      // F.8.2: For errored/closed channels, recreate IN-PLACE (don't remove entry)
       if (state === 'errored' || state === 'closed') {
-        console.log(`[RealtimeChannelManager] Channel ${id} in ${state} state - removing for recreation`);
-        this.unregisterChannel(id);
-        return false; // Return false to trigger hook recreation
+        console.log(`[RealtimeChannelManager] Channel ${id} in ${state} state - recreating in-place`);
+        return await this._recreateChannelInPlace(id);
       }
       
       // For other states, try normal reconnection
@@ -208,7 +208,6 @@ class RealtimeChannelManager {
       
       // Resubscribe with timeout
       await new Promise<void>((resolve, reject) => {
-        // Phase F.5: 20s timeout for slow networks
         const timeout = setTimeout(() => {
           reject(new Error(`Subscription timeout for channel ${id}`));
         }, 20000);
@@ -218,7 +217,7 @@ class RealtimeChannelManager {
             clearTimeout(timeout);
             metadata.reconnectAttempts = 0;
             metadata.lastActivity = Date.now();
-            console.log(`[RealtimeChannelManager] Channel ${id} reconnected successfully`);
+            console.log(`[RealtimeChannelManager] ✅ Channel ${id} reconnected successfully`);
             resolve();
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
             clearTimeout(timeout);
@@ -231,14 +230,97 @@ class RealtimeChannelManager {
     } catch (error) {
       console.error(`[RealtimeChannelManager] Error refreshing channel ${id}:`, error);
       
-      // Phase F.5: On persistent errors, remove channel for recreation
+      // F.8.2: On persistent errors, mark as errored but keep entry
       if (metadata.reconnectAttempts >= 3) {
-        console.warn(`[RealtimeChannelManager] Channel ${id} failed 3 times - removing for recreation`);
-        this.unregisterChannel(id);
+        console.warn(`[RealtimeChannelManager] Channel ${id} failed 3 times - marked as errored`);
+        metadata.errored = true;
       }
       
       return false;
     }
+  }
+  
+  /**
+   * F.8.2: Recreate channel in-place with exponential backoff
+   */
+  private async _recreateChannelInPlace(id: string): Promise<boolean> {
+    const entry = this.channels.get(id);
+    if (!entry) return false;
+    
+    const { metadata } = entry;
+    const maxAttempts = metadata.retryLimit;
+    
+    // Cleanup old channel
+    try {
+      await entry.channel.unsubscribe();
+    } catch (e) {
+      console.warn(`[RealtimeChannelManager] Error unsubscribing old channel ${id}:`, e);
+    }
+    
+    // Create new channel instance with same ID
+    const newChannel = supabase.channel(id);
+    
+    // Update registry in-place (keep same metadata)
+    this.channels.set(id, {
+      channel: newChannel,
+      metadata: {
+        ...metadata,
+        lastActivity: Date.now()
+      }
+    });
+    
+    console.log(`[RealtimeChannelManager] 🔄 Channel ${id} recreated - attempting subscription with backoff`);
+    
+    // Subscribe with exponential backoff
+    return await this._subscribeChannelWithBackoff(id, maxAttempts);
+  }
+  
+  /**
+   * F.8.2: Subscribe channel with exponential backoff
+   */
+  private async _subscribeChannelWithBackoff(id: string, maxAttempts: number): Promise<boolean> {
+    const entry = this.channels.get(id);
+    if (!entry) return false;
+    
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error(`Subscription timeout on attempt ${attempt}`));
+          }, 20000);
+          
+          entry.channel.subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+              clearTimeout(timeout);
+              entry.metadata.reconnectAttempts = 0;
+              entry.metadata.lastActivity = Date.now();
+              console.log(`[RealtimeChannelManager] ✅ Channel ${id} subscribed on attempt ${attempt}`);
+              resolve();
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+              clearTimeout(timeout);
+              reject(new Error(`Subscription failed: ${status}`));
+            }
+          });
+        });
+        
+        // Success!
+        this.updateStatus('connected');
+        return true;
+      } catch (err) {
+        entry.metadata.reconnectAttempts = attempt;
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 15000); // Cap at 15s
+        console.warn(`[RealtimeChannelManager] Subscribe attempt ${attempt}/${maxAttempts} failed for ${id}, retrying in ${delay}ms`, err);
+        
+        if (attempt < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    // All attempts failed - mark as errored but keep entry
+    console.error(`[RealtimeChannelManager] ❌ Channel ${id} failed to subscribe after ${maxAttempts} attempts`);
+    entry.metadata.errored = true;
+    return false;
   }
   
   /**

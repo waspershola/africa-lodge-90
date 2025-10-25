@@ -91,26 +91,30 @@ class ConnectionManager {
   }
 
   /**
-   * Setup centralized visibility change handler
+   * F.8.3: Robust visibility handler with throttling (singleton pattern)
+   */
+  private visibilityHandler = (() => {
+    let last = 0;
+    return () => {
+      const now = Date.now();
+      if (now - last < 1000) return; // Throttle to 1s
+      last = now;
+      if (document.visibilityState === 'visible') {
+        console.log('[ConnectionManager] Tab became visible - triggering reconnect');
+        this.handleTabBecameVisible();
+      }
+    };
+  })();
+
+  /**
+   * F.8.3: Setup centralized visibility change handler (single source)
    */
   private setupVisibilityHandler() {
     if (typeof document === 'undefined') return;
 
-    document.addEventListener('visibilitychange', () => {
-      const now = Date.now();
-      
-      // Debounce rapid visibility changes (tab switching)
-      if (now - this.lastVisibilityChange < 1000) {
-        console.log('[ConnectionManager] Debouncing rapid visibility change');
-        return;
-      }
-      
-      this.lastVisibilityChange = now;
-
-      if (document.visibilityState === 'visible') {
-        this.handleTabBecameVisible();
-      }
-    });
+    // F.8.3: Remove any existing listener first (idempotent)
+    document.removeEventListener('visibilitychange', this.visibilityHandler as any);
+    document.addEventListener('visibilitychange', this.visibilityHandler);
   }
 
   /**

@@ -362,17 +362,7 @@ export const QuickGuestCapture = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validation for existing guest mode
-    if (guestMode === 'existing' && !selectedGuest) {
-      toast({
-        title: "Validation Error",
-        description: "Please select an existing guest or create a new one",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // G.2+ DEFENSIVE REHYDRATION: Restore form data if lost during tab switch
+    // G++.4: REHYDRATION FIRST - Before any validation
     if (guestMode === 'existing' && selectedGuest && !formData.guestName.trim()) {
       console.log('[Form Rehydration] Restoring guest data from selected guest');
       setFormData(prev => ({
@@ -389,7 +379,17 @@ export const QuickGuestCapture = ({
       
       toast({
         title: "Form Data Restored",
-        description: "Guest information has been restored. Please review and submit again.",
+        description: "Guest information has been restored. Please submit again.",
+      });
+      return; // Stop here - let user review
+    }
+
+    // NOW run validation checks
+    if (guestMode === 'existing' && !selectedGuest) {
+      toast({
+        title: "Validation Error",
+        description: "Please select an existing guest or create a new one",
+        variant: "destructive",
       });
       return;
     }

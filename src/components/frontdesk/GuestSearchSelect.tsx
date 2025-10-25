@@ -85,6 +85,16 @@ export const GuestSearchSelect = ({
     enabled: !!tenantId && open,
     keepPreviousData: true, // G.5: Preserve previous results during refetch
     staleTime: 60000, // G.5: Keep data fresh for 1 minute
+    refetchOnWindowFocus: (query) => {
+      // G++.1: Only refetch if data is stale and popover is open
+      if (!open) return false;
+      const dataAge = Date.now() - (query.state.dataUpdatedAt || 0);
+      const isStale = dataAge > 60000; // Older than 1 minute
+      if (isStale) {
+        console.log('[Guest Search] Tab visible and data stale, refetching...');
+      }
+      return isStale;
+    },
   });
 
   const selectedGuest = guests.find((g) => g.id === value);

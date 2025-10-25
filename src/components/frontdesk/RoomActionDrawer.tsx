@@ -169,8 +169,11 @@ export const RoomActionDrawer = ({
       return folio;
     },
     enabled: !!room?.id && (room?.status === 'occupied' || room?.status === 'overstay' || room?.status === 'reserved'),
-    retry: 1,
-    staleTime: 30000
+    retry: 3, // G++.2: Increase from 1 to 3 for better resilience
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000), // Exponential backoff
+    staleTime: 30000,
+    refetchOnWindowFocus: true, // G++.2: Auto-refetch on tab return
+    networkMode: 'online', // G++.2: Only fetch when online
   });
 
   if (!room) return null;

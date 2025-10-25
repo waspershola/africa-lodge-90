@@ -35,12 +35,13 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   }
 });
 
-// Phase 4: Enhanced initialization logging
+// Phase 4: Enhanced initialization logging with channel tracking
 if (typeof window !== 'undefined') {
   setTimeout(() => {
     console.log('[Supabase Client] ✅ Initialized with improved realtime configuration');
     console.log('[Supabase Client] - Heartbeat: 30s');
     console.log('[Supabase Client] - Backoff: 1s, 3s, 5s, 10s');
     console.log('[Supabase Client] - Rate limit: 10 events/sec');
+    console.log('[Supabase Client] - Single client instance enforced');
   }, 100);
 }

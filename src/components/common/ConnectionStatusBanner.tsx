@@ -20,15 +20,25 @@ export const ConnectionStatusBanner = () => {
   useEffect(() => {
     let mounted = true;
     
-    // Add grace period to allow channels to register before showing banner
+    // Phase 1 Fix: Extended grace period (2s) to allow all channels to register
+    // Prevents premature banner display during initial connection
     Promise.all([
       supabaseHealthMonitor.checkHealth(),
-      new Promise(resolve => setTimeout(resolve, 500))
+      new Promise(resolve => setTimeout(resolve, 2000))
     ]).then(([isHealthy]) => {
       if (!mounted) return;
+      // Only show banner if connection is genuinely unhealthy after grace period
       if (!isHealthy) {
+        console.warn('[ConnectionBanner] Initial health check failed after grace period');
         setIsOnline(false);
         isOnlineRef.current = false;
+        setShowBanner(true);
+      } else {
+        console.log('[ConnectionBanner] Initial health check passed');
+      }
+    }).catch((error) => {
+      console.error('[ConnectionBanner] Initial health check error:', error);
+      if (mounted) {
         setShowBanner(true);
       }
     });

@@ -88,6 +88,17 @@ class ConnectionManager {
   // F.9.2: Global reconnection lock (prevents duplicate reconnects)
   private static reconnectLock = false;
   
+  /**
+   * F.12: Check if user is actively interacting with forms/dialogs
+   */
+  private userIsActivelyInteracting(): boolean {
+    // Check if any modal/dialog is open
+    const hasOpenDialog = document.querySelector('[role="dialog"][data-state="open"]');
+    const hasOpenPopover = document.querySelector('[data-radix-popper-content-wrapper]');
+    
+    return !!(hasOpenDialog || hasOpenPopover);
+  }
+  
   constructor() {
     this.setupVisibilityHandler();
     this.setupHealthMonitoring();
@@ -278,7 +289,8 @@ class ConnectionManager {
   }
 
   /**
-   * Invalidate only critical queries that are stale
+   * F.12: Invalidate only critical queries that are stale
+   * REMOVED auto-refetch to preserve active UI state (search, forms)
    */
   private invalidateStaleCriticalQueries() {
     const now = Date.now();
@@ -288,7 +300,8 @@ class ConnectionManager {
 
     console.log('[ConnectionManager] Checking critical queries for staleness');
 
-    // Only invalidate critical queries older than 30 seconds
+    // F.12: Only invalidate critical queries (mark stale), don't auto-refetch
+    // This preserves active search results and form data
     queryClient.invalidateQueries({
       predicate: (query) => {
         const key = Array.isArray(query.queryKey) ? query.queryKey[0] : query.queryKey;
@@ -299,21 +312,22 @@ class ConnectionManager {
       }
     });
 
-    // Refetch only active (visible) critical queries
-    queryClient.refetchQueries({
-      type: 'active',
-      predicate: (query) => {
-        const key = Array.isArray(query.queryKey) ? query.queryKey[0] : query.queryKey;
-        return criticalQueries.includes(key as string);
-      }
-    });
+    // F.12: Removed auto-refetch - queries will refetch when components need them
+    // OLD: queryClient.refetchQueries({ type: 'active', ... })
   }
 
   /**
-   * Execute prioritized invalidation on reconnection
+   * F.12: Execute prioritized invalidation on reconnection
+   * ONLY processes critical queries to avoid breaking active UI
    * Processes queries in waves: critical → high → normal
    */
   private async executePrioritizedInvalidation() {
+    // F.12: Skip invalidation if user is actively interacting with forms/dialogs
+    if (this.userIsActivelyInteracting()) {
+      console.log('[ConnectionManager] Skipping invalidation - user is actively interacting with UI');
+      return;
+    }
+    
     if (this.isReconnecting) {
       console.log('[ConnectionManager] Already reconnecting, skipping');
       return;
@@ -323,17 +337,19 @@ class ConnectionManager {
     const now = Date.now();
 
     try {
-      // Group queries by priority
+      // F.12: Only process critical queries - skip high/normal to preserve UI state
       const priorityGroups: PriorityGroup[] = [
         { priority: 'critical', queries: [], delay: 0 },
-        { priority: 'high', queries: [], delay: 500 },
-        { priority: 'normal', queries: [], delay: 1500 },
       ];
 
-      // Categorize stale queries by priority
+      // F.12: Only check critical queries for staleness
       queryClient.getQueryCache().getAll().forEach((query) => {
         const key = Array.isArray(query.queryKey) ? query.queryKey[0] : query.queryKey;
         const priority = QUERY_PRIORITIES[key as string] || 'normal';
+        
+        // F.12: Skip non-critical queries (guest-search, guests, etc.)
+        if (priority !== 'critical') return;
+        
         const threshold = STALE_THRESHOLDS[priority];
         const isStale = now - query.state.dataUpdatedAt > threshold;
 
@@ -345,18 +361,13 @@ class ConnectionManager {
         }
       });
 
-      // Process each priority group sequentially with delays
+      // Process only critical queries
       for (const group of priorityGroups) {
         if (group.queries.length === 0) continue;
 
         console.log(`[ConnectionManager] Invalidating ${group.priority} queries (${group.queries.length})`);
 
-        // Wait for the specified delay
-        if (group.delay > 0) {
-          await new Promise(resolve => setTimeout(resolve, group.delay));
-        }
-
-        // Invalidate this priority group
+        // Invalidate this priority group (mark as stale)
         queryClient.invalidateQueries({
           predicate: (query) => {
             const key = Array.isArray(query.queryKey) ? query.queryKey[0] : query.queryKey;
@@ -364,17 +375,12 @@ class ConnectionManager {
           }
         });
 
-        // Only refetch active queries for this group
-        queryClient.refetchQueries({
-          type: 'active',
-          predicate: (query) => {
-            const key = Array.isArray(query.queryKey) ? query.queryKey[0] : query.queryKey;
-            return group.queries.includes(key as string);
-          }
-        });
+        // F.12: Removed auto-refetch - let components refetch when they need data
+        // This prevents clearing active search results and form data
+        // OLD: queryClient.refetchQueries({ type: 'active', ... })
       }
 
-      console.log('[ConnectionManager] Prioritized invalidation complete');
+      console.log('[ConnectionManager] Prioritized invalidation complete (critical only, no auto-refetch)');
     } finally {
       this.isReconnecting = false;
     }

@@ -72,3 +72,40 @@ export const useRateLimiting = (config: RateLimitConfig) => {
     activeConnections: connections.length
   };
 };
+
+// Global Request Rate Limiter
+class RequestRateLimiter {
+  private requestCount: number = 0;
+  private windowStart: number = Date.now();
+  private readonly MAX_REQUESTS_PER_MINUTE = 100;
+  private readonly WINDOW_MS = 60000;
+  
+  canMakeRequest(): boolean {
+    const now = Date.now();
+    
+    // Reset window if 1 minute has passed
+    if (now - this.windowStart > this.WINDOW_MS) {
+      this.requestCount = 0;
+      this.windowStart = now;
+    }
+    
+    // Check if we're over the limit
+    if (this.requestCount >= this.MAX_REQUESTS_PER_MINUTE) {
+      console.warn('[Rate Limiter] Request throttled - too many requests');
+      return false;
+    }
+    
+    this.requestCount++;
+    return true;
+  }
+  
+  getStats() {
+    return {
+      count: this.requestCount,
+      limit: this.MAX_REQUESTS_PER_MINUTE,
+      remaining: Math.max(0, this.MAX_REQUESTS_PER_MINUTE - this.requestCount)
+    };
+  }
+}
+
+export const requestRateLimiter = new RequestRateLimiter();

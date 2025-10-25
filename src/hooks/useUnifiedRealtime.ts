@@ -455,7 +455,7 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
     const channel = setupSubscriptions();
     subscriptionRef.current.channel = channel;
 
-    // ✅ PHASE 2: Handle tab visibility changes with query invalidation
+    // ✅ PHASE 2: Handle tab visibility changes
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         if (verbose) {
@@ -473,9 +473,6 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
           }
           const newChannel = setupSubscriptions();
           subscriptionRef.current.channel = newChannel;
-          
-          // ✅ Invalidate queries to refetch fresh data
-          queryClient.invalidateQueries();
         }
       }
     };

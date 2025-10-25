@@ -4,6 +4,8 @@ class SupabaseHealthMonitor {
   private healthCheckInterval: NodeJS.Timeout | null = null;
   private reconnecting = false;
   private lastHealthCheck: Date | null = null;
+  private invalidationTimeout: NodeJS.Timeout | null = null;
+  private lastInvalidation: Date | null = null;
   
   private listeners: Array<(healthy: boolean) => void> = [];
   
@@ -17,10 +19,10 @@ class SupabaseHealthMonitor {
     // Initial health check
     this.checkHealth();
     
-    // Periodic health checks (every 30 seconds)
+    // Periodic health checks (every 60 seconds)
     this.healthCheckInterval = setInterval(() => {
       this.checkHealth();
-    }, 30000);
+    }, 60000);
     
     // Listen for tab visibility changes
     document.addEventListener('visibilitychange', this.handleVisibilityChange);
@@ -79,7 +81,7 @@ class SupabaseHealthMonitor {
       
       const healthPromise = supabase
         .from('tenants')
-        .select('id')
+        .select('tenant_id')
         .limit(1)
         .single();
       
@@ -145,6 +147,27 @@ class SupabaseHealthMonitor {
   }
   
   private notifyListeners(healthy: boolean) {
+    // Clear pending invalidation
+    if (this.invalidationTimeout) {
+      clearTimeout(this.invalidationTimeout);
+      this.invalidationTimeout = null;
+    }
+    
+    // Debounce: only invalidate once per 5 seconds
+    if (healthy) {
+      const timeSinceLastInvalidation = this.lastInvalidation 
+        ? Date.now() - this.lastInvalidation.getTime()
+        : Infinity;
+      
+      if (timeSinceLastInvalidation < 5000) {
+        console.log('[Supabase Health] Skipping invalidation - too soon');
+        return;
+      }
+      
+      this.lastInvalidation = new Date();
+    }
+    
+    // Notify all listeners
     this.listeners.forEach(callback => callback(healthy));
   }
 }

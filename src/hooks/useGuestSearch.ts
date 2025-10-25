@@ -18,22 +18,8 @@ export interface GuestSearchResult {
 }
 
 export const useGuestSearch = (searchTerm: string) => {
-  const [lastVisible, setLastVisible] = useState(Date.now());
-  
-  // Track when tab becomes visible
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        setLastVisible(Date.now());
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, []);
-  
   return useQuery({
-    queryKey: ['guest-search', searchTerm, lastVisible],
+    queryKey: ['guest-search', searchTerm],
     queryFn: async () => {
       if (!searchTerm || searchTerm.length < 2) {
         return [];
@@ -98,21 +84,8 @@ export const useGuestSearch = (searchTerm: string) => {
 };
 
 export const useRecentGuests = () => {
-  const [lastVisible, setLastVisible] = useState(Date.now());
-  
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        setLastVisible(Date.now());
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, []);
-  
   return useQuery({
-    queryKey: ['recent-guests', lastVisible],
+    queryKey: ['recent-guests'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('guests')

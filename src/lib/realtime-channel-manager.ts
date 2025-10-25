@@ -66,7 +66,7 @@ class RealtimeChannelManager {
         createdAt: Date.now(),
         lastActivity: Date.now(),
         reconnectAttempts: 0,
-        retryLimit: metadata?.retryLimit || 5
+        retryLimit: metadata?.retryLimit || 10  // Phase 3: Increased from 5 to 10
       }
     });
     
@@ -199,9 +199,10 @@ class RealtimeChannelManager {
       
       // Resubscribe with timeout
       await new Promise<void>((resolve, reject) => {
+        // Phase 1: Increased timeout from 5s to 15s
         const timeout = setTimeout(() => {
           reject(new Error(`Subscription timeout for channel ${id}`));
-        }, 5000);
+        }, 15000);
         
         channel.subscribe((status) => {
           if (status === 'SUBSCRIBED') {
@@ -268,28 +269,26 @@ class RealtimeChannelManager {
   }
   
   /**
-   * Periodic health monitoring
+   * Phase 2: Passive health monitoring (reports status only, doesn't reconnect)
+   * ConnectionManager handles actual reconnection logic
    */
   private startHealthMonitoring(): void {
     // Check health every 30 seconds
     this.healthCheckInterval = setInterval(() => {
-      // PHASE F.1: Skip health check if no channels registered yet
       if (this.channels.size === 0) {
-        console.log('[RealtimeChannelManager] No channels registered yet - skipping health check');
-        return; // Keep status as 'connected' (default)
+        console.log('[RealtimeChannelManager] No channels registered - passive monitoring mode');
+        return;
       }
       
       const unhealthy = this.getUnhealthyChannels();
       
       if (unhealthy.length > 0) {
-        console.warn(`[RealtimeChannelManager] Health check: ${unhealthy.length} unhealthy channels detected`);
+        console.warn(`[RealtimeChannelManager] Passive monitor: ${unhealthy.length} unhealthy channels detected`);
         this.updateStatus('disconnected');
         
-        // Auto-repair unhealthy channels (but not during manual reconnection)
-        if (!this.reconnecting) {
-          console.log('[RealtimeChannelManager] Auto-repairing unhealthy channels...');
-          unhealthy.forEach(id => this.refreshChannel(id));
-        }
+        // Phase 2: NO auto-repair - ConnectionManager handles reconnection
+        // Just report status, don't attempt fixes
+        console.log('[RealtimeChannelManager] Passive mode - waiting for ConnectionManager to handle reconnection');
       } else if (this.channels.size > 0) {
         // All channels healthy
         this.updateStatus('connected');
@@ -345,6 +344,34 @@ class RealtimeChannelManager {
     
     return () => {
       this.statusListeners.delete(callback);
+    };
+  }
+  
+  /**
+   * Phase 4: Get debug information for diagnostics
+   */
+  getDebugInfo() {
+    const now = Date.now();
+    const channels = Array.from(this.channels.entries()).map(([id, { channel, metadata }]) => ({
+      id,
+      type: metadata.type,
+      priority: metadata.priority,
+      state: channel.state,
+      age: Math.floor((now - metadata.createdAt) / 1000),
+      lastActivity: Math.floor((now - metadata.lastActivity) / 1000),
+      reconnectAttempts: metadata.reconnectAttempts,
+      retryLimit: metadata.retryLimit
+    }));
+    
+    const stats = this.getStats();
+    
+    return {
+      status: this.currentStatus,
+      totalChannels: this.channels.size,
+      channels,
+      stats,
+      reconnecting: this.reconnecting,
+      lastCheck: new Date().toISOString()
     };
   }
   

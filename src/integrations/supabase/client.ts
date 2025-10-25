@@ -20,11 +20,12 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     params: {
       eventsPerSecond: 10 // Rate limiting to prevent overwhelming clients
     },
-    // Heartbeat interval - keep connection alive during backgrounding
+    // Phase 2: Native Supabase heartbeat - keep connection alive during backgrounding
     heartbeatIntervalMs: 30000, // 30 seconds
-    // Exponential backoff for reconnection attempts (1s, 2s, 4s, 5s capped)
+    // Phase 3: Improved exponential backoff (1s, 3s, 5s, 10s, 10s...)
     reconnectAfterMs: (tries: number) => {
-      return Math.min(tries * 1000, 5000);
+      const delays = [1000, 3000, 5000, 10000];
+      return delays[Math.min(tries - 1, delays.length - 1)];
     },
   },
   global: {
@@ -34,10 +35,12 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   }
 });
 
-// Initialize realtime channel manager after client creation
+// Phase 4: Enhanced initialization logging
 if (typeof window !== 'undefined') {
-  // Give client time to initialize, then log confirmation
   setTimeout(() => {
-    console.log('[Supabase Client] Realtime configuration applied with heartbeat and reconnection');
+    console.log('[Supabase Client] ✅ Initialized with improved realtime configuration');
+    console.log('[Supabase Client] - Heartbeat: 30s');
+    console.log('[Supabase Client] - Backoff: 1s, 3s, 5s, 10s');
+    console.log('[Supabase Client] - Rate limit: 10 events/sec');
   }, 100);
 }

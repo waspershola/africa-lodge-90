@@ -14,6 +14,14 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // G.6: Fallback timeout - don't block app indefinitely
+    const loadingTimeout = setTimeout(() => {
+      if (loading) {
+        console.warn('[Auth] Loading timeout - forcing ready state');
+        setLoading(false);
+      }
+    }, 15000); // 15 second max loading time
+
     // Get initial session
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -62,8 +70,11 @@ export const useAuth = () => {
       }
     );
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      clearTimeout(loadingTimeout);
+      subscription.unsubscribe();
+    };
+  }, [loading]);
 
   return { user, loading };
 };

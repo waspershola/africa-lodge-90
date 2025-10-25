@@ -177,29 +177,38 @@ class SupabaseHealthMonitor {
         return false;
       }
       
-      // F.11.1: Session check with timeout wrapper
-      try {
-        const sessionResp: any = await Promise.race([
-          supabase.auth.getSession(),
-          timeout(CHECK_TIMEOUT_MS, new Error('auth-session-timeout'))
-        ]);
-        
-        const session = sessionResp.data?.session;
-        if (!session) {
-          console.warn('[Supabase Health] No session found - treating as offline but not panicking');
-          this.failureCount++;
-          this.notifyListeners(false);
-          return false;
+      // G.1: Skip auth check on tab visible if we have a session in memory
+      // This prevents timeout from blocking app load on tab switches
+      const { data: { session: memorySession } } = await supabase.auth.getSession();
+      
+      if (memorySession && document.visibilityState === 'visible') {
+        console.log('[Supabase Health] ✅ Session exists in memory on tab visible, skipping timeout check');
+        // Continue with health probe below, skip the timeout wrapper
+      } else {
+        // F.11.1: Session check with timeout wrapper (only for non-tab-visible scenarios)
+        try {
+          const sessionResp: any = await Promise.race([
+            supabase.auth.getSession(),
+            timeout(CHECK_TIMEOUT_MS, new Error('auth-session-timeout'))
+          ]);
+          
+          const session = sessionResp.data?.session;
+          if (!session) {
+            console.warn('[Supabase Health] No session found - treating as offline but not panicking');
+            this.failureCount++;
+            this.notifyListeners(false);
+            return false;
+          }
+        } catch (err: any) {
+          if (err.message === 'auth-session-timeout') {
+            console.warn('[Supabase Health] Auth session check timed out - treating as healthy (slow auth is not a connection failure)');
+            return true; // Don't fail health check on slow auth
+          }
+          throw err; // Re-throw other errors
         }
-      } catch (err: any) {
-        if (err.message === 'auth-session-timeout') {
-          console.warn('[Supabase Health] Auth session check timed out - treating as healthy (slow auth is not a connection failure)');
-          return true; // Don't fail health check on slow auth
-        }
-        throw err; // Re-throw other errors
       }
       
-      // Get session again for health probe (we know it exists now)
+      // Get session for health probe (we know it exists now)
       const { data: { session } } = await supabase.auth.getSession();
       
       // If session exists, do a lightweight health probe

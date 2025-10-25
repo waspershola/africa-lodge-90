@@ -83,6 +83,8 @@ export const GuestSearchSelect = ({
       return data as GuestData[];
     },
     enabled: !!tenantId && open,
+    keepPreviousData: true, // G.5: Preserve previous results during refetch
+    staleTime: 60000, // G.5: Keep data fresh for 1 minute
   });
 
   const selectedGuest = guests.find((g) => g.id === value);

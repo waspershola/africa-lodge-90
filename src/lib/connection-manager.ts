@@ -203,23 +203,10 @@ class ConnectionManager {
       console.log('[ConnectionManager] Reconnecting realtime channels...');
       await realtimeChannelManager.reconnectAll();
       
-      // STEP 3: Phase F.6 - Force refetch if tab was hidden >2 minutes
-      if (timeSinceLastRefetch > 2 * 60 * 1000) {
-        console.log('[ConnectionManager] Tab hidden >2 min - forcing active query refetch');
-        this.lastRefetchTime = Date.now();
-        
-        // Phase F.6: Throttled refetch (max once per 30s)
-        if (timeSinceLastRefetch > 30 * 1000) {
-          await queryClient.refetchQueries({ 
-            type: 'active', 
-            stale: true 
-          });
-        }
-      } else {
-        // Normal flow - invalidate stale critical queries only
-        console.log('[ConnectionManager] Invalidating stale critical queries...');
-        this.invalidateStaleCriticalQueries();
-      }
+      // G.2: REMOVED aggressive refetch that clears active search and form data
+      // Only invalidate stale critical queries - let components refetch when needed
+      console.log('[ConnectionManager] Invalidating stale critical queries only...');
+      this.invalidateStaleCriticalQueries();
       
       this.visibilityTimeout = null;
     }, 500);

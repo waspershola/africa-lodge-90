@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { toast } from 'sonner';
@@ -19,6 +19,10 @@ export function useSecurityValidation() {
     sessionValid: true
   });
   
+  // F.11.3: Track last validation time to prevent duplicates
+  const lastValidationTime = useRef<number>(0);
+  const VALIDATION_COOLDOWN_MS = 60000; // Don't validate more than once per minute
+  
   // Safely access auth context
   let auth;
   try {
@@ -34,6 +38,15 @@ export function useSecurityValidation() {
     if (!user || !session) return;
 
     const validateSecurity = async () => {
+      const now = Date.now();
+      
+      // F.11.3: Skip if validated recently
+      if (now - lastValidationTime.current < VALIDATION_COOLDOWN_MS) {
+        console.log('[SECURITY VALIDATION] Skipping - validated recently');
+        return;
+      }
+      
+      lastValidationTime.current = now;
       const violations: string[] = [];
       let userDbRecord = null;
       let sessionValid = true;
@@ -166,8 +179,11 @@ export function useSecurityValidation() {
       }
     };
 
-    // F.10.1: Run validation immediately
-    validateSecurity();
+    // F.10.1 + F.11.3: Run validation immediately (unless just ran)
+    const now = Date.now();
+    if (now - lastValidationTime.current >= VALIDATION_COOLDOWN_MS) {
+      validateSecurity();
+    }
     
     // F.10.1: Adaptive interval - 5min when active, pause when tab hidden
     let interval: NodeJS.Timeout;

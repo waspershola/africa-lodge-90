@@ -211,14 +211,49 @@ class ConnectionDebugger {
   }
 
   /**
+   * F.11.5: Generate health report with grade
+   */
+  getHealthReport(): string {
+    const stats = this.getStats();
+    const uptime = stats.uptime;
+    
+    const successRate = this.metrics.totalAttempts > 0
+      ? ((this.metrics.successfulAttempts / this.metrics.totalAttempts) * 100).toFixed(1)
+      : '100.0';
+    
+    const avgRecovery = Math.round(this.metrics.averageRecoveryTime);
+    
+    // Calculate grade based on performance
+    let grade = 'A+';
+    if (parseFloat(successRate) < 95 || avgRecovery > 5000) grade = 'A';
+    if (parseFloat(successRate) < 90 || avgRecovery > 10000) grade = 'B';
+    if (parseFloat(successRate) < 80 || avgRecovery > 15000) grade = 'C';
+    if (parseFloat(successRate) < 70 || avgRecovery > 20000) grade = 'D';
+    
+    return `
+╔════════════════════════════════════════╗
+║    CONNECTION HEALTH REPORT            ║
+╠════════════════════════════════════════╣
+║ Grade: ${grade.padEnd(34)}║
+║ Uptime: ${uptime.padEnd(33)}║
+║ Success Rate: ${successRate}%${' '.repeat(25 - successRate.length)}║
+║ Avg Recovery: ${avgRecovery}ms${' '.repeat(24 - avgRecovery.toString().length)}║
+║ Circuit Breaker: ${this.metrics.circuitBreakerActivations} activations${' '.repeat(18 - this.metrics.circuitBreakerActivations.toString().length)}║
+╚════════════════════════════════════════╝
+    `.trim();
+  }
+
+  /**
    * Export logs for debugging
    */
   exportLogs() {
     const stats = this.getStats();
     const diagnosis = this.diagnose();
+    const healthReport = this.getHealthReport();
     
     const report = {
       generatedAt: new Date().toISOString(),
+      healthReport,
       stats,
       diagnosis,
       environment: {
@@ -228,7 +263,9 @@ class ConnectionDebugger {
       }
     };
     
-    console.log('[ConnectionDebug] 📄 Debug Report:', report);
+    console.log('[ConnectionDebug] 📄 Debug Report:');
+    console.log(healthReport);
+    console.log(report);
     
     // Copy to clipboard if available
     if (navigator.clipboard) {
@@ -253,6 +290,9 @@ const connectionDebugger = new ConnectionDebugger();
   diagnose: () => connectionDebugger.diagnose(),
   resetMetrics: () => connectionDebugger.resetMetrics(),
   exportLogs: () => connectionDebugger.exportLogs(),
+  healthReport: () => {
+    console.log(connectionDebugger.getHealthReport());
+  },
   help: () => {
     console.log(`
 🔍 Connection Debug Utilities
@@ -263,6 +303,7 @@ Available commands:
   __CONNECTION_DEBUG__.testReconnection()   - Manually test reconnection
   __CONNECTION_DEBUG__.monitorHealthChecks(60) - Monitor for 60 seconds
   __CONNECTION_DEBUG__.diagnose()           - Check for issues
+  __CONNECTION_DEBUG__.healthReport()       - Show health grade report
   __CONNECTION_DEBUG__.resetMetrics()       - Reset all metrics
   __CONNECTION_DEBUG__.exportLogs()         - Export debug report
   __CONNECTION_DEBUG__.help()               - Show this help
@@ -270,6 +311,9 @@ Available commands:
 Example usage:
   // Check current status
   __CONNECTION_DEBUG__.logStatus()
+  
+  // View health grade
+  __CONNECTION_DEBUG__.healthReport()
   
   // Run 2-minute health monitoring
   await __CONNECTION_DEBUG__.monitorHealthChecks(120)

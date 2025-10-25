@@ -37,37 +37,6 @@ export const queryClient = new QueryClient({
   },
 });
 
-// ✅ Listen to health monitor and invalidate all queries on reconnection
-let invalidationTimeout: NodeJS.Timeout | null = null;
+// ✅ Connection monitoring now handled by ConnectionManager
+// This prevents the "death spiral" of simultaneous invalidations
 
-supabaseHealthMonitor.onHealthChange((healthy) => {
-  if (healthy) {
-    // Clear any pending invalidation
-    if (invalidationTimeout) {
-      clearTimeout(invalidationTimeout);
-    }
-    
-    // Debounce: wait 2 seconds before invalidating
-    invalidationTimeout = setTimeout(() => {
-      console.log('[Query Client] Connection restored - invalidating stale queries');
-      
-      // Only invalidate queries that are >2 min old
-      queryClient.invalidateQueries({
-        predicate: (query) => {
-          const dataUpdatedAt = query.state.dataUpdatedAt;
-          return Date.now() - dataUpdatedAt > 2 * 60 * 1000;
-        }
-      });
-      
-      // Refetch only active queries (visible on screen)
-      queryClient.refetchQueries({ 
-        type: 'active',
-        stale: true
-      });
-      
-      invalidationTimeout = null;
-    }, 2000);
-  } else {
-    console.warn('[Query Client] Connection lost - queries will pause');
-  }
-});

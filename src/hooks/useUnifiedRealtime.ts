@@ -228,7 +228,15 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
   }, [verbose]);
 
   // Debounced invalidation with grouping and tiered delays (Phase 3.2 + Phase 4)
+  // Adjusted for visibility state to prevent accumulation when tab is backgrounded
   const debouncedInvalidate = useCallback((queryKeys: string[], delay: number) => {
+    // If tab is hidden, use longer delays to prevent accumulation
+    const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+    const adjustedDelay = isHidden ? delay * 5 : delay;
+    
+    if (verbose && isHidden) {
+      console.log('[Realtime] Tab hidden - using extended debounce:', adjustedDelay);
+    }
     // Phase 4: Prevent timeout accumulation memory leak
     if (timeoutCountRef.current >= MAX_PENDING_TIMEOUTS) {
       if (verbose) {
@@ -269,7 +277,7 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
         queryClient.invalidateQueries({ queryKey });
         delete invalidationTimeoutsRef.current[key];
         timeoutCountRef.current--;
-      }, delay);
+      }, adjustedDelay);
     });
   }, [queryClient, verbose]);
 
@@ -450,41 +458,18 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
     }, delay);
   }, [setupSubscriptions, verbose]);
 
-  // Main effect - setup and cleanup with visibility handling
+  // Main effect - setup and cleanup
+  // Visibility handling now managed by ConnectionManager to prevent cascading invalidations
   useEffect(() => {
     const channel = setupSubscriptions();
     subscriptionRef.current.channel = channel;
-
-    // ✅ PHASE 2: Handle tab visibility changes
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        if (verbose) {
-          console.log('[Realtime] Tab became visible - checking subscription health');
-        }
-        
-        // Verify subscription is still active
-        const currentChannel = subscriptionRef.current.channel;
-        if (!currentChannel || currentChannel.state !== 'joined') {
-          console.warn('[Realtime] Subscription unhealthy - reconnecting...');
-          
-          // Force reconnection
-          if (currentChannel) {
-            supabase.removeChannel(currentChannel);
-          }
-          const newChannel = setupSubscriptions();
-          subscriptionRef.current.channel = newChannel;
-        }
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       if (verbose) {
         console.log('[Realtime] Cleaning up unified subscriptions');
       }
 
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      // Visibility handling now in ConnectionManager - no listener to remove
 
       // Clear all pending invalidation timeouts (Phase 4: with counter reset)
       Object.values(invalidationTimeoutsRef.current).forEach(timeout => {

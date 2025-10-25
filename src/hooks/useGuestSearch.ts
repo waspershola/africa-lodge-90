@@ -20,6 +20,10 @@ export interface GuestSearchResult {
 export const useGuestSearch = (searchTerm: string) => {
   return useQuery({
     queryKey: ['guest-search', searchTerm],
+    meta: { 
+      priority: 'high',
+      maxAge: 60000 // 1 minute
+    },
     queryFn: async () => {
       if (!searchTerm || searchTerm.length < 2) {
         return [];
@@ -86,6 +90,10 @@ export const useGuestSearch = (searchTerm: string) => {
 export const useRecentGuests = () => {
   return useQuery({
     queryKey: ['recent-guests'],
+    meta: { 
+      priority: 'high',
+      maxAge: 60000 // 1 minute
+    },
     queryFn: async () => {
       const { data, error } = await supabase
         .from('guests')

@@ -129,14 +129,19 @@ const SentryMonitor = () => {
   return null;
 };
 
-// Health Monitor component to start monitoring
+// Health Monitor + Connection Manager initialization
 import { supabaseHealthMonitor } from './lib/supabase-health-monitor';
+import { connectionManager } from './lib/connection-manager';
 import { useEffect } from 'react';
 
 const HealthMonitor = () => {
   useEffect(() => {
     supabaseHealthMonitor.start();
-    return () => supabaseHealthMonitor.stop();
+    // ConnectionManager automatically initializes on import
+    return () => {
+      supabaseHealthMonitor.stop();
+      connectionManager.destroy();
+    };
   }, []);
   return null;
 };

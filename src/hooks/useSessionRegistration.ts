@@ -47,7 +47,7 @@ export function useSessionRegistration(config: SessionConfig) {
 
   const tenant = user?.tenant;
   const sessionIdRef = useRef<string | null>(null);
-  const heartbeatTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // Note: Heartbeat functionality removed - now handled by supabase-health-monitor
 
   // Generate device fingerprint
   const getDeviceFingerprint = useCallback(() => {
@@ -179,33 +179,8 @@ export function useSessionRegistration(config: SessionConfig) {
     }
   }, [user, tenant?.tenant_id, verbose, parseUserAgent, getDeviceFingerprint]);
 
-  // Send heartbeat to update last_activity_at
-  const sendHeartbeat = useCallback(async () => {
-    if (!sessionIdRef.current) return;
-
-    try {
-      // Use RPC to increment heartbeat_count (types will regenerate)
-      const { error } = await (supabase as any).rpc('increment_session_heartbeat', {
-        p_session_id: sessionIdRef.current
-      });
-
-      if (error) {
-        if (verbose) {
-          console.warn('[Session] Heartbeat failed:', error.message);
-        }
-        
-        // If session not found or inactive, re-register
-        if (error.code === 'PGRST116') {
-          sessionIdRef.current = null;
-          await registerSession();
-        }
-      } else if (verbose) {
-        console.log('[Session] Heartbeat sent');
-      }
-    } catch (error) {
-      console.error('[Session] Heartbeat error:', error);
-    }
-  }, [verbose, registerSession]);
+  // Heartbeat removed - session refresh now handled by supabase-health-monitor
+  // This prevents redundant auth API calls (3x per 15 min → 1x per 5 min)
 
   // Revoke session on logout
   const revokeSession = useCallback(async () => {
@@ -241,29 +216,18 @@ export function useSessionRegistration(config: SessionConfig) {
       return;
     }
 
-    // Register session
+    // Register session (no heartbeat - handled by supabase-health-monitor)
     registerSession();
-
-    // Setup heartbeat interval
-    heartbeatTimerRef.current = setInterval(() => {
-      sendHeartbeat();
-    }, heartbeatInterval);
 
     // Cleanup on unmount or logout
     return () => {
-      if (heartbeatTimerRef.current) {
-        clearInterval(heartbeatTimerRef.current);
-        heartbeatTimerRef.current = null;
-      }
-      
       // Revoke session on component unmount (logout or navigate away)
       revokeSession();
     };
-  }, [user, registerSession, sendHeartbeat, revokeSession, heartbeatInterval]);
+  }, [user, registerSession, revokeSession]);
 
   return {
     sessionId: sessionIdRef.current,
-    sendHeartbeat,
     revokeSession
   };
 }

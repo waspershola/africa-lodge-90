@@ -82,12 +82,11 @@ export const GuestSearchSelect = ({
       if (error) throw error;
       return data as GuestData[];
     },
-    enabled: !!tenantId && open,
+    enabled: !!tenantId, // G++ Recovery: Always enabled when tenant exists (not dependent on popover open state)
     keepPreviousData: true, // G.5: Preserve previous results during refetch
     staleTime: 60000, // G.5: Keep data fresh for 1 minute
     refetchOnWindowFocus: (query) => {
-      // G++.1: Only refetch if data is stale and popover is open
-      if (!open) return false;
+      // G++ Recovery: Refetch if stale regardless of popover state
       const dataAge = Date.now() - (query.state.dataUpdatedAt || 0);
       const isStale = dataAge > 60000; // Older than 1 minute
       if (isStale) {

@@ -278,6 +278,62 @@ export const QuickGuestCapture = ({
     fetchExistingPayments();
   }, [room, action]);
 
+  // G++ Recovery: Save form state to sessionStorage for tab change recovery
+  useEffect(() => {
+    if (open && selectedGuest && formData.guestName) {
+      const storageKey = `quick-capture-${room?.id || 'global'}`;
+      try {
+        sessionStorage.setItem(`${storageKey}-guest`, JSON.stringify(selectedGuest));
+        sessionStorage.setItem(`${storageKey}-form`, JSON.stringify(formData));
+        console.log('[QuickCapture] Saved to sessionStorage');
+      } catch (error) {
+        console.error('[QuickCapture] SessionStorage save failed:', error);
+      }
+    }
+  }, [selectedGuest, formData, open, room?.id]);
+
+  // G++ Recovery: Restore form state on tab visibility change
+  useEffect(() => {
+    if (!open) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[QuickCapture] Tab visible - checking for stored data');
+        const storageKey = `quick-capture-${room?.id || 'global'}`;
+        
+        try {
+          const savedGuestStr = sessionStorage.getItem(`${storageKey}-guest`);
+          const savedFormStr = sessionStorage.getItem(`${storageKey}-form`);
+          
+          // Restore guest if we lost it
+          if (savedGuestStr && !selectedGuest && guestMode === 'existing') {
+            const savedGuest = JSON.parse(savedGuestStr);
+            console.log('[QuickCapture] Restoring selectedGuest from sessionStorage');
+            setSelectedGuest(savedGuest);
+            setGuestSearchValue(savedGuest.name);
+          }
+          
+          // Restore form if guest exists but form is empty
+          if (savedFormStr && selectedGuest && !formData.guestName.trim()) {
+            const savedForm = JSON.parse(savedFormStr);
+            console.log('[QuickCapture] Restoring formData from sessionStorage');
+            setFormData(savedForm);
+            
+            toast({
+              title: "Form Restored",
+              description: "Your guest information has been recovered",
+            });
+          }
+        } catch (error) {
+          console.error('[QuickCapture] SessionStorage restore failed:', error);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [open, selectedGuest, formData.guestName, guestMode, room?.id, toast]);
+
   // Combine search results with recent guests
   const filteredGuests = useMemo(() => {
     if (guestSearchValue.length >= 2) {
@@ -331,6 +387,15 @@ export const QuickGuestCapture = ({
     }));
     setGuestSearchOpen(false);
     setGuestSearchValue(guest.name);
+    
+    // G++ Recovery: Save to sessionStorage immediately on selection
+    const storageKey = `quick-capture-${room?.id || 'global'}`;
+    try {
+      sessionStorage.setItem(`${storageKey}-guest`, JSON.stringify(guest));
+      console.log('[QuickCapture] Guest selection saved to sessionStorage');
+    } catch (error) {
+      console.error('[QuickCapture] Failed to save guest selection:', error);
+    }
   };
 
   const handleGuestModeChange = (mode: 'existing' | 'new') => {
@@ -382,6 +447,28 @@ export const QuickGuestCapture = ({
         description: "Guest information has been restored. Please submit again.",
       });
       return; // Stop here - let user review
+    }
+
+    // G++.4: Check sessionStorage if both selectedGuest and formData are empty
+    if (guestMode === 'existing' && !selectedGuest) {
+      const storageKey = `quick-capture-${room?.id || 'global'}`;
+      const savedGuestStr = sessionStorage.getItem(`${storageKey}-guest`);
+      
+      if (savedGuestStr) {
+        try {
+          const savedGuest = JSON.parse(savedGuestStr);
+          setSelectedGuest(savedGuest);
+          setGuestSearchValue(savedGuest.name);
+          
+          toast({
+            title: "Guest Restored",
+            description: "Guest selection was recovered. Please submit again.",
+          });
+          return;
+        } catch (error) {
+          console.error('[Form Rehydration] Failed to restore guest:', error);
+        }
+      }
     }
 
     // NOW run validation checks
@@ -1290,6 +1377,16 @@ export const QuickGuestCapture = ({
         setSelectedGuest(null);
         setGuestSearchValue("");
         setShowOptionalFields(false);
+
+        // G++ Recovery: Clear sessionStorage on successful completion
+        const storageKey = `quick-capture-${room?.id || 'global'}`;
+        try {
+          sessionStorage.removeItem(`${storageKey}-guest`);
+          sessionStorage.removeItem(`${storageKey}-form`);
+          console.log('[QuickCapture] Cleared sessionStorage on success');
+        } catch (error) {
+          console.error('[QuickCapture] Failed to clear sessionStorage:', error);
+        }
 
         onOpenChange(false);
     } catch (error) {

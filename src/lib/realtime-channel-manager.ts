@@ -37,6 +37,7 @@ class RealtimeChannelManager {
   private healthCheckInterval: NodeJS.Timeout | null = null;
   private statusListeners = new Set<(status: ConnectionStatus) => void>();
   private currentStatus: ConnectionStatus = 'connected';
+  private statusDebounceTimeout: NodeJS.Timeout | null = null;
   
   constructor() {
     this.startHealthMonitoring();
@@ -303,13 +304,33 @@ class RealtimeChannelManager {
   
   /**
    * Update connection status and notify listeners
+   * PHASE G.3: Add 2-second debounce to prevent banner flicker
    */
   private updateStatus(status: ConnectionStatus): void {
-    if (this.currentStatus !== status) {
-      this.currentStatus = status;
-      console.log(`[RealtimeChannelManager] Status changed: ${status}`);
-      this.statusListeners.forEach(listener => listener(status));
+    // Clear any pending status update
+    if (this.statusDebounceTimeout) {
+      clearTimeout(this.statusDebounceTimeout);
+      this.statusDebounceTimeout = null;
     }
+    
+    // Immediately update to 'connected' (no delay for good news)
+    if (status === 'connected') {
+      if (this.currentStatus !== status) {
+        this.currentStatus = status;
+        console.log(`[RealtimeChannelManager] Status changed: ${status}`);
+        this.statusListeners.forEach(listener => listener(status));
+      }
+      return;
+    }
+    
+    // Debounce 'disconnected' status (wait 2s to confirm it's real)
+    this.statusDebounceTimeout = setTimeout(() => {
+      if (this.currentStatus !== status) {
+        this.currentStatus = status;
+        console.log(`[RealtimeChannelManager] Status changed: ${status} (debounced)`);
+        this.statusListeners.forEach(listener => listener(status));
+      }
+    }, 2000);
   }
   
   /**
@@ -336,6 +357,12 @@ class RealtimeChannelManager {
     if (this.healthCheckInterval) {
       clearInterval(this.healthCheckInterval);
       this.healthCheckInterval = null;
+    }
+    
+    // Clear debounce timeout
+    if (this.statusDebounceTimeout) {
+      clearTimeout(this.statusDebounceTimeout);
+      this.statusDebounceTimeout = null;
     }
     
     // Remove all channels

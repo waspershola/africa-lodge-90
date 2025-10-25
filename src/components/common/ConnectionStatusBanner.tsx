@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { WifiOff, Wifi, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,16 @@ export const ConnectionStatusBanner = () => {
   const [reconnecting, setReconnecting] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
   
+  // PHASE G.2: Use refs to track connection state without causing re-renders
+  const isOnlineRef = useRef(true);
+  const realtimeHealthyRef = useRef(true);
+  
+  // Update banner visibility based on connection states
+  const updateBannerVisibility = useCallback(() => {
+    const shouldShow = !isOnlineRef.current || !realtimeHealthyRef.current;
+    setShowBanner(shouldShow);
+  }, []);
+  
   useEffect(() => {
     let mounted = true;
     
@@ -23,29 +33,27 @@ export const ConnectionStatusBanner = () => {
       if (!mounted) return;
       if (!isHealthy) {
         setIsOnline(false);
+        isOnlineRef.current = false;
         setShowBanner(true);
       }
     });
     
     // Monitor HTTP connection health
     const unsubscribeHealth = supabaseHealthMonitor.onHealthChange((healthy) => {
+      isOnlineRef.current = healthy;
       setIsOnline(healthy);
       if (healthy) {
         setReconnecting(false);
       }
-      setShowBanner(!healthy);
+      updateBannerVisibility();
     });
     
     // Monitor realtime channel health
     const unsubscribeRealtime = realtimeChannelManager.onStatusChange((status) => {
       const healthy = status === 'connected';
+      realtimeHealthyRef.current = healthy;
       setRealtimeHealthy(healthy);
-      // Only show banner for realtime issues if HTTP is also healthy
-      if (!healthy && isOnline) {
-        setShowBanner(true);
-      } else if (healthy && isOnline) {
-        setShowBanner(false);
-      }
+      updateBannerVisibility();
     });
     
     return () => {
@@ -53,7 +61,7 @@ export const ConnectionStatusBanner = () => {
       unsubscribeHealth();
       unsubscribeRealtime();
     };
-  }, [isOnline]);
+  }, [updateBannerVisibility]);
   
   const handleRetry = async () => {
     setReconnecting(true);

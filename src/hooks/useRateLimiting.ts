@@ -106,6 +106,12 @@ class RequestRateLimiter {
       remaining: Math.max(0, this.MAX_REQUESTS_PER_MINUTE - this.requestCount)
     };
   }
+  
+  reset() {
+    this.requestCount = 0;
+    this.windowStart = Date.now();
+    console.log('[Rate Limiter] Stats reset');
+  }
 }
 
 export const requestRateLimiter = new RequestRateLimiter();

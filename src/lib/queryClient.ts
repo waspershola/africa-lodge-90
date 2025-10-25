@@ -30,9 +30,9 @@ export const queryClient = new QueryClient({
         return isStale;
       },
       refetchOnMount: false, // Prevent cache thrashing on navigation
-      retry: 1, // Single retry for faster failure detection
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // ✅ Exponential backoff
-      networkMode: 'online', // ✅ Handle offline gracefully
+      retry: 3, // 3 retries for better resilience
+      retryDelay: (attemptIndex) => Math.min(500 * Math.pow(2, attemptIndex), 10000), // Faster retry: 500ms, 1s, 2s
+      networkMode: 'online', // Handle offline gracefully
     },
   },
 });

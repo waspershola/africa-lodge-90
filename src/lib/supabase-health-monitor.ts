@@ -6,12 +6,14 @@ class SupabaseHealthMonitor {
   private lastHealthCheck: Date | null = null;
   private invalidationTimeout: NodeJS.Timeout | null = null;
   private lastInvalidation: Date | null = null;
+  private consecutiveFailures: number = 0;
+  private currentInterval: number = 300000; // Start at 5 minutes
   
   private listeners: Array<(healthy: boolean) => void> = [];
   
   /**
    * Start monitoring Supabase connection health
-   * Checks every 30 seconds, plus on visibility change
+   * Checks every 5 minutes when healthy, plus on visibility change
    */
   start() {
     console.log('[Supabase Health] Starting connection monitor');
@@ -19,10 +21,8 @@ class SupabaseHealthMonitor {
     // Initial health check
     this.checkHealth();
     
-    // Periodic health checks (every 60 seconds)
-    this.healthCheckInterval = setInterval(() => {
-      this.checkHealth();
-    }, 60000);
+    // Dynamic health checks
+    this.scheduleNextCheck();
     
     // Listen for tab visibility changes
     document.addEventListener('visibilitychange', this.handleVisibilityChange);
@@ -30,6 +30,18 @@ class SupabaseHealthMonitor {
     // Listen for online/offline events
     window.addEventListener('online', this.handleOnline);
     window.addEventListener('offline', this.handleOffline);
+  }
+  
+  private scheduleNextCheck() {
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+    }
+    
+    this.healthCheckInterval = setInterval(() => {
+      this.checkHealth();
+    }, this.currentInterval);
+    
+    console.log(`[Supabase Health] Next check in ${this.currentInterval / 1000}s`);
   }
   
   stop() {
@@ -74,29 +86,44 @@ class SupabaseHealthMonitor {
     try {
       console.log('[Supabase Health] Checking connection...');
       
-      // Simple ping query with 5-second timeout
+      // Use auth session check instead of database query (lighter)
       const timeoutPromise = new Promise<never>((_, reject) => 
         setTimeout(() => reject(new Error('Health check timeout')), 5000)
       );
       
-      const healthPromise = supabase
-        .from('tenants')
-        .select('tenant_id')
-        .limit(1)
-        .single();
+      const healthPromise = supabase.auth.getSession();
       
-      await Promise.race([healthPromise, timeoutPromise]);
+      const result = await Promise.race([healthPromise, timeoutPromise]);
       
-      this.lastHealthCheck = new Date();
-      console.log('[Supabase Health] ✅ Connection healthy');
-      this.notifyListeners(true);
-      return true;
+      // Check if we have a valid session OR if we're not logged in (both are "healthy")
+      const isHealthy = !result.error;
+      
+      if (isHealthy) {
+        this.lastHealthCheck = new Date();
+        this.consecutiveFailures = 0;
+        this.currentInterval = 300000; // 5 minutes when healthy
+        this.scheduleNextCheck();
+        console.log('[Supabase Health] ✅ Connection healthy');
+        this.notifyListeners(true);
+        return true;
+      } else {
+        throw result.error;
+      }
     } catch (error) {
       console.error('[Supabase Health] ❌ Connection unhealthy:', error);
+      
+      // Exponential backoff on failures
+      this.consecutiveFailures++;
+      this.currentInterval = Math.min(
+        30000 * Math.pow(2, this.consecutiveFailures), // 30s, 60s, 120s, etc.
+        300000 // Max 5 minutes
+      );
+      this.scheduleNextCheck();
+      
       this.notifyListeners(false);
       
-      // Auto-attempt reconnection
-      if (!this.reconnecting) {
+      // Auto-attempt reconnection only on first failure
+      if (this.consecutiveFailures === 1 && !this.reconnecting) {
         await this.forceReconnect();
       }
       
@@ -114,7 +141,7 @@ class SupabaseHealthMonitor {
     console.log('[Supabase Health] 🔄 Force reconnecting...');
     
     try {
-      // 1. Refresh auth session
+      // Only refresh auth session - no database queries
       const { data, error } = await supabase.auth.refreshSession();
       
       if (error) {
@@ -124,13 +151,14 @@ class SupabaseHealthMonitor {
       
       console.log('[Supabase Health] Session refreshed successfully');
       
-      // 2. Verify connection with health check
-      const healthy = await this.checkHealth();
+      // Mark as healthy without additional health check
+      this.consecutiveFailures = 0;
+      this.currentInterval = 300000; // Reset to 5 minutes
+      this.scheduleNextCheck();
+      this.lastHealthCheck = new Date();
       
-      if (healthy) {
-        console.log('[Supabase Health] ✅ Reconnection successful');
-        this.notifyListeners(true);
-      }
+      console.log('[Supabase Health] ✅ Reconnection successful');
+      this.notifyListeners(true);
     } catch (error) {
       console.error('[Supabase Health] Reconnection failed:', error);
       this.notifyListeners(false);

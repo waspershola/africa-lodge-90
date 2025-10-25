@@ -64,11 +64,18 @@ const QUERY_PRIORITIES: Record<string, QueryPriority> = {
   'supplies': 'normal',
 };
 
-// Stale time thresholds (ms)
+// Phase F.6: Optimized stale time thresholds (ms)
 const STALE_THRESHOLDS = {
-  critical: 30 * 1000,    // 30 seconds
-  high: 60 * 1000,        // 1 minute
+  critical: 0,             // Always fresh for realtime-critical data
+  high: 30 * 1000,        // 30 seconds
   normal: 2 * 60 * 1000,  // 2 minutes
+};
+
+// Phase F.6: Cache time configuration
+const CACHE_TIMES = {
+  critical: 2 * 60 * 1000,    // 2 minutes
+  high: 5 * 60 * 1000,        // 5 minutes
+  normal: 10 * 60 * 1000,     // 10 minutes
 };
 
 class ConnectionManager {
@@ -76,6 +83,7 @@ class ConnectionManager {
   private reconnectDebounceTimeout: NodeJS.Timeout | null = null;
   private visibilityTimeout: NodeJS.Timeout | null = null;
   private lastVisibilityChange = 0;
+  private lastRefetchTime = 0;
   
   constructor() {
     this.setupVisibilityHandler();
@@ -121,7 +129,7 @@ class ConnectionManager {
   }
 
   /**
-   * Handle tab becoming visible - check for stale data
+   * Phase F.6: Handle tab becoming visible - fallback refetch mechanism
    */
   private async handleTabBecameVisible() {
     console.log('[ConnectionManager] Tab became visible');
@@ -130,6 +138,9 @@ class ConnectionManager {
     if (this.visibilityTimeout) {
       clearTimeout(this.visibilityTimeout);
     }
+
+    const now = Date.now();
+    const timeSinceLastRefetch = now - this.lastRefetchTime;
 
     // Debounce: wait 500ms before invalidating (prevents thrashing)
     this.visibilityTimeout = setTimeout(async () => {
@@ -145,9 +156,23 @@ class ConnectionManager {
       console.log('[ConnectionManager] Reconnecting realtime channels...');
       await realtimeChannelManager.reconnectAll();
       
-      // STEP 3: Invalidate stale critical queries (existing logic)
-      console.log('[ConnectionManager] Invalidating stale critical queries...');
-      this.invalidateStaleCriticalQueries();
+      // STEP 3: Phase F.6 - Force refetch if tab was hidden >2 minutes
+      if (timeSinceLastRefetch > 2 * 60 * 1000) {
+        console.log('[ConnectionManager] Tab hidden >2 min - forcing active query refetch');
+        this.lastRefetchTime = Date.now();
+        
+        // Phase F.6: Throttled refetch (max once per 30s)
+        if (timeSinceLastRefetch > 30 * 1000) {
+          await queryClient.refetchQueries({ 
+            type: 'active', 
+            stale: true 
+          });
+        }
+      } else {
+        // Normal flow - invalidate stale critical queries only
+        console.log('[ConnectionManager] Invalidating stale critical queries...');
+        this.invalidateStaleCriticalQueries();
+      }
       
       this.visibilityTimeout = null;
     }, 500);
@@ -167,7 +192,7 @@ class ConnectionManager {
   }
 
   /**
-   * Handle connection restored - intelligent invalidation
+   * Phase F.6: Handle connection restored with query invalidation
    */
   private async handleConnectionRestored() {
     // Debounce reconnection - wait 2 seconds
@@ -192,9 +217,22 @@ class ConnectionManager {
         // STEP 2: Wait 200ms for channels to stabilize
         await new Promise(resolve => setTimeout(resolve, 200));
         
-        // STEP 3: Execute prioritized query invalidation
+        // STEP 3: Phase F.6 - Invalidate critical queries immediately
+        console.log('[ConnectionManager] Invalidating critical queries on reconnect');
+        queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = Array.isArray(query.queryKey) ? query.queryKey[0] : query.queryKey;
+            const priority = QUERY_PRIORITIES[key as string];
+            return priority === 'critical';
+          }
+        });
+        
+        // STEP 4: Execute prioritized query invalidation for rest
         console.log('[ConnectionManager] Executing prioritized invalidation');
         await this.executePrioritizedInvalidation();
+        
+        // STEP 5: Update refetch timestamp
+        this.lastRefetchTime = Date.now();
       } finally {
         this.isReconnecting = false;
       }
@@ -311,6 +349,22 @@ class ConnectionManager {
    */
   getQueryPriority(queryKey: string): QueryPriority {
     return QUERY_PRIORITIES[queryKey] || 'normal';
+  }
+  
+  /**
+   * Phase F.6: Get stale time for a query key
+   */
+  getStaleTime(queryKey: string): number {
+    const priority = this.getQueryPriority(queryKey);
+    return STALE_THRESHOLDS[priority];
+  }
+  
+  /**
+   * Phase F.6: Get cache time for a query key
+   */
+  getCacheTime(queryKey: string): number {
+    const priority = this.getQueryPriority(queryKey);
+    return CACHE_TIMES[priority];
   }
 
   /**

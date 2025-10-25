@@ -163,7 +163,7 @@ class RealtimeChannelManager {
   }
   
   /**
-   * Force refresh a single channel (unsubscribe + resubscribe)
+   * Phase F.5: Force refresh a single channel with recreation for errored state
    */
   async refreshChannel(id: string): Promise<boolean> {
     const entry = this.channels.get(id);
@@ -193,18 +193,25 @@ class RealtimeChannelManager {
     metadata.reconnectAttempts++;
     
     try {
-      // Unsubscribe first
+      // Phase F.5: For errored channels, fully remove and let hook recreate
+      if (state === 'errored' || state === 'closed') {
+        console.log(`[RealtimeChannelManager] Channel ${id} in ${state} state - removing for recreation`);
+        this.unregisterChannel(id);
+        return false; // Return false to trigger hook recreation
+      }
+      
+      // For other states, try normal reconnection
       await channel.unsubscribe();
       
       // Brief pause to ensure clean disconnect
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       // Resubscribe with timeout
       await new Promise<void>((resolve, reject) => {
-        // Phase 1: Increased timeout from 5s to 15s
+        // Phase F.5: 20s timeout for slow networks
         const timeout = setTimeout(() => {
           reject(new Error(`Subscription timeout for channel ${id}`));
-        }, 15000);
+        }, 20000);
         
         channel.subscribe((status) => {
           if (status === 'SUBSCRIBED') {
@@ -223,6 +230,13 @@ class RealtimeChannelManager {
       return true;
     } catch (error) {
       console.error(`[RealtimeChannelManager] Error refreshing channel ${id}:`, error);
+      
+      // Phase F.5: On persistent errors, remove channel for recreation
+      if (metadata.reconnectAttempts >= 3) {
+        console.warn(`[RealtimeChannelManager] Channel ${id} failed 3 times - removing for recreation`);
+        this.unregisterChannel(id);
+      }
+      
       return false;
     }
   }

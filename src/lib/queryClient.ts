@@ -24,15 +24,7 @@ export const queryClient = new QueryClient({
       staleTime: 2 * 60 * 1000, // 2 minutes - optimized for real-time apps
       gcTime: 10 * 60 * 1000, // 10 minutes - better cache retention
       refetchOnWindowFocus: (query) => {
-        // PRIORITY 1 FIX: Always refetch critical billing/reservation queries
-        const criticalQueryKeys = ['folio-calculation', 'qr-requests', 'reservations'];
-        const queryKey = query.queryKey[0] as string;
-        
-        if (criticalQueryKeys.includes(queryKey)) {
-          return true; // Always refetch for billing-critical data
-        }
-        
-        // For other queries, apply stale time check
+        // Only refetch if data is >2 min old
         const dataUpdatedAt = query.state.dataUpdatedAt;
         const isStale = Date.now() - dataUpdatedAt > 2 * 60 * 1000;
         return isStale;

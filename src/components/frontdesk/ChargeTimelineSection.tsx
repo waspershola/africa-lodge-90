@@ -74,37 +74,14 @@ export function ChargeTimelineSection({ folioId }: ChargeTimelineSectionProps) {
     );
   }
 
-  // PRIORITY 3 FIX: Handle empty state with retry option
   if (!folioData && !payments?.length) {
-    // If still loading or errored, already handled above
-    // This is for successful query with truly empty results
-    if (!isLoading && !hasError) {
-      return (
-        <Card>
-          <CardHeader>
-            <CardTitle>Transaction Timeline</CardTitle>
-          </CardHeader>
-          <CardContent className="text-center py-6 space-y-4">
-            <p className="text-sm text-muted-foreground">
-              No transactions available
-            </p>
-            <Button onClick={handleRetry} variant="ghost" size="sm">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
-          </CardContent>
-        </Card>
-      );
-    }
-    
-    // Fallback for edge cases
     return (
       <Card>
         <CardHeader>
           <CardTitle>Transaction Timeline</CardTitle>
         </CardHeader>
-        <CardContent className="text-center py-6">
-          <p className="text-sm text-muted-foreground">
+        <CardContent>
+          <p className="text-sm text-muted-foreground text-center py-6">
             No transactions available
           </p>
         </CardContent>

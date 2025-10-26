@@ -7,6 +7,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { ConnectionManager } from "@/lib/connection-manager";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -157,7 +158,7 @@ export const RoomActionDrawer = ({
 
   // H.31: Monitor connection status for UI feedback
   useEffect(() => {
-    const { connectionManager } = require('@/lib/connection-manager');
+    const connectionManager = ConnectionManager.getInstance();
     const unsubscribe = connectionManager.onStatusChange((status: string) => {
       setConnectionReady(status === 'connected');
     });

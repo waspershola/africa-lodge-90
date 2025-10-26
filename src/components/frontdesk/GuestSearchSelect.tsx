@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { withConnectionCheck } from "@/lib/ensure-connection";
 import {
   Command,
   CommandEmpty,
@@ -58,38 +59,51 @@ export const GuestSearchSelect = ({
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fetch guests with search
-  const { data: guests = [], isLoading, isFetching } = useQuery({
+  // Fetch guests with search - Phase H.5: Wrapped with connection check
+  const { data: guests = [], isLoading, isFetching, isError, error } = useQuery({
     queryKey: ['guests-search', tenantId, debouncedQuery],
     queryFn: async () => {
       if (!tenantId) return [];
 
-      let query = supabase
-        .from('guests')
-        .select('id, first_name, last_name, email, phone, updated_at')
-        .eq('tenant_id', tenantId)
-        .order('updated_at', { ascending: false })
-        .limit(50);
+      // H.5: Wrap Supabase query with connection health check
+      return withConnectionCheck('Guest Search Query', async () => {
+        console.log('[Guest Search] Executing query for:', debouncedQuery || 'all guests');
+        
+        let query = supabase
+          .from('guests')
+          .select('id, first_name, last_name, email, phone, updated_at')
+          .eq('tenant_id', tenantId)
+          .order('updated_at', { ascending: false })
+          .limit(50);
 
-      // Apply search filter
-      if (debouncedQuery) {
-        query = query.or(
-          `first_name.ilike.%${debouncedQuery}%,last_name.ilike.%${debouncedQuery}%,email.ilike.%${debouncedQuery}%,phone.ilike.%${debouncedQuery}%`
-        );
-      }
+        // Apply search filter
+        if (debouncedQuery) {
+          query = query.or(
+            `first_name.ilike.%${debouncedQuery}%,last_name.ilike.%${debouncedQuery}%,email.ilike.%${debouncedQuery}%,phone.ilike.%${debouncedQuery}%`
+          );
+        }
 
-      const { data, error } = await query;
+        const { data, error } = await query;
 
-      if (error) throw error;
-      return data as GuestData[];
+        if (error) {
+          console.error('[Guest Search] Query failed:', error);
+          throw error;
+        }
+        
+        console.log('[Guest Search] Query succeeded, found:', data?.length || 0, 'guests');
+        return data as GuestData[];
+      });
     },
-    enabled: !!tenantId, // G++ Recovery: Always enabled when tenant exists (not dependent on popover open state)
-    keepPreviousData: true, // G.5: Preserve previous results during refetch
-    staleTime: 60000, // G.5: Keep data fresh for 1 minute
+    enabled: !!tenantId,
+    keepPreviousData: true,
+    staleTime: 60000,
+    networkMode: 'online', // H.5: Only run when online
+    refetchOnReconnect: true, // H.5: Auto-refetch after reconnection
+    retry: 3, // H.5: Retry failed queries
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000), // H.5: Exponential backoff
     refetchOnWindowFocus: (query) => {
-      // G++ Recovery: Refetch if stale regardless of popover state
       const dataAge = Date.now() - (query.state.dataUpdatedAt || 0);
-      const isStale = dataAge > 60000; // Older than 1 minute
+      const isStale = dataAge > 60000;
       if (isStale) {
         console.log('[Guest Search] Tab visible and data stale, refetching...');
       }
@@ -129,12 +143,27 @@ export const GuestSearchSelect = ({
             placeholder="Type to search..."
             value={searchQuery}
             onValueChange={setSearchQuery}
+            disabled={isFetching && !open} // H.6: Disable during reconnection
           />
           <CommandList>
-            {(isLoading || isFetching) && debouncedQuery && (
+            {/* H.6: Show recovery state when reconnecting */}
+            {isFetching && !open && (
+              <div className="flex items-center justify-center p-4 text-amber-600">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <span className="text-sm">Reconnecting...</span>
+              </div>
+            )}
+            {(isLoading || isFetching) && debouncedQuery && open && (
               <div className="flex items-center justify-center p-4 text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 <span className="text-sm">Searching guests...</span>
+              </div>
+            )}
+            {/* H.6: Show error state with retry option */}
+            {isError && (
+              <div className="flex flex-col items-center justify-center p-4 text-destructive">
+                <span className="text-sm mb-2">Connection failed. Please try again.</span>
+                <span className="text-xs text-muted-foreground">{error?.message}</span>
               </div>
             )}
             <CommandEmpty>

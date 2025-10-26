@@ -14,6 +14,9 @@ import { queryClient } from './queryClient';
 import { supabaseHealthMonitor } from './supabase-health-monitor';
 import { realtimeChannelManager } from './realtime-channel-manager';
 
+// H.7: Connection status type
+export type ConnectionStatus = 'connected' | 'reconnecting' | 'degraded' | 'disconnected';
+
 type QueryPriority = 'critical' | 'high' | 'normal';
 
 interface PriorityGroup {
@@ -88,6 +91,10 @@ class ConnectionManager {
   // F.9.2: Global reconnection lock (prevents duplicate reconnects)
   private static reconnectLock = false;
   
+  // H.7: Observable connection status
+  private _connectionStatus: ConnectionStatus = 'connected';
+  private statusListeners: Set<(status: ConnectionStatus) => void> = new Set();
+  
   /**
    * F.12: Check if user is actively interacting with forms/dialogs
    */
@@ -103,6 +110,37 @@ class ConnectionManager {
     this.setupVisibilityHandler();
     this.setupHealthMonitoring();
     this.setupReconnectCoordination();
+  }
+
+  // H.7: Connection status management
+  get connectionStatus(): ConnectionStatus {
+    return this._connectionStatus;
+  }
+
+  private setConnectionStatus(status: ConnectionStatus) {
+    if (this._connectionStatus !== status) {
+      console.log(`[ConnectionManager] Status changed: ${this._connectionStatus} → ${status}`);
+      this._connectionStatus = status;
+      this.notifyStatusListeners(status);
+    }
+  }
+
+  onStatusChange(listener: (status: ConnectionStatus) => void): () => void {
+    this.statusListeners.add(listener);
+    // Immediately notify with current status
+    listener(this._connectionStatus);
+    // Return unsubscribe function
+    return () => this.statusListeners.delete(listener);
+  }
+
+  private notifyStatusListeners(status: ConnectionStatus) {
+    this.statusListeners.forEach(listener => {
+      try {
+        listener(status);
+      } catch (error) {
+        console.error('[ConnectionManager] Error notifying status listener:', error);
+      }
+    });
   }
 
   /**
@@ -181,6 +219,7 @@ class ConnectionManager {
   private async handleTabBecameVisible() {
     console.log('[ConnectionManager] 🔄 Tab became visible - starting sequential reconnection');
     console.time('[ConnectionManager] Full reconnection sequence');
+    this.setConnectionStatus('reconnecting'); // H.7: Update status
 
     // Clear any pending visibility timeout
     if (this.visibilityTimeout) {
@@ -222,14 +261,23 @@ class ConnectionManager {
         
         console.timeEnd('[ConnectionManager] Full reconnection sequence');
         console.log('[ConnectionManager] ✅ Reconnection sequence complete - app ready');
+        this.setConnectionStatus('connected'); // H.7: Update status to connected
         
-        // Emit custom event for monitoring
+        // H.4: Emit custom event for monitoring
         window.dispatchEvent(new CustomEvent('connection:recovery-complete', {
-          detail: { timestamp: Date.now(), source: 'tab-visibility' }
+          detail: { timestamp: Date.now(), source: 'tab-visibility', duration: performance.now() }
         }));
+        
+        // H.7: Auto-dismiss "connected" status after 3s
+        setTimeout(() => {
+          if (this._connectionStatus === 'connected') {
+            console.log('[ConnectionManager] Auto-dismissing connected status');
+          }
+        }, 3000);
       } catch (error) {
         console.error('[ConnectionManager] ❌ Reconnection sequence failed:', error);
         console.timeEnd('[ConnectionManager] Full reconnection sequence');
+        this.setConnectionStatus('degraded'); // H.7: Mark as degraded on failure
       } finally {
         this.visibilityTimeout = null;
       }

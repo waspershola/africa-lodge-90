@@ -99,6 +99,7 @@ export const useGuestSearch = (searchTerm: string) => {
     gcTime: 2 * 60 * 1000, // G++.1: 2 minutes cache
     refetchOnWindowFocus: true, // Always refetch on tab return for fresh data
     refetchOnMount: false, // Don't refetch on mount to use cache
+    networkMode: 'online', // G++.4: PHASE 4 - Handle offline gracefully
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   });

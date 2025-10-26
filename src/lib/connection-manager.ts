@@ -196,6 +196,14 @@ class ConnectionManager {
         await this.triggerReconnect('tab-visible');
       }
       
+      // STEP 1.5: G++.4 PHASE 3 - Force invalidate guest-search immediately (backup mechanism)
+      // This ensures guest search refetches even if React Query's focus manager missed the event
+      if (document.visibilityState === 'visible') {
+        queryClient.invalidateQueries({ 
+          predicate: q => ['guest-search', 'recent-guests'].includes(q.queryKey[0] as string) 
+        });
+      }
+      
       // STEP 2: Reconnect all realtime channels BEFORE query invalidation
       console.log('[ConnectionManager] Reconnecting realtime channels...');
       await realtimeChannelManager.reconnectAll();
@@ -235,6 +243,13 @@ class ConnectionManager {
     // Priority 2: High queries (guest-search, recent-guests)
     await queryClient.invalidateQueries({
       predicate: q => ['guest-search', 'guests-search', 'recent-guests'].includes(q.queryKey[0] as string)
+    });
+    
+    // G++.4: PHASE 6 - Monitoring: Track reconnect metrics
+    console.log('[ConnectionManager] 📊 Reconnect metrics:', {
+      priority1Invalidated: ['folio-calculation', 'reservations', 'qr-requests'],
+      priority2Invalidated: ['guest-search', 'guests-search', 'recent-guests'],
+      timestamp: new Date().toISOString()
     });
     
     console.log('[ConnectionManager] Reconnection sequence complete');

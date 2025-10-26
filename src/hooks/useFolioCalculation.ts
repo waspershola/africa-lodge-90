@@ -142,7 +142,7 @@ export function useFolioCalculation(folioId: string | null | undefined) {
     staleTime: 0, // G++.1: Always fresh for billing accuracy
     gcTime: 60_000, // G++.1: 1 minute cache
     refetchOnMount: true,
-    refetchOnWindowFocus: false, // G++.1: Let reconnect handler control refetch
+    refetchOnWindowFocus: true, // G++.4: PHASE 1 - Refetch on tab return for fresh billing data
     retry: 3, // More retries for better resilience
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
   });

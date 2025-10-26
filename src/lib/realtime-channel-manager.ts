@@ -78,7 +78,7 @@ class RealtimeChannelManager {
         createdAt: Date.now(),
         lastActivity: Date.now(),
         reconnectAttempts: 0,
-        retryLimit: metadata?.retryLimit || 10  // Phase 3: Increased from 5 to 10
+        retryLimit: metadata?.retryLimit || 3  // H.24: Reduced to 3 attempts max for faster failure detection
       }
     });
     
@@ -219,7 +219,7 @@ class RealtimeChannelManager {
       await new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => {
           reject(new Error(`Subscription timeout for channel ${id}`));
-        }, 20000);
+        }, 5000); // H.24: Reduced from 20s to 5s
         
         channel.subscribe((status) => {
           if (status === 'SUBSCRIBED') {
@@ -296,7 +296,7 @@ class RealtimeChannelManager {
         await new Promise<void>((resolve, reject) => {
           const timeout = setTimeout(() => {
             reject(new Error(`Subscription timeout on attempt ${attempt}`));
-          }, 20000);
+          }, 5000); // H.24: Reduced from 20s to 5s
           
           entry.channel.subscribe((status) => {
             if (status === 'SUBSCRIBED') {
@@ -317,7 +317,9 @@ class RealtimeChannelManager {
         return true;
       } catch (err) {
         entry.metadata.reconnectAttempts = attempt;
-        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 15000); // Cap at 15s
+        // H.24: Fixed retry delays [500ms, 1s, 2s] instead of exponential
+        const delays = [500, 1000, 2000];
+        const delay = delays[attempt - 1] || 2000;
         console.warn(`[RealtimeChannelManager] Subscribe attempt ${attempt}/${maxAttempts} failed for ${id}, retrying in ${delay}ms`, err);
         
         if (attempt < maxAttempts) {
@@ -347,6 +349,30 @@ class RealtimeChannelManager {
     return unhealthy;
   }
   
+  /**
+   * H.25: Check if all channels have active subscriptions
+   */
+  hasActiveSubscriptions(): boolean {
+    if (this.channels.size === 0) {
+      console.warn('[RealtimeChannelManager] No channels registered');
+      return false;
+    }
+    
+    let activeCount = 0;
+    for (const [id, { channel }] of this.channels.entries()) {
+      if (channel.state === 'joined') {
+        activeCount++;
+      }
+    }
+    
+    const allActive = activeCount === this.channels.size;
+    if (!allActive) {
+      console.warn(`[RealtimeChannelManager] Only ${activeCount}/${this.channels.size} channels active`);
+    }
+    
+    return allActive;
+  }
+
   /**
    * PHASE H.13: Check if there are any dead channels (inactive > 30s)
    */

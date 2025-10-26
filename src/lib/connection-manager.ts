@@ -259,9 +259,7 @@ class ConnectionManager {
    * Phase H.16-H.17: Sequential reconnection sequence with timeouts
    */
   private async handleTabBecameVisible() {
-    console.log('[ConnectionManager] 🔄 Tab became visible - starting sequential reconnection');
-    console.time('[ConnectionManager] Full reconnection sequence');
-    this.setConnectionStatus('reconnecting');
+    console.log('[ConnectionManager] 🔄 Tab became visible');
 
     // Clear any pending visibility timeout
     if (this.visibilityTimeout) {
@@ -276,6 +274,21 @@ class ConnectionManager {
         ConnectionManager.reconnectLock = false;
       }
     }
+
+    // H.26: Quick pre-flight check - skip if already healthy
+    if (this.isConnectionReady()) {
+      const stats = realtimeChannelManager.getStats();
+      if (stats.byState.joined === stats.total && stats.total > 0) {
+        console.log('[ConnectionManager] ✅ Connection already healthy - skipping reconnection');
+        // Just invalidate critical queries and exit
+        await this.invalidateCriticalQueries();
+        return;
+      }
+    }
+
+    console.log('[ConnectionManager] Starting sequential reconnection');
+    console.time('[ConnectionManager] Full reconnection sequence');
+    this.setConnectionStatus('reconnecting');
 
     // Debounce: wait 500ms before refetching (prevents thrashing)
     this.visibilityTimeout = setTimeout(async () => {
@@ -491,6 +504,17 @@ class ConnectionManager {
   }
 
   /**
+   * H.26: Invalidate critical queries only (for pre-flight optimization)
+   */
+  private async invalidateCriticalQueries() {
+    console.log('[ConnectionManager] Invalidating critical queries only');
+    await queryClient.invalidateQueries({
+      predicate: q => ['reservations', 'rooms', 'arrivals', 'departures'].includes(q.queryKey[0] as string),
+      refetchType: 'active'
+    });
+  }
+
+  /**
    * F.12: Invalidate only critical queries that are stale
    * REMOVED auto-refetch to preserve active UI state (search, forms)
    */
@@ -612,28 +636,35 @@ class ConnectionManager {
   }
 
   /**
-   * PHASE H.13: Check if connection is ready for queries
-   * Verifies health status and realtime channel readiness
+   * H.25: Check if connection is ready for queries
+   * Verifies health status, realtime channels, and active subscriptions
    */
   isConnectionReady(): boolean {
-    // Check if we're in a good connection state
-    if (this._connectionStatus === 'reconnecting' || this._connectionStatus === 'disconnected') {
-      return false;
-    }
+    // Check health monitor
+    const healthMonitorHealthy = supabaseHealthMonitor.isHealthy();
     
     // Check if any channels are dead (inactive > 30s)
     const hasDeadChannels = realtimeChannelManager.hasDeadChannels();
-    if (hasDeadChannels) {
-      console.warn('[ConnectionManager] Connection not ready - dead channels detected');
-      return false;
+    
+    // H.25: Check if all channels have active subscriptions
+    const hasActiveSubscriptions = realtimeChannelManager.hasActiveSubscriptions();
+    
+    const ready = healthMonitorHealthy && !hasDeadChannels && hasActiveSubscriptions;
+    
+    if (!ready) {
+      console.warn('[ConnectionManager] Connection not ready:', {
+        healthy: healthMonitorHealthy,
+        deadChannels: hasDeadChannels,
+        activeSubscriptions: hasActiveSubscriptions
+      });
     }
     
-    return true;
+    return ready;
   }
 
   /**
-   * PHASE H.13: Wait for connection to be ready
-   * Returns a promise that resolves when connection is healthy and channels are subscribed
+   * H.25: Wait for connection to be ready
+   * Returns a promise that resolves when connection is healthy and all channels are active
    */
   async waitForConnectionReady(maxWaitMs: number = 5000): Promise<void> {
     const startTime = Date.now();
@@ -644,8 +675,8 @@ class ConnectionManager {
         return;
       }
       
-      // Wait 200ms before checking again
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // H.25: Poll every 500ms instead of 200ms
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
     
     throw new Error(`Connection not ready after ${maxWaitMs}ms - please reload the page`);

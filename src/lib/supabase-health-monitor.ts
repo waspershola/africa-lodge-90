@@ -85,7 +85,7 @@ class SupabaseHealthMonitor {
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000); // PHASE H.12: Reduced from 5s to 2s
+        const timeoutId = setTimeout(() => controller.abort(), 1500); // H.24: Reduced to 1.5s for fast CORS check
         
         const resp = await fetch(`https://dxisnnjsbuuiunjmzzqj.supabase.co/rest/v1/`, {
           method: 'GET',
@@ -133,9 +133,9 @@ class SupabaseHealthMonitor {
    * F.8.1 + F.9.1 + F.10.3 + F.11.1: Improved health check with dynamic timeout
    */
   async checkHealth(): Promise<boolean> {
-    // F.11.1: Dynamic timeout based on tab visibility
-    const CHECK_TIMEOUT_MS = document.visibilityState === 'visible' ? 10000 : 30000;
-    // Visible tabs: 10s (normal), Background tabs: 30s (more generous for throttled requests)
+    // H.24: Reduced timeout for faster reconnection
+    const CHECK_TIMEOUT_MS = document.visibilityState === 'visible' ? 3000 : 10000;
+    // Visible tabs: 3s (fast), Background tabs: 10s (moderate)
     
     try {
       // F.10.3: Only leader or visible tab runs health checks
@@ -323,7 +323,7 @@ class SupabaseHealthMonitor {
       this.reconnecting = true;
       console.log('[Supabase Health] 🔄 Force reconnecting...');
       
-      const timeoutPromise = timeout(20000, new Error('forceReconnect-timeout'));
+      const timeoutPromise = timeout(5000, new Error('forceReconnect-timeout')); // H.24: Reduced from 20s to 5s
       const reconnectPromise = this.attemptReconnection();
       
       try {
@@ -399,6 +399,22 @@ class SupabaseHealthMonitor {
     return () => {
       this.listeners = this.listeners.filter(cb => cb !== callback);
     };
+  }
+  
+  /**
+   * H.25: Check if connection is currently healthy
+   */
+  isHealthy(): boolean {
+    // Healthy if:
+    // - No consecutive failures
+    // - Not currently reconnecting
+    // - Recent successful health check (within 6 minutes)
+    const hasRecentHealthCheck = this.lastHealthCheck && 
+      (Date.now() - this.lastHealthCheck.getTime()) < 6 * 60 * 1000;
+    
+    return this.consecutiveFailures === 0 && 
+           !this.reconnecting && 
+           hasRecentHealthCheck;
   }
   
   private notifyListeners(healthy: boolean) {

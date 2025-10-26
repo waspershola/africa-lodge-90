@@ -131,6 +131,18 @@ const FrontDeskDashboard = () => {
     }
   }, [reconnectionAttempts, connectionStatus]);
   
+  // H.27: Reset reconnection attempts on successful reconnection
+  useEffect(() => {
+    const handleReconnectComplete = () => {
+      console.log('[Dashboard] Reconnection complete - resetting attempt counter');
+      setReconnectionAttempts(0);
+      setShowReloadPrompt(false);
+    };
+    
+    window.addEventListener('connection:reconnect-complete', handleReconnectComplete);
+    return () => window.removeEventListener('connection:reconnect-complete', handleReconnectComplete);
+  }, []);
+  
   // H.21: Removed circuit breaker toast - now handled by banner
   
   // PHASE H.10: Listen for recovery complete event

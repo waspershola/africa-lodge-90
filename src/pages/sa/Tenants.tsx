@@ -115,15 +115,7 @@ export default function TenantsReal() {
           }
         }
         break;
-      case 'reactivate':
-        console.log('Reactivating tenant:', tenant?.tenant_id);
-        if (tenant && confirm(`Are you sure you want to reactivate ${tenant.hotel_name}? They will regain access to the platform.`)) {
-          try {
-            await reactivateTenant.mutateAsync(tenant.tenant_id);
-          } catch (error) {
-            console.error('Reactivate failed:', error);
-          }
-        }
+      case 'suspend':
         if (confirm(`Are you sure you want to suspend ${tenant.hotel_name}? They will lose access but data will be preserved.`)) {
           try {
             await suspendTenant.mutateAsync(tenant.tenant_id);
@@ -133,7 +125,7 @@ export default function TenantsReal() {
         }
         break;
       case 'reactivate':
-        if (confirm(`Are you sure you want to reactivate ${tenant.hotel_name}? They will regain full access.`)) {
+        if (tenant && confirm(`Are you sure you want to reactivate ${tenant.hotel_name}? They will regain full access.`)) {
           try {
             await reactivateTenant.mutateAsync(tenant.tenant_id);
           } catch (error) {

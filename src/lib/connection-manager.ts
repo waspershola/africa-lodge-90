@@ -714,17 +714,6 @@ class ConnectionManager {
     throw new Error(`Connection not ready after ${maxWaitMs}ms - please reload the page`);
   }
 
-  /**
-   * H.26: Invalidate only critical queries for quick pre-flight checks
-   */
-  private async invalidateCriticalQueries(): Promise<void> {
-    console.log('[ConnectionManager] Invalidating critical queries only...');
-    await queryClient.invalidateQueries({
-      predicate: q => ['rooms', 'reservations', 'arrivals', 'departures'].includes(q.queryKey[0] as string),
-      refetchType: 'active'
-    });
-    console.log('[ConnectionManager] ✅ Critical queries invalidated');
-  }
 
   /**
    * PHASE H.15: Force reconnection (user-triggered)

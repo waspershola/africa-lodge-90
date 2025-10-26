@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { withConnectionCheck } from "@/lib/ensure-connection";
@@ -18,7 +18,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Check, ChevronsUpDown, UserPlus, Loader2 } from "lucide-react";
+import { Check, ChevronsUpDown, UserPlus, Loader2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface GuestData {
@@ -44,6 +44,7 @@ export const GuestSearchSelect = ({
 }: GuestSearchSelectProps) => {
   const { user } = useAuth();
   const tenantId = user?.tenant_id;
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [persistentResults, setPersistentResults] = useState<GuestData[]>([]);
@@ -118,6 +119,19 @@ export const GuestSearchSelect = ({
     }
   }, [guests, isFetching]);
 
+  // H.32: Auto-retry guest search after reconnection
+  useEffect(() => {
+    const handleReconnected = () => {
+      if (isError && debouncedQuery) {
+        console.log('[GuestSearch] Reconnected - retrying search');
+        queryClient.invalidateQueries({ queryKey: ['guests-search', tenantId, debouncedQuery] });
+      }
+    };
+    
+    window.addEventListener('connection:reconnect-complete', handleReconnected);
+    return () => window.removeEventListener('connection:reconnect-complete', handleReconnected);
+  }, [isError, debouncedQuery, queryClient, tenantId]);
+
   // Use persistent results if popover is closed and we have them
   const displayGuests = open ? guests : (persistentResults.length > 0 ? persistentResults : guests);
   const selectedGuest = displayGuests.find((g) => g.id === value);
@@ -159,15 +173,27 @@ export const GuestSearchSelect = ({
                 <span className="text-sm">Searching guests...</span>
               </div>
             )}
-            {/* H.6: Show error state with retry option */}
+            {/* H.31: Connection-aware error state */}
             {isError && (
-              <div className="flex flex-col items-center justify-center p-4 text-destructive">
-                <span className="text-sm mb-2">Connection failed. Please try again.</span>
-                <span className="text-xs text-muted-foreground">{error?.message}</span>
+              <div className="flex flex-col items-center justify-center p-4">
+                <AlertCircle className="h-5 w-5 text-amber-500 mb-2" />
+                <span className="text-sm text-amber-600">Connection issue - please try again</span>
+                {error?.message && (
+                  <span className="text-xs text-muted-foreground mt-1">{error.message}</span>
+                )}
               </div>
             )}
             <CommandEmpty>
-              {isLoading || isFetching ? "Searching..." : "No guests found."}
+              {isLoading || isFetching ? (
+                "Searching..."
+              ) : isError ? (
+                <div className="text-amber-600">
+                  <AlertCircle className="h-4 w-4 inline mr-2" />
+                  Connection issue - please try again
+                </div>
+              ) : (
+                "No guests found."
+              )}
             </CommandEmpty>
             {displayGuests.length > 0 && (
               <CommandGroup heading="Guests">

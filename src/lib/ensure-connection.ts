@@ -195,6 +195,9 @@ export async function ensureConnection<T>(
       // PHASE H.14: Record success to reset circuit breaker
       recordSuccess();
       
+      // H.30: Record query success
+      supabaseHealthMonitor.recordQueryResult(true);
+      
       return result;
     } catch (error) {
       lastError = error as Error;
@@ -202,6 +205,9 @@ export async function ensureConnection<T>(
       
       // PHASE H.14: Record failure for circuit breaker
       recordFailure(operationName);
+      
+      // H.30: Record query failure
+      supabaseHealthMonitor.recordQueryResult(false);
       
       if (attempt < maxRetries) {
         console.log(`[EnsureConnection] Retrying ${operationName} in ${retryDelay}ms...`);

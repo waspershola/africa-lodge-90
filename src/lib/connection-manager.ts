@@ -636,25 +636,49 @@ class ConnectionManager {
   }
 
   /**
-   * H.25: Check if connection is ready for queries
+   * H.29: Validate that queries can actually execute
+   * Runs a lightweight query to confirm Supabase client is functional
+   */
+  private async validateQueryExecution(): Promise<boolean> {
+    try {
+      // Use a minimal query that doesn't require table access
+      const { error } = await Promise.race([
+        supabase.from('_health_check').select('count', { count: 'exact', head: true }).limit(0),
+        new Promise<{ error: Error }>((_, reject) => 
+          setTimeout(() => reject({ error: new Error('Query validation timeout') }), 2000)
+        )
+      ]);
+      
+      // Relation not found is OK - we just want to confirm client responds
+      if (error && !error.message.includes('does not exist') && !error.message.includes('relation')) {
+        console.warn('[ConnectionManager] Query validation failed:', error);
+        return false;
+      }
+      
+      console.log('[ConnectionManager] ✅ Query execution validated');
+      return true;
+    } catch (err) {
+      console.error('[ConnectionManager] Query validation error:', err);
+      return false;
+    }
+  }
+
+  /**
+   * H.25 + H.29: Check if connection is ready for queries
    * Verifies health status, realtime channels, and active subscriptions
    */
   isConnectionReady(): boolean {
     // Check health monitor
     const healthMonitorHealthy = supabaseHealthMonitor.isHealthy();
     
-    // Check if any channels are dead (inactive > 30s)
-    const hasDeadChannels = realtimeChannelManager.hasDeadChannels();
-    
-    // H.25: Check if all channels have active subscriptions
+    // Check if all channels have active subscriptions
     const hasActiveSubscriptions = realtimeChannelManager.hasActiveSubscriptions();
     
-    const ready = healthMonitorHealthy && !hasDeadChannels && hasActiveSubscriptions;
+    const ready = healthMonitorHealthy && hasActiveSubscriptions;
     
     if (!ready) {
       console.warn('[ConnectionManager] Connection not ready:', {
         healthy: healthMonitorHealthy,
-        deadChannels: hasDeadChannels,
         activeSubscriptions: hasActiveSubscriptions
       });
     }
@@ -663,23 +687,43 @@ class ConnectionManager {
   }
 
   /**
-   * H.25: Wait for connection to be ready
+   * H.25 + H.29: Wait for connection to be ready
    * Returns a promise that resolves when connection is healthy and all channels are active
+   * Now includes query execution validation
    */
   async waitForConnectionReady(maxWaitMs: number = 5000): Promise<void> {
     const startTime = Date.now();
     
     while (Date.now() - startTime < maxWaitMs) {
       if (this.isConnectionReady()) {
-        console.log('[ConnectionManager] ✅ Connection ready for queries');
-        return;
+        // H.29: Final validation - can we actually execute queries?
+        const canExecuteQueries = await this.validateQueryExecution();
+        
+        if (canExecuteQueries) {
+          console.log('[ConnectionManager] ✅ Connection ready for queries (validated)');
+          return;
+        } else {
+          console.warn('[ConnectionManager] Health check passed but queries fail - retrying...');
+        }
       }
       
-      // H.25: Poll every 500ms instead of 200ms
+      // H.25: Poll every 500ms
       await new Promise(resolve => setTimeout(resolve, 500));
     }
     
     throw new Error(`Connection not ready after ${maxWaitMs}ms - please reload the page`);
+  }
+
+  /**
+   * H.26: Invalidate only critical queries for quick pre-flight checks
+   */
+  private async invalidateCriticalQueries(): Promise<void> {
+    console.log('[ConnectionManager] Invalidating critical queries only...');
+    await queryClient.invalidateQueries({
+      predicate: q => ['rooms', 'reservations', 'arrivals', 'departures'].includes(q.queryKey[0] as string),
+      refetchType: 'active'
+    });
+    console.log('[ConnectionManager] ✅ Critical queries invalidated');
   }
 
   /**

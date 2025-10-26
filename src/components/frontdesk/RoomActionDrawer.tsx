@@ -82,6 +82,9 @@ export const RoomActionDrawer = ({
   const [showQuickCapture, setShowQuickCapture] = useState(false);
   const [captureAction, setCaptureAction] = useState<'assign' | 'walkin' | 'check-in' | 'check-out' | 'assign-room' | 'extend-stay' | 'transfer-room' | 'add-service' | 'work-order' | 'housekeeping'>('assign');
   
+  // H.31: Track connection status for better error messages
+  const [connectionReady, setConnectionReady] = useState(true);
+  
   // Dialog states
   const [showCheckout, setShowCheckout] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
@@ -93,6 +96,30 @@ export const RoomActionDrawer = ({
   const [showAddService, setShowAddService] = useState(false);
   const [showCancelReservation, setShowCancelReservation] = useState(false);
   const [showPrintDialog, setShowPrintDialog] = useState(false);
+
+  // H.31: Monitor connection status for UI feedback
+  useEffect(() => {
+    const { connectionManager } = require('@/lib/connection-manager');
+    const unsubscribe = connectionManager.onStatusChange((status: string) => {
+      setConnectionReady(status === 'connected');
+    });
+    return unsubscribe;
+  }, []);
+
+  // H.32: Auto-retry folio query after reconnection
+  useEffect(() => {
+    const handleReconnected = () => {
+      if (room?.id && (folioError || folioLoading)) {
+        console.log('[RoomActionDrawer] Reconnected - retrying folio query');
+        setTimeout(() => {
+          refetchFolio();
+        }, 500);
+      }
+    };
+    
+    window.addEventListener('connection:reconnect-complete', handleReconnected);
+    return () => window.removeEventListener('connection:reconnect-complete', handleReconnected);
+  }, [room?.id, folioError, folioLoading, refetchFolio]);
 
   // Auto-close drawer when room becomes available after checkout/cancel
   useEffect(() => {
@@ -126,7 +153,7 @@ export const RoomActionDrawer = ({
     return () => unsubscribe();
   }, [open, room, queryClient, onClose, toast]);
 
-  // Fetch folio ID for payment history with timeout handling
+  // H.28: Fetch folio ID with connection check
   const { data: folioData, isLoading: folioLoading, error: folioError, refetch: refetchFolio } = useQuery({
     queryKey: ['room-folio', room?.id],
     queryFn: async () => {
@@ -134,8 +161,11 @@ export const RoomActionDrawer = ({
       
       console.log('[RoomActionDrawer] Fetching folio for room:', room.id);
       
-      // Add timeout to prevent indefinite loading
-      const queryPromise = (async () => {
+      // H.28: Import withConnectionCheck at the top of the file
+      const { withConnectionCheck } = await import('@/lib/ensure-connection');
+      
+      // H.28: Wrap with connection check
+      return withConnectionCheck('Room Folio Query', async () => {
         // First, find the active reservation for this room
         const { data: reservation, error: resError } = await supabase
           .from('reservations')
@@ -171,27 +201,11 @@ export const RoomActionDrawer = ({
         
         console.log('[RoomActionDrawer] Found folio:', folio);
         return folio;
-      })();
-
-      try {
-        const result = await Promise.race([
-          queryPromise,
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Folio lookup timeout')), 10000)
-          )
-        ]);
-        return result;
-      } catch (err) {
-        if (err instanceof Error && err.message.includes('timeout')) {
-          console.error('[RoomActionDrawer] Query timeout after 10s');
-          throw new Error('Unable to load folio - request timed out');
-        }
-        throw err;
-      }
+      });
     },
     enabled: !!room?.id && (room?.status === 'occupied' || room?.status === 'overstay' || room?.status === 'reserved'),
-    retry: 3,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
+    retry: 2, // H.28: Reduced from 3 (connection check already retries)
+    retryDelay: 1000, // H.28: Faster retry
     staleTime: 30000,
     refetchOnWindowFocus: true,
     networkMode: 'online',
@@ -638,24 +652,39 @@ export const RoomActionDrawer = ({
                       <div className="h-4 bg-muted rounded w-1/2"></div>
                       <div className="h-4 bg-muted rounded w-5/6"></div>
                     </div>
-                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Loading folio details...</span>
+                    {/* H.31: Connection-aware loading state */}
+                    <div className="flex items-center justify-center gap-2 text-sm">
+                      {connectionReady ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          <span className="text-muted-foreground">Loading folio details...</span>
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle className="h-5 w-5 text-amber-500" />
+                          <span className="text-amber-600">Waiting for connection...</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 ) : folioError ? (
                   <div className="text-center py-4 space-y-3">
                     <div className="flex flex-col items-center gap-2">
                       <AlertCircle className="h-8 w-8 text-destructive" />
+                      {/* H.31: Connection-aware error message */}
                       <p className="text-sm text-destructive font-medium">
-                        {folioError instanceof Error && folioError.message.includes('timeout')
-                          ? 'Request timed out'
-                          : 'Error loading folio'}
+                        {connectionReady 
+                          ? (folioError instanceof Error && folioError.message.includes('timeout')
+                              ? 'Request timed out'
+                              : 'Error loading folio')
+                          : 'Connection issue'}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {folioError instanceof Error && folioError.message.includes('timeout')
-                          ? 'The server took too long to respond'
-                          : 'Unable to retrieve payment details'}
+                        {connectionReady 
+                          ? (folioError instanceof Error && folioError.message.includes('timeout')
+                              ? 'The server took too long to respond'
+                              : 'Unable to retrieve payment details')
+                          : 'Folio details will load after reconnection'}
                       </p>
                     </div>
                     <Button onClick={() => refetchFolio()} variant="outline" size="sm">

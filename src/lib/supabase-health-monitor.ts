@@ -13,6 +13,12 @@ class SupabaseHealthMonitor {
   private sessionRefreshInterval: NodeJS.Timeout | null = null;
   private reconnectionFailures: number = 0;
   
+  // H.30: Query failure tracking for degraded state detection
+  private queryFailureCount: number = 0;
+  private querySuccessCount: number = 0;
+  private readonly DEGRADED_THRESHOLD = 0.5; // 50% failure rate
+  private readonly FAILURE_WINDOW = 10; // Last 10 queries
+  
   private listeners: Array<(healthy: boolean) => void> = [];
   
   /**
@@ -401,6 +407,38 @@ class SupabaseHealthMonitor {
     };
   }
   
+  /**
+   * H.30: Record query result for degraded state detection
+   */
+  recordQueryResult(success: boolean): void {
+    if (success) {
+      this.querySuccessCount++;
+    } else {
+      this.queryFailureCount++;
+    }
+    
+    // Keep only last N results
+    const total = this.querySuccessCount + this.queryFailureCount;
+    if (total >= this.FAILURE_WINDOW) {
+      const ratio = this.queryFailureCount / total;
+      
+      // Reset counters (sliding window)
+      this.querySuccessCount = Math.floor(this.querySuccessCount / 2);
+      this.queryFailureCount = Math.floor(this.queryFailureCount / 2);
+      
+      // Check if degraded
+      if (ratio > this.DEGRADED_THRESHOLD) {
+        console.warn(`[HealthMonitor] ⚠️ Connection degraded: ${(ratio * 100).toFixed(0)}% query failure rate`);
+        this.consecutiveFailures = 1; // Mark as unhealthy
+        
+        // Trigger recovery
+        window.dispatchEvent(new CustomEvent('connection:degraded', {
+          detail: { failureRate: ratio }
+        }));
+      }
+    }
+  }
+
   /**
    * H.25: Check if connection is currently healthy
    */

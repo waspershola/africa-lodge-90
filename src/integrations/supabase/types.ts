@@ -1438,6 +1438,7 @@ export type Database = {
       guest_sessions: {
         Row: {
           created_at: string | null
+          device_fingerprint: string | null
           device_info: Json | null
           expires_at: string
           guest_email: string | null
@@ -1453,6 +1454,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          device_fingerprint?: string | null
           device_info?: Json | null
           expires_at: string
           guest_email?: string | null
@@ -1468,6 +1470,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          device_fingerprint?: string | null
           device_info?: Json | null
           expires_at?: string
           guest_email?: string | null
@@ -3574,6 +3577,42 @@ export type Database = {
           requires_payment?: boolean | null
           tenant_id?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      qr_session_audit: {
+        Row: {
+          created_at: string | null
+          device_fingerprint: string | null
+          device_info: Json | null
+          event_type: string
+          guest_session_uuid: string | null
+          id: string
+          qr_code_id: string | null
+          reason: string | null
+          tenant_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          device_fingerprint?: string | null
+          device_info?: Json | null
+          event_type: string
+          guest_session_uuid?: string | null
+          id?: string
+          qr_code_id?: string | null
+          reason?: string | null
+          tenant_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          device_fingerprint?: string | null
+          device_info?: Json | null
+          event_type?: string
+          guest_session_uuid?: string | null
+          id?: string
+          qr_code_id?: string | null
+          reason?: string | null
+          tenant_id?: string | null
         }
         Relationships: []
       }

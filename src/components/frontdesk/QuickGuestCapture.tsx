@@ -1814,13 +1814,12 @@ export const QuickGuestCapture = ({
                 checkInDate={formData.checkInDate}
                 checkOutDate={formData.checkOutDate}
                 onRateChange={(rate, nights, total, roomTypeId) => {
-                  setFormData(prev => ({
-                    ...prev,
-                    roomRate: rate,
-                    numberOfNights: nights,
-                    totalAmount: total,
-                    ...(roomTypeId && { roomTypeId })
-                  }));
+                  setValue('roomRate', rate);
+                  setValue('numberOfNights', nights);
+                  setValue('totalAmount', total);
+                  if (roomTypeId) {
+                    setValue('roomTypeId', roomTypeId);
+                  }
                 }}
                 defaultRate={room?.room_type?.base_rate || formData.roomRate}
               />

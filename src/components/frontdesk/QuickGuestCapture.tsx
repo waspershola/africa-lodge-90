@@ -1374,7 +1374,8 @@ export const QuickGuestCapture = ({
           numberOfNights: 1,
         };
         
-        setFormData(updatedFormData);
+        // G++.3: Use reset() from react-hook-form instead of setFormData
+        reset(updatedFormData);
         setGuestMode('existing');
         setSelectedGuest(null);
         setGuestSearchValue("");

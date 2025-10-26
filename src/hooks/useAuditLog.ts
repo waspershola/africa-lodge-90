@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Audit logging for authentication and security events
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';

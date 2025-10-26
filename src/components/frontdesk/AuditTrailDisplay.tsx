@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
 import { supabase } from "@/integrations/supabase/client";

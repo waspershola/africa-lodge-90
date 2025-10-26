@@ -24,7 +24,12 @@ export default function TenantAwareLayout({ children, requiredRole, allowedRoles
   // Add security validation hook
   const securityValidation = useSecurityValidation();
 
-  console.log('[SECURITY DEBUG] TenantAwareLayout security validation:', securityValidation);
+  // F.10.5: Only log in dev mode or with debug flag
+  const isDev = import.meta.env.DEV || window.location.search.includes('debug=true');
+  
+  if (isDev) {
+    console.log('[SECURITY DEBUG] TenantAwareLayout security validation:', securityValidation);
+  }
 
   // Show loading state
   if (isLoading) {
@@ -102,14 +107,17 @@ export default function TenantAwareLayout({ children, requiredRole, allowedRoles
   const hasRequiredAccess = requiredRole ? hasAccess(requiredRole) : true;
   const hasAllowedAccess = allowedRoles ? allowedRoles.some(role => hasAccess(role)) : true;
   
-  console.log('[SECURITY DEBUG] TenantAwareLayout access check:', {
-    user: user ? { id: user.id, email: user.email, role: user.role } : null,
-    requiredRole,
-    allowedRoles,
-    hasRequiredAccess,
-    hasAllowedAccess,
-    currentPath: window.location.pathname
-  });
+  // F.10.5: Only log in dev mode or with debug flag
+  if (isDev) {
+    console.log('[SECURITY DEBUG] TenantAwareLayout access check:', {
+      user: user ? { id: user.id, email: user.email, role: user.role } : null,
+      requiredRole,
+      allowedRoles,
+      hasRequiredAccess,
+      hasAllowedAccess,
+      currentPath: window.location.pathname
+    });
+  }
   
   if ((requiredRole || allowedRoles) && !hasRequiredAccess && !hasAllowedAccess) {
     return (

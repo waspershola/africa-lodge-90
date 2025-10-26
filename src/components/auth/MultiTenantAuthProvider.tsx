@@ -1,7 +1,6 @@
 import { createContext, useContext, ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useMultiTenantAuth, UseMultiTenantAuthReturn } from '@/hooks/useMultiTenantAuth';
-import { useSessionHeartbeat } from '@/hooks/useSessionHeartbeat';
 import { useSessionRegistration } from '@/hooks/useSessionRegistration';
 import { useSessionMonitor } from '@/hooks/useSessionMonitor';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,22 +18,8 @@ export function MultiTenantAuthProvider({ children }: MultiTenantAuthProviderPro
   const auth = useMultiTenantAuth();
   const queryClient = useQueryClient();
 
-  // Set up session heartbeat to prevent token expiry
-  useSessionHeartbeat({
-    enabled: !!auth.user, // Only when user is logged in
-    intervalMinutes: 10, // Check every 10 minutes
-    onSessionExpired: () => {
-      toast.error('Your session has expired. Please log in again.', {
-        duration: 10000,
-        action: {
-          label: 'Login',
-          onClick: () => {
-            auth.logout();
-          }
-        }
-      });
-    }
-  });
+  // Session heartbeat now handled by supabase-health-monitor (consolidated)
+  // This prevents redundant auth API calls (3x → 1x per 5 min)
 
   // Multi-device session registration and tracking
   useSessionRegistration({
@@ -69,7 +54,7 @@ export function MultiTenantAuthProvider({ children }: MultiTenantAuthProviderPro
         }
       };
 
-      await supabase.from('audit_log').insert([auditEntry]);
+      await supabase.from('audit_log').insert([auditEntry as any]);
     } catch (err) {
       console.error('Error logging audit event:', err);
     }

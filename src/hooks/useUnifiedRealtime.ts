@@ -6,6 +6,7 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { soundManager } from '@/utils/soundManager';
 import { toast } from '@/hooks/use-toast';
+import { realtimeChannelManager } from '@/lib/realtime-channel-manager';
 
 /**
  * Phase 1: Unified Real-Time Subscription Manager
@@ -228,7 +229,15 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
   }, [verbose]);
 
   // Debounced invalidation with grouping and tiered delays (Phase 3.2 + Phase 4)
+  // Adjusted for visibility state to prevent accumulation when tab is backgrounded
   const debouncedInvalidate = useCallback((queryKeys: string[], delay: number) => {
+    // If tab is hidden, use longer delays to prevent accumulation
+    const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+    const adjustedDelay = isHidden ? delay * 5 : delay;
+    
+    if (verbose && isHidden) {
+      console.log('[Realtime] Tab hidden - using extended debounce:', adjustedDelay);
+    }
     // Phase 4: Prevent timeout accumulation memory leak
     if (timeoutCountRef.current >= MAX_PENDING_TIMEOUTS) {
       if (verbose) {
@@ -269,7 +278,7 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
         queryClient.invalidateQueries({ queryKey });
         delete invalidationTimeoutsRef.current[key];
         timeoutCountRef.current--;
-      }, delay);
+      }, adjustedDelay);
     });
   }, [queryClient, verbose]);
 
@@ -396,6 +405,13 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
       );
     });
 
+    // Register with RealtimeChannelManager for lifecycle management
+    realtimeChannelManager.registerChannel(channelName, channel, {
+      type: 'unified_realtime',
+      priority: 'critical', // Unified channel handles critical data
+      retryLimit: 5
+    });
+
     // Subscribe and handle connection status
     channel.subscribe((status) => {
       if (verbose) {
@@ -413,18 +429,21 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
     return channel;
   }, [user, tenant?.tenant_id, userRole, roleBasedFiltering, verbose, errorRecovery, getGroupQueryKeys, debouncedInvalidate, shouldCoalesceEvent]);
 
-  // Exponential backoff reconnection
+  // Exponential backoff reconnection with circuit breaker
   const handleConnectionError = useCallback(() => {
     const state = subscriptionRef.current;
     state.reconnectAttempts++;
 
-    // Max 5 reconnection attempts with exponential backoff
-    if (state.reconnectAttempts > 5) {
-      console.error('[Realtime] Max reconnection attempts reached');
+    // Phase 3: Max 10 reconnection attempts with circuit breaker
+    if (state.reconnectAttempts > 10) {
+      console.error('[Realtime] Circuit breaker activated - max reconnection attempts (10) reached');
+      console.error('[Realtime] Please check network connection and refresh page');
       return;
     }
 
-    const delay = Math.min(1000 * Math.pow(2, state.reconnectAttempts), 30000);
+    // Exponential backoff: 1s, 3s, 5s, 10s, 10s, 10s...
+    const delays = [1000, 3000, 5000, 10000];
+    const delay = delays[Math.min(state.reconnectAttempts - 1, delays.length - 1)];
     
     if (verbose) {
       console.log(`[Realtime] Reconnecting in ${delay}ms (attempt ${state.reconnectAttempts})`);
@@ -441,50 +460,28 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
       
       // Cleanup old channel
       if (state.channel) {
-        supabase.removeChannel(state.channel);
+        const oldChannelName = state.channel.topic;
+        realtimeChannelManager.unregisterChannel(oldChannelName);
       }
       
-      // Setup new channel
+      // Setup new channel (automatically registers with manager)
       const newChannel = setupSubscriptions();
       subscriptionRef.current.channel = newChannel;
     }, delay);
   }, [setupSubscriptions, verbose]);
 
-  // Main effect - setup and cleanup with visibility handling
+  // Main effect - setup and cleanup
+  // Visibility handling now managed by ConnectionManager to prevent cascading invalidations
   useEffect(() => {
     const channel = setupSubscriptions();
     subscriptionRef.current.channel = channel;
-
-    // ✅ PHASE 2: Handle tab visibility changes
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        if (verbose) {
-          console.log('[Realtime] Tab became visible - checking subscription health');
-        }
-        
-        // Verify subscription is still active
-        const currentChannel = subscriptionRef.current.channel;
-        if (!currentChannel || currentChannel.state !== 'joined') {
-          console.warn('[Realtime] Subscription unhealthy - reconnecting...');
-          
-          // Force reconnection
-          if (currentChannel) {
-            supabase.removeChannel(currentChannel);
-          }
-          const newChannel = setupSubscriptions();
-          subscriptionRef.current.channel = newChannel;
-        }
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       if (verbose) {
         console.log('[Realtime] Cleaning up unified subscriptions');
       }
 
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      // Visibility handling now in ConnectionManager - no listener to remove
 
       // Clear all pending invalidation timeouts (Phase 4: with counter reset)
       Object.values(invalidationTimeoutsRef.current).forEach(timeout => {
@@ -499,9 +496,10 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
         reconnectTimeoutRef.current = null;
       }
 
-      // Remove channel
+      // Remove channel ONCE (unregisterChannel handles supabase.removeChannel internally)
       if (subscriptionRef.current.channel) {
-        supabase.removeChannel(subscriptionRef.current.channel);
+        const channelName = subscriptionRef.current.channel.topic;
+        realtimeChannelManager.unregisterChannel(channelName);
         subscriptionRef.current.channel = null;
       }
     };
@@ -530,30 +528,8 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
     }
   }, [isOnline, tenant?.tenant_id, queryClient, updateLastSync, verbose]);
 
-  // ✅ PHASE 2: Heartbeat monitoring to detect dead subscriptions
-  useEffect(() => {
-    if (!subscriptionRef.current.channel) return;
-    
-    const HEARTBEAT_INTERVAL = 30000; // 30 seconds
-    
-    const heartbeatTimer = setInterval(() => {
-      const channel = subscriptionRef.current.channel;
-      if (!channel) return;
-      
-      const state = channel.state;
-      if (verbose) {
-        console.log(`[Realtime Heartbeat] Channel state: ${state}`);
-      }
-      
-      // If channel is in error state or not joined, attempt reconnection
-      if (state !== 'joined' && state !== 'joining') {
-        console.warn(`[Realtime Heartbeat] Unhealthy channel detected (${state}) - reconnecting`);
-        handleConnectionError();
-      }
-    }, HEARTBEAT_INTERVAL);
-    
-    return () => clearInterval(heartbeatTimer);
-  }, [subscriptionRef.current.channel, verbose, handleConnectionError]);
+  // Phase 2: Heartbeat now handled by Supabase client (30s) and RealtimeChannelManager
+  // Removed duplicate heartbeat to prevent redundant reconnection attempts
 
   // Return subscription state for debugging
   return {

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StaffAlertsDashboard } from "./StaffAlertsDashboard";

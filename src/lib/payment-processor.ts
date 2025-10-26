@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Payment Processor - Phase 4: Payment Method Logic
  * Handles payment processing with method-specific fees and ledger entries

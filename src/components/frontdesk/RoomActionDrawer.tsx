@@ -97,63 +97,7 @@ export const RoomActionDrawer = ({
   const [showCancelReservation, setShowCancelReservation] = useState(false);
   const [showPrintDialog, setShowPrintDialog] = useState(false);
 
-  // H.31: Monitor connection status for UI feedback
-  useEffect(() => {
-    const { connectionManager } = require('@/lib/connection-manager');
-    const unsubscribe = connectionManager.onStatusChange((status: string) => {
-      setConnectionReady(status === 'connected');
-    });
-    return unsubscribe;
-  }, []);
-
-  // H.32: Auto-retry folio query after reconnection
-  useEffect(() => {
-    const handleReconnected = () => {
-      if (room?.id && (folioError || folioLoading)) {
-        console.log('[RoomActionDrawer] Reconnected - retrying folio query');
-        setTimeout(() => {
-          refetchFolio();
-        }, 500);
-      }
-    };
-    
-    window.addEventListener('connection:reconnect-complete', handleReconnected);
-    return () => window.removeEventListener('connection:reconnect-complete', handleReconnected);
-  }, [room?.id, folioError, folioLoading, refetchFolio]);
-
-  // Auto-close drawer when room becomes available after checkout/cancel
-  useEffect(() => {
-    if (!open || !room) return;
-    
-    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
-      if (event.type === 'updated' && event.query.queryKey[0] === 'rooms') {
-        const updatedRooms = event.query.state.data;
-        
-        // Ensure updatedRooms is an array before calling .find()
-        if (!Array.isArray(updatedRooms)) return;
-        
-        const updatedRoom = updatedRooms.find((r: any) => r.id === room.id);
-        
-        // Auto-close if room transitioned from occupied to available
-        if (updatedRoom && 
-            room.status === 'occupied' && 
-            updatedRoom.status === 'available') {
-          
-          setTimeout(() => {
-            onClose();
-            toast({
-              title: "✓ Room Updated",
-              description: `Room ${room.number} is now available`,
-            });
-          }, 500);
-        }
-      }
-    });
-    
-    return () => unsubscribe();
-  }, [open, room, queryClient, onClose, toast]);
-
-  // H.28: Fetch folio ID with connection check
+  // H.28: Fetch folio ID with connection check (MOVED BEFORE useEffect to avoid TDZ error)
   const { data: folioData, isLoading: folioLoading, error: folioError, refetch: refetchFolio } = useQuery({
     queryKey: ['room-folio', room?.id],
     queryFn: async () => {
@@ -210,6 +154,62 @@ export const RoomActionDrawer = ({
     refetchOnWindowFocus: true,
     networkMode: 'online',
   });
+
+  // H.31: Monitor connection status for UI feedback
+  useEffect(() => {
+    const { connectionManager } = require('@/lib/connection-manager');
+    const unsubscribe = connectionManager.onStatusChange((status: string) => {
+      setConnectionReady(status === 'connected');
+    });
+    return unsubscribe;
+  }, []);
+
+  // H.32: Auto-retry folio query after reconnection
+  useEffect(() => {
+    const handleReconnected = () => {
+      if (room?.id && (folioError || folioLoading)) {
+        console.log('[RoomActionDrawer] Reconnected - retrying folio query');
+        setTimeout(() => {
+          refetchFolio();
+        }, 500);
+      }
+    };
+    
+    window.addEventListener('connection:reconnect-complete', handleReconnected);
+    return () => window.removeEventListener('connection:reconnect-complete', handleReconnected);
+  }, [room?.id, folioError, folioLoading, refetchFolio]);
+
+  // Auto-close drawer when room becomes available after checkout/cancel
+  useEffect(() => {
+    if (!open || !room) return;
+    
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (event.type === 'updated' && event.query.queryKey[0] === 'rooms') {
+        const updatedRooms = event.query.state.data;
+        
+        // Ensure updatedRooms is an array before calling .find()
+        if (!Array.isArray(updatedRooms)) return;
+        
+        const updatedRoom = updatedRooms.find((r: any) => r.id === room.id);
+        
+        // Auto-close if room transitioned from occupied to available
+        if (updatedRoom && 
+            room.status === 'occupied' && 
+            updatedRoom.status === 'available') {
+          
+          setTimeout(() => {
+            onClose();
+            toast({
+              title: "✓ Room Updated",
+              description: `Room ${room.number} is now available`,
+            });
+          }, 500);
+        }
+      }
+    });
+    
+    return () => unsubscribe();
+  }, [open, room, queryClient, onClose, toast]);
 
   if (!room) return null;
 

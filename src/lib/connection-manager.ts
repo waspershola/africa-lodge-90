@@ -88,17 +88,6 @@ class ConnectionManager {
   // F.9.2: Global reconnection lock (prevents duplicate reconnects)
   private static reconnectLock = false;
   
-  /**
-   * F.12: Check if user is actively interacting with forms/dialogs
-   */
-  private userIsActivelyInteracting(): boolean {
-    // Check if any modal/dialog is open
-    const hasOpenDialog = document.querySelector('[role="dialog"][data-state="open"]');
-    const hasOpenPopover = document.querySelector('[data-radix-popper-content-wrapper]');
-    
-    return !!(hasOpenDialog || hasOpenPopover);
-  }
-  
   constructor() {
     this.setupVisibilityHandler();
     this.setupHealthMonitoring();
@@ -176,7 +165,7 @@ class ConnectionManager {
   }
 
   /**
-   * G++.4: Handle tab becoming visible - active refetch mechanism
+   * Phase F.6: Handle tab becoming visible - fallback refetch mechanism
    */
   private async handleTabBecameVisible() {
     console.log('[ConnectionManager] Tab became visible');
@@ -186,7 +175,10 @@ class ConnectionManager {
       clearTimeout(this.visibilityTimeout);
     }
 
-    // Debounce: wait 500ms before refetching (prevents thrashing)
+    const now = Date.now();
+    const timeSinceLastRefetch = now - this.lastRefetchTime;
+
+    // Debounce: wait 500ms before invalidating (prevents thrashing)
     this.visibilityTimeout = setTimeout(async () => {
       // STEP 1: Check Supabase connection health
       const isHealthy = await supabaseHealthMonitor.checkHealth();
@@ -200,8 +192,23 @@ class ConnectionManager {
       console.log('[ConnectionManager] Reconnecting realtime channels...');
       await realtimeChannelManager.reconnectAll();
       
-      // G++.4: Active prioritized refetch on tab visibility
-      await this.onReconnect();
+      // STEP 3: Phase F.6 - Force refetch if tab was hidden >2 minutes
+      if (timeSinceLastRefetch > 2 * 60 * 1000) {
+        console.log('[ConnectionManager] Tab hidden >2 min - forcing active query refetch');
+        this.lastRefetchTime = Date.now();
+        
+        // Phase F.6: Throttled refetch (max once per 30s)
+        if (timeSinceLastRefetch > 30 * 1000) {
+          await queryClient.refetchQueries({ 
+            type: 'active', 
+            stale: true 
+          });
+        }
+      } else {
+        // Normal flow - invalidate stale critical queries only
+        console.log('[ConnectionManager] Invalidating stale critical queries...');
+        this.invalidateStaleCriticalQueries();
+      }
       
       this.visibilityTimeout = null;
     }, 500);
@@ -221,27 +228,7 @@ class ConnectionManager {
   }
 
   /**
-   * G++.4: Active prioritized refetch on reconnection
-   */
-  private async onReconnect() {
-    console.log('[ConnectionManager] Reconnection sequence starting...');
-    
-    // Priority 1: Critical queries (folio, reservations, qr-requests)
-    await queryClient.invalidateQueries({
-      predicate: q => ['folio-calculation', 'reservations', 'qr-requests'].includes(q.queryKey[0] as string)
-    });
-    await new Promise(res => setTimeout(res, 300)); // Small gap
-    
-    // Priority 2: High queries (guest-search, recent-guests)
-    await queryClient.invalidateQueries({
-      predicate: q => ['guest-search', 'guests-search', 'recent-guests'].includes(q.queryKey[0] as string)
-    });
-    
-    console.log('[ConnectionManager] Reconnection sequence complete');
-  }
-
-  /**
-   * G++.4: Handle connection restored with active refetch
+   * Phase F.6: Handle connection restored with query invalidation
    */
   private async handleConnectionRestored() {
     // Debounce reconnection - wait 2 seconds
@@ -266,10 +253,21 @@ class ConnectionManager {
         // STEP 2: Wait 200ms for channels to stabilize
         await new Promise(resolve => setTimeout(resolve, 200));
         
-        // G++.4: Active prioritized refetch sequence
-        await this.onReconnect();
+        // STEP 3: Phase F.6 - Invalidate critical queries immediately
+        console.log('[ConnectionManager] Invalidating critical queries on reconnect');
+        queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = Array.isArray(query.queryKey) ? query.queryKey[0] : query.queryKey;
+            const priority = QUERY_PRIORITIES[key as string];
+            return priority === 'critical';
+          }
+        });
         
-        // STEP 3: Update refetch timestamp
+        // STEP 4: Execute prioritized query invalidation for rest
+        console.log('[ConnectionManager] Executing prioritized invalidation');
+        await this.executePrioritizedInvalidation();
+        
+        // STEP 5: Update refetch timestamp
         this.lastRefetchTime = Date.now();
       } finally {
         this.isReconnecting = false;
@@ -280,8 +278,7 @@ class ConnectionManager {
   }
 
   /**
-   * F.12: Invalidate only critical queries that are stale
-   * REMOVED auto-refetch to preserve active UI state (search, forms)
+   * Invalidate only critical queries that are stale
    */
   private invalidateStaleCriticalQueries() {
     const now = Date.now();
@@ -291,8 +288,7 @@ class ConnectionManager {
 
     console.log('[ConnectionManager] Checking critical queries for staleness');
 
-    // F.12: Only invalidate critical queries (mark stale), don't auto-refetch
-    // This preserves active search results and form data
+    // Only invalidate critical queries older than 30 seconds
     queryClient.invalidateQueries({
       predicate: (query) => {
         const key = Array.isArray(query.queryKey) ? query.queryKey[0] : query.queryKey;
@@ -303,22 +299,21 @@ class ConnectionManager {
       }
     });
 
-    // F.12: Removed auto-refetch - queries will refetch when components need them
-    // OLD: queryClient.refetchQueries({ type: 'active', ... })
+    // Refetch only active (visible) critical queries
+    queryClient.refetchQueries({
+      type: 'active',
+      predicate: (query) => {
+        const key = Array.isArray(query.queryKey) ? query.queryKey[0] : query.queryKey;
+        return criticalQueries.includes(key as string);
+      }
+    });
   }
 
   /**
-   * F.12: Execute prioritized invalidation on reconnection
-   * ONLY processes critical queries to avoid breaking active UI
+   * Execute prioritized invalidation on reconnection
    * Processes queries in waves: critical → high → normal
    */
   private async executePrioritizedInvalidation() {
-    // F.12: Skip invalidation if user is actively interacting with forms/dialogs
-    if (this.userIsActivelyInteracting()) {
-      console.log('[ConnectionManager] Skipping invalidation - user is actively interacting with UI');
-      return;
-    }
-    
     if (this.isReconnecting) {
       console.log('[ConnectionManager] Already reconnecting, skipping');
       return;
@@ -328,19 +323,17 @@ class ConnectionManager {
     const now = Date.now();
 
     try {
-      // F.12: Only process critical queries - skip high/normal to preserve UI state
+      // Group queries by priority
       const priorityGroups: PriorityGroup[] = [
         { priority: 'critical', queries: [], delay: 0 },
+        { priority: 'high', queries: [], delay: 500 },
+        { priority: 'normal', queries: [], delay: 1500 },
       ];
 
-      // F.12: Only check critical queries for staleness
+      // Categorize stale queries by priority
       queryClient.getQueryCache().getAll().forEach((query) => {
         const key = Array.isArray(query.queryKey) ? query.queryKey[0] : query.queryKey;
         const priority = QUERY_PRIORITIES[key as string] || 'normal';
-        
-        // F.12: Skip non-critical queries (guest-search, guests, etc.)
-        if (priority !== 'critical') return;
-        
         const threshold = STALE_THRESHOLDS[priority];
         const isStale = now - query.state.dataUpdatedAt > threshold;
 
@@ -352,13 +345,18 @@ class ConnectionManager {
         }
       });
 
-      // Process only critical queries
+      // Process each priority group sequentially with delays
       for (const group of priorityGroups) {
         if (group.queries.length === 0) continue;
 
         console.log(`[ConnectionManager] Invalidating ${group.priority} queries (${group.queries.length})`);
 
-        // Invalidate this priority group (mark as stale)
+        // Wait for the specified delay
+        if (group.delay > 0) {
+          await new Promise(resolve => setTimeout(resolve, group.delay));
+        }
+
+        // Invalidate this priority group
         queryClient.invalidateQueries({
           predicate: (query) => {
             const key = Array.isArray(query.queryKey) ? query.queryKey[0] : query.queryKey;
@@ -366,12 +364,17 @@ class ConnectionManager {
           }
         });
 
-        // F.12: Removed auto-refetch - let components refetch when they need data
-        // This prevents clearing active search results and form data
-        // OLD: queryClient.refetchQueries({ type: 'active', ... })
+        // Only refetch active queries for this group
+        queryClient.refetchQueries({
+          type: 'active',
+          predicate: (query) => {
+            const key = Array.isArray(query.queryKey) ? query.queryKey[0] : query.queryKey;
+            return group.queries.includes(key as string);
+          }
+        });
       }
 
-      console.log('[ConnectionManager] Prioritized invalidation complete (critical only, no auto-refetch)');
+      console.log('[ConnectionManager] Prioritized invalidation complete');
     } finally {
       this.isReconnecting = false;
     }

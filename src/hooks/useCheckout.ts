@@ -12,12 +12,6 @@ export const useCheckout = (roomId?: string) => {
   const { user } = useAuth();
 
   const fetchGuestBill = useCallback(async (roomId: string) => {
-    // G++.5: Skip if tab is hidden (will refetch on visibility)
-    if (document.visibilityState === 'hidden') {
-      console.log('[🔍 Checkout] Tab hidden, deferring fetch until visible');
-      return;
-    }
-    
     console.log('[🔍 Checkout] Starting fetchGuestBill for room:', roomId);
     setLoading(true);
     setError(null);

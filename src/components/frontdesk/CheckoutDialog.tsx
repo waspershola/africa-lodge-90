@@ -64,13 +64,13 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId, onCheckoutComplete 
       console.log('[🔍 CheckoutDialog] Dialog opened, fetching bill for room:', roomId);
       fetchGuestBill(roomId);
       
-      // G++.3: Set timeout for loading - INCREASED to 30 seconds
+      // Set timeout for loading
       const timer = setTimeout(() => {
         if (loading) {
-          console.error('[⏰ CheckoutDialog] Fetch timeout after 30 seconds');
+          console.error('[⏰ CheckoutDialog] Fetch timeout after 10 seconds');
           setLoadingTimeout(true);
         }
-      }, 30000); // Increased from 10s to 30s for better resilience
+      }, 10000);
       
       return () => clearTimeout(timer);
     } else if (open && !roomId) {

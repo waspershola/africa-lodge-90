@@ -17,7 +17,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Check, ChevronsUpDown, UserPlus, Loader2 } from "lucide-react";
+import { Check, ChevronsUpDown, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface GuestData {
@@ -45,7 +45,6 @@ export const GuestSearchSelect = ({
   const tenantId = user?.tenant_id;
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [persistentResults, setPersistentResults] = useState<GuestData[]>([]);
 
   // Debounced search query
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
@@ -59,7 +58,7 @@ export const GuestSearchSelect = ({
   }, [searchQuery]);
 
   // Fetch guests with search
-  const { data: guests = [], isLoading, isFetching } = useQuery({
+  const { data: guests = [], isLoading } = useQuery({
     queryKey: ['guests-search', tenantId, debouncedQuery],
     queryFn: async () => {
       if (!tenantId) return [];
@@ -83,30 +82,10 @@ export const GuestSearchSelect = ({
       if (error) throw error;
       return data as GuestData[];
     },
-    enabled: !!tenantId, // G++ Recovery: Always enabled when tenant exists (not dependent on popover open state)
-    keepPreviousData: true, // G.5: Preserve previous results during refetch
-    staleTime: 60000, // G.5: Keep data fresh for 1 minute
-    refetchOnWindowFocus: (query) => {
-      // G++ Recovery: Refetch if stale regardless of popover state
-      const dataAge = Date.now() - (query.state.dataUpdatedAt || 0);
-      const isStale = dataAge > 60000; // Older than 1 minute
-      if (isStale) {
-        console.log('[Guest Search] Tab visible and data stale, refetching...');
-      }
-      return isStale;
-    },
+    enabled: !!tenantId && open,
   });
 
-  // G++ Fix: Persist search results when popover closes
-  useEffect(() => {
-    if (guests.length > 0 && !isFetching) {
-      setPersistentResults(guests);
-    }
-  }, [guests, isFetching]);
-
-  // Use persistent results if popover is closed and we have them
-  const displayGuests = open ? guests : (persistentResults.length > 0 ? persistentResults : guests);
-  const selectedGuest = displayGuests.find((g) => g.id === value);
+  const selectedGuest = guests.find((g) => g.id === value);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -131,18 +110,12 @@ export const GuestSearchSelect = ({
             onValueChange={setSearchQuery}
           />
           <CommandList>
-            {(isLoading || isFetching) && debouncedQuery && (
-              <div className="flex items-center justify-center p-4 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                <span className="text-sm">Searching guests...</span>
-              </div>
-            )}
             <CommandEmpty>
-              {isLoading || isFetching ? "Searching..." : "No guests found."}
+              {isLoading ? "Searching..." : "No guests found."}
             </CommandEmpty>
-            {displayGuests.length > 0 && (
+            {guests.length > 0 && (
               <CommandGroup heading="Guests">
-                {displayGuests.map((guest) => (
+                {guests.map((guest) => (
                   <CommandItem
                     key={guest.id}
                     value={guest.id}

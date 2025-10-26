@@ -95,22 +95,26 @@ export const useGuestSearch = (searchTerm: string) => {
       }) || [];
     },
     enabled: searchTerm.length >= 2 && !!tenantId, // G.3: Require tenant
+    staleTime: 30000, // 30 seconds - shorter for fresher results
+    gcTime: 2 * 60 * 1000, // 2 minutes cache
+    refetchOnWindowFocus: true, // Always refetch on tab return for fresh data
+    refetchOnMount: false, // Don't refetch on mount to use cache
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   });
 
-  // G.4: Refetch on visibility change if data is stale
+  // G++.3: Refetch on visibility change for fresh data
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && query.isStale) {
-        console.log('[Guest Search] Tab visible and data stale, refetching...');
+      if (document.visibilityState === 'visible' && searchTerm.length >= 2 && tenantId) {
+        console.log('[Guest Search] Tab visible, refetching guest search...');
         query.refetch();
       }
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [query.isStale, query.refetch]);
+  }, [searchTerm, tenantId]);
 
   return query;
 };
@@ -171,6 +175,10 @@ export const useRecentGuests = () => {
       })) || [];
     },
     enabled: !!tenantId, // G.3: Require tenant
+    staleTime: 60000, // 1 minute
+    gcTime: 5 * 60 * 1000, // 5 minutes cache
+    refetchOnWindowFocus: true, // Refetch on tab return
+    refetchOnMount: false, // Use cache on mount
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   });

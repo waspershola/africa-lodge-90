@@ -28,7 +28,9 @@ import {
   Edit3,
   Receipt,
   History,
-  Loader2
+  Loader2,
+  RefreshCw,
+  AlertCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { QuickGuestCapture } from "./QuickGuestCapture";
@@ -124,56 +126,75 @@ export const RoomActionDrawer = ({
     return () => unsubscribe();
   }, [open, room, queryClient, onClose, toast]);
 
-  // Fetch folio ID for payment history
-  const { data: folioData, isLoading: folioLoading, error: folioError } = useQuery({
+  // Fetch folio ID for payment history with timeout handling
+  const { data: folioData, isLoading: folioLoading, error: folioError, refetch: refetchFolio } = useQuery({
     queryKey: ['room-folio', room?.id],
     queryFn: async () => {
       if (!room?.id) return null;
       
       console.log('[RoomActionDrawer] Fetching folio for room:', room.id);
       
-      // First, find the active reservation for this room
-      const { data: reservation, error: resError } = await supabase
-        .from('reservations')
-        .select('id')
-        .eq('room_id', room.id)
-        .in('status', ['checked_in', 'confirmed', 'hard_assigned'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      
-      if (resError) {
-        console.error('[RoomActionDrawer] Reservation query error:', resError);
-        throw resError;
+      // Add timeout to prevent indefinite loading
+      const queryPromise = (async () => {
+        // First, find the active reservation for this room
+        const { data: reservation, error: resError } = await supabase
+          .from('reservations')
+          .select('id')
+          .eq('room_id', room.id)
+          .in('status', ['checked_in', 'confirmed', 'hard_assigned'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (resError) {
+          console.error('[RoomActionDrawer] Reservation query error:', resError);
+          throw resError;
+        }
+        
+        if (!reservation) {
+          console.log('[RoomActionDrawer] No active reservation found for room');
+          return null;
+        }
+        
+        // Then get the open folio for this reservation
+        const { data: folio, error: folioError } = await supabase
+          .from('folios')
+          .select('id')
+          .eq('reservation_id', reservation.id)
+          .eq('status', 'open')
+          .maybeSingle();
+        
+        if (folioError) {
+          console.error('[RoomActionDrawer] Folio query error:', folioError);
+          throw folioError;
+        }
+        
+        console.log('[RoomActionDrawer] Found folio:', folio);
+        return folio;
+      })();
+
+      try {
+        const result = await Promise.race([
+          queryPromise,
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Folio lookup timeout')), 10000)
+          )
+        ]);
+        return result;
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('timeout')) {
+          console.error('[RoomActionDrawer] Query timeout after 10s');
+          throw new Error('Unable to load folio - request timed out');
+        }
+        throw err;
       }
-      
-      if (!reservation) {
-        console.log('[RoomActionDrawer] No active reservation found for room');
-        return null;
-      }
-      
-      // Then get the open folio for this reservation
-      const { data: folio, error: folioError } = await supabase
-        .from('folios')
-        .select('id')
-        .eq('reservation_id', reservation.id)
-        .eq('status', 'open')
-        .maybeSingle();
-      
-      if (folioError) {
-        console.error('[RoomActionDrawer] Folio query error:', folioError);
-        throw folioError;
-      }
-      
-      console.log('[RoomActionDrawer] Found folio:', folio);
-      return folio;
     },
     enabled: !!room?.id && (room?.status === 'occupied' || room?.status === 'overstay' || room?.status === 'reserved'),
-    retry: 3, // G++.2: Increase from 1 to 3 for better resilience
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000), // Exponential backoff
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
     staleTime: 30000,
-    refetchOnWindowFocus: true, // G++.2: Auto-refetch on tab return
-    networkMode: 'online', // G++.2: Only fetch when online
+    refetchOnWindowFocus: true,
+    networkMode: 'online',
   });
 
   if (!room) return null;
@@ -610,13 +631,29 @@ export const RoomActionDrawer = ({
               </CardHeader>
               <CardContent>
                 {folioLoading ? (
-                  <div className="text-center py-4">
+                  <div className="text-center py-4 space-y-2">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                     <p className="text-sm text-muted-foreground">Loading folio details...</p>
                   </div>
                 ) : folioError ? (
-                  <div className="text-center py-4">
-                    <p className="text-sm text-destructive">Error loading folio details</p>
-                    <p className="text-xs text-muted-foreground mt-1">Payment history unavailable</p>
+                  <div className="text-center py-4 space-y-3">
+                    <div className="flex flex-col items-center gap-2">
+                      <AlertCircle className="h-8 w-8 text-destructive" />
+                      <p className="text-sm text-destructive font-medium">
+                        {folioError instanceof Error && folioError.message.includes('timeout')
+                          ? 'Request timed out'
+                          : 'Error loading folio'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {folioError instanceof Error && folioError.message.includes('timeout')
+                          ? 'The server took too long to respond'
+                          : 'Unable to retrieve payment details'}
+                      </p>
+                    </div>
+                    <Button onClick={() => refetchFolio()} variant="outline" size="sm">
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Retry
+                    </Button>
                   </div>
                 ) : !folioData?.id ? (
                   <div className="text-center py-4">

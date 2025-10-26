@@ -20,6 +20,9 @@ export function ArrivalsAndDepartures() {
   // PHASE H.10: Connection status monitoring
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connected');
   
+  // PHASE H.15: Progressive timeout message state
+  const [loadingDuration, setLoadingDuration] = useState(0);
+  
   useEffect(() => {
     const unsubscribe = connectionManager.onStatusChange((status) => {
       setConnectionStatus(status);
@@ -27,8 +30,42 @@ export function ArrivalsAndDepartures() {
     return unsubscribe;
   }, []);
   
+  // PHASE H.15: Track loading duration for progressive messages
+  useEffect(() => {
+    if (arrivalsFetching || departuresFetching) {
+      setLoadingDuration(0);
+      const startTime = Date.now();
+      
+      const interval = setInterval(() => {
+        setLoadingDuration(Date.now() - startTime);
+      }, 500);
+      
+      return () => clearInterval(interval);
+    } else {
+      setLoadingDuration(0);
+    }
+  }, [arrivalsFetching, departuresFetching]);
+  
   const isReconnecting = connectionStatus === 'reconnecting' || connectionStatus === 'degraded';
   const isFetching = arrivalsFetching || departuresFetching;
+  
+  // PHASE H.15: Progressive timeout messages
+  const getLoadingMessage = () => {
+    if (loadingDuration === 0) return null;
+    if (loadingDuration < 3000) return "Loading...";
+    if (loadingDuration < 6000) return "Taking longer than usual...";
+    return "Connection issues detected";
+  };
+  
+  const loadingMessage = getLoadingMessage();
+  const showCancelButton = loadingDuration >= 6000;
+  
+  const handleCancelQuery = () => {
+    console.log('[ArrivalsAndDepartures] User cancelled query - triggering manual reconnect');
+    connectionManager.forceReconnect().catch(err => {
+      console.error('[ArrivalsAndDepartures] Force reconnect failed:', err);
+    });
+  };
 
   if (arrivalsLoading || departuresLoading) {
     return (
@@ -51,10 +88,26 @@ export function ArrivalsAndDepartures() {
         <CardTitle className="flex items-center gap-2">
           <Calendar className="h-5 w-5" />
           Today's Activity
-          {isFetching && <Skeleton className="h-4 w-20" />}
+          {/* PHASE H.15: Progressive loading indicator */}
+          {isFetching && loadingMessage && (
+            <Badge variant={loadingDuration >= 6000 ? "destructive" : "secondary"} className="ml-2">
+              {loadingMessage}
+            </Badge>
+          )}
         </CardTitle>
-        <CardDescription>
-          {format(new Date(), "EEEE, MMMM d, yyyy")}
+        <CardDescription className="flex items-center justify-between">
+          <span>{format(new Date(), "EEEE, MMMM d, yyyy")}</span>
+          {/* PHASE H.15: Cancel button for long-running queries */}
+          {showCancelButton && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleCancelQuery}
+              className="text-xs"
+            >
+              Cancel & Reconnect
+            </Button>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent>

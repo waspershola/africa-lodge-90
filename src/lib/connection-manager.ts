@@ -531,8 +531,88 @@ class ConnectionManager {
   }
 
   /**
-   * Cleanup
+   * PHASE H.13: Check if connection is ready for queries
+   * Verifies health status and realtime channel readiness
    */
+  isConnectionReady(): boolean {
+    // Check if we're in a good connection state
+    if (this._connectionStatus === 'reconnecting' || this._connectionStatus === 'disconnected') {
+      return false;
+    }
+    
+    // Check if any channels are dead (inactive > 30s)
+    const hasDeadChannels = realtimeChannelManager.hasDeadChannels();
+    if (hasDeadChannels) {
+      console.warn('[ConnectionManager] Connection not ready - dead channels detected');
+      return false;
+    }
+    
+    return true;
+  }
+
+  /**
+   * PHASE H.13: Wait for connection to be ready
+   * Returns a promise that resolves when connection is healthy and channels are subscribed
+   */
+  async waitForConnectionReady(maxWaitMs: number = 5000): Promise<void> {
+    const startTime = Date.now();
+    
+    while (Date.now() - startTime < maxWaitMs) {
+      if (this.isConnectionReady()) {
+        console.log('[ConnectionManager] ✅ Connection ready for queries');
+        return;
+      }
+      
+      // Wait 200ms before checking again
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+    
+    throw new Error(`Connection not ready after ${maxWaitMs}ms - please reload the page`);
+  }
+
+  /**
+   * PHASE H.15: Force reconnection (user-triggered)
+   * Emits progress events during reconnection
+   */
+  async forceReconnect(): Promise<void> {
+    console.log('[ConnectionManager] 🔄 User-triggered force reconnect');
+    
+    // Emit start event
+    window.dispatchEvent(new CustomEvent('connection:reconnect-started'));
+    
+    this.setConnectionStatus('reconnecting');
+    
+    try {
+      // Step 1: Health check
+      window.dispatchEvent(new CustomEvent('connection:reconnect-progress', {
+        detail: { step: 1, total: 3, message: 'Checking connection health...' }
+      }));
+      await supabaseHealthMonitor.checkHealth();
+      
+      // Step 2: Reconnect channels
+      window.dispatchEvent(new CustomEvent('connection:reconnect-progress', {
+        detail: { step: 2, total: 3, message: 'Reconnecting realtime channels...' }
+      }));
+      await realtimeChannelManager.reconnectAll();
+      
+      // Step 3: Invalidate queries
+      window.dispatchEvent(new CustomEvent('connection:reconnect-progress', {
+        detail: { step: 3, total: 3, message: 'Refreshing data...' }
+      }));
+      await this.onReconnect();
+      
+      this.setConnectionStatus('connected');
+      
+      // Emit complete event
+      window.dispatchEvent(new CustomEvent('connection:reconnect-complete'));
+      
+      console.log('[ConnectionManager] ✅ Force reconnect complete');
+    } catch (error) {
+      console.error('[ConnectionManager] ❌ Force reconnect failed:', error);
+      this.setConnectionStatus('degraded');
+      throw error;
+    }
+  }
   destroy() {
     if (this.reconnectDebounceTimeout) {
       clearTimeout(this.reconnectDebounceTimeout);

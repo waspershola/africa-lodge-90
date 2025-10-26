@@ -119,6 +119,23 @@ const FrontDeskDashboard = () => {
     return unsubscribe;
   }, [toast]);
   
+  // PHASE H.14: Listen for circuit breaker events
+  useEffect(() => {
+    const handleCircuitBreakerOpen = (event: CustomEvent) => {
+      const { failures, cooldownSeconds, operation } = event.detail;
+      
+      toast({
+        variant: "destructive",
+        title: "Connection Issues Detected",
+        description: `Multiple connection failures detected (${failures} attempts). Pausing for ${cooldownSeconds} seconds. Please check your internet connection.`,
+        duration: cooldownSeconds * 1000,
+      });
+    };
+    
+    window.addEventListener('connection:circuit-breaker-open', handleCircuitBreakerOpen as EventListener);
+    return () => window.removeEventListener('connection:circuit-breaker-open', handleCircuitBreakerOpen as EventListener);
+  }, [toast]);
+  
   // PHASE H.10: Listen for recovery complete event
   useEffect(() => {
     const handleRecoveryComplete = (event: CustomEvent) => {

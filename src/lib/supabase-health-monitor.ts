@@ -94,7 +94,7 @@ class SupabaseHealthMonitor {
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s max
+        const timeoutId = setTimeout(() => controller.abort(), 2000); // PHASE H.12: Reduced from 5s to 2s
         
         const resp = await fetch(`https://dxisnnjsbuuiunjmzzqj.supabase.co/rest/v1/`, {
           method: 'GET',

@@ -348,6 +348,25 @@ class RealtimeChannelManager {
   }
   
   /**
+   * PHASE H.13: Check if there are any dead channels (inactive > 30s)
+   */
+  hasDeadChannels(): boolean {
+    const now = Date.now();
+    const DEAD_THRESHOLD = 30000; // 30 seconds
+    
+    for (const [id, { metadata }] of this.channels.entries()) {
+      const timeSinceActivity = now - metadata.lastActivity;
+      
+      if (timeSinceActivity > DEAD_THRESHOLD) {
+        console.warn(`[RealtimeChannelManager] Dead channel: ${id} (${Math.floor(timeSinceActivity / 1000)}s inactive)`);
+        return true;
+      }
+    }
+    
+    return false;
+  }
+  
+  /**
    * Get channel statistics for debugging
    */
   getStats() {

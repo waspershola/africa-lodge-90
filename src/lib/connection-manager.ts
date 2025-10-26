@@ -214,12 +214,41 @@ class ConnectionManager {
   }
 
   /**
-   * Phase H.1: Sequential reconnection sequence (FIXED race condition)
+   * Phase H.18: Aggressive recovery mode - skip health checks and force full reconnection
+   */
+  private async aggressiveRecovery(): Promise<void> {
+    console.log('[ConnectionManager] 🚨 AGGRESSIVE RECOVERY MODE - forcing full reconnection');
+    
+    try {
+      // Skip health checks entirely - just force reconnection
+      await supabaseHealthMonitor.forceReconnect();
+      
+      // Wait for stabilization
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Reconnect channels
+      await realtimeChannelManager.reconnectAll();
+      
+      // Wait for channels
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Invalidate queries
+      await this.onReconnect();
+      
+      console.log('[ConnectionManager] ✅ Aggressive recovery complete');
+    } catch (error) {
+      console.error('[ConnectionManager] ❌ Aggressive recovery failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Phase H.16-H.17: Sequential reconnection sequence with timeouts
    */
   private async handleTabBecameVisible() {
     console.log('[ConnectionManager] 🔄 Tab became visible - starting sequential reconnection');
     console.time('[ConnectionManager] Full reconnection sequence');
-    this.setConnectionStatus('reconnecting'); // H.7: Update status
+    this.setConnectionStatus('reconnecting');
 
     // Clear any pending visibility timeout
     if (this.visibilityTimeout) {
@@ -228,23 +257,45 @@ class ConnectionManager {
 
     // Debounce: wait 500ms before refetching (prevents thrashing)
     this.visibilityTimeout = setTimeout(async () => {
+      // PHASE H.17: 15-second maximum timeout for entire reconnection
+      const reconnectTimeout = setTimeout(() => {
+        console.error('[ConnectionManager] ⏰ RECONNECTION TIMEOUT - entering aggressive recovery mode');
+        this.aggressiveRecovery().catch(err => {
+          console.error('[ConnectionManager] ❌ Aggressive recovery failed:', err);
+          this.setConnectionStatus('degraded');
+        });
+      }, 15000);
+
       try {
-        // STEP 1: Check Supabase connection health
-        console.log('[ConnectionManager] Step 1/4: Checking connection health...');
-        const isHealthy = await supabaseHealthMonitor.checkHealth();
+        // STEP 1: Check connection health with PHASE H.16 timeout
+        console.log('[ConnectionManager] Step 1/4: Checking connection health (3s timeout)...');
+        
+        let isHealthy = false;
+        try {
+          // PHASE H.16: Wrap health check with 3-second timeout
+          const healthCheckPromise = supabaseHealthMonitor.checkHealth();
+          const timeoutPromise = new Promise<boolean>((_, reject) => 
+            setTimeout(() => reject(new Error('Health check timeout')), 3000)
+          );
+          
+          isHealthy = await Promise.race([healthCheckPromise, timeoutPromise]);
+        } catch (healthError) {
+          console.warn('[ConnectionManager] ⏰ Health check timed out - forcing reconnect');
+          isHealthy = false;
+        }
         
         if (!isHealthy) {
           console.warn('[ConnectionManager] Step 1/4: Connection unhealthy - forcing reconnect');
           await this.triggerReconnect('tab-visible');
           
-          // CRITICAL: Wait 2s for connection to stabilize after force reconnect
+          // Wait for connection to stabilize
           console.log('[ConnectionManager] Waiting 2s for connection stabilization...');
           await new Promise(resolve => setTimeout(resolve, 2000));
         } else {
           console.log('[ConnectionManager] Step 1/4: ✅ Connection healthy');
         }
         
-        // STEP 2: Reconnect all realtime channels (MUST complete before queries)
+        // STEP 2: Reconnect all realtime channels
         console.log('[ConnectionManager] Step 2/4: Reconnecting realtime channels...');
         await realtimeChannelManager.reconnectAll();
         console.log('[ConnectionManager] Step 2/4: ✅ Channels reconnected');
@@ -259,11 +310,14 @@ class ConnectionManager {
         await this.onReconnect();
         console.log('[ConnectionManager] Step 4/4: ✅ Queries invalidated');
         
+        // Clear the reconnection timeout since we succeeded
+        clearTimeout(reconnectTimeout);
+        
         console.timeEnd('[ConnectionManager] Full reconnection sequence');
         console.log('[ConnectionManager] ✅ Reconnection sequence complete - app ready');
-        this.setConnectionStatus('connected'); // H.7: Update status to connected
+        this.setConnectionStatus('connected');
         
-        // PHASE H.11: Calculate and emit comprehensive recovery metrics
+        // Calculate and emit recovery metrics
         const reconnectDuration = performance.now();
         const metrics = {
           timestamp: Date.now(),
@@ -278,12 +332,11 @@ class ConnectionManager {
         
         console.log('[ConnectionManager] 📊 Recovery metrics:', metrics);
         
-        // H.4: Emit custom event for monitoring
         window.dispatchEvent(new CustomEvent('connection:recovery-complete', {
           detail: metrics
         }));
         
-        // H.7: Auto-dismiss "connected" status after 3s
+        // Auto-dismiss "connected" status after 3s
         setTimeout(() => {
           if (this._connectionStatus === 'connected') {
             console.log('[ConnectionManager] Auto-dismissing connected status');
@@ -292,7 +345,13 @@ class ConnectionManager {
       } catch (error) {
         console.error('[ConnectionManager] ❌ Reconnection sequence failed:', error);
         console.timeEnd('[ConnectionManager] Full reconnection sequence');
-        this.setConnectionStatus('degraded'); // H.7: Mark as degraded on failure
+        this.setConnectionStatus('degraded');
+        
+        // Try aggressive recovery as last resort
+        console.log('[ConnectionManager] Attempting aggressive recovery...');
+        this.aggressiveRecovery().catch(err => {
+          console.error('[ConnectionManager] ❌ Aggressive recovery also failed:', err);
+        });
       } finally {
         this.visibilityTimeout = null;
       }

@@ -176,7 +176,7 @@ class ConnectionManager {
   }
 
   /**
-   * Phase F.6: Handle tab becoming visible - fallback refetch mechanism
+   * G++.4: Handle tab becoming visible - active refetch mechanism
    */
   private async handleTabBecameVisible() {
     console.log('[ConnectionManager] Tab became visible');
@@ -186,10 +186,7 @@ class ConnectionManager {
       clearTimeout(this.visibilityTimeout);
     }
 
-    const now = Date.now();
-    const timeSinceLastRefetch = now - this.lastRefetchTime;
-
-    // Debounce: wait 500ms before invalidating (prevents thrashing)
+    // Debounce: wait 500ms before refetching (prevents thrashing)
     this.visibilityTimeout = setTimeout(async () => {
       // STEP 1: Check Supabase connection health
       const isHealthy = await supabaseHealthMonitor.checkHealth();
@@ -203,10 +200,8 @@ class ConnectionManager {
       console.log('[ConnectionManager] Reconnecting realtime channels...');
       await realtimeChannelManager.reconnectAll();
       
-      // G.2: REMOVED aggressive refetch that clears active search and form data
-      // Only invalidate stale critical queries - let components refetch when needed
-      console.log('[ConnectionManager] Invalidating stale critical queries only...');
-      this.invalidateStaleCriticalQueries();
+      // G++.4: Active prioritized refetch on tab visibility
+      await this.onReconnect();
       
       this.visibilityTimeout = null;
     }, 500);
@@ -226,7 +221,27 @@ class ConnectionManager {
   }
 
   /**
-   * Phase F.6: Handle connection restored with query invalidation
+   * G++.4: Active prioritized refetch on reconnection
+   */
+  private async onReconnect() {
+    console.log('[ConnectionManager] Reconnection sequence starting...');
+    
+    // Priority 1: Critical queries (folio, reservations, qr-requests)
+    await queryClient.invalidateQueries({
+      predicate: q => ['folio-calculation', 'reservations', 'qr-requests'].includes(q.queryKey[0] as string)
+    });
+    await new Promise(res => setTimeout(res, 300)); // Small gap
+    
+    // Priority 2: High queries (guest-search, recent-guests)
+    await queryClient.invalidateQueries({
+      predicate: q => ['guest-search', 'guests-search', 'recent-guests'].includes(q.queryKey[0] as string)
+    });
+    
+    console.log('[ConnectionManager] Reconnection sequence complete');
+  }
+
+  /**
+   * G++.4: Handle connection restored with active refetch
    */
   private async handleConnectionRestored() {
     // Debounce reconnection - wait 2 seconds
@@ -251,21 +266,10 @@ class ConnectionManager {
         // STEP 2: Wait 200ms for channels to stabilize
         await new Promise(resolve => setTimeout(resolve, 200));
         
-        // STEP 3: Phase F.6 - Invalidate critical queries immediately
-        console.log('[ConnectionManager] Invalidating critical queries on reconnect');
-        queryClient.invalidateQueries({
-          predicate: (query) => {
-            const key = Array.isArray(query.queryKey) ? query.queryKey[0] : query.queryKey;
-            const priority = QUERY_PRIORITIES[key as string];
-            return priority === 'critical';
-          }
-        });
+        // G++.4: Active prioritized refetch sequence
+        await this.onReconnect();
         
-        // STEP 4: Execute prioritized query invalidation for rest
-        console.log('[ConnectionManager] Executing prioritized invalidation');
-        await this.executePrioritizedInvalidation();
-        
-        // STEP 5: Update refetch timestamp
+        // STEP 3: Update refetch timestamp
         this.lastRefetchTime = Date.now();
       } finally {
         this.isReconnecting = false;

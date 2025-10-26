@@ -96,25 +96,15 @@ export const useGuestSearch = (searchTerm: string) => {
     },
     enabled: searchTerm.length >= 2 && !!tenantId, // G.3: Require tenant
     staleTime: 30000, // 30 seconds - shorter for fresher results
-    gcTime: 2 * 60 * 1000, // 2 minutes cache
+    gcTime: 2 * 60 * 1000, // G++.1: 2 minutes cache
     refetchOnWindowFocus: true, // Always refetch on tab return for fresh data
     refetchOnMount: false, // Don't refetch on mount to use cache
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   });
 
-  // G++.3: Refetch on visibility change for fresh data
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && searchTerm.length >= 2 && tenantId) {
-        console.log('[Guest Search] Tab visible, refetching guest search...');
-        query.refetch();
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [searchTerm, tenantId]);
+  // G++.1: REMOVED redundant visibility listener - refetchOnWindowFocus already handles this
+  // React Query v5's refetchOnWindowFocus uses visibilitychange internally
 
   return query;
 };

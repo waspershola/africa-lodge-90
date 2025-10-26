@@ -553,21 +553,10 @@ export const QuickGuestCapture = ({
     
     setIsProcessing(true);
     setProcessingStartTime(Date.now());
-    
-    // Set timeout to prevent infinite processing
-    const processingTimeout = setTimeout(() => {
-      if (isProcessing) {
-        setIsProcessing(false);
-        setProcessingStartTime(undefined);
-        toast({
-          title: "Processing Timeout",
-          description: "The operation took too long. Please try again.",
-          variant: "destructive",
-        });
-      }
-    }, 30000); // 30 seconds timeout
 
     try {
+      // G++ Fix: Wrap entire operation with proper timeout using Promise.race
+      const operationPromise = (async () => {
       // Real backend integration
       const { supabase } = await import('@/integrations/supabase/client');
       const { data: { user } } = await supabase.auth.getUser();
@@ -1282,6 +1271,9 @@ export const QuickGuestCapture = ({
 
       onComplete(updatedRoom);
 
+      // G++ Fix: Add delay before query invalidation to ensure DB commits
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // Enhanced query invalidation with overstay queries
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['rooms'] }),
@@ -1345,8 +1337,7 @@ export const QuickGuestCapture = ({
         }
       }
 
-      // Success - clear timeout and reset processing state
-      clearTimeout(processingTimeout);
+      // Success - clear processing state
       setIsProcessing(false);
       setProcessingStartTime(undefined);
       
@@ -1389,9 +1380,32 @@ export const QuickGuestCapture = ({
         }
 
         onOpenChange(false);
+      })(); // Close operationPromise
+
+      // G++ Fix: Create timeout promise
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('OPERATION_TIMEOUT'));
+        }, 20000); // 20 seconds timeout
+      });
+
+      // G++ Fix: Race operation against timeout
+      await Promise.race([operationPromise, timeoutPromise]);
+
     } catch (error) {
       console.error('Error processing guest capture:', error);
       let errorMessage = "Failed to process guest information. Please try again.";
+      
+      // G++ Fix: Handle timeout specifically
+      if (error instanceof Error && error.message === 'OPERATION_TIMEOUT') {
+        errorMessage = "Operation timed out after 20 seconds. Please check your connection and try again.";
+        toast({
+          title: "Operation Timeout",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        return; // Exit early for timeout
+      }
       
       if (error instanceof Error) {
         // Check for specific error types with better categorization
@@ -1418,7 +1432,6 @@ export const QuickGuestCapture = ({
         variant: "destructive",
       });
     } finally {
-      clearTimeout(processingTimeout);
       setIsProcessing(false);
       setProcessingStartTime(undefined);
     }

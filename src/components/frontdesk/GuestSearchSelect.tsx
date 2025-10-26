@@ -17,7 +17,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Check, ChevronsUpDown, UserPlus } from "lucide-react";
+import { Check, ChevronsUpDown, UserPlus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface GuestData {
@@ -45,6 +45,7 @@ export const GuestSearchSelect = ({
   const tenantId = user?.tenant_id;
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [persistentResults, setPersistentResults] = useState<GuestData[]>([]);
 
   // Debounced search query
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
@@ -58,7 +59,7 @@ export const GuestSearchSelect = ({
   }, [searchQuery]);
 
   // Fetch guests with search
-  const { data: guests = [], isLoading } = useQuery({
+  const { data: guests = [], isLoading, isFetching } = useQuery({
     queryKey: ['guests-search', tenantId, debouncedQuery],
     queryFn: async () => {
       if (!tenantId) return [];
@@ -96,7 +97,16 @@ export const GuestSearchSelect = ({
     },
   });
 
-  const selectedGuest = guests.find((g) => g.id === value);
+  // G++ Fix: Persist search results when popover closes
+  useEffect(() => {
+    if (guests.length > 0 && !isFetching) {
+      setPersistentResults(guests);
+    }
+  }, [guests, isFetching]);
+
+  // Use persistent results if popover is closed and we have them
+  const displayGuests = open ? guests : (persistentResults.length > 0 ? persistentResults : guests);
+  const selectedGuest = displayGuests.find((g) => g.id === value);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -121,12 +131,18 @@ export const GuestSearchSelect = ({
             onValueChange={setSearchQuery}
           />
           <CommandList>
+            {(isLoading || isFetching) && debouncedQuery && (
+              <div className="flex items-center justify-center p-4 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <span className="text-sm">Searching guests...</span>
+              </div>
+            )}
             <CommandEmpty>
-              {isLoading ? "Searching..." : "No guests found."}
+              {isLoading || isFetching ? "Searching..." : "No guests found."}
             </CommandEmpty>
-            {guests.length > 0 && (
+            {displayGuests.length > 0 && (
               <CommandGroup heading="Guests">
-                {guests.map((guest) => (
+                {displayGuests.map((guest) => (
                   <CommandItem
                     key={guest.id}
                     value={guest.id}

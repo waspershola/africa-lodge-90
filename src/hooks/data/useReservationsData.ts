@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { format, startOfDay, endOfDay, addDays, isWithinInterval } from 'date-fns';
 import { toast } from 'sonner';
+import { withConnectionCheck } from '@/lib/ensure-connection';
 
 export type ReservationStatus = 'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled' | 'no_show';
 
@@ -27,40 +28,50 @@ export function useReservations(filters?: ReservationFilters) {
       maxAge: 30000 // 30 seconds
     },
     staleTime: 30 * 1000, // 30 seconds - critical for booking operations
+    refetchOnWindowFocus: true, // PHASE H.8: Always refetch on window focus
+    refetchOnReconnect: true, // PHASE H.8: Refetch after reconnection
+    networkMode: 'online', // PHASE H.9: Handle offline gracefully
+    retry: 3, // PHASE H.9: 3 retries for resilience
     queryFn: async () => {
       if (!tenantId) throw new Error('No tenant ID');
 
-      let query = supabase
-        .from('reservations')
-        .select(`
-          *,
-          guest:guests(id, first_name, last_name, email, phone, vip_status),
-          room:rooms!reservations_room_id_fkey(id, room_number, room_type:room_types(name, base_rate))
-        `)
-        .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false });
+      // PHASE H.9 & H.11: Wrap with connection check + timing
+      console.time('[Reservations Query] Execution time');
+      const result = await withConnectionCheck('Reservations Query', async () => {
+        let query = supabase
+          .from('reservations')
+          .select(`
+            *,
+            guest:guests(id, first_name, last_name, email, phone, vip_status),
+            room:rooms!reservations_room_id_fkey(id, room_number, room_type:room_types(name, base_rate))
+          `)
+          .eq('tenant_id', tenantId)
+          .order('created_at', { ascending: false });
 
-      // Apply filters
-      if (filters?.status?.length) {
-        query = query.in('status', filters.status);
-      }
-      if (filters?.checkInDate) {
-        query = query.gte('check_in_date', format(filters.checkInDate, 'yyyy-MM-dd'));
-      }
-      if (filters?.checkOutDate) {
-        query = query.lte('check_out_date', format(filters.checkOutDate, 'yyyy-MM-dd'));
-      }
-      if (filters?.guestName) {
-        query = query.ilike('guest_name', `%${filters.guestName}%`);
-      }
-      if (filters?.roomId) {
-        query = query.eq('room_id', filters.roomId);
-      }
+        // Apply filters
+        if (filters?.status?.length) {
+          query = query.in('status', filters.status);
+        }
+        if (filters?.checkInDate) {
+          query = query.gte('check_in_date', format(filters.checkInDate, 'yyyy-MM-dd'));
+        }
+        if (filters?.checkOutDate) {
+          query = query.lte('check_out_date', format(filters.checkOutDate, 'yyyy-MM-dd'));
+        }
+        if (filters?.guestName) {
+          query = query.ilike('guest_name', `%${filters.guestName}%`);
+        }
+        if (filters?.roomId) {
+          query = query.eq('room_id', filters.roomId);
+        }
 
-      const { data, error } = await query;
-      if (error) throw error;
+        const { data, error } = await query;
+        if (error) throw error;
 
-      return data || [];
+        return data || [];
+      });
+      console.timeEnd('[Reservations Query] Execution time');
+      return result;
     },
     enabled: !!tenantId,
   });
@@ -74,23 +85,34 @@ export function useTodayArrivals() {
 
   return useQuery({
     queryKey: ['arrivals', tenantId, today],
+    refetchOnWindowFocus: true, // PHASE H.8: Always refetch on window focus
+    refetchOnReconnect: true, // PHASE H.8: Refetch after reconnection
+    networkMode: 'online', // PHASE H.9: Handle offline gracefully
+    retry: 3, // PHASE H.9: 3 retries for resilience
     queryFn: async () => {
       if (!tenantId) throw new Error('No tenant ID');
 
-      const { data, error } = await supabase
-        .from('reservations')
-        .select(`
-          *,
-          guest:guests(first_name, last_name, phone, email),
-          room:rooms!reservations_room_id_fkey(room_number, room_type:room_types(name))
-        `)
-        .eq('tenant_id', tenantId)
-        .eq('check_in_date', today)
-        .in('status', ['pending', 'confirmed', 'checked_in'])
-        .order('check_in_date', { ascending: true });
+      // PHASE H.9 & H.11: Wrap with connection check + timing
+      console.time('[Today Arrivals Query] Execution time');
+      const result = await withConnectionCheck('Today Arrivals Query', async () => {
+        const { data, error } = await supabase
+          .from('reservations')
+          .select(`
+            *,
+            guest:guests(first_name, last_name, phone, email),
+            room:rooms!reservations_room_id_fkey(room_number, room_type:room_types(name))
+          `)
+          .eq('tenant_id', tenantId)
+          .eq('check_in_date', today)
+          .in('status', ['pending', 'confirmed', 'checked_in'])
+          .order('check_in_date', { ascending: true });
 
-      if (error) throw error;
-      return data || [];
+        if (error) throw error;
+        return data || [];
+      });
+      console.timeEnd('[Today Arrivals Query] Execution time');
+      console.log(`[Today Arrivals] Fetched ${result.length} arrivals`);
+      return result;
     },
     enabled: !!tenantId,
     staleTime: 60000, // 1 minute - arrivals don't change often
@@ -107,23 +129,34 @@ export function useTodayDepartures() {
 
   return useQuery({
     queryKey: ['departures', tenantId, today],
+    refetchOnWindowFocus: true, // PHASE H.8: Always refetch on window focus
+    refetchOnReconnect: true, // PHASE H.8: Refetch after reconnection
+    networkMode: 'online', // PHASE H.9: Handle offline gracefully
+    retry: 3, // PHASE H.9: 3 retries for resilience
     queryFn: async () => {
       if (!tenantId) throw new Error('No tenant ID');
 
-      const { data, error } = await supabase
-        .from('reservations')
-        .select(`
-          *,
-          guest:guests(first_name, last_name, phone, email),
-          room:rooms!reservations_room_id_fkey(room_number, room_type:room_types(name))
-        `)
-        .eq('tenant_id', tenantId)
-        .eq('check_out_date', today)
-        .in('status', ['checked_in', 'checked_out'])
-        .order('check_out_date', { ascending: true });
+      // PHASE H.9 & H.11: Wrap with connection check + timing
+      console.time('[Today Departures Query] Execution time');
+      const result = await withConnectionCheck('Today Departures Query', async () => {
+        const { data, error } = await supabase
+          .from('reservations')
+          .select(`
+            *,
+            guest:guests(first_name, last_name, phone, email),
+            room:rooms!reservations_room_id_fkey(room_number, room_type:room_types(name))
+          `)
+          .eq('tenant_id', tenantId)
+          .eq('check_out_date', today)
+          .in('status', ['checked_in', 'checked_out'])
+          .order('check_out_date', { ascending: true });
 
-      if (error) throw error;
-      return data || [];
+        if (error) throw error;
+        return data || [];
+      });
+      console.timeEnd('[Today Departures Query] Execution time');
+      console.log(`[Today Departures] Fetched ${result.length} departures`);
+      return result;
     },
     enabled: !!tenantId,
     staleTime: 60000, // 1 minute - departures don't change often

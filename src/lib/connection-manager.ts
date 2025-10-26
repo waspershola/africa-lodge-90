@@ -263,9 +263,24 @@ class ConnectionManager {
         console.log('[ConnectionManager] ✅ Reconnection sequence complete - app ready');
         this.setConnectionStatus('connected'); // H.7: Update status to connected
         
+        // PHASE H.11: Calculate and emit comprehensive recovery metrics
+        const reconnectDuration = performance.now();
+        const metrics = {
+          timestamp: Date.now(),
+          source: 'tab-visibility',
+          duration: reconnectDuration,
+          steps: {
+            healthCheck: 'completed',
+            channelReconnect: 'completed',
+            queryInvalidation: 'completed'
+          }
+        };
+        
+        console.log('[ConnectionManager] 📊 Recovery metrics:', metrics);
+        
         // H.4: Emit custom event for monitoring
         window.dispatchEvent(new CustomEvent('connection:recovery-complete', {
-          detail: { timestamp: Date.now(), source: 'tab-visibility', duration: performance.now() }
+          detail: metrics
         }));
         
         // H.7: Auto-dismiss "connected" status after 3s
@@ -298,29 +313,61 @@ class ConnectionManager {
   }
 
   /**
-   * Phase H.1: Prioritized query invalidation (with breadcrumbs)
+   * Phase H.1 & H.11: Prioritized query invalidation (with enhanced metrics)
    */
   private async onReconnect() {
     console.log('[ConnectionManager] 🔄 Starting prioritized query invalidation...');
     console.time('[ConnectionManager] Query invalidation');
     
-    // Priority 1: Critical queries (folio, reservations, qr-requests)
+    // PHASE H.11: Track query refetch metrics
+    const metrics = {
+      critical: 0,
+      high: 0,
+      arrivals: 0,
+      departures: 0,
+      reservations: 0,
+      rooms: 0
+    };
+    
+    // Priority 1: Critical queries (folio, reservations, qr-requests, arrivals, departures)
     console.log('[ConnectionManager] Invalidating critical queries...');
-    await queryClient.invalidateQueries({
-      predicate: q => ['folio-calculation', 'reservations', 'qr-requests'].includes(q.queryKey[0] as string)
+    const criticalQueries = queryClient.getQueryCache().findAll({
+      predicate: q => ['folio-calculation', 'reservations', 'qr-requests', 'arrivals', 'departures', 'rooms'].includes(q.queryKey[0] as string)
     });
-    console.log('[ConnectionManager] ✅ Critical queries invalidated');
+    
+    await queryClient.invalidateQueries({
+      predicate: q => ['folio-calculation', 'reservations', 'qr-requests', 'arrivals', 'departures', 'rooms'].includes(q.queryKey[0] as string),
+      refetchType: 'active'
+    });
+    
+    // Count invalidated queries
+    metrics.critical = criticalQueries.length;
+    metrics.arrivals = queryClient.getQueryCache().findAll({ queryKey: ['arrivals'] }).length;
+    metrics.departures = queryClient.getQueryCache().findAll({ queryKey: ['departures'] }).length;
+    metrics.reservations = queryClient.getQueryCache().findAll({ queryKey: ['reservations'] }).length;
+    metrics.rooms = queryClient.getQueryCache().findAll({ queryKey: ['rooms'] }).length;
+    
+    console.log('[ConnectionManager] ✅ Critical queries invalidated:', metrics);
     
     await new Promise(res => setTimeout(res, 300)); // Small gap for refetch priority
     
     // Priority 2: High queries (guest-search, recent-guests)
     console.log('[ConnectionManager] Invalidating high-priority queries...');
+    const highQueries = queryClient.getQueryCache().findAll({
+      predicate: q => ['guest-search', 'guests-search', 'recent-guests'].includes(q.queryKey[0] as string)
+    });
+    
     await queryClient.invalidateQueries({
       predicate: q => ['guest-search', 'guests-search', 'recent-guests'].includes(q.queryKey[0] as string)
     });
+    
+    metrics.high = highQueries.length;
     console.log('[ConnectionManager] ✅ High-priority queries invalidated');
     
     console.timeEnd('[ConnectionManager] Query invalidation');
+    
+    // PHASE H.11: Emit recovery metrics event
+    console.log('[ConnectionManager] 📊 Reconnection query metrics:', metrics);
   }
 
   /**

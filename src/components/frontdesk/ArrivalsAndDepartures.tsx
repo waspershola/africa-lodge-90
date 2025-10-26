@@ -1,18 +1,34 @@
 // @ts-nocheck
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTodayArrivals, useTodayDepartures, useCheckIn, useCheckOut } from "@/hooks/data/useReservationsData";
 import { format } from "date-fns";
-import { Calendar, User, Phone, Mail, MapPin, Clock, LogIn, LogOut } from "lucide-react";
+import { Calendar, User, Phone, Mail, MapPin, Clock, LogIn, LogOut, WifiOff } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { connectionManager, ConnectionStatus } from "@/lib/connection-manager";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function ArrivalsAndDepartures() {
-  const { data: arrivals, isLoading: arrivalsLoading } = useTodayArrivals();
-  const { data: departures, isLoading: departuresLoading } = useTodayDepartures();
+  const { data: arrivals, isLoading: arrivalsLoading, isFetching: arrivalsFetching } = useTodayArrivals();
+  const { data: departures, isLoading: departuresLoading, isFetching: departuresFetching } = useTodayDepartures();
   const { mutate: checkIn, isPending: isCheckingIn } = useCheckIn();
   const { mutate: checkOut, isPending: isCheckingOut } = useCheckOut();
+  
+  // PHASE H.10: Connection status monitoring
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connected');
+  
+  useEffect(() => {
+    const unsubscribe = connectionManager.onStatusChange((status) => {
+      setConnectionStatus(status);
+    });
+    return unsubscribe;
+  }, []);
+  
+  const isReconnecting = connectionStatus === 'reconnecting' || connectionStatus === 'degraded';
+  const isFetching = arrivalsFetching || departuresFetching;
 
   if (arrivalsLoading || departuresLoading) {
     return (
@@ -35,12 +51,22 @@ export function ArrivalsAndDepartures() {
         <CardTitle className="flex items-center gap-2">
           <Calendar className="h-5 w-5" />
           Today's Activity
+          {isFetching && <Skeleton className="h-4 w-20" />}
         </CardTitle>
         <CardDescription>
           {format(new Date(), "EEEE, MMMM d, yyyy")}
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {/* PHASE H.10: Reconnection alert */}
+        {isReconnecting && (
+          <Alert className="mb-4">
+            <WifiOff className="h-4 w-4" />
+            <AlertDescription>
+              Reconnecting to server... Please wait.
+            </AlertDescription>
+          </Alert>
+        )}
         <Tabs defaultValue="arrivals" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="arrivals">
@@ -105,7 +131,7 @@ export function ArrivalsAndDepartures() {
                         <Button
                           size="sm"
                           onClick={() => checkIn(reservation.id)}
-                          disabled={isCheckingIn}
+                          disabled={isCheckingIn || isReconnecting}
                         >
                           <LogIn className="h-4 w-4 mr-1" />
                           Check In
@@ -177,7 +203,7 @@ export function ArrivalsAndDepartures() {
                           size="sm"
                           variant="outline"
                           onClick={() => checkOut(reservation.id)}
-                          disabled={isCheckingOut}
+                          disabled={isCheckingOut || isReconnecting}
                         >
                           <LogOut className="h-4 w-4 mr-1" />
                           Check Out

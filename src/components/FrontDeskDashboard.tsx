@@ -32,7 +32,8 @@ import {
   UserPlus,
   User,
   CheckCircle,
-  Wallet
+  Wallet,
+  Loader2
 } from "lucide-react";
 import { RoomGrid } from "./frontdesk/RoomGrid";
 import { ActionQueue } from "./frontdesk/ActionQueue";
@@ -73,6 +74,7 @@ import { useFrontDeskDataOptimized } from "@/hooks/data/useFrontDeskDataOptimize
 import { useQueryClient } from "@tanstack/react-query";
 import { useRooms } from "@/hooks/useRooms";
 import { useToast } from "@/hooks/use-toast";
+import { connectionManager, ConnectionStatus } from "@/lib/connection-manager";
 
 const FrontDeskDashboard = () => {
   const { data: tenantInfo } = useTenantInfo();
@@ -82,6 +84,9 @@ const FrontDeskDashboard = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: roomsData } = useRooms();
+  
+  // PHASE H.10: Connection status monitoring
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connected');
   
   // Consolidated real-time data from unified hook (OPTIMIZED)
   const {
@@ -96,6 +101,35 @@ const FrontDeskDashboard = () => {
   
   // Enable unified real-time updates with role-based filtering
   useUnifiedRealtime({ verbose: false });
+  
+  // PHASE H.10: Subscribe to connection status changes
+  useEffect(() => {
+    const unsubscribe = connectionManager.onStatusChange((status) => {
+      setConnectionStatus(status);
+      
+      // Show toast when reconnected
+      if (status === 'connected') {
+        toast({
+          title: "Connection Restored",
+          description: "Dashboard data has been refreshed.",
+        });
+      }
+    });
+    
+    return unsubscribe;
+  }, [toast]);
+  
+  // PHASE H.10: Listen for recovery complete event
+  useEffect(() => {
+    const handleRecoveryComplete = (event: CustomEvent) => {
+      console.log('[Dashboard] Recovery complete:', event.detail);
+    };
+    
+    window.addEventListener('connection:recovery-complete', handleRecoveryComplete as EventListener);
+    return () => window.removeEventListener('connection:recovery-complete', handleRecoveryComplete as EventListener);
+  }, []);
+  
+  const isReconnecting = connectionStatus === 'reconnecting' || connectionStatus === 'degraded';
   
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<string | undefined>(undefined);
@@ -394,6 +428,25 @@ const FrontDeskDashboard = () => {
       <div className="p-6 space-y-6">
         {/* Loading State */}
         {dataLoading && <LoadingState message="Loading front desk data..." />}
+        
+        {/* PHASE H.10: Reconnecting Overlay */}
+        {isReconnecting && (
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+            <Card className="w-96">
+              <CardContent className="pt-6">
+                <div className="flex flex-col items-center justify-center space-y-4">
+                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                  <div className="text-center space-y-2">
+                    <h3 className="text-lg font-semibold">Reconnecting...</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Restoring connection to server. Please wait.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
         
         {/* Main Dashboard Content */}
         {!dataLoading && (

@@ -24,7 +24,16 @@ export const queryClient = new QueryClient({
       staleTime: 2 * 60 * 1000, // 2 minutes - optimized for real-time apps
       gcTime: 10 * 60 * 1000, // 10 minutes - better cache retention
       refetchOnWindowFocus: (query) => {
-        // Only refetch if data is >2 min old
+        const key = query.queryKey[0] as string;
+        const criticalQueries = ['arrivals', 'departures', 'reservations', 'rooms', 'qr-requests', 'folio-calculation'];
+        
+        // PHASE H.8: Always refetch critical queries on window focus
+        if (criticalQueries.includes(key)) {
+          console.log(`[QueryClient] Force refetching critical query: ${key}`);
+          return true;
+        }
+        
+        // For non-critical, only refetch if >2min old
         const dataUpdatedAt = query.state.dataUpdatedAt;
         const isStale = Date.now() - dataUpdatedAt > 2 * 60 * 1000;
         return isStale;

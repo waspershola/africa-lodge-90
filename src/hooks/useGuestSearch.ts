@@ -95,10 +95,11 @@ export const useGuestSearch = (searchTerm: string) => {
       }) || [];
     },
     enabled: searchTerm.length >= 2 && !!tenantId, // G.3: Require tenant
-    staleTime: 30000, // 30 seconds - shorter for fresher results
+    staleTime: 30_000, // G++.1: 30 seconds stale time
     gcTime: 2 * 60 * 1000, // G++.1: 2 minutes cache
     refetchOnWindowFocus: true, // Always refetch on tab return for fresh data
     refetchOnMount: false, // Don't refetch on mount to use cache
+    refetchOnReconnect: true, // PRIORITY 4 FIX: Refetch on network reconnection
     networkMode: 'online', // G++.4: PHASE 4 - Handle offline gracefully
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),

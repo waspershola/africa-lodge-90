@@ -177,6 +177,9 @@ export const QuickGuestCapture = ({
   const [lastOperationError, setLastOperationError] = useState<string>('');
   const [showHydrationIndicator, setShowHydrationIndicator] = useState(false);
   
+  // PRIORITY 2 FIX: Track restoration state to prevent race condition
+  const [isRestoringFromStorage, setIsRestoringFromStorage] = useState(false);
+  
   const [showOptionalFields, setShowOptionalFields] = useState(false);
   const [guestMode, setGuestMode] = useState<'existing' | 'new'>('existing');
   const [selectedGuest, setSelectedGuest] = useState<RecentGuest | null>(null);
@@ -223,7 +226,10 @@ export const QuickGuestCapture = ({
   const formData = watch();
 
   // G++.3: Hydrate form from selectedGuest when it changes
+  // PRIORITY 2 FIX: Guard against race condition during sessionStorage restoration
   useEffect(() => {
+    if (isRestoringFromStorage) return; // Skip if restoring from storage
+    
     if (selectedGuest && guestMode === 'existing') {
       console.log('[Form Hydration] Populating form from selectedGuest');
       reset({
@@ -238,7 +244,7 @@ export const QuickGuestCapture = ({
         idNumber: selectedGuest.id_number || '',
       });
     }
-  }, [selectedGuest, guestMode, reset]);
+  }, [selectedGuest, guestMode, reset, isRestoringFromStorage]);
 
   // PHASE 2: Auto-select default payment method when enabled methods load
   useEffect(() => {
@@ -342,8 +348,9 @@ export const QuickGuestCapture = ({
   }, [watch, open, selectedGuest, guestMode, room?.id]);
 
   // G++.3: Restore from sessionStorage on mount (NOT during validation)
+  // PRIORITY 2 FIX: Use flag to prevent double-reset race condition
   useEffect(() => {
-    if (!open) return;
+    if (!open || isRestoringFromStorage) return;
     
     const storageKey = `quick-capture-${room?.id || 'global'}`;
     const savedGuestStr = sessionStorage.getItem(`${storageKey}-guest`);
@@ -351,6 +358,7 @@ export const QuickGuestCapture = ({
     
     if (savedGuestStr && !selectedGuest) {
       try {
+        setIsRestoringFromStorage(true);
         const savedGuest = JSON.parse(savedGuestStr);
         console.log('[QuickCapture] Restoring selectedGuest from sessionStorage on mount');
         setSelectedGuest(savedGuest);
@@ -372,7 +380,12 @@ export const QuickGuestCapture = ({
         console.error('[QuickCapture] Failed to restore form:', error);
       }
     }
-  }, [open, room?.id, reset]);
+    
+    // Clear restoration flag after completion
+    if (isRestoringFromStorage) {
+      setTimeout(() => setIsRestoringFromStorage(false), 100);
+    }
+  }, [open, room?.id, reset, isRestoringFromStorage]);
   
   // G++.2: Elapsed time tracker for operations
   useEffect(() => {

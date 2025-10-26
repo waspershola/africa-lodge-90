@@ -1,7 +1,5 @@
-// @ts-nocheck
 import { useState, useMemo, useEffect } from "react";
 import { useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form'; // G++.3: Add react-hook-form
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,8 +48,7 @@ import {
   Calendar,
   DollarSign,
   Globe,
-  Briefcase,
-  RefreshCw
+  Briefcase
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
@@ -135,24 +132,6 @@ const OCCUPATIONS = [
   'Teacher/Professor', 'Consultant', 'Entrepreneur', 'Student', 'Retired', 'Other'
 ];
 
-/**
- * Phase H.3: Connection-aware operation wrapper
- * Replaces fetchWithTimeout with proper connection pre-flight check
- */
-import { ensureConnection } from '@/lib/ensure-connection';
-
-async function executeWithConnectionCheck<T>(
-  operationName: string,
-  fn: () => Promise<T>
-): Promise<T> {
-  return ensureConnection(fn, {
-    operationName,
-    maxRetries: 1,
-    retryDelay: 2000,
-    timeoutMs: 20000
-  });
-}
-
 export const QuickGuestCapture = ({
   room,
   open,
@@ -171,14 +150,6 @@ export const QuickGuestCapture = ({
   const { data: tenantInfo } = useTenantInfo();
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStartTime, setProcessingStartTime] = useState<number | undefined>();
-  
-  // G++.2: Retry and timeout state
-  const [retryCount, setRetryCount] = useState(0);
-  const [showRetryDialog, setShowRetryDialog] = useState(false);
-  const [elapsedTime, setElapsedTime] = useState(0);
-  const [lastOperationError, setLastOperationError] = useState<string>('');
-  const [showHydrationIndicator, setShowHydrationIndicator] = useState(false);
-  
   const [showOptionalFields, setShowOptionalFields] = useState(false);
   const [guestMode, setGuestMode] = useState<'existing' | 'new'>('existing');
   const [selectedGuest, setSelectedGuest] = useState<RecentGuest | null>(null);
@@ -191,15 +162,14 @@ export const QuickGuestCapture = ({
     balance: number;
   } | null>(null);
   
-  // G++.3: Convert to react-hook-form for better hydration
-  const currentDate = new Date().toISOString().split('T')[0];
-  const nextDate = new Date();
-  nextDate.setDate(nextDate.getDate() + 1);
-  const checkoutDate = nextDate.toISOString().split('T')[0];
-  
-  const { register, handleSubmit: rhfHandleSubmit, reset, watch, formState, setValue } = useForm<GuestFormData>({
-    defaultValues: {
-      guestName: '',
+  const [formData, setFormData] = useState<GuestFormData>(() => {
+    const currentDate = new Date().toISOString().split('T')[0];
+    const nextDate = new Date();
+    nextDate.setDate(nextDate.getDate() + 1);
+    const checkoutDate = nextDate.toISOString().split('T')[0];
+    
+    return {
+      guestName: '',  // Always start with clean form
       phone: '',
       email: '',
       nationality: '',
@@ -207,7 +177,7 @@ export const QuickGuestCapture = ({
       occupation: '',
       idType: 'national-id',
       idNumber: '',
-      paymentMode: '',
+      paymentMode: '', // PHASE 2: Initialize empty, will be set by useEffect
       depositAmount: '0',
       departmentId: '',
       terminalId: '',
@@ -218,39 +188,19 @@ export const QuickGuestCapture = ({
       roomRate: 0,
       totalAmount: 0,
       numberOfNights: 1,
-    }
+    };
   });
-  
-  // Watch all form values for display and persistence
-  const formData = watch();
-
-  // G++.3: Hydrate form from selectedGuest when it changes
-  useEffect(() => {
-    if (selectedGuest && guestMode === 'existing') {
-      console.log('[Form Hydration] Populating form from selectedGuest');
-      reset({
-        ...formData,
-        guestName: selectedGuest.name,
-        phone: selectedGuest.phone,
-        email: selectedGuest.email,
-        nationality: selectedGuest.nationality || '',
-        sex: selectedGuest.sex || '',
-        occupation: selectedGuest.occupation || '',
-        idType: selectedGuest.id_type || 'national-id',
-        idNumber: selectedGuest.id_number || '',
-      });
-    }
-  }, [selectedGuest, guestMode, reset]);
 
   // PHASE 2: Auto-select default payment method when enabled methods load
   useEffect(() => {
     if (enabledMethods.length > 0 && !formData.paymentMode) {
       console.log('[PAYMENT-SETUP] Setting default payment method');
+      // Find first cash method, or first enabled method
       const defaultMethod = enabledMethods.find(m => m.type === 'cash') || enabledMethods[0];
-      setValue('paymentMode', defaultMethod.id);
+      setFormData(prev => ({ ...prev, paymentMode: defaultMethod.id }));
       console.log('[PAYMENT-SETUP] Default payment method set:', defaultMethod.name);
     }
-  }, [enabledMethods, formData.paymentMode, setValue]);
+  }, [enabledMethods, formData.paymentMode]);
 
 
   // Detect reserved room and auto-set to existing guest mode ONLY for reserved rooms during check-in
@@ -298,9 +248,9 @@ export const QuickGuestCapture = ({
           });
         }
         
-        // G++.3: Update form using reset() for proper hydration
-        reset({
-          ...formData,
+        // Update form data with reservation info
+        // Only auto-set depositAmount if it hasn't been manually edited
+        const baseFormData = {
           guestName: reservation.guest_name || '',
           phone: reservation.guest_phone || '',
           email: reservation.guest_email || '',
@@ -309,7 +259,12 @@ export const QuickGuestCapture = ({
           roomRate: room.room_type?.base_rate || 0,
           totalAmount: reservation.total_amount || 0,
           numberOfNights: Math.ceil((new Date(reservation.check_out_date || '').getTime() - new Date(reservation.check_in_date || '').getTime()) / (1000 * 60 * 60 * 24)) || 1,
-        });
+        };
+        
+        setFormData(prev => ({
+          ...prev,
+          ...baseFormData
+        }));
       } else {
         // For non-reserved rooms or other actions, ensure form is clean
         setGuestMode('new');
@@ -321,74 +276,6 @@ export const QuickGuestCapture = ({
 
     fetchExistingPayments();
   }, [room, action]);
-
-  // G++.3: Persist draft with watch() subscription
-  useEffect(() => {
-    if (!open) return;
-    
-    const subscription = watch((formValues) => {
-      if (selectedGuest || guestMode === 'new') {
-        const storageKey = `quick-capture-${room?.id || 'global'}`;
-        try {
-          if (selectedGuest) {
-            sessionStorage.setItem(`${storageKey}-guest`, JSON.stringify(selectedGuest));
-          }
-          sessionStorage.setItem(`${storageKey}-form`, JSON.stringify(formValues));
-        } catch (error) {
-          console.error('[QuickCapture] SessionStorage save failed:', error);
-        }
-      }
-    });
-    
-    return () => subscription.unsubscribe();
-  }, [watch, open, selectedGuest, guestMode, room?.id]);
-
-  // G++.3: Restore from sessionStorage on mount (NOT during validation)
-  useEffect(() => {
-    if (!open) return;
-    
-    const storageKey = `quick-capture-${room?.id || 'global'}`;
-    const savedGuestStr = sessionStorage.getItem(`${storageKey}-guest`);
-    const savedFormStr = sessionStorage.getItem(`${storageKey}-form`);
-    
-    if (savedGuestStr && !selectedGuest) {
-      try {
-        const savedGuest = JSON.parse(savedGuestStr);
-        console.log('[QuickCapture] Restoring selectedGuest from sessionStorage on mount');
-        setSelectedGuest(savedGuest);
-        setGuestSearchValue(savedGuest.name);
-        setGuestMode('existing');
-      } catch (error) {
-        console.error('[QuickCapture] Failed to restore guest:', error);
-      }
-    }
-    
-    if (savedFormStr) {
-      try {
-        const savedForm = JSON.parse(savedFormStr);
-        console.log('[QuickCapture] Restoring formData from sessionStorage on mount');
-        reset(savedForm);
-        setShowHydrationIndicator(true);
-        setTimeout(() => setShowHydrationIndicator(false), 2000);
-      } catch (error) {
-        console.error('[QuickCapture] Failed to restore form:', error);
-      }
-    }
-  }, [open, room?.id, reset]);
-  
-  // G++.2: Elapsed time tracker for operations
-  useEffect(() => {
-    if (!isProcessing) {
-      setElapsedTime(0);
-      return;
-    }
-    
-    const timer = setInterval(() => {
-      setElapsedTime(prev => prev + 1);
-    }, 1000);
-    
-    return () => clearInterval(timer);
-  }, [isProcessing]);
 
   // Combine search results with recent guests
   const filteredGuests = useMemo(() => {
@@ -430,30 +317,19 @@ export const QuickGuestCapture = ({
 
   const handleGuestSelect = (guest: RecentGuest) => {
     setSelectedGuest(guest);
-    setGuestSearchOpen(false);
-    setGuestSearchValue(guest.name);
-    
-    // G++.3: Use reset() for proper hydration
-    reset({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       guestName: guest.name,
       phone: guest.phone,
       email: guest.email,
       nationality: guest.nationality || '',
       sex: guest.sex || '',
       occupation: guest.occupation || '',
-      idType: guest.id_type || 'national-id',
+      idType: guest.id_type || '',
       idNumber: guest.id_number || '',
-    });
-    
-    // Save to sessionStorage
-    const storageKey = `quick-capture-${room?.id || 'global'}`;
-    try {
-      sessionStorage.setItem(`${storageKey}-guest`, JSON.stringify(guest));
-      console.log('[QuickCapture] Guest selection saved');
-    } catch (error) {
-      console.error('[QuickCapture] Failed to save guest selection:', error);
-    }
+    }));
+    setGuestSearchOpen(false);
+    setGuestSearchValue(guest.name);
   };
 
   const handleGuestModeChange = (mode: 'existing' | 'new') => {
@@ -461,30 +337,31 @@ export const QuickGuestCapture = ({
     if (mode === 'new') {
       setSelectedGuest(null);
       setGuestSearchValue("");
-      // G++.3: Use reset() to clear form
-      reset({
-        ...formData,
-        guestName: '',
-        phone: '',
-        email: '',
-        nationality: '',
-        sex: '',
-        occupation: '',
-        idType: 'national-id',
-        idNumber: '',
-      });
+        setFormData(prev => ({
+          ...prev,
+          guestName: '',
+          phone: '',
+          email: '',
+          nationality: '',
+          sex: '',
+          occupation: '',
+          idType: '',
+          idNumber: '',
+        }));
     }
   };
 
   const handleInputChange = (field: keyof GuestFormData, value: string | boolean) => {
-    // G++.3: Use setValue for react-hook-form
-    setValue(field, value as any);
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
-  // G++.3: Remove defensive restoration - use react-hook-form handleSubmit
-  const handleFormSubmit = rhfHandleSubmit(async (formData) => {
-    // G++.3: All validation done, form is hydrated properly
-    // NOW run validation checks
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validation for existing guest mode
     if (guestMode === 'existing' && !selectedGuest) {
       toast({
         title: "Validation Error",
@@ -566,14 +443,23 @@ export const QuickGuestCapture = ({
     
     setIsProcessing(true);
     setProcessingStartTime(Date.now());
+    
+    // Set timeout to prevent infinite processing
+    const processingTimeout = setTimeout(() => {
+      if (isProcessing) {
+        setIsProcessing(false);
+        setProcessingStartTime(undefined);
+        toast({
+          title: "Processing Timeout",
+          description: "The operation took too long. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }, 30000); // 30 seconds timeout
 
     try {
-      // Phase H.3: Wrap entire operation with connection pre-flight check
-      await executeWithConnectionCheck(
-        `${action.toUpperCase()}-${room?.room_number || 'global'}`,
-        async () => {
-          // Real backend integration
-          const { supabase } = await import('@/integrations/supabase/client');
+      // Real backend integration
+      const { supabase } = await import('@/integrations/supabase/client');
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) throw new Error('Not authenticated');
@@ -1286,9 +1172,6 @@ export const QuickGuestCapture = ({
 
       onComplete(updatedRoom);
 
-      // G++ Fix: Add delay before query invalidation to ensure DB commits
-      await new Promise(resolve => setTimeout(resolve, 500));
-
       // Enhanced query invalidation with overstay queries
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['rooms'] }),
@@ -1352,7 +1235,8 @@ export const QuickGuestCapture = ({
         }
       }
 
-      // Success - clear processing state
+      // Success - clear timeout and reset processing state
+      clearTimeout(processingTimeout);
       setIsProcessing(false);
       setProcessingStartTime(undefined);
       
@@ -1378,37 +1262,16 @@ export const QuickGuestCapture = ({
           numberOfNights: 1,
         };
         
-        // G++.3: Use reset() from react-hook-form instead of setFormData
-        reset(updatedFormData);
+        setFormData(updatedFormData);
         setGuestMode('existing');
         setSelectedGuest(null);
         setGuestSearchValue("");
         setShowOptionalFields(false);
 
-        // G++ Recovery: Clear sessionStorage on successful completion
-        const storageKey = `quick-capture-${room?.id || 'global'}`;
-        try {
-          sessionStorage.removeItem(`${storageKey}-guest`);
-          sessionStorage.removeItem(`${storageKey}-form`);
-          console.log('[QuickCapture] Cleared sessionStorage on success');
-        } catch (error) {
-          console.error('[QuickCapture] Failed to clear sessionStorage:', error);
-        }
-
         onOpenChange(false);
-      }); // Phase H.3: End of executeWithConnectionCheck wrapper
-
     } catch (error) {
       console.error('Error processing guest capture:', error);
       let errorMessage = "Failed to process guest information. Please try again.";
-      
-      // G++.2: Handle timeout with retry dialog
-      if (error instanceof Error && error.message.includes('OPERATION_TIMEOUT')) {
-        const operationName = action === 'check-in' ? 'Check-in' : action === 'walkin' ? 'Walk-in check-in' : 'Room assignment';
-        setLastOperationError(`${operationName} operation timed out after 20 seconds. This might be due to slow network or server load.`);
-        setShowRetryDialog(true);
-        return; // Show retry dialog instead of generic error
-      }
       
       if (error instanceof Error) {
         // Check for specific error types with better categorization
@@ -1435,74 +1298,13 @@ export const QuickGuestCapture = ({
         variant: "destructive",
       });
     } finally {
+      clearTimeout(processingTimeout);
       setIsProcessing(false);
       setProcessingStartTime(undefined);
-      setElapsedTime(0);
     }
-  });
-  
-  // G++.2: Retry handler
-  const handleRetry = () => {
-    setShowRetryDialog(false);
-    setRetryCount(prev => prev + 1);
-    handleFormSubmit(); // Retry the operation
   };
 
   return (
-    <>
-      {/* G++.2: Retry Dialog */}
-      <Dialog open={showRetryDialog} onOpenChange={setShowRetryDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <Clock className="h-5 w-5" />
-              Operation Timeout
-            </DialogTitle>
-            <DialogDescription>
-              {lastOperationError}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="bg-muted p-3 rounded-lg text-sm">
-              <p className="font-medium mb-2">Possible solutions:</p>
-              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>Check your internet connection</li>
-                <li>Wait a moment for server to recover</li>
-                <li>Try the operation again</li>
-                {retryCount > 0 && <li className="text-warning">Retry attempt #{retryCount + 1}</li>}
-              </ul>
-            </div>
-            
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => {
-                  setShowRetryDialog(false);
-                  setRetryCount(0);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                className="flex-1"
-                onClick={handleRetry}
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Retry Operation
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* G++.3: Hydration Indicator */}
-      {showHydrationIndicator && (
-        <div className="fixed top-4 right-4 z-50 bg-primary text-primary-foreground px-4 py-2 rounded-lg shadow-lg animate-in slide-in-from-top">
-          ✓ Form data restored from previous session
-        </div>
-      )}
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[90vh] w-[95vw] sm:w-full overflow-y-auto">
         <DialogHeader>
@@ -1515,22 +1317,31 @@ export const QuickGuestCapture = ({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit(); }} className="space-y-4">
-          {/* G++.5: Enhanced Processing State with Elapsed Time */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Processing State Monitor */}
           {isProcessing && (
-            <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <Clock className="h-5 w-5 animate-spin text-primary" />
-                <div className="flex-1">
-                  <p className="font-medium text-sm">{getActionTitle()}...</p>
-                  {elapsedTime > 5 && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {elapsedTime}s elapsed{elapsedTime > 15 && ' - This is taking longer than usual'}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
+            <ProcessingStateManager
+              isProcessing={isProcessing}
+              operation={getActionTitle()}
+              startTime={processingStartTime}
+              onTimeout={() => {
+                setIsProcessing(false);
+                setProcessingStartTime(undefined);
+                toast({
+                  title: "Operation Timeout",
+                  description: "The operation timed out. Please try again.",
+                  variant: "destructive",
+                });
+              }}
+              onCancel={() => {
+                setIsProcessing(false);
+                setProcessingStartTime(undefined);
+                toast({
+                  title: "Operation Cancelled",
+                  description: "The operation was cancelled by user.",
+                });
+              }}
+            />
           )}
 
           {/* Guest Selection Mode */}
@@ -1819,12 +1630,13 @@ export const QuickGuestCapture = ({
                 checkInDate={formData.checkInDate}
                 checkOutDate={formData.checkOutDate}
                 onRateChange={(rate, nights, total, roomTypeId) => {
-                  setValue('roomRate', rate);
-                  setValue('numberOfNights', nights);
-                  setValue('totalAmount', total);
-                  if (roomTypeId) {
-                    setValue('roomTypeId', roomTypeId);
-                  }
+                  setFormData(prev => ({
+                    ...prev,
+                    roomRate: rate,
+                    numberOfNights: nights,
+                    totalAmount: total,
+                    ...(roomTypeId && { roomTypeId })
+                  }));
                 }}
                 defaultRate={room?.room_type?.base_rate || formData.roomRate}
               />
@@ -1966,6 +1778,5 @@ export const QuickGuestCapture = ({
         </form>
       </DialogContent>
     </Dialog>
-    </>
   );
 };

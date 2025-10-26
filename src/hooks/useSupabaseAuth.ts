@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Additional authentication hooks for testing and validation
 import { useState } from 'react';
 import { supabaseApi } from '@/lib/supabase-api';

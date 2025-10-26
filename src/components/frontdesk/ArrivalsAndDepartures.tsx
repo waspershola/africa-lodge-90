@@ -1,71 +1,17 @@
-// @ts-nocheck
-import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTodayArrivals, useTodayDepartures, useCheckIn, useCheckOut } from "@/hooks/data/useReservationsData";
 import { format } from "date-fns";
-import { Calendar, User, Phone, Mail, MapPin, Clock, LogIn, LogOut, WifiOff } from "lucide-react";
+import { Calendar, User, Phone, Mail, MapPin, Clock, LogIn, LogOut } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { connectionManager, ConnectionStatus } from "@/lib/connection-manager";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function ArrivalsAndDepartures() {
-  const { data: arrivals, isLoading: arrivalsLoading, isFetching: arrivalsFetching } = useTodayArrivals();
-  const { data: departures, isLoading: departuresLoading, isFetching: departuresFetching } = useTodayDepartures();
+  const { data: arrivals, isLoading: arrivalsLoading } = useTodayArrivals();
+  const { data: departures, isLoading: departuresLoading } = useTodayDepartures();
   const { mutate: checkIn, isPending: isCheckingIn } = useCheckIn();
   const { mutate: checkOut, isPending: isCheckingOut } = useCheckOut();
-  
-  // PHASE H.10: Connection status monitoring
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connected');
-  
-  // PHASE H.15: Progressive timeout message state
-  const [loadingDuration, setLoadingDuration] = useState(0);
-  
-  useEffect(() => {
-    const unsubscribe = connectionManager.onStatusChange((status) => {
-      setConnectionStatus(status);
-    });
-    return unsubscribe;
-  }, []);
-  
-  // PHASE H.15: Track loading duration for progressive messages
-  useEffect(() => {
-    if (arrivalsFetching || departuresFetching) {
-      setLoadingDuration(0);
-      const startTime = Date.now();
-      
-      const interval = setInterval(() => {
-        setLoadingDuration(Date.now() - startTime);
-      }, 500);
-      
-      return () => clearInterval(interval);
-    } else {
-      setLoadingDuration(0);
-    }
-  }, [arrivalsFetching, departuresFetching]);
-  
-  const isReconnecting = connectionStatus === 'reconnecting' || connectionStatus === 'degraded';
-  const isFetching = arrivalsFetching || departuresFetching;
-  
-  // PHASE H.15: Progressive timeout messages
-  const getLoadingMessage = () => {
-    if (loadingDuration === 0) return null;
-    if (loadingDuration < 3000) return "Loading...";
-    if (loadingDuration < 6000) return "Taking longer than usual...";
-    return "Connection issues detected";
-  };
-  
-  const loadingMessage = getLoadingMessage();
-  const showCancelButton = loadingDuration >= 6000;
-  
-  const handleCancelQuery = () => {
-    console.log('[ArrivalsAndDepartures] User cancelled query - triggering manual reconnect');
-    connectionManager.forceReconnect().catch(err => {
-      console.error('[ArrivalsAndDepartures] Force reconnect failed:', err);
-    });
-  };
 
   if (arrivalsLoading || departuresLoading) {
     return (
@@ -88,38 +34,12 @@ export function ArrivalsAndDepartures() {
         <CardTitle className="flex items-center gap-2">
           <Calendar className="h-5 w-5" />
           Today's Activity
-          {/* PHASE H.15: Progressive loading indicator */}
-          {isFetching && loadingMessage && (
-            <Badge variant={loadingDuration >= 6000 ? "destructive" : "secondary"} className="ml-2">
-              {loadingMessage}
-            </Badge>
-          )}
         </CardTitle>
-        <CardDescription className="flex items-center justify-between">
-          <span>{format(new Date(), "EEEE, MMMM d, yyyy")}</span>
-          {/* PHASE H.15: Cancel button for long-running queries */}
-          {showCancelButton && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={handleCancelQuery}
-              className="text-xs"
-            >
-              Cancel & Reconnect
-            </Button>
-          )}
+        <CardDescription>
+          {format(new Date(), "EEEE, MMMM d, yyyy")}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {/* PHASE H.10: Reconnection alert */}
-        {isReconnecting && (
-          <Alert className="mb-4">
-            <WifiOff className="h-4 w-4" />
-            <AlertDescription>
-              Reconnecting to server... Please wait.
-            </AlertDescription>
-          </Alert>
-        )}
         <Tabs defaultValue="arrivals" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="arrivals">
@@ -136,7 +56,7 @@ export function ArrivalsAndDepartures() {
                 No arrivals scheduled for today
               </p>
             ) : (
-              arrivals?.map((reservation: any) => (
+              arrivals?.map((reservation) => (
                 <Card key={reservation.id}>
                   <CardContent className="pt-6">
                     <div className="flex items-start justify-between">
@@ -146,7 +66,7 @@ export function ArrivalsAndDepartures() {
                           <span className="font-semibold">
                             {reservation.guest?.first_name} {reservation.guest?.last_name}
                           </span>
-                          {reservation.guest?.vip_status && (
+                          {(reservation.guest as any)?.vip_status && (
                             <Badge variant="secondary">VIP</Badge>
                           )}
                         </div>
@@ -184,7 +104,7 @@ export function ArrivalsAndDepartures() {
                         <Button
                           size="sm"
                           onClick={() => checkIn(reservation.id)}
-                          disabled={isCheckingIn || isReconnecting}
+                          disabled={isCheckingIn}
                         >
                           <LogIn className="h-4 w-4 mr-1" />
                           Check In
@@ -203,7 +123,7 @@ export function ArrivalsAndDepartures() {
                 No departures scheduled for today
               </p>
             ) : (
-              departures?.map((reservation: any) => (
+              departures?.map((reservation) => (
                 <Card key={reservation.id}>
                   <CardContent className="pt-6">
                     <div className="flex items-start justify-between">
@@ -213,7 +133,7 @@ export function ArrivalsAndDepartures() {
                           <span className="font-semibold">
                             {reservation.guest?.first_name} {reservation.guest?.last_name}
                           </span>
-                          {reservation.guest?.vip_status && (
+                          {(reservation.guest as any)?.vip_status && (
                             <Badge variant="secondary">VIP</Badge>
                           )}
                         </div>
@@ -256,7 +176,7 @@ export function ArrivalsAndDepartures() {
                           size="sm"
                           variant="outline"
                           onClick={() => checkOut(reservation.id)}
-                          disabled={isCheckingOut || isReconnecting}
+                          disabled={isCheckingOut}
                         >
                           <LogOut className="h-4 w-4 mr-1" />
                           Check Out

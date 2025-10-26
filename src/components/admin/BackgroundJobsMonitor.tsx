@@ -28,7 +28,7 @@ export function BackgroundJobsMonitor() {
         .limit(50);
 
       if (error) throw error;
-      return (data || []) as unknown as BackgroundJobLog[];
+      return data as BackgroundJobLog[];
     },
     refetchInterval: 30000, // Refresh every 30 seconds
   });

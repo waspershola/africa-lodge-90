@@ -24,16 +24,7 @@ export const queryClient = new QueryClient({
       staleTime: 2 * 60 * 1000, // 2 minutes - optimized for real-time apps
       gcTime: 10 * 60 * 1000, // 10 minutes - better cache retention
       refetchOnWindowFocus: (query) => {
-        const key = query.queryKey[0] as string;
-        const criticalQueries = ['arrivals', 'departures', 'reservations', 'rooms', 'qr-requests', 'folio-calculation'];
-        
-        // PHASE H.8: Always refetch critical queries on window focus
-        if (criticalQueries.includes(key)) {
-          console.log(`[QueryClient] Force refetching critical query: ${key}`);
-          return true;
-        }
-        
-        // For non-critical, only refetch if >2min old
+        // Only refetch if data is >2 min old
         const dataUpdatedAt = query.state.dataUpdatedAt;
         const isStale = Date.now() - dataUpdatedAt > 2 * 60 * 1000;
         return isStale;
@@ -46,6 +37,37 @@ export const queryClient = new QueryClient({
   },
 });
 
-// ✅ Connection monitoring now handled by ConnectionManager
-// This prevents the "death spiral" of simultaneous invalidations
+// ✅ Listen to health monitor and invalidate all queries on reconnection
+let invalidationTimeout: NodeJS.Timeout | null = null;
 
+supabaseHealthMonitor.onHealthChange((healthy) => {
+  if (healthy) {
+    // Clear any pending invalidation
+    if (invalidationTimeout) {
+      clearTimeout(invalidationTimeout);
+    }
+    
+    // Debounce: wait 2 seconds before invalidating
+    invalidationTimeout = setTimeout(() => {
+      console.log('[Query Client] Connection restored - invalidating stale queries');
+      
+      // Only invalidate queries that are >2 min old
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const dataUpdatedAt = query.state.dataUpdatedAt;
+          return Date.now() - dataUpdatedAt > 2 * 60 * 1000;
+        }
+      });
+      
+      // Refetch only active queries (visible on screen)
+      queryClient.refetchQueries({ 
+        type: 'active',
+        stale: true
+      });
+      
+      invalidationTimeout = null;
+    }, 2000);
+  } else {
+    console.warn('[Query Client] Connection lost - queries will pause');
+  }
+});

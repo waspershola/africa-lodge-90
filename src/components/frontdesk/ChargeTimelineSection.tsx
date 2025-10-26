@@ -1,12 +1,10 @@
-// @ts-nocheck
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
 import { useFolioCalculation } from "@/hooks/useFolioCalculation";
 import { useBillingData } from "@/hooks/data/useBillingData";
 import { usePaymentHistory } from "@/hooks/data/usePaymentHistory";
-import { Receipt, CreditCard, TrendingUp, RefreshCw, AlertCircle } from "lucide-react";
+import { Receipt, CreditCard, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
 
 interface ChargeTimelineSectionProps {
@@ -14,19 +12,12 @@ interface ChargeTimelineSectionProps {
 }
 
 export function ChargeTimelineSection({ folioId }: ChargeTimelineSectionProps) {
-  const { data: folioData, isLoading: folioLoading, error: folioError, refetch: refetchFolio } = useFolioCalculation(folioId);
+  const { data: folioData, isLoading: folioLoading } = useFolioCalculation(folioId);
   const { useFolioCharges } = useBillingData();
-  const { data: charges, isLoading: chargesLoading, error: chargesError, refetch: refetchCharges } = useFolioCharges(folioId);
-  const { data: payments, isLoading: paymentsLoading, error: paymentsError, refetch: refetchPayments } = usePaymentHistory(folioId);
+  const { data: charges, isLoading: chargesLoading } = useFolioCharges(folioId);
+  const { data: payments, isLoading: paymentsLoading } = usePaymentHistory(folioId);
 
   const isLoading = folioLoading || paymentsLoading || chargesLoading;
-  const hasError = folioError || chargesError || paymentsError;
-
-  const handleRetry = () => {
-    refetchFolio();
-    refetchCharges();
-    refetchPayments();
-  };
 
   if (isLoading) {
     return (
@@ -45,30 +36,6 @@ export function ChargeTimelineSection({ folioId }: ChargeTimelineSectionProps) {
               <Skeleton className="h-5 w-20" />
             </div>
           ))}
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (hasError) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-destructive" />
-            Transaction Timeline
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-center py-6 space-y-4">
-          <p className="text-sm text-muted-foreground">
-            {folioError instanceof Error && folioError.message.includes('timeout')
-              ? 'Request timed out while loading transactions'
-              : 'Unable to load transaction data'}
-          </p>
-          <Button onClick={handleRetry} variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Retry
-          </Button>
         </CardContent>
       </Card>
     );

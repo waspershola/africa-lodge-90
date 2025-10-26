@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState } from "react";
 import {
   Sheet,
@@ -7,7 +6,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { connectionManager } from "@/lib/connection-manager";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -29,9 +27,7 @@ import {
   Edit3,
   Receipt,
   History,
-  Loader2,
-  RefreshCw,
-  AlertCircle
+  Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { QuickGuestCapture } from "./QuickGuestCapture";
@@ -83,9 +79,6 @@ export const RoomActionDrawer = ({
   const [showQuickCapture, setShowQuickCapture] = useState(false);
   const [captureAction, setCaptureAction] = useState<'assign' | 'walkin' | 'check-in' | 'check-out' | 'assign-room' | 'extend-stay' | 'transfer-room' | 'add-service' | 'work-order' | 'housekeeping'>('assign');
   
-  // H.31: Track connection status for better error messages
-  const [connectionReady, setConnectionReady] = useState(true);
-  
   // Dialog states
   const [showCheckout, setShowCheckout] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
@@ -97,87 +90,6 @@ export const RoomActionDrawer = ({
   const [showAddService, setShowAddService] = useState(false);
   const [showCancelReservation, setShowCancelReservation] = useState(false);
   const [showPrintDialog, setShowPrintDialog] = useState(false);
-
-  // H.28: Fetch folio ID with connection check (MOVED BEFORE useEffect to avoid TDZ error)
-  const { data: folioData, isLoading: folioLoading, error: folioError, refetch: refetchFolio } = useQuery({
-    queryKey: ['room-folio', room?.id],
-    queryFn: async () => {
-      if (!room?.id) return null;
-      
-      console.log('[RoomActionDrawer] Fetching folio for room:', room.id);
-      
-      // H.28: Import withConnectionCheck at the top of the file
-      const { withConnectionCheck } = await import('@/lib/ensure-connection');
-      
-      // H.28: Wrap with connection check
-      return withConnectionCheck('Room Folio Query', async () => {
-        // First, find the active reservation for this room
-        const { data: reservation, error: resError } = await supabase
-          .from('reservations')
-          .select('id')
-          .eq('room_id', room.id)
-          .in('status', ['checked_in', 'confirmed', 'hard_assigned'])
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        
-        if (resError) {
-          console.error('[RoomActionDrawer] Reservation query error:', resError);
-          throw resError;
-        }
-        
-        if (!reservation) {
-          console.log('[RoomActionDrawer] No active reservation found for room');
-          return null;
-        }
-        
-        // Then get the open folio for this reservation
-        const { data: folio, error: folioError } = await supabase
-          .from('folios')
-          .select('id')
-          .eq('reservation_id', reservation.id)
-          .eq('status', 'open')
-          .maybeSingle();
-        
-        if (folioError) {
-          console.error('[RoomActionDrawer] Folio query error:', folioError);
-          throw folioError;
-        }
-        
-        console.log('[RoomActionDrawer] Found folio:', folio);
-        return folio;
-      });
-    },
-    enabled: !!room?.id && (room?.status === 'occupied' || room?.status === 'overstay' || room?.status === 'reserved'),
-    retry: 2, // H.28: Reduced from 3 (connection check already retries)
-    retryDelay: 1000, // H.28: Faster retry
-    staleTime: 30000,
-    refetchOnWindowFocus: true,
-    networkMode: 'online',
-  });
-
-  // H.31: Monitor connection status for UI feedback
-  useEffect(() => {
-    const unsubscribe = connectionManager.onStatusChange((status: string) => {
-      setConnectionReady(status === 'connected');
-    });
-    return unsubscribe;
-  }, []);
-
-  // H.32: Auto-retry folio query after reconnection
-  useEffect(() => {
-    const handleReconnected = () => {
-      if (room?.id && (folioError || folioLoading)) {
-        console.log('[RoomActionDrawer] Reconnected - retrying folio query');
-        setTimeout(() => {
-          refetchFolio();
-        }, 500);
-      }
-    };
-    
-    window.addEventListener('connection:reconnect-complete', handleReconnected);
-    return () => window.removeEventListener('connection:reconnect-complete', handleReconnected);
-  }, [room?.id, folioError, folioLoading, refetchFolio]);
 
   // Auto-close drawer when room becomes available after checkout/cancel
   useEffect(() => {
@@ -210,6 +122,55 @@ export const RoomActionDrawer = ({
     
     return () => unsubscribe();
   }, [open, room, queryClient, onClose, toast]);
+
+  // Fetch folio ID for payment history
+  const { data: folioData, isLoading: folioLoading, error: folioError } = useQuery({
+    queryKey: ['room-folio', room?.id],
+    queryFn: async () => {
+      if (!room?.id) return null;
+      
+      console.log('[RoomActionDrawer] Fetching folio for room:', room.id);
+      
+      // First, find the active reservation for this room
+      const { data: reservation, error: resError } = await supabase
+        .from('reservations')
+        .select('id')
+        .eq('room_id', room.id)
+        .in('status', ['checked_in', 'confirmed', 'hard_assigned'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (resError) {
+        console.error('[RoomActionDrawer] Reservation query error:', resError);
+        throw resError;
+      }
+      
+      if (!reservation) {
+        console.log('[RoomActionDrawer] No active reservation found for room');
+        return null;
+      }
+      
+      // Then get the open folio for this reservation
+      const { data: folio, error: folioError } = await supabase
+        .from('folios')
+        .select('id')
+        .eq('reservation_id', reservation.id)
+        .eq('status', 'open')
+        .maybeSingle();
+      
+      if (folioError) {
+        console.error('[RoomActionDrawer] Folio query error:', folioError);
+        throw folioError;
+      }
+      
+      console.log('[RoomActionDrawer] Found folio:', folio);
+      return folio;
+    },
+    enabled: !!room?.id && (room?.status === 'occupied' || room?.status === 'overstay' || room?.status === 'reserved'),
+    retry: 1,
+    staleTime: 30000
+  });
 
   if (!room) return null;
 
@@ -645,52 +606,13 @@ export const RoomActionDrawer = ({
               </CardHeader>
               <CardContent>
                 {folioLoading ? (
-                  <div className="py-4 space-y-3">
-                    {/* G++.5: Enhanced loading skeleton with progress */}
-                    <div className="animate-pulse space-y-2">
-                      <div className="h-4 bg-muted rounded w-3/4"></div>
-                      <div className="h-4 bg-muted rounded w-1/2"></div>
-                      <div className="h-4 bg-muted rounded w-5/6"></div>
-                    </div>
-                    {/* H.31: Connection-aware loading state */}
-                    <div className="flex items-center justify-center gap-2 text-sm">
-                      {connectionReady ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                          <span className="text-muted-foreground">Loading folio details...</span>
-                        </>
-                      ) : (
-                        <>
-                          <AlertCircle className="h-5 w-5 text-amber-500" />
-                          <span className="text-amber-600">Waiting for connection...</span>
-                        </>
-                      )}
-                    </div>
+                  <div className="text-center py-4">
+                    <p className="text-sm text-muted-foreground">Loading folio details...</p>
                   </div>
                 ) : folioError ? (
-                  <div className="text-center py-4 space-y-3">
-                    <div className="flex flex-col items-center gap-2">
-                      <AlertCircle className="h-8 w-8 text-destructive" />
-                      {/* H.31: Connection-aware error message */}
-                      <p className="text-sm text-destructive font-medium">
-                        {connectionReady 
-                          ? (folioError instanceof Error && folioError.message.includes('timeout')
-                              ? 'Request timed out'
-                              : 'Error loading folio')
-                          : 'Connection issue'}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {connectionReady 
-                          ? (folioError instanceof Error && folioError.message.includes('timeout')
-                              ? 'The server took too long to respond'
-                              : 'Unable to retrieve payment details')
-                          : 'Folio details will load after reconnection'}
-                      </p>
-                    </div>
-                    <Button onClick={() => refetchFolio()} variant="outline" size="sm">
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Retry
-                    </Button>
+                  <div className="text-center py-4">
+                    <p className="text-sm text-destructive">Error loading folio details</p>
+                    <p className="text-xs text-muted-foreground mt-1">Payment history unavailable</p>
                   </div>
                 ) : !folioData?.id ? (
                   <div className="text-center py-4">

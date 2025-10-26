@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Phase 6: System Health Dashboard
  * Displays background job status and system health metrics

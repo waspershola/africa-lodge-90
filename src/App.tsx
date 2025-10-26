@@ -129,22 +129,14 @@ const SentryMonitor = () => {
   return null;
 };
 
-// Health Monitor + Connection Manager initialization
+// Health Monitor component to start monitoring
 import { supabaseHealthMonitor } from './lib/supabase-health-monitor';
-import { connectionManager } from './lib/connection-manager';
-import './lib/connection-debug'; // Initialize debug utilities
-import './lib/manifest-error-suppressor'; // F.11.2: Suppress cosmetic CORS errors
-import { ConnectionErrorBoundary } from './components/common/ConnectionErrorBoundary'; // F.11.4
 import { useEffect } from 'react';
 
 const HealthMonitor = () => {
   useEffect(() => {
     supabaseHealthMonitor.start();
-    // ConnectionManager automatically initializes on import
-    return () => {
-      supabaseHealthMonitor.stop();
-      connectionManager.destroy();
-    };
+    return () => supabaseHealthMonitor.stop();
   }, []);
   return null;
 };
@@ -161,16 +153,15 @@ const AppProviders = ({ children }: { children: React.ReactNode }) => {
 };
 
 const App = () => (
-  <ConnectionErrorBoundary>
-    <QueryClientProvider client={queryClient}>
-      <MultiTenantAuthProvider>
-        <AppProviders>
-          <FontManager />
-          <SentryMonitor />
-          <HealthMonitor />
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
+  <QueryClientProvider client={queryClient}>
+    <MultiTenantAuthProvider>
+      <AppProviders>
+        <FontManager />
+        <SentryMonitor />
+        <HealthMonitor />
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<AuthPage />} />
@@ -352,7 +343,6 @@ const App = () => (
       </AppProviders>
     </MultiTenantAuthProvider>
   </QueryClientProvider>
-  </ConnectionErrorBoundary>
 );
 
 export default App;

@@ -1,5 +1,4 @@
-// @ts-nocheck
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { toast } from 'sonner';
@@ -19,10 +18,6 @@ export function useSecurityValidation() {
     sessionValid: true
   });
   
-  // F.11.3: Track last validation time to prevent duplicates
-  const lastValidationTime = useRef<number>(0);
-  const VALIDATION_COOLDOWN_MS = 60000; // Don't validate more than once per minute
-  
   // Safely access auth context
   let auth;
   try {
@@ -38,15 +33,6 @@ export function useSecurityValidation() {
     if (!user || !session) return;
 
     const validateSecurity = async () => {
-      const now = Date.now();
-      
-      // F.11.3: Skip if validated recently
-      if (now - lastValidationTime.current < VALIDATION_COOLDOWN_MS) {
-        console.log('[SECURITY VALIDATION] Skipping - validated recently');
-        return;
-      }
-      
-      lastValidationTime.current = now;
       const violations: string[] = [];
       let userDbRecord = null;
       let sessionValid = true;
@@ -179,42 +165,11 @@ export function useSecurityValidation() {
       }
     };
 
-    // F.10.1 + F.11.3: Run validation immediately (unless just ran)
-    const now = Date.now();
-    if (now - lastValidationTime.current >= VALIDATION_COOLDOWN_MS) {
-      validateSecurity();
-    }
-    
-    // F.10.1: Adaptive interval - 5min when active, pause when tab hidden
-    let interval: NodeJS.Timeout;
-    
-    const setupInterval = () => {
-      if (interval) clearInterval(interval);
-      
-      // Only run validation if tab is visible
-      if (document.visibilityState === 'visible') {
-        interval = setInterval(validateSecurity, 300000); // 5 min
-      }
-    };
-    
-    setupInterval();
-    
-    // Re-setup on visibility change
-    const visibilityHandler = () => {
-      if (document.visibilityState === 'visible') {
-        validateSecurity(); // Run immediately when returning
-        setupInterval();
-      } else {
-        if (interval) clearInterval(interval); // Stop when hidden
-      }
-    };
-    
-    document.addEventListener('visibilitychange', visibilityHandler);
-    
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', visibilityHandler);
-    };
+    // Run validation immediately and then every 30 seconds
+    validateSecurity();
+    const interval = setInterval(validateSecurity, 30000);
+
+    return () => clearInterval(interval);
   }, [user, session, logout]);
 
   return validation;

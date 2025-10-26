@@ -1,10 +1,8 @@
-// @ts-nocheck
 import { useState, useEffect, useCallback } from 'react';
 import { GuestBill, CheckoutSession, ServiceCharge, PaymentRecord } from '@/types/billing';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { mapToCanonicalPaymentMethod } from '@/lib/payment-method-mapper';
-import { withConnectionCheck } from '@/lib/ensure-connection';
 
 export const useCheckout = (roomId?: string) => {
   const [checkoutSession, setCheckoutSession] = useState<CheckoutSession | null>(null);
@@ -13,12 +11,6 @@ export const useCheckout = (roomId?: string) => {
   const { user } = useAuth();
 
   const fetchGuestBill = useCallback(async (roomId: string) => {
-    // G++.5: Skip if tab is hidden (will refetch on visibility)
-    if (document.visibilityState === 'hidden') {
-      console.log('[🔍 Checkout] Tab hidden, deferring fetch until visible');
-      return;
-    }
-    
     console.log('[🔍 Checkout] Starting fetchGuestBill for room:', roomId);
     setLoading(true);
     setError(null);
@@ -108,18 +100,15 @@ export const useCheckout = (roomId?: string) => {
       console.log('[🔍 Checkout] Step 4: Fetching folio details in parallel...');
       const startTime = Date.now();
       
-      // H.5: Wrap parallel Supabase queries with connection check
       const [
         { data: folio, error: folioError },
         { data: charges, error: chargesError },
         { data: payments, error: paymentsError }
-      ] = await withConnectionCheck('Checkout Folio Data Fetch', async () => {
-        return Promise.all([
-          supabase.from('folios').select('*').eq('id', folioId).maybeSingle(),
-          supabase.from('folio_charges').select('*').eq('folio_id', folioId),
-          supabase.from('payments').select('*').eq('folio_id', folioId)
-        ]);
-      });
+      ] = await Promise.all([
+        supabase.from('folios').select('*').eq('id', folioId).maybeSingle(),
+        supabase.from('folio_charges').select('*').eq('folio_id', folioId),
+        supabase.from('payments').select('*').eq('folio_id', folioId)
+      ]);
       
       const fetchTime = Date.now() - startTime;
       console.log('[⏱️ Checkout] Parallel fetch completed in:', fetchTime, 'ms');

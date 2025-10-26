@@ -60,6 +60,9 @@ function recordFailure(operationName: string): void {
     circuitBreaker.state = 'open';
     console.error(`[CircuitBreaker] ⚠️ Circuit breaker OPEN after ${circuitBreaker.failures} failures - entering ${CIRCUIT_BREAKER_COOLDOWN / 1000}s cooldown`);
     
+    // H.19: Notify connectionManager to pause reconnection attempts
+    connectionManager['setConnectionStatus']?.('degraded');
+    
     // Emit event for UI to show alert
     window.dispatchEvent(new CustomEvent('connection:circuit-breaker-open', {
       detail: { 
@@ -77,6 +80,12 @@ function recordFailure(operationName: string): void {
       console.log('[CircuitBreaker] Cooldown complete - transitioning to half-open');
       circuitBreaker.state = 'half-open';
       circuitBreaker.failures = 0;
+      
+      // H.19: Notify connectionManager to attempt recovery
+      connectionManager['setConnectionStatus']?.('reconnecting');
+      connectionManager.triggerReconnect('circuit-breaker-recovery').catch(err => {
+        console.error('[CircuitBreaker] Recovery reconnect failed:', err);
+      });
     }, CIRCUIT_BREAKER_COOLDOWN);
   }
 }

@@ -88,8 +88,10 @@ class ConnectionManager {
   private lastVisibilityChange = 0;
   private lastRefetchTime = 0;
   
-  // F.9.2: Global reconnection lock (prevents duplicate reconnects)
+  // F.9.2 + H.20: Global reconnection lock with timeout tracking
   private static reconnectLock = false;
+  private static reconnectLockTimestamp: number = 0;
+  private static readonly RECONNECT_LOCK_TIMEOUT = 30000; // 30 seconds max
   
   // H.7: Observable connection status
   private _connectionStatus: ConnectionStatus = 'connected';
@@ -195,21 +197,32 @@ class ConnectionManager {
   }
 
   /**
-   * F.9.2: Master reconnection controller (single authority)
+   * F.9.2 + H.20: Master reconnection controller with stale lock detection
    */
   async triggerReconnect(reason: string): Promise<void> {
+    const now = Date.now();
+    
+    // H.20: Check if lock is stale (older than 30s)
     if (ConnectionManager.reconnectLock) {
-      console.log(`[ConnectionManager] Reconnect suppressed (${reason}) - already running`);
-      return;
+      const lockAge = now - ConnectionManager.reconnectLockTimestamp;
+      if (lockAge > ConnectionManager.RECONNECT_LOCK_TIMEOUT) {
+        console.warn(`[ConnectionManager] ⚠️ Reconnect lock is stale (${lockAge}ms) - forcing release`);
+        ConnectionManager.reconnectLock = false;
+      } else {
+        console.log(`[ConnectionManager] Reconnect suppressed (${reason}) - already running (age: ${lockAge}ms)`);
+        return;
+      }
     }
     
     ConnectionManager.reconnectLock = true;
+    ConnectionManager.reconnectLockTimestamp = now;
     console.log(`[ConnectionManager] 🔄 Triggering reconnect: ${reason}`);
     
     try {
       await supabaseHealthMonitor.forceReconnect();
     } finally {
       ConnectionManager.reconnectLock = false;
+      ConnectionManager.reconnectLockTimestamp = 0;
     }
   }
 
@@ -253,6 +266,15 @@ class ConnectionManager {
     // Clear any pending visibility timeout
     if (this.visibilityTimeout) {
       clearTimeout(this.visibilityTimeout);
+    }
+
+    // H.20: Emergency - Clear stale lock before starting reconnection
+    if (ConnectionManager.reconnectLock) {
+      const lockAge = Date.now() - ConnectionManager.reconnectLockTimestamp;
+      if (lockAge > 5000) {
+        console.warn(`[ConnectionManager] Clearing stale reconnect lock (${lockAge}ms)`);
+        ConnectionManager.reconnectLock = false;
+      }
     }
 
     // Debounce: wait 500ms before refetching (prevents thrashing)

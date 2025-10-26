@@ -12,11 +12,6 @@ class SupabaseHealthMonitor {
   private currentInterval: number = 300000; // Start at 5 minutes
   private sessionRefreshInterval: NodeJS.Timeout | null = null;
   private reconnectionFailures: number = 0;
-  private circuitBreakerActive: boolean = false;
-  private circuitBreakerTimeout: NodeJS.Timeout | null = null;
-  private failureCount: number = 0;
-  private readonly FAILURE_THRESHOLD = 3;
-  private readonly COOLDOWN_MS = 60000;
   
   private listeners: Array<(healthy: boolean) => void> = [];
   
@@ -64,10 +59,6 @@ class SupabaseHealthMonitor {
     if (this.sessionRefreshInterval) {
       clearInterval(this.sessionRefreshInterval);
       this.sessionRefreshInterval = null;
-    }
-    if (this.circuitBreakerTimeout) {
-      clearTimeout(this.circuitBreakerTimeout);
-      this.circuitBreakerTimeout = null;
     }
     window.removeEventListener('online', this.handleOnline);
     window.removeEventListener('offline', this.handleOffline);
@@ -161,18 +152,10 @@ class SupabaseHealthMonitor {
         return true;
       }
       
-      // F.8.6: Circuit breaker - check failure count
-      if (this.failureCount >= this.FAILURE_THRESHOLD) {
-        console.warn(`[Supabase Health] Circuit breaker active - ${this.FAILURE_THRESHOLD} consecutive failures, entering cooldown`);
-        await new Promise(resolve => setTimeout(resolve, this.COOLDOWN_MS));
-        this.failureCount = 0;
-      }
-      
       // F.9.1: CORS preflight check
       const canReach = await this._canReachSupabase();
       if (!canReach) {
         console.warn('[Supabase Health] Supabase unreachable (CORS block) - skipping session check');
-        this.failureCount++;
         this.notifyListeners(false);
         return false;
       }
@@ -195,7 +178,6 @@ class SupabaseHealthMonitor {
           const session = sessionResp.data?.session;
           if (!session) {
             console.warn('[Supabase Health] No session found - treating as offline but not panicking');
-            this.failureCount++;
             this.notifyListeners(false);
             return false;
           }
@@ -225,7 +207,6 @@ class SupabaseHealthMonitor {
         if (healthResp.error) {
           console.warn('[Supabase Health] Lightweight health query error:', healthResp.error);
           // Network errors => treat as transient
-          this.failureCount++;
           this.notifyListeners(false);
           
           // F.9.2: Auto-attempt reconnection only on first failure via event
@@ -241,7 +222,6 @@ class SupabaseHealthMonitor {
         // Success - reset counters
         this.lastHealthCheck = new Date();
         this.consecutiveFailures = 0;
-        this.failureCount = 0;
         this.currentInterval = 300000; // 5 minutes when healthy
         this.scheduleNextCheck();
         
@@ -270,7 +250,6 @@ class SupabaseHealthMonitor {
       } catch (err) {
         const msg = (err as Error).message || String(err);
         console.error('[Supabase Health] health query timed out or threw:', msg);
-        this.failureCount++;
         
         // Exponential backoff on failures
         this.consecutiveFailures++;
@@ -294,7 +273,6 @@ class SupabaseHealthMonitor {
     } catch (err) {
       const msg = (err as Error).message || String(err);
       console.error('[Supabase Health] checkHealth failed:', msg);
-      this.failureCount++;
       
       // Exponential backoff
       this.consecutiveFailures++;
@@ -337,12 +315,6 @@ class SupabaseHealthMonitor {
       return;
     }
     
-    // F.4: Circuit breaker - pause after 3 consecutive failures
-    if (this.circuitBreakerActive) {
-      console.warn('[Supabase Health] Circuit breaker active - skipping reconnection');
-      return;
-    }
-    
     // F.9.4: Create abort controller for timeout cancellation
     const controller = new AbortController();
     
@@ -359,7 +331,6 @@ class SupabaseHealthMonitor {
         
         // Success - reset failure counter
         this.reconnectionFailures = 0;
-        this.failureCount = 0;
         console.log('[Supabase Health] ✅ Reconnection successful');
         this.notifyListeners(true);
       } catch (error) {
@@ -372,18 +343,6 @@ class SupabaseHealthMonitor {
         }
         
         this.reconnectionFailures++;
-        
-        // F.4: Activate circuit breaker after 3 failures
-        if (this.reconnectionFailures >= 3) {
-          console.warn('[Supabase Health] ⚠️ Circuit breaker activated - pausing for 60s');
-          this.circuitBreakerActive = true;
-          this.circuitBreakerTimeout = setTimeout(() => {
-            this.circuitBreakerActive = false;
-            this.reconnectionFailures = 0;
-            console.log('[Supabase Health] Circuit breaker reset');
-          }, 60000);
-        }
-        
         this.notifyListeners(false);
       }
     } finally {
@@ -425,7 +384,6 @@ class SupabaseHealthMonitor {
       
       // Mark as healthy without additional health check
       this.consecutiveFailures = 0;
-      this.failureCount = 0;
       this.currentInterval = 300000; // Reset to 5 minutes
       this.scheduleNextCheck();
       this.lastHealthCheck = new Date();

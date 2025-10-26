@@ -85,8 +85,10 @@ const FrontDeskDashboard = () => {
   const { toast } = useToast();
   const { data: roomsData } = useRooms();
   
-  // PHASE H.10: Connection status monitoring
+  // PHASE H.10 + H.22: Connection status monitoring with reconnection tracking
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connected');
+  const [reconnectionAttempts, setReconnectionAttempts] = useState(0);
+  const [showReloadPrompt, setShowReloadPrompt] = useState(false);
   
   // Consolidated real-time data from unified hook (OPTIMIZED)
   const {
@@ -102,39 +104,34 @@ const FrontDeskDashboard = () => {
   // Enable unified real-time updates with role-based filtering
   useUnifiedRealtime({ verbose: false });
   
-  // PHASE H.10: Subscribe to connection status changes
+  // PHASE H.10 + H.22: Subscribe to connection status changes and track reconnections
   useEffect(() => {
     const unsubscribe = connectionManager.onStatusChange((status) => {
       setConnectionStatus(status);
       
-      // Show toast when reconnected
+      // H.22: Track reconnection attempts
+      if (status === 'reconnecting') {
+        setReconnectionAttempts(prev => prev + 1);
+      }
+      
+      // Reset on success
       if (status === 'connected') {
-        toast({
-          title: "Connection Restored",
-          description: "Dashboard data has been refreshed.",
-        });
+        setReconnectionAttempts(0);
+        setShowReloadPrompt(false);
       }
     });
     
     return unsubscribe;
   }, [toast]);
   
-  // PHASE H.14: Listen for circuit breaker events
+  // H.22: Show reload prompt after 3 failed reconnection attempts
   useEffect(() => {
-    const handleCircuitBreakerOpen = (event: CustomEvent) => {
-      const { failures, cooldownSeconds, operation } = event.detail;
-      
-      toast({
-        variant: "destructive",
-        title: "Connection Issues Detected",
-        description: `Multiple connection failures detected (${failures} attempts). Pausing for ${cooldownSeconds} seconds. Please check your internet connection.`,
-        duration: cooldownSeconds * 1000,
-      });
-    };
-    
-    window.addEventListener('connection:circuit-breaker-open', handleCircuitBreakerOpen as EventListener);
-    return () => window.removeEventListener('connection:circuit-breaker-open', handleCircuitBreakerOpen as EventListener);
-  }, [toast]);
+    if (reconnectionAttempts >= 3 && connectionStatus === 'degraded') {
+      setShowReloadPrompt(true);
+    }
+  }, [reconnectionAttempts, connectionStatus]);
+  
+  // H.21: Removed circuit breaker toast - now handled by banner
   
   // PHASE H.10: Listen for recovery complete event
   useEffect(() => {
@@ -446,23 +443,49 @@ const FrontDeskDashboard = () => {
         {/* Loading State */}
         {dataLoading && <LoadingState message="Loading front desk data..." />}
         
-        {/* PHASE H.10: Reconnecting Overlay */}
-        {isReconnecting && (
-          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
-            <Card className="w-96">
-              <CardContent className="pt-6">
-                <div className="flex flex-col items-center justify-center space-y-4">
-                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                  <div className="text-center space-y-2">
-                    <h3 className="text-lg font-semibold">Reconnecting...</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Restoring connection to server. Please wait.
-                    </p>
+        {/* H.21: Connection Status Banner (replaces full-screen overlay) */}
+        {connectionStatus === 'reconnecting' && (
+          <Card className="border-blue-500 bg-blue-50 dark:bg-blue-950/20 mb-4">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <Loader2 className="h-5 w-5 text-blue-600 dark:text-blue-400 animate-spin" />
+                <div className="flex-1">
+                  <div className="font-medium text-blue-700 dark:text-blue-400">
+                    🔄 Reconnecting to server...
                   </div>
+                  <p className="text-sm text-blue-600 dark:text-blue-500">
+                    Restoring connection and refreshing data. Please wait.
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
+        {/* H.22: Reload Prompt after failed reconnection attempts */}
+        {showReloadPrompt && connectionStatus === 'degraded' && (
+          <Card className="border-orange-500 bg-orange-50 dark:bg-orange-950/20 mb-4">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                <div className="flex-1">
+                  <div className="font-medium text-orange-700 dark:text-orange-400">
+                    Connection Recovery Failed
+                  </div>
+                  <p className="text-sm text-orange-600 dark:text-orange-500 mb-3">
+                    Unable to restore connection after {reconnectionAttempts} attempts. This may indicate a server issue or expired session.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => window.location.reload()}
+                  >
+                    Reload Page
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
         
         {/* Main Dashboard Content */}

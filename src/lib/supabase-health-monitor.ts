@@ -177,12 +177,12 @@ class SupabaseHealthMonitor {
         return false;
       }
       
-      // G.1: Skip auth check on tab visible if we have a session in memory
-      // This prevents timeout from blocking app load on tab switches
+      // Phase H.2: Session optimization - skip timeout check on tab visibility
+      // This prevents 10-30s blocking timeout when returning to tab
       const { data: { session: memorySession } } = await supabase.auth.getSession();
       
       if (memorySession && document.visibilityState === 'visible') {
-        console.log('[Supabase Health] ✅ Session exists in memory on tab visible, skipping timeout check');
+        console.log('[Supabase Health] ⚡ Session exists in memory on tab visible, skipping timeout check (Phase H.2 optimization)');
         // Continue with health probe below, skip the timeout wrapper
       } else {
         // F.11.1: Session check with timeout wrapper (only for non-tab-visible scenarios)

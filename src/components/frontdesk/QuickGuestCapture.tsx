@@ -136,19 +136,21 @@ const OCCUPATIONS = [
 ];
 
 /**
- * G++.2: Helper to wrap operations with timeout and proper error handling
+ * Phase H.3: Connection-aware operation wrapper
+ * Replaces fetchWithTimeout with proper connection pre-flight check
  */
-async function fetchWithTimeout<T>(
-  fn: () => Promise<T>,
-  ms: number = 20000,
-  operationName: string = 'operation'
+import { ensureConnection } from '@/lib/ensure-connection';
+
+async function executeWithConnectionCheck<T>(
+  operationName: string,
+  fn: () => Promise<T>
 ): Promise<T> {
-  return Promise.race([
-    fn(),
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error(`OPERATION_TIMEOUT: ${operationName}`)), ms)
-    )
-  ]);
+  return ensureConnection(fn, {
+    operationName,
+    maxRetries: 1,
+    retryDelay: 2000,
+    timeoutMs: 20000
+  });
 }
 
 export const QuickGuestCapture = ({
@@ -566,10 +568,12 @@ export const QuickGuestCapture = ({
     setProcessingStartTime(Date.now());
 
     try {
-      // G++.2: Wrap operation with fetchWithTimeout helper
-      await fetchWithTimeout(async () => {
-      // Real backend integration
-      const { supabase } = await import('@/integrations/supabase/client');
+      // Phase H.3: Wrap entire operation with connection pre-flight check
+      await executeWithConnectionCheck(
+        `${action.toUpperCase()}-${room?.room_number || 'global'}`,
+        async () => {
+          // Real backend integration
+          const { supabase } = await import('@/integrations/supabase/client');
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) throw new Error('Not authenticated');
@@ -1392,7 +1396,7 @@ export const QuickGuestCapture = ({
         }
 
         onOpenChange(false);
-      }, 20000, action === 'check-in' ? 'Check-in' : action === 'walkin' ? 'Walk-in' : 'Room Assignment'); // G++.2: 20s timeout with operation name
+      }); // Phase H.3: End of executeWithConnectionCheck wrapper
 
     } catch (error) {
       console.error('Error processing guest capture:', error);

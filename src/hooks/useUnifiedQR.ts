@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { JWTClient } from '@/lib/jwt-client';
@@ -89,9 +88,6 @@ export function useUnifiedQR() {
       guestPhone?: string;
       guestName?: string;
     }) => {
-      console.log('[⏱️ Request] Starting creation...', { requestType });
-      const startTime = performance.now();
-      
       // Get JWT token
       const token = JWTClient.getToken();
       
@@ -101,23 +97,12 @@ export function useUnifiedQR() {
         throw new Error('Session expired. Please scan QR code again.');
       }
 
-      // Add 10-second timeout to prevent infinite loading
-      const timeoutPromise = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout after 10 seconds')), 10000)
-      );
-      
-      const requestPromise = supabase.functions.invoke('qr-unified-api/request', {
+      const response = await supabase.functions.invoke('qr-unified-api/request', {
         body: { sessionId, requestType, requestData, priority, smsEnabled, guestPhone, guestName },
         headers: token ? { 'x-session-token': token } : {}
       });
 
-      const response = await Promise.race([requestPromise, timeoutPromise]);
-
-      const duration = performance.now() - startTime;
-      console.log(`[⏱️ Request] Completed in ${duration.toFixed(0)}ms`);
-
       if (response.error) {
-        console.error('[❌ Request] Failed:', response.error);
         throw new Error(response.error.message);
       }
 
@@ -126,10 +111,6 @@ export function useUnifiedQR() {
     onSuccess: (_, variables) => {
       // Invalidate requests for this session
       queryClient.invalidateQueries({ queryKey: ['qr-requests', variables.sessionId] });
-    },
-    onError: (error) => {
-      console.error('[❌ Request] Submission failed:', error);
-      // Error message will be shown by the component
     }
   });
 
@@ -153,16 +134,7 @@ export function useUnifiedQR() {
         return response.data.request as RequestStatus;
       },
       enabled: !!requestId,
-      // ✅ PHASE 4: Conservative polling for active request tracking (safety net)
-      refetchInterval: (query) => {
-        // Only poll if request is not completed/cancelled
-        const data = query.state.data;
-        if (!data || data.status === 'completed' || data.status === 'cancelled') {
-          return false;
-        }
-        return 30000; // Poll every 30 seconds for active requests
-      },
-      refetchIntervalInBackground: false,
+      refetchInterval: 5000, // Poll every 5 seconds
     });
   };
 
@@ -186,9 +158,7 @@ export function useUnifiedQR() {
         return response.data.requests as RequestStatus[];
       },
       enabled: !!sessionId,
-      // ✅ PHASE 4: Conservative polling as safety net (only if real-time fails)
-      refetchInterval: 60000, // Poll every 60 seconds as backup
-      refetchIntervalInBackground: false, // Don't poll when tab is hidden
+      refetchInterval: 10000, // Poll every 10 seconds
     });
   };
 

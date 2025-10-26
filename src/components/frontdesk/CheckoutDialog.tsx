@@ -1,13 +1,6 @@
-// @ts-nocheck
 import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogDescription 
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -56,33 +49,12 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId, onCheckoutComplete 
   const [showReceipt, setShowReceipt] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
 
-  // Fetch bill data when dialog opens with timeout protection
-  const [loadingTimeout, setLoadingTimeout] = useState(false);
-  
+  // Fetch bill data when dialog opens
   React.useEffect(() => {
     if (open && roomId && !checkoutSession) {
-      console.log('[🔍 CheckoutDialog] Dialog opened, fetching bill for room:', roomId);
       fetchGuestBill(roomId);
-      
-      // Set timeout for loading
-      const timer = setTimeout(() => {
-        if (loading) {
-          console.error('[⏰ CheckoutDialog] Fetch timeout after 10 seconds');
-          setLoadingTimeout(true);
-        }
-      }, 10000);
-      
-      return () => clearTimeout(timer);
-    } else if (open && !roomId) {
-      console.warn('[⚠️ CheckoutDialog] Dialog opened but no roomId provided');
-    } else if (open && checkoutSession) {
-      console.log('[ℹ️ CheckoutDialog] Checkout session already exists, skipping fetch');
     }
-    
-    if (!open) {
-      setLoadingTimeout(false);
-    }
-  }, [open, roomId, checkoutSession, fetchGuestBill, loading]);
+  }, [open, roomId, checkoutSession, fetchGuestBill]);
 
   const handleSettleBills = () => {
     setShowPayment(true);
@@ -207,7 +179,6 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId, onCheckoutComplete 
   };
 
   if (loading && !checkoutSession) {
-    console.log('[ℹ️ CheckoutDialog] Showing loading state...');
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-5xl">
@@ -216,9 +187,6 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId, onCheckoutComplete 
               <Skeleton className="h-5 w-5 rounded" />
               <Skeleton className="h-6 w-32" />
             </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground mt-2">
-              Loading folio data... If this takes more than 5 seconds, please check your connection.
-            </DialogDescription>
           </DialogHeader>
           
           {/* PERFORMANCE FIX: Enhanced skeleton screens for better UX */}
@@ -281,30 +249,13 @@ export const CheckoutDialog = ({ open, onOpenChange, roomId, onCheckoutComplete 
   }
 
   if (error || !checkoutSession) {
-    const errorMessage = error?.includes('timeout') 
-      ? 'Connection timeout. Please check your internet and try again.'
-      : error?.includes('not found')
-      ? 'Billing information not ready. Contact front desk if this persists.'
-      : error || 'Failed to load checkout data';
-      
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-md">
-          <div className="text-center py-6 space-y-4">
+          <div className="text-center py-6">
             <AlertTriangle className="mx-auto h-12 w-12 text-destructive mb-4" />
-            <p className="text-destructive font-semibold">{errorMessage}</p>
-            {loadingTimeout && (
-              <p className="text-sm text-muted-foreground">
-                The server is not responding. Please check your connection.
-              </p>
-            )}
-            <Button 
-              onClick={() => {
-                setLoadingTimeout(false);
-                if (roomId) fetchGuestBill(roomId);
-              }} 
-              className="mt-4"
-            >
+            <p className="text-destructive">{error || 'Failed to load checkout data'}</p>
+            <Button onClick={() => roomId && fetchGuestBill(roomId)} className="mt-4">
               Retry
             </Button>
           </div>

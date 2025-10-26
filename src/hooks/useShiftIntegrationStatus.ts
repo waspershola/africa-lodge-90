@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -201,7 +200,7 @@ export const useShiftIntegrationStatus = () => {
       ];
     },
     enabled: !!tenant?.tenant_id,
-    refetchInterval: 120000, // Phase 8: Increased to 2 minutes (shift status changes infrequently)
+    refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   const overallProgress = integrationStatus ? 

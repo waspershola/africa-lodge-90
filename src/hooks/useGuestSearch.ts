@@ -1,5 +1,3 @@
-// @ts-nocheck
-import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -21,10 +19,6 @@ export interface GuestSearchResult {
 export const useGuestSearch = (searchTerm: string) => {
   return useQuery({
     queryKey: ['guest-search', searchTerm],
-    meta: { 
-      priority: 'high',
-      maxAge: 60000 // 1 minute
-    },
     queryFn: async () => {
       if (!searchTerm || searchTerm.length < 2) {
         return [];
@@ -83,18 +77,12 @@ export const useGuestSearch = (searchTerm: string) => {
       }) || [];
     },
     enabled: searchTerm.length >= 2,
-    retry: 3,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   });
 };
 
 export const useRecentGuests = () => {
   return useQuery({
     queryKey: ['recent-guests'],
-    meta: { 
-      priority: 'high',
-      maxAge: 60000 // 1 minute
-    },
     queryFn: async () => {
       const { data, error } = await supabase
         .from('guests')
@@ -132,7 +120,5 @@ export const useRecentGuests = () => {
         reservation_status: undefined
       })) || [];
     },
-    retry: 3,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   });
 };

@@ -64,7 +64,6 @@ import {
 import { useUnifiedRealtime } from '@/hooks/useUnifiedRealtime';
 import DashboardNotificationBar from '@/components/layout/DashboardNotificationBar';
 import { NetworkStatusIndicator } from '@/components/common/NetworkStatusBanner';
-import { ConnectionStatusBanner } from '@/components/common/ConnectionStatusBanner';
 import { LoadingState } from '@/components/common/LoadingState';
 import type { Room } from "./frontdesk/RoomGrid";
 import { useTenantInfo } from "@/hooks/useTenantInfo";
@@ -328,9 +327,6 @@ const FrontDeskDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Connection Status Banner */}
-      <ConnectionStatusBanner />
-      
       {/* Header */}
       <div className="border-b bg-card">
         <div className="p-6">

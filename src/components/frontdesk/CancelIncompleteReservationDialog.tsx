@@ -1,6 +1,5 @@
-// @ts-nocheck
 // Phase 8: Recovery Mechanism for Incomplete Reservations
-import {
+import { 
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,

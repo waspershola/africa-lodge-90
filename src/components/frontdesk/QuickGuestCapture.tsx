@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useMemo, useEffect } from "react";
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";

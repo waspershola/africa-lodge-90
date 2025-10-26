@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -62,46 +61,21 @@ export function useFolioCalculation(folioId: string | null | undefined) {
   return useQuery({
     queryKey: ['folio-calculation', folioId],
     queryFn: async (): Promise<FolioCalculationResult | null> => {
-      if (!folioId) {
-        console.log('[useFolioCalculation] No folioId provided');
-        return null;
-      }
+      if (!folioId) return null;
 
-      console.log('[🔍 FolioCalculation] Fetching folio breakdown for:', folioId);
-      const startTime = Date.now();
-      
       const { data, error } = await supabase
         .rpc('get_folio_with_breakdown', { p_folio_id: folioId });
-      
-      const fetchTime = Date.now() - startTime;
-      console.log('[⏱️ FolioCalculation] RPC completed in:', fetchTime, 'ms');
 
       if (error) {
-        console.error('[❌ FolioCalculation] Error fetching folio:', error);
+        console.error('[useFolioCalculation] Error fetching folio:', error);
         throw error;
       }
 
       if (!data || data.length === 0) {
-        console.warn('[⚠️ FolioCalculation] No folio data returned for ID:', folioId);
         return null;
       }
-      
-      console.log('[✅ FolioCalculation] Folio data loaded:', {
-        folioNumber: data[0].folio_number,
-        balance: data[0].balance,
-        chargesCount: Array.isArray(data[0].charges) ? data[0].charges.length : 0,
-        paymentsCount: Array.isArray(data[0].payments) ? data[0].payments.length : 0
-      });
 
       const folio = data[0];
-
-      // Calculate payment status from balance
-      const getPaymentStatus = (balance: number): 'paid' | 'partial' | 'unpaid' | 'overpaid' => {
-        if (Math.abs(balance) < 0.01) return 'paid';
-        if (balance < 0) return 'overpaid';
-        if (balance > 0 && Array.isArray(folio.payments) && folio.payments.length > 0) return 'partial';
-        return 'unpaid';
-      };
 
       return {
         folioId: folio.folio_id,
@@ -110,24 +84,17 @@ export function useFolioCalculation(folioId: string | null | undefined) {
         totalCharges: folio.total_charges,
         totalPayments: folio.total_payments,
         balance: folio.balance,
-        status: getPaymentStatus(folio.balance),
-        creditAmount: folio.balance < 0 ? Math.abs(folio.balance) : 0,
+        status: folio.payment_status as 'paid' | 'partial' | 'unpaid' | 'overpaid',
+        creditAmount: folio.credit_amount,
         chargeBreakdown: (folio.charges as unknown) as FolioCharge[],
         paymentBreakdown: (folio.payments as unknown) as FolioPayment[],
-        taxBreakdown: {
-          subtotal: folio.total_charges,
-          service_charge: 0,
-          vat: 0,
-          total: folio.total_charges
-        } as TaxBreakdown
+        taxBreakdown: (folio.tax_breakdown as unknown) as TaxBreakdown
       };
     },
     enabled: !!folioId,
     staleTime: 5000, // Consider data fresh for 5 seconds
     refetchOnMount: true,
     refetchOnWindowFocus: false,
-    retry: 2, // Retry twice on failure
-    retryDelay: 1000, // Wait 1s between retries
   });
 }
 

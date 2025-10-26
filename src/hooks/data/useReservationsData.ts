@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -22,11 +21,6 @@ export function useReservations(filters?: ReservationFilters) {
 
   return useQuery({
     queryKey: ['reservations', tenantId, filters],
-    meta: { 
-      priority: 'critical',
-      maxAge: 30000 // 30 seconds
-    },
-    staleTime: 30 * 1000, // 30 seconds - critical for booking operations
     queryFn: async () => {
       if (!tenantId) throw new Error('No tenant ID');
 
@@ -95,7 +89,7 @@ export function useTodayArrivals() {
     enabled: !!tenantId,
     staleTime: 60000, // 1 minute - arrivals don't change often
     gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
-    // Phase 8: Removed polling - real-time updates via useUnifiedRealtime handle freshness
+    refetchInterval: 5 * 60 * 1000, // Auto-refresh every 5 minutes
   });
 }
 
@@ -128,7 +122,7 @@ export function useTodayDepartures() {
     enabled: !!tenantId,
     staleTime: 60000, // 1 minute - departures don't change often
     gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
-    // Phase 8: Removed polling - real-time updates via useUnifiedRealtime handle freshness
+    refetchInterval: 5 * 60 * 1000, // Auto-refresh every 5 minutes
   });
 }
 

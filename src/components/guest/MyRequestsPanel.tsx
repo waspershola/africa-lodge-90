@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useEffect } from 'react';
 import { MessageCircle, X, Loader2, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,7 +8,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { formatRequestMessage, formatRelativeTime, getStatusColor } from '@/lib/messageFormatter';
 import { RequestChatView } from './RequestChatView';
-import { realtimeChannelManager } from '@/lib/realtime-channel-manager';
 
 interface MyRequestsPanelProps {
   sessionToken: string;
@@ -37,64 +35,96 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
   
   console.log('🔍 MyRequestsPanel - sessionToken:', sessionToken, 'effectiveToken:', effectiveSessionToken);
 
-  // 🔄 Enhanced session sync mechanism
-  // Clears old cache and forces refetch when session changes
+  // 🔄 Watch for sessionToken prop changes and force refetch
   useEffect(() => {
     if (sessionToken) {
-      console.log('✅ [Session Sync] Session token updated:', sessionToken);
-      
-      // Step 1: Clear old cached requests for different sessions
-      queryClient.removeQueries({ 
-        queryKey: ['guest-requests'], 
-        predicate: (query) => {
-          const key = query.queryKey as string[];
-          // Remove cache entries that don't match current session
-          return key[2] !== sessionToken;
-        }
-      });
-      
-      // Step 2: Force immediate refetch for current QR code
+      console.log('✅ Session token prop updated in MyRequestsPanel:', sessionToken);
+      // Force immediate query invalidation with new session
       queryClient.invalidateQueries({ 
-        queryKey: ['guest-requests', qrToken, sessionToken] 
+        queryKey: ['guest-requests', sessionToken] 
       });
-      
-      console.log('🔄 [Session Sync] Cache cleared and refetch triggered');
     }
-  }, [sessionToken, qrToken, queryClient]);
+  }, [sessionToken, queryClient]);
 
-  // ✅ OPTIMIZED: Single JOIN query instead of 3-step approach (Phase 2)
+  // 🔑 NEW STRATEGY: Fetch ALL requests for this QR code (cross-session visibility)
   const { data: requests = [], isLoading, refetch, error: requestError } = useQuery({
     queryKey: ['guest-requests', qrToken, effectiveSessionToken],
     queryFn: async () => {
-      console.log('🚀 [MyRequestsPanel] Fetching requests with optimized query for:', qrToken);
+      console.log('🔍 [MyRequestsPanel] Fetching requests by QR token:', qrToken);
       
       if (!qrToken) {
-        console.warn('⚠️ No QR token available');
+        console.warn('⚠️ No QR token available for fetching requests');
         return [];
       }
 
       try {
+        // Strategy: Show ALL requests for this QR code from last 24 hours
+        // Using 3-step query approach for reliability (PostgREST nested filtering issues)
         const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        
-        // ✅ SINGLE OPTIMIZED QUERY with JOINs (replaces 3-step approach)
-        const { data, error } = await supabase
+
+        // Step 1: Get QR code ID from token
+        console.log('📍 Step 1: Looking up QR code ID for token:', qrToken);
+        const { data: qrCodeData, error: qrCodeError } = await supabase
+          .from('qr_codes')
+          .select('id, label')
+          .eq('qr_token', qrToken)
+          .maybeSingle();
+
+        if (qrCodeError) {
+          console.error('❌ Error fetching QR code:', qrCodeError);
+          throw qrCodeError;
+        }
+
+        if (!qrCodeData) {
+          console.warn('⚠️ QR code not found for token:', qrToken);
+          return [];
+        }
+
+        console.log('✅ Step 1: Found QR code ID:', qrCodeData.id);
+
+        // Step 2: Get all sessions for this QR code
+        console.log('📍 Step 2: Fetching sessions for QR code:', qrCodeData.id);
+        const { data: sessionsData, error: sessionsError } = await supabase
+          .from('guest_sessions')
+          .select('id')
+          .eq('qr_code_id', qrCodeData.id);
+
+        if (sessionsError) {
+          console.error('❌ Error fetching sessions:', sessionsError);
+          throw sessionsError;
+        }
+
+        const sessionIds = sessionsData?.map(s => s.id) || [];
+        console.log('✅ Step 2: Found', sessionIds.length, 'sessions for this QR code');
+
+        if (sessionIds.length === 0) {
+          console.warn('⚠️ No sessions found for QR code');
+          return [];
+        }
+
+        // Step 3: Get all requests for these sessions
+        console.log('📍 Step 3: Fetching requests for', sessionIds.length, 'sessions');
+        const { data: requestsData, error: requestsError } = await supabase
           .from('qr_requests')
-          .select(`
-            *,
-            room:rooms(room_number),
-            guest_sessions!inner(qr_code_id, qr_codes!inner(qr_token))
-          `)
-          .eq('guest_sessions.qr_codes.qr_token', qrToken)
+          .select('*, room:rooms(room_number)')
+          .in('session_id', sessionIds)
           .gte('created_at', twentyFourHoursAgo)
           .order('created_at', { ascending: false });
 
-        if (error) {
-          console.error('❌ Query error:', error);
-          throw error;
+        if (requestsError) {
+          console.error('❌ Error fetching requests:', requestsError);
+          throw requestsError;
         }
 
-        console.log('✅ Fetched', data?.length || 0, 'requests in single query');
-        return (data || []) as QRRequest[];
+        console.log('✅ Step 3: Fetched', requestsData?.length || 0, 'requests');
+        console.log('📊 Request details:', requestsData?.map(r => ({
+          id: r.id.slice(0, 8),
+          type: r.request_type,
+          status: r.status,
+          created: new Date(r.created_at).toLocaleTimeString()
+        })));
+
+        return (requestsData || []) as QRRequest[];
       } catch (error) {
         console.error('💥 [MyRequestsPanel] Query failed:', error);
         throw error;
@@ -102,8 +132,8 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
     },
     enabled: !!qrToken,
     retry: 2,
-    retryDelay: 1000,
-    // Phase 3: Removed polling - real-time updates handle freshness
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
+    refetchInterval: 10000 // Refresh every 10 seconds
   });
 
   // 🔔 Real-time subscription for ALL requests on this QR code
@@ -145,11 +175,9 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
         sessionIds = sessionsData?.map(s => s.id) || [];
         console.log('🔔 Monitoring', sessionIds.length, 'sessions for updates');
 
-        const channelId = `qr-requests-${qrToken}`;
-        
         // Subscribe to changes for requests in these sessions
         const channel = supabase
-          .channel(channelId)
+          .channel(`qr-requests-${qrToken}`)
           .on(
             'postgres_changes',
             {
@@ -176,18 +204,10 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
                 console.log('⏭️ Update is for different QR code, ignoring');
               }
             }
-          );
-
-        // Register with RealtimeChannelManager for lifecycle management
-        realtimeChannelManager.registerChannel(channelId, channel, {
-          type: 'guest_qr_requests',
-          priority: 'high',
-          retryLimit: 5
-        });
-
-        channel.subscribe((status) => {
-          console.log('🔔 Real-time subscription status:', status);
-        });
+          )
+          .subscribe((status) => {
+            console.log('🔔 Real-time subscription status:', status);
+          });
 
         // Store channel for cleanup
         return channel;
@@ -203,8 +223,7 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
       console.log('🔌 Cleaning up real-time subscription');
       channelPromise.then(channel => {
         if (channel) {
-          const channelId = `qr-requests-${qrToken}`;
-          realtimeChannelManager.unregisterChannel(channelId);
+          supabase.removeChannel(channel);
         }
       });
     };
@@ -227,7 +246,7 @@ export function MyRequestsPanel({ sessionToken, qrToken }: MyRequestsPanelProps)
       return count || 0;
     },
     enabled: requests.length > 0,
-    // Phase 3: Removed polling - real-time updates handle freshness
+    refetchInterval: 5000
   });
 
   const getRequestIcon = (type: string) => {

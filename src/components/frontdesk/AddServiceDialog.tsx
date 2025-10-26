@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -301,33 +300,29 @@ export const AddServiceDialog = ({
         .select('id, status')
         .eq('room_id', room.id)
         .eq('tenant_id', tenantId)
-        .in('status', ['checked_in', 'confirmed'] as any)
+        .in('status', ['checked_in', 'confirmed'])
         .order('created_at', { ascending: false })
         .limit(1)
-        .maybeSingle() as any;
+        .maybeSingle();
 
       if (resError) throw resError;
       if (!reservation) {
         throw new Error('No active reservation found for this room');
       }
 
-      const reservationId = (reservation as any).id;
-
       // Get the folio for this reservation
       const { data: folio, error: folioError } = await supabase
         .from('folios')
         .select('id')
-        .eq('reservation_id', reservationId)
+        .eq('reservation_id', reservation.id)
         .eq('tenant_id', tenantId)
         .eq('status', 'open')
-        .maybeSingle() as any;
+        .maybeSingle();
 
       if (folioError) throw folioError;
       if (!folio) {
         throw new Error('No open folio found for this reservation');
       }
-
-      const folioId = (folio as any).id;
 
       // Insert all service charges WITH TAX CALCULATION
       const charges = services.map(service => {
@@ -355,7 +350,7 @@ export const AddServiceDialog = ({
 
         return {
           tenant_id: tenantId,
-          folio_id: folioId,
+          folio_id: folio.id,
           description: `${service.category} - ${service.service}${service.quantity > 1 ? ` (x${service.quantity})` : ''}`,
           base_amount: taxCalc.baseAmount,
           vat_amount: taxCalc.vatAmount,
@@ -371,7 +366,7 @@ export const AddServiceDialog = ({
 
       const { error: chargesError } = await supabase
         .from('folio_charges')
-        .insert(charges as any);
+        .insert(charges);
 
       if (chargesError) throw chargesError;
 
@@ -379,17 +374,16 @@ export const AddServiceDialog = ({
       const { data: updatedFolio, error: balanceError } = await supabase
         .from('folios')
         .select('balance, total_charges')
-        .eq('id', folioId)
-        .maybeSingle() as any;
+        .eq('id', folio.id)
+        .single();
 
       if (balanceError) throw balanceError;
       
-      const balance = (updatedFolio as any)?.balance || 0;
       const updatedRoom = {
         ...room,
         folio: {
-          balance,
-          isPaid: balance === 0
+          balance: updatedFolio.balance || 0,
+          isPaid: (updatedFolio.balance || 0) === 0
         }
       };
 

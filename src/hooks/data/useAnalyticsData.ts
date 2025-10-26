@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -52,8 +51,8 @@ export function useRevenueAnalytics(days = 30) {
 
       return {
         dailyRevenue: dailyRevenue || [],
-        adr: Number(adrData) || 0,
-        revpar: Number(revparData) || 0,
+        adr: adrData || 0,
+        revpar: revparData || 0,
         totalRevenue,
         avgDailyRevenue,
         chartData: dailyRevenue?.map((day: any) => ({

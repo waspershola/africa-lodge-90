@@ -1438,7 +1438,6 @@ export type Database = {
       guest_sessions: {
         Row: {
           created_at: string | null
-          device_fingerprint: string | null
           device_info: Json | null
           expires_at: string
           guest_email: string | null
@@ -1454,7 +1453,6 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
-          device_fingerprint?: string | null
           device_info?: Json | null
           expires_at: string
           guest_email?: string | null
@@ -1470,7 +1468,6 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
-          device_fingerprint?: string | null
           device_info?: Json | null
           expires_at?: string
           guest_email?: string | null
@@ -3448,7 +3445,7 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "guest_sessions"
-            referencedColumns: ["session_id"]
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "qr_requests_tenant_id_fkey"
@@ -3577,42 +3574,6 @@ export type Database = {
           requires_payment?: boolean | null
           tenant_id?: string
           updated_at?: string | null
-        }
-        Relationships: []
-      }
-      qr_session_audit: {
-        Row: {
-          created_at: string | null
-          device_fingerprint: string | null
-          device_info: Json | null
-          event_type: string
-          guest_session_uuid: string | null
-          id: string
-          qr_code_id: string | null
-          reason: string | null
-          tenant_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          device_fingerprint?: string | null
-          device_info?: Json | null
-          event_type: string
-          guest_session_uuid?: string | null
-          id?: string
-          qr_code_id?: string | null
-          reason?: string | null
-          tenant_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          device_fingerprint?: string | null
-          device_info?: Json | null
-          event_type?: string
-          guest_session_uuid?: string | null
-          id?: string
-          qr_code_id?: string | null
-          reason?: string | null
-          tenant_id?: string | null
         }
         Relationships: []
       }
@@ -6843,7 +6804,6 @@ export type Database = {
           room_id: string
         }[]
       }
-      cleanup_expired_guest_sessions: { Args: never; Returns: number }
       cleanup_old_sessions: { Args: never; Returns: number }
       consume_sms_credits: {
         Args: {
@@ -7068,13 +7028,13 @@ export type Database = {
         Returns: {
           balance: number
           charges: Json
+          credit_amount: number
           folio_id: string
           folio_number: string
-          guest_name: string
+          payment_status: string
           payments: Json
           reservation_id: string
-          room_number: string
-          status: string
+          tax_breakdown: Json
           total_charges: number
           total_payments: number
         }[]
@@ -7465,12 +7425,12 @@ export type Database = {
         Args: { p_device_info?: Json; p_qr_token: string }
         Returns: {
           expires_at: string
-          guest_session_id: string
           hotel_name: string
           is_valid: boolean
           qr_code_id: string
           room_number: string
           services: string[]
+          session_id: string
           tenant_id: string
         }[]
       }

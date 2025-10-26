@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Bell, AlertTriangle, CheckCircle, Clock, Users, MessageSquare } from "lucide-react";
-import { realtimeChannelManager } from "@/lib/realtime-channel-manager";
 
 interface AlertStats {
   totalAlerts: number;
@@ -29,11 +27,9 @@ export function StaffAlertsDashboard() {
   useEffect(() => {
     fetchRecentAlerts();
     
-    const channelId = 'staff-alerts-changes';
-    
     // Set up real-time subscription for staff alerts
     const channel = supabase
-      .channel(channelId)
+      .channel('staff-alerts-changes')
       .on(
         'postgres_changes',
         {
@@ -45,19 +41,11 @@ export function StaffAlertsDashboard() {
           console.log('Staff alerts updated, refreshing dashboard');
           fetchRecentAlerts();
         }
-      );
-
-    // Register with RealtimeChannelManager for lifecycle management
-    realtimeChannelManager.registerChannel(channelId, channel, {
-      type: 'staff_alerts',
-      priority: 'high',
-      retryLimit: 5
-    });
-
-    channel.subscribe();
+      )
+      .subscribe();
 
     return () => {
-      realtimeChannelManager.unregisterChannel(channelId);
+      supabase.removeChannel(channel);
     };
   }, []);
 

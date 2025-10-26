@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -95,8 +94,7 @@ export function ChargeTimelineSection({ folioId }: ChargeTimelineSectionProps) {
   timeline.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   // Calculate running balance
-  const initialBalance = (folioData?.balance as number) || 0;
-  let runningBalance = initialBalance;
+  let runningBalance = folioData?.balance || 0;
   timeline.forEach((item) => {
     if (item.type === 'payment' && item.status === 'completed') {
       runningBalance += item.amount;
@@ -115,7 +113,7 @@ export function ChargeTimelineSection({ folioId }: ChargeTimelineSectionProps) {
           Transaction Timeline
         </CardTitle>
         <div className="text-sm text-muted-foreground">
-          Current Balance: <span className="font-semibold text-foreground">₦{((folioData?.balance as number) || 0).toLocaleString()}</span>
+          Current Balance: <span className="font-semibold text-foreground">₦{(folioData?.balance || 0).toLocaleString()}</span>
         </div>
       </CardHeader>
       <CardContent>

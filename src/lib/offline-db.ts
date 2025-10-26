@@ -154,45 +154,6 @@ class OfflineDatabase extends Dexie {
   }
 
   /**
-   * Phase 6: Validate and cleanup expired guest sessions
-   * Prevents session decay issues by removing stale session data
-   * Should be called periodically (e.g., every 30 minutes)
-   */
-  async validateActiveSessions(tenantId?: string): Promise<{ cleaned: number; active: number }> {
-    console.log('[OfflineDB] Validating active sessions...');
-    
-    const now = Date.now();
-    let allSessions = await this.sessions.toArray();
-    
-    // Filter by tenant if specified
-    if (tenantId) {
-      allSessions = allSessions.filter(s => s.tenant_id === tenantId);
-    }
-    
-    // Identify expired sessions (older than 12 hours)
-    const SESSION_LIFETIME_MS = 12 * 60 * 60 * 1000; // 12 hours
-    const expiredSessions = allSessions.filter(s => {
-      const age = now - s.cached_at;
-      return age > SESSION_LIFETIME_MS;
-    });
-    
-    // Delete expired sessions
-    if (expiredSessions.length > 0) {
-      const expiredIds = expiredSessions.map(s => s.session_id);
-      await this.sessions.bulkDelete(expiredIds);
-      
-      console.log(`[OfflineDB] Cleaned ${expiredSessions.length} expired sessions`);
-    }
-    
-    const activeSessions = allSessions.length - expiredSessions.length;
-    
-    return {
-      cleaned: expiredSessions.length,
-      active: activeSessions
-    };
-  }
-
-  /**
    * Force clear all cache (useful for debugging or emergency reset)
    */
   async forceClearCache() {

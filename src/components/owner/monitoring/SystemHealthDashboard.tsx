@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Phase 6: System Health Dashboard
  * Displays background job status and system health metrics
@@ -39,7 +38,7 @@ export function SystemHealthDashboard() {
       if (error) throw error;
       return data as BackgroundJobLog[];
     },
-    // Phase 3: Removed polling - real-time updates handle freshness
+    refetchInterval: 30000, // Refetch every 30 seconds
   });
 
   if (isLoading) {

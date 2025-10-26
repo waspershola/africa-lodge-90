@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -57,7 +56,7 @@ export function ArrivalsAndDepartures() {
                 No arrivals scheduled for today
               </p>
             ) : (
-              arrivals?.map((reservation: any) => (
+              arrivals?.map((reservation) => (
                 <Card key={reservation.id}>
                   <CardContent className="pt-6">
                     <div className="flex items-start justify-between">
@@ -67,7 +66,7 @@ export function ArrivalsAndDepartures() {
                           <span className="font-semibold">
                             {reservation.guest?.first_name} {reservation.guest?.last_name}
                           </span>
-                          {reservation.guest?.vip_status && (
+                          {(reservation.guest as any)?.vip_status && (
                             <Badge variant="secondary">VIP</Badge>
                           )}
                         </div>
@@ -124,7 +123,7 @@ export function ArrivalsAndDepartures() {
                 No departures scheduled for today
               </p>
             ) : (
-              departures?.map((reservation: any) => (
+              departures?.map((reservation) => (
                 <Card key={reservation.id}>
                   <CardContent className="pt-6">
                     <div className="flex items-start justify-between">
@@ -134,7 +133,7 @@ export function ArrivalsAndDepartures() {
                           <span className="font-semibold">
                             {reservation.guest?.first_name} {reservation.guest?.last_name}
                           </span>
-                          {reservation.guest?.vip_status && (
+                          {(reservation.guest as any)?.vip_status && (
                             <Badge variant="secondary">VIP</Badge>
                           )}
                         </div>

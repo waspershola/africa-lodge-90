@@ -104,7 +104,7 @@ export default function SessionManagement() {
 
       return enrichedSessions;
     },
-    refetchInterval: 120000, // Phase 8: Increased to 2 minutes (admin page, sessions change infrequently)
+    refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   // Revoke session mutation

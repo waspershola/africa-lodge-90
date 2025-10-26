@@ -50,7 +50,6 @@ import ManagerRoomStatus from "./pages/manager/RoomStatus";
 import ManagerServiceRequests from "./pages/manager/ServiceRequests";
 import ManagerStaffManagement from "./pages/manager/StaffManagement";
 import ManagerQRManagement from "./pages/manager/QRManagement";
-import QRDebugPanel from "./pages/manager/QRDebugPanel";
 import ManagerDepartmentFinance from "./pages/manager/DepartmentFinance";
 import ManagerReceiptControl from "./pages/manager/ReceiptControl";
 import ManagerEventsPackages from "./pages/manager/EventsPackages";
@@ -129,45 +128,16 @@ const SentryMonitor = () => {
   return null;
 };
 
-// Health Monitor + Connection Manager initialization
-import { supabaseHealthMonitor } from './lib/supabase-health-monitor';
-import { connectionManager } from './lib/connection-manager';
-import './lib/connection-debug'; // Initialize debug utilities
-import { useEffect } from 'react';
-
-const HealthMonitor = () => {
-  useEffect(() => {
-    supabaseHealthMonitor.start();
-    // ConnectionManager automatically initializes on import
-    return () => {
-      supabaseHealthMonitor.stop();
-      connectionManager.destroy();
-    };
-  }, []);
-  return null;
-};
-
-// Wrapper to ensure auth context is available before PaymentMethodsProvider
-const AppProviders = ({ children }: { children: React.ReactNode }) => {
-  return (
-    <PaymentMethodsProvider>
-      <TooltipProvider>
-        {children}
-      </TooltipProvider>
-    </PaymentMethodsProvider>
-  );
-};
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <MultiTenantAuthProvider>
-      <AppProviders>
-        <FontManager />
-        <SentryMonitor />
-        <HealthMonitor />
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
+      <PaymentMethodsProvider>
+        <TooltipProvider>
+          <FontManager />
+          <SentryMonitor />
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<AuthPage />} />
@@ -265,11 +235,6 @@ const App = () => (
               <MenuPreview />
             </TenantAwareLayout>
           } />
-          <Route path="/debug/qr-system" element={
-            <TenantAwareLayout allowedRoles={['OWNER', 'MANAGER', 'SUPER_ADMIN']}>
-              <QRDebugPanel />
-            </TenantAwareLayout>
-          } />
           
           {/* QR Export - Public route */}
           <Route path="/qr-export" element={<QRExportPage />} />
@@ -346,7 +311,8 @@ const App = () => (
         </Routes>
         <SecurityDebugPanel />
         </BrowserRouter>
-      </AppProviders>
+        </TooltipProvider>
+      </PaymentMethodsProvider>
     </MultiTenantAuthProvider>
   </QueryClientProvider>
 );

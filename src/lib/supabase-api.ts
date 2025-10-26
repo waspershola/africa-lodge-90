@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Real Supabase API calls replacing mockAdapter
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';

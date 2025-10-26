@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
@@ -63,7 +62,7 @@ export const useOverstays = () => {
       }) as Overstay[];
     },
     enabled: !!tenant?.tenant_id,
+    refetchInterval: 30000, // Refresh every 30 seconds
     staleTime: 60000, // Phase 7: 1 minute stale time
-    // Phase 8: Removed polling - real-time updates via useUnifiedRealtime handle freshness
   });
 };

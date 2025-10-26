@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -21,7 +20,7 @@ export const useUnreadMessagesForRequest = (qrRequestId: string | null) => {
       return count || 0;
     },
     enabled: !!qrRequestId,
-    // Phase 3: Removed polling - real-time updates via useUnifiedRealtime handle freshness
+    refetchInterval: 5000, // Poll every 5 seconds
   });
 };
 
@@ -52,6 +51,6 @@ export const useUnreadMessagesForRequests = (requestIds: string[]) => {
       return counts;
     },
     enabled: requestIds.length > 0,
-    // Phase 3: Removed polling - real-time updates via useUnifiedRealtime handle freshness
+    refetchInterval: 5000, // Poll every 5 seconds
   });
 };

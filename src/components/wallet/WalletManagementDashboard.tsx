@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Phase 4: Wallet Management Dashboard for Managers/Owners
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

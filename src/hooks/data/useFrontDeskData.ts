@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
@@ -57,11 +56,6 @@ export const useFrontDeskData = () => {
   // Fetch detailed room counts for accurate statistics
   const { data: roomCounts, isLoading: roomCountsLoading } = useQuery({
     queryKey: ['front-desk-room-counts', tenant?.tenant_id],
-    meta: { 
-      priority: 'critical',
-      maxAge: 30000 // 30 seconds
-    },
-    staleTime: 30 * 1000, // 30 seconds - critical for dashboard
     queryFn: async () => {
       if (!tenant?.tenant_id) return null;
 
@@ -82,17 +76,12 @@ export const useFrontDeskData = () => {
       return { total, occupied, available, oos, dirty, maintenance };
     },
     enabled: !!tenant?.tenant_id,
-    // Phase 8: Removed polling - real-time updates via useUnifiedRealtime handle freshness
+    refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   // Fetch real-time alerts from multiple sources
   const { data: alerts = [], isLoading: alertsLoading } = useQuery({
     queryKey: ['front-desk-alerts', tenant?.tenant_id],
-    meta: { 
-      priority: 'high',
-      maxAge: 60000 // 1 minute
-    },
-    staleTime: 60 * 1000, // 1 minute - high priority for alerts
     queryFn: async () => {
       if (!tenant?.tenant_id) return [];
 
@@ -213,7 +202,7 @@ export const useFrontDeskData = () => {
       return alertsList;
     },
     enabled: !!tenant?.tenant_id,
-    // Phase 8: Removed polling - real-time updates via useUnifiedRealtime handle freshness
+    refetchInterval: 60000, // Refresh every minute
   });
 
   // Calculate generator runtime estimate based on fuel level

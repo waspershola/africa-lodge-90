@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -80,7 +79,7 @@ export const StaffOpsPanel = () => {
       return data || [];
     },
     enabled: !!tenant?.tenant_id,
-    // Phase 3: Removed polling - real-time updates handle freshness
+    refetchInterval: 30000
   });
   
   // Map real staff with shift status

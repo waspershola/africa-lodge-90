@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useMultiTenantAuth';
 import { supabase } from '@/integrations/supabase/client';

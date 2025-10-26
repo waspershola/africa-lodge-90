@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
@@ -110,7 +109,7 @@ export function useDashboardAlerts() {
         return levelPriority[b.level] - levelPriority[a.level];
       });
     },
-    enabled: !!tenant?.tenant_id,
-    // Phase 8: Removed polling - real-time updates via useUnifiedRealtime handle freshness
+    refetchInterval: 60000, // Refresh every minute
+    enabled: !!tenant?.tenant_id
   });
 }

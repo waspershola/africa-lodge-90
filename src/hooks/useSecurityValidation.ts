@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
@@ -166,39 +165,11 @@ export function useSecurityValidation() {
       }
     };
 
-    // F.10.1: Run validation immediately
+    // Run validation immediately and then every 30 seconds
     validateSecurity();
-    
-    // F.10.1: Adaptive interval - 5min when active, pause when tab hidden
-    let interval: NodeJS.Timeout;
-    
-    const setupInterval = () => {
-      if (interval) clearInterval(interval);
-      
-      // Only run validation if tab is visible
-      if (document.visibilityState === 'visible') {
-        interval = setInterval(validateSecurity, 300000); // 5 min
-      }
-    };
-    
-    setupInterval();
-    
-    // Re-setup on visibility change
-    const visibilityHandler = () => {
-      if (document.visibilityState === 'visible') {
-        validateSecurity(); // Run immediately when returning
-        setupInterval();
-      } else {
-        if (interval) clearInterval(interval); // Stop when hidden
-      }
-    };
-    
-    document.addEventListener('visibilitychange', visibilityHandler);
-    
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', visibilityHandler);
-    };
+    const interval = setInterval(validateSecurity, 30000);
+
+    return () => clearInterval(interval);
   }, [user, session, logout]);
 
   return validation;

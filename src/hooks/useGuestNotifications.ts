@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { soundManager } from '@/utils/soundManager';

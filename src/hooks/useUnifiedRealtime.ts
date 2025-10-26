@@ -6,7 +6,6 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { soundManager } from '@/utils/soundManager';
 import { toast } from '@/hooks/use-toast';
-import { realtimeChannelManager } from '@/lib/realtime-channel-manager';
 
 /**
  * Phase 1: Unified Real-Time Subscription Manager
@@ -125,10 +124,6 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
   const invalidationTimeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const eventCoalescingRef = useRef<Record<string, { count: number; firstEvent: number }>>({});
-  
-  // Phase 4: Timeout accumulation prevention
-  const MAX_PENDING_TIMEOUTS = 50;
-  const timeoutCountRef = useRef<number>(0);
 
   // Handle notifications for important realtime events
   const handleRealtimeNotification = useCallback(async (table: string, eventType: string, record: any) => {
@@ -228,45 +223,16 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
     return false;
   }, [verbose]);
 
-  // Debounced invalidation with grouping and tiered delays (Phase 3.2 + Phase 4)
-  // Adjusted for visibility state to prevent accumulation when tab is backgrounded
+  // Debounced invalidation with grouping and tiered delays (Phase 3.2)
   const debouncedInvalidate = useCallback((queryKeys: string[], delay: number) => {
-    // If tab is hidden, use longer delays to prevent accumulation
-    const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
-    const adjustedDelay = isHidden ? delay * 5 : delay;
-    
-    if (verbose && isHidden) {
-      console.log('[Realtime] Tab hidden - using extended debounce:', adjustedDelay);
-    }
-    // Phase 4: Prevent timeout accumulation memory leak
-    if (timeoutCountRef.current >= MAX_PENDING_TIMEOUTS) {
-      if (verbose) {
-        console.warn(`[Realtime] Max pending timeouts (${MAX_PENDING_TIMEOUTS}) reached - forcing flush`);
-      }
-      
-      // Force immediate invalidation for all queued queries
-      Object.entries(invalidationTimeoutsRef.current).forEach(([key, timeout]) => {
-        clearTimeout(timeout);
-        const queryKey = key.includes(',') 
-          ? key.split(',').filter(Boolean)
-          : [key];
-        queryClient.invalidateQueries({ queryKey });
-      });
-      
-      invalidationTimeoutsRef.current = {};
-      timeoutCountRef.current = 0;
-    }
-    
     queryKeys.forEach(key => {
       if (invalidationTimeoutsRef.current[key]) {
         clearTimeout(invalidationTimeoutsRef.current[key]);
-        timeoutCountRef.current--;
       }
 
-      timeoutCountRef.current++;
       invalidationTimeoutsRef.current[key] = setTimeout(() => {
         if (verbose) {
-          console.log(`[Realtime] Invalidating query: ${key} (delay: ${delay}ms, pending: ${timeoutCountRef.current})`);
+          console.log(`[Realtime] Invalidating query: ${key} (delay: ${delay}ms)`);
         }
         
         // Handle query keys that contain tenant IDs (format: "key,tenantId")
@@ -277,8 +243,7 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
         
         queryClient.invalidateQueries({ queryKey });
         delete invalidationTimeoutsRef.current[key];
-        timeoutCountRef.current--;
-      }, adjustedDelay);
+      }, delay);
     });
   }, [queryClient, verbose]);
 
@@ -405,13 +370,6 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
       );
     });
 
-    // Register with RealtimeChannelManager for lifecycle management
-    realtimeChannelManager.registerChannel(channelName, channel, {
-      type: 'unified_realtime',
-      priority: 'critical', // Unified channel handles critical data
-      retryLimit: 5
-    });
-
     // Subscribe and handle connection status
     channel.subscribe((status) => {
       if (verbose) {
@@ -429,21 +387,18 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
     return channel;
   }, [user, tenant?.tenant_id, userRole, roleBasedFiltering, verbose, errorRecovery, getGroupQueryKeys, debouncedInvalidate, shouldCoalesceEvent]);
 
-  // Exponential backoff reconnection with circuit breaker
+  // Exponential backoff reconnection
   const handleConnectionError = useCallback(() => {
     const state = subscriptionRef.current;
     state.reconnectAttempts++;
 
-    // Phase 3: Max 10 reconnection attempts with circuit breaker
-    if (state.reconnectAttempts > 10) {
-      console.error('[Realtime] Circuit breaker activated - max reconnection attempts (10) reached');
-      console.error('[Realtime] Please check network connection and refresh page');
+    // Max 5 reconnection attempts with exponential backoff
+    if (state.reconnectAttempts > 5) {
+      console.error('[Realtime] Max reconnection attempts reached');
       return;
     }
 
-    // Exponential backoff: 1s, 3s, 5s, 10s, 10s, 10s...
-    const delays = [1000, 3000, 5000, 10000];
-    const delay = delays[Math.min(state.reconnectAttempts - 1, delays.length - 1)];
+    const delay = Math.min(1000 * Math.pow(2, state.reconnectAttempts), 30000);
     
     if (verbose) {
       console.log(`[Realtime] Reconnecting in ${delay}ms (attempt ${state.reconnectAttempts})`);
@@ -460,18 +415,16 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
       
       // Cleanup old channel
       if (state.channel) {
-        const oldChannelName = state.channel.topic;
-        realtimeChannelManager.unregisterChannel(oldChannelName);
+        supabase.removeChannel(state.channel);
       }
       
-      // Setup new channel (automatically registers with manager)
+      // Setup new channel
       const newChannel = setupSubscriptions();
       subscriptionRef.current.channel = newChannel;
     }, delay);
   }, [setupSubscriptions, verbose]);
 
   // Main effect - setup and cleanup
-  // Visibility handling now managed by ConnectionManager to prevent cascading invalidations
   useEffect(() => {
     const channel = setupSubscriptions();
     subscriptionRef.current.channel = channel;
@@ -481,14 +434,11 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
         console.log('[Realtime] Cleaning up unified subscriptions');
       }
 
-      // Visibility handling now in ConnectionManager - no listener to remove
-
-      // Clear all pending invalidation timeouts (Phase 4: with counter reset)
+      // Clear all pending invalidation timeouts
       Object.values(invalidationTimeoutsRef.current).forEach(timeout => {
         clearTimeout(timeout);
       });
       invalidationTimeoutsRef.current = {};
-      timeoutCountRef.current = 0;
 
       // Clear reconnection timeout
       if (reconnectTimeoutRef.current) {
@@ -496,10 +446,9 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
         reconnectTimeoutRef.current = null;
       }
 
-      // Remove channel ONCE (unregisterChannel handles supabase.removeChannel internally)
+      // Remove channel
       if (subscriptionRef.current.channel) {
-        const channelName = subscriptionRef.current.channel.topic;
-        realtimeChannelManager.unregisterChannel(channelName);
+        supabase.removeChannel(subscriptionRef.current.channel);
         subscriptionRef.current.channel = null;
       }
     };
@@ -527,9 +476,6 @@ export function useUnifiedRealtime(config: RealtimeConfig = {}) {
       updateLastSync();
     }
   }, [isOnline, tenant?.tenant_id, queryClient, updateLastSync, verbose]);
-
-  // Phase 2: Heartbeat now handled by Supabase client (30s) and RealtimeChannelManager
-  // Removed duplicate heartbeat to prevent redundant reconnection attempts
 
   // Return subscription state for debugging
   return {

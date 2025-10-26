@@ -33,9 +33,6 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const requestId = crypto.randomUUID().substring(0, 8);
-  const timestamp = new Date().toISOString();
-  
   try {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -46,16 +43,12 @@ serve(async (req) => {
     const url = new URL(req.url);
     const path = url.pathname.replace('/qr-unified-api', '');
     const clientIp = getClientIdentifier(req);
-    
-    // Enhanced logging
-    console.log(`📥 [${requestId}] ${req.method} ${path} | IP: ${clientIp} | Time: ${timestamp}`);
 
     // Route: POST /validate - Validate QR and create session
     if (path === '/validate' && req.method === 'POST') {
       // Rate limiting
       const rateCheck = checkRateLimit(clientIp, 'validate');
       if (!rateCheck.allowed) {
-        console.warn(`⚠️ [${requestId}] Rate limit exceeded | IP: ${clientIp}`);
         return new Response(
           JSON.stringify({ 
             error: 'Rate limit exceeded', 
@@ -77,7 +70,6 @@ serve(async (req) => {
       // Input validation
       const validation = validateQRValidation(body);
       if (!validation.valid) {
-        console.error(`❌ [${requestId}] Validation failed:`, validation.errors);
         return new Response(
           JSON.stringify({ error: 'Validation failed', details: validation.errors }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -86,20 +78,15 @@ serve(async (req) => {
 
       const { qrToken } = body;
       const deviceInfo = sanitizeDeviceInfo(body.deviceInfo || {});
-      
-      // Enhanced logging
-      console.log(`🔐 [${requestId}] Validating QR | Token: ${qrToken.substring(0, 20)}... | Device: ${deviceInfo.fingerprint?.substring(0, 12) || 'none'}`);
 
       // Call database function to validate and create session
-      // The database function will use deviceInfo.fingerprint to determine
-      // whether to resume existing session or create new one
       const { data, error } = await supabaseClient.rpc('validate_qr_and_create_session', {
         p_qr_token: qrToken,
         p_device_info: deviceInfo
       });
 
       if (error) {
-        console.error(`❌ [${requestId}] Database error:`, error);
+        console.error('Validation error:', error);
         return new Response(
           JSON.stringify({ error: 'Failed to validate QR code', details: error.message }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -108,7 +95,11 @@ serve(async (req) => {
 
       // Check if data exists and has results
       if (!data || data.length === 0) {
-        console.error(`❌ [${requestId}] QR not found | Token: ${qrToken.substring(0, 20)}...`);
+        console.error('❌ QR Validation failed - No data returned:', {
+          qrToken: qrToken.substring(0, 20) + '...',
+          timestamp: new Date().toISOString(),
+          clientIp
+        });
         return new Response(
           JSON.stringify({ error: 'Invalid or expired QR code' }),
           { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -117,19 +108,33 @@ serve(async (req) => {
 
       const result = data[0];
       if (!result || !result.is_valid) {
-        console.error(`❌ [${requestId}] Invalid QR | Token: ${qrToken.substring(0, 20)}...`);
+        console.error('❌ QR Validation failed - Invalid result:', {
+          qrToken: qrToken.substring(0, 20) + '...',
+          isValid: result?.is_valid,
+          clientIp,
+          timestamp: new Date().toISOString()
+        });
         return new Response(
           JSON.stringify({ error: 'Invalid or expired QR code' }),
           { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      // Success logging
-      console.log(`✅ [${requestId}] Session created | ID: ${result.guest_session_id} | Room: ${result.room_number || 'Location'} | Services: ${result.services?.length || 0}`);
+      // ✅ Log successful validation
+      console.log('✅ QR Validated successfully:', {
+        qrCodeId: result.qr_code_id,
+        sessionId: result.session_id,
+        tenantId: result.tenant_id,
+        hasRoomNumber: !!result.room_number,
+        roomNumber: result.room_number || 'Location QR (no room)',
+        serviceCount: result.services?.length || 0,
+        services: result.services,
+        timestamp: new Date().toISOString()
+      });
 
       // Sign JWT token
       const jwt = await signJWT({
-        session_id: result.guest_session_id,
+        session_id: result.session_id,
         tenant_id: result.tenant_id,
         qr_code_id: result.qr_code_id
       });
@@ -138,7 +143,7 @@ serve(async (req) => {
         JSON.stringify({
           success: true,
           session: {
-            sessionId: result.guest_session_id,
+            sessionId: result.session_id,
             tenantId: result.tenant_id,
             qrCodeId: result.qr_code_id,
             hotelName: result.hotel_name,

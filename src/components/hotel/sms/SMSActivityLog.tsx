@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,7 +38,7 @@ export function SMSActivityLog() {
       if (error) throw error;
       return data as SMSLog[];
     },
-    // Phase 3: Removed polling - real-time updates handle freshness
+    refetchInterval: 15000, // Refresh every 15 seconds
   });
 
   const exportToCSV = () => {

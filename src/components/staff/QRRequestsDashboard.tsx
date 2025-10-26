@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState } from 'react';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useUnifiedQR } from '@/hooks/useUnifiedQR';

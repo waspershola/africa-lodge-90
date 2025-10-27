@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useToast } from '@/hooks/use-toast';
 import type { Addon, TenantAddon, SMSCredits } from '@/types/billing';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 export const useAddons = () => {
   const [addons, setAddons] = useState<Addon[]>([]);
@@ -86,6 +87,9 @@ export const useAddons = () => {
     try {
       setLoading(true);
 
+      // Phase 6.1: Validate token before addon purchase (financial operation)
+      await validateAndRefreshToken();
+
       const { data, error } = await supabase.functions.invoke('purchase-addon', {
         body: {
           tenant_id: tenant.tenant_id,
@@ -157,6 +161,9 @@ export const useAddons = () => {
 
     try {
       setLoading(true);
+
+      // Phase 6.1: Validate token before SMS credits purchase (financial operation)
+      await validateAndRefreshToken();
 
       const { data, error } = await supabase.functions.invoke('provision-sms-credits', {
         body: {

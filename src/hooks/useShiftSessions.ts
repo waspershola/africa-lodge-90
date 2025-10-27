@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useShiftNotifications } from './useShiftNotifications';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 export interface ShiftSession {
   id: string;
@@ -91,6 +92,9 @@ export function useStartShift() {
       deviceSlug?: string;
       authorizedBy?: string;
     }) => {
+      // Phase 6.1: Validate token before shift start (critical financial operation)
+      await validateAndRefreshToken();
+      
       const { data, error } = await supabase.functions.invoke('shift-terminal-start', {
         body: params
       });
@@ -139,6 +143,9 @@ export function useEndShift() {
       handoverNotes?: string;
       unresolvedItems?: string[];
     }) => {
+      // Phase 6.1: Validate token before shift end (critical financial operation)
+      await validateAndRefreshToken();
+      
       const { data, error } = await supabase.functions.invoke('shift-terminal-end', {
         body: params
       });

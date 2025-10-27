@@ -6,6 +6,7 @@ import { Clock, Mail, AlertTriangle, Calendar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 interface OverdueReservation {
   id: string;
@@ -62,6 +63,9 @@ export function PaymentReminderSystem() {
     setSendingReminders(prev => [...prev, reservationId]);
     
     try {
+      // Phase 6.1: Validate token before payment reminder email
+      await validateAndRefreshToken();
+      
       const { data, error } = await supabase.functions.invoke('send-reservation-email', {
         body: {
           reservationId: reservationId,

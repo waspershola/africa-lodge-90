@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useToast } from '@/hooks/use-toast';
 import type { Addon, TenantAddon, SMSCredits } from '@/types/billing';
-import { validateAndRefreshToken } from '@/lib/auth-token-validator';
+import { protectedMutate } from '@/lib/mutation-utils';
 
 export const useAddons = () => {
   const [addons, setAddons] = useState<Addon[]>([]);
@@ -87,39 +87,36 @@ export const useAddons = () => {
     try {
       setLoading(true);
 
-      // Phase 6.1: Validate token before addon purchase (financial operation)
-      await validateAndRefreshToken();
-
-      const { data, error } = await supabase.functions.invoke('purchase-addon', {
-        body: {
-          tenant_id: tenant.tenant_id,
-          addon_id: addonId,
-          quantity,
-          auto_renew: autoRenew
-        }
-      });
-
-      if (error) throw error;
-
-      if (data.success) {
-        toast({
-          title: "Success",
-          description: data.message,
+      // Phase 7.4+: Use protected mutation for addon purchase
+      await protectedMutate(async () => {
+        const { data, error } = await supabase.functions.invoke('purchase-addon', {
+          body: {
+            tenant_id: tenant.tenant_id,
+            addon_id: addonId,
+            quantity,
+            auto_renew: autoRenew
+          }
         });
 
-        // Refresh data
-        await Promise.all([loadTenantAddons(), loadSMSCredits()]);
-        return true;
-      } else {
-        throw new Error(data.error || 'Purchase failed');
-      }
+        if (error) throw error;
+
+        if (data.success) {
+          toast({
+            title: "Success",
+            description: data.message,
+          });
+
+          // Refresh data
+          await Promise.all([loadTenantAddons(), loadSMSCredits()]);
+        } else {
+          throw new Error(data.error || 'Purchase failed');
+        }
+      }, 'Purchase Addon');
+
+      return true;
     } catch (err: any) {
       console.error('Error purchasing addon:', err);
-      toast({
-        title: "Purchase Failed",
-        description: err.message || 'Failed to purchase addon',
-        variant: "destructive",
-      });
+      // Error already handled by protectedMutate
       return false;
     } finally {
       setLoading(false);
@@ -162,38 +159,35 @@ export const useAddons = () => {
     try {
       setLoading(true);
 
-      // Phase 6.1: Validate token before SMS credits purchase (financial operation)
-      await validateAndRefreshToken();
-
-      const { data, error } = await supabase.functions.invoke('provision-sms-credits', {
-        body: {
-          tenant_id: tenant.tenant_id,
-          credits,
-          source_type: 'manual_topup',
-          purpose: 'Manual SMS credits top-up'
-        }
-      });
-
-      if (error) throw error;
-
-      if (data.success) {
-        toast({
-          title: "Success",
-          description: `Added ${credits} SMS credits`,
+      // Phase 7.4+: Use protected mutation for SMS credits purchase
+      await protectedMutate(async () => {
+        const { data, error } = await supabase.functions.invoke('provision-sms-credits', {
+          body: {
+            tenant_id: tenant.tenant_id,
+            credits,
+            source_type: 'manual_topup',
+            purpose: 'Manual SMS credits top-up'
+          }
         });
 
-        await loadSMSCredits();
-        return true;
-      } else {
-        throw new Error(data.error || 'Top-up failed');
-      }
+        if (error) throw error;
+
+        if (data.success) {
+          toast({
+            title: "Success",
+            description: `Added ${credits} SMS credits`,
+          });
+
+          await loadSMSCredits();
+        } else {
+          throw new Error(data.error || 'Top-up failed');
+        }
+      }, 'Top-up SMS Credits');
+
+      return true;
     } catch (err: any) {
       console.error('Error topping up SMS credits:', err);
-      toast({
-        title: "Top-up Failed",
-        description: err.message || 'Failed to add SMS credits',
-        variant: "destructive",
-      });
+      // Error already handled by protectedMutate
       return false;
     } finally {
       setLoading(false);

@@ -53,7 +53,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import type { Room } from "./RoomGrid";
-import { validateAndRefreshToken } from '@/lib/auth-token-validator';
+import { protectedMutate } from '@/lib/mutation-utils';
 
 interface RoomActionDrawerProps {
   room: Room | null;
@@ -346,19 +346,19 @@ export const RoomActionDrawer = ({
           // Send room status email (if guest exists)
           if (room.guest && room.status === 'occupied') {
             try {
-              // Phase 6.1: Validate token before email notification
-              await validateAndRefreshToken();
-              
-              const { error: emailError } = await supabase.functions.invoke('send-room-notification', {
-                body: {
-                  roomNumber: room.number,
-                  guestName: room.guest,
-                  notificationType: 'room_status',
-                  message: `Room ${room.number} status update`
-                }
-              });
+              // Phase 7.4+: Use protected mutation for email notification
+              await protectedMutate(async () => {
+                const { error: emailError } = await supabase.functions.invoke('send-room-notification', {
+                  body: {
+                    roomNumber: room.number,
+                    guestName: room.guest,
+                    notificationType: 'room_status',
+                    message: `Room ${room.number} status update`
+                  }
+                });
 
-              if (emailError) throw emailError;
+                if (emailError) throw emailError;
+              }, 'Send Room Notification');
 
               toast({
                 title: "Email Sent",

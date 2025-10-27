@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useShiftNotifications } from './useShiftNotifications';
-import { validateAndRefreshToken } from '@/lib/auth-token-validator';
+import { protectedMutate } from '@/lib/mutation-utils';
 
 export interface ShiftSession {
   id: string;
@@ -92,15 +92,15 @@ export function useStartShift() {
       deviceSlug?: string;
       authorizedBy?: string;
     }) => {
-      // Phase 6.1: Validate token before shift start (critical financial operation)
-      await validateAndRefreshToken();
-      
-      const { data, error } = await supabase.functions.invoke('shift-terminal-start', {
-        body: params
-      });
+      // Phase 7.4+: Use protected mutation for shift start
+      return await protectedMutate(async () => {
+        const { data, error } = await supabase.functions.invoke('shift-terminal-start', {
+          body: params
+        });
 
-      if (error) throw error;
-      return data;
+        if (error) throw error;
+        return data;
+      }, 'Shift Terminal Start');
     },
     onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['shift-sessions'] });
@@ -143,15 +143,15 @@ export function useEndShift() {
       handoverNotes?: string;
       unresolvedItems?: string[];
     }) => {
-      // Phase 6.1: Validate token before shift end (critical financial operation)
-      await validateAndRefreshToken();
-      
-      const { data, error } = await supabase.functions.invoke('shift-terminal-end', {
-        body: params
-      });
+      // Phase 7.4+: Use protected mutation for shift end
+      return await protectedMutate(async () => {
+        const { data, error } = await supabase.functions.invoke('shift-terminal-end', {
+          body: params
+        });
 
-      if (error) throw error;
-      return data;
+        if (error) throw error;
+        return data;
+      }, 'Shift Terminal End');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shift-sessions'] });

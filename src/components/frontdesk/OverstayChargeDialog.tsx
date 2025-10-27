@@ -26,6 +26,7 @@ import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useConfiguration } from "@/hooks/useConfiguration";
 import { calculateTaxesAndCharges } from "@/lib/tax-calculator";
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 import type { Room } from "./RoomGrid";
 
 interface OverstayChargeDialogProps {
@@ -182,6 +183,9 @@ export const OverstayChargeDialog = ({
     setIsProcessing(true);
 
     try {
+      // Phase R.9: Validate token before critical operation
+      await validateAndRefreshToken();
+      
       // Real backend integration
       const { supabase } = await import('@/integrations/supabase/client');
       const { data: { user } } = await supabase.auth.getUser();

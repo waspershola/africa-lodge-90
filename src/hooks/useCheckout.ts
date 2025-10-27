@@ -3,6 +3,7 @@ import { GuestBill, CheckoutSession, ServiceCharge, PaymentRecord } from '@/type
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { mapToCanonicalPaymentMethod } from '@/lib/payment-method-mapper';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 export const useCheckout = (roomId?: string) => {
   const [checkoutSession, setCheckoutSession] = useState<CheckoutSession | null>(null);
@@ -213,6 +214,9 @@ export const useCheckout = (roomId?: string) => {
 
     setLoading(true);
     try {
+      // Phase R.9: Validate token before critical operation
+      await validateAndRefreshToken();
+      
       // PHASE 2: Improved duplicate detection - 5 second window with intelligent checks
       const checkoutFolioId = checkoutSession.guest_bill.folio_id;
       const { data: recentPayments } = await supabase
@@ -351,6 +355,9 @@ export const useCheckout = (roomId?: string) => {
     }, 30000); // 30 seconds timeout
 
     try {
+      // Phase R.9: Validate token before critical operation
+      await validateAndRefreshToken();
+      
       // Phase 2: Use proper FK relationship for active reservation lookup
       // First try rooms.reservation_id (current active reservation FK)
       const { data: room, error: roomError } = await supabase

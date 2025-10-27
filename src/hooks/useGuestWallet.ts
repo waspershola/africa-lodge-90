@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { toast } from 'sonner';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 export interface GuestWallet {
   id: string;
@@ -106,6 +107,9 @@ export function useGuestWallet(guestId?: string) {
       paymentMethod?: string;
       paymentMethodId?: string;
     }) => {
+      // Phase R.9: Validate token before critical RPC operation
+      await validateAndRefreshToken();
+      
       const { data, error } = await supabase.rpc('process_wallet_transaction', {
         p_wallet_id: params.walletId,
         p_transaction_type: params.transactionType,

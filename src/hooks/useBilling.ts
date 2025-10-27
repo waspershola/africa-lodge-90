@@ -4,6 +4,7 @@ import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { OptimisticUpdateManager, createArrayAppendUpdate } from '@/lib/optimistic-updates';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 export interface BillingStats {
   totalRevenue: number;
@@ -276,6 +277,9 @@ export function useBilling() {
     ]);
 
     try {
+      // Phase R.9: Validate token before critical operation
+      await validateAndRefreshToken();
+      
       // Get current user ID for duplicate check
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       const userId = currentUser?.id;

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 interface RoomType {
   id: string;
@@ -191,6 +192,9 @@ export const useCreateSoftHoldReservation = () => {
         .single();
 
       if (error) throw error;
+
+      // Phase R: Validate token before room type update
+      await validateAndRefreshToken();
 
       // Update room type counts
       await supabase.rpc('update_room_type_counts', {
@@ -462,6 +466,9 @@ export const useHardAssignReservation = () => {
             assigned_by_name: user.user_metadata?.name || user.email
           }
         });
+
+      // Phase R: Validate token before room type update
+      await validateAndRefreshToken();
 
       // Update room type counts
       await supabase.rpc('update_room_type_counts', {

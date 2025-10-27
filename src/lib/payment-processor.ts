@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 export interface ProcessPaymentParams {
   folioId: string;
@@ -130,6 +131,9 @@ export async function processPayment(
   let finalTerminalId = terminalId;
 
   if (!finalDepartmentId) {
+    // Phase R: Validate token before fetching defaults
+    await validateAndRefreshToken();
+    
     const { data: defaultDept } = await supabase.rpc('get_default_department', {
       p_tenant_id: tenantId
     });

@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 export interface ValidationResult {
   isValid: boolean;
@@ -144,6 +145,9 @@ function getExpectedPaymentStatus(
  */
 export async function autoFixFolio(folioId: string): Promise<boolean> {
   try {
+    // Phase R: Validate token before folio recalculation
+    await validateAndRefreshToken();
+    
     const { data, error } = await supabase.rpc('recalculate_folio_balance', {
       p_folio_id: folioId,
     });

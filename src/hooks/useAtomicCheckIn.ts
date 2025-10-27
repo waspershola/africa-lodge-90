@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useQueryClient } from '@tanstack/react-query';
 import { OptimisticUpdateManager, createArrayItemUpdate } from '@/lib/optimistic-updates';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 export interface AtomicCheckInParams {
   reservationId: string;
@@ -79,6 +80,9 @@ export function useAtomicCheckIn() {
     ]);
 
     try {
+      // Phase R.9: Validate token before critical RPC operation
+      await validateAndRefreshToken();
+      
       // Call atomic check-in database function
       const { data, error: rpcError } = await supabase.rpc('atomic_checkin_guest', {
         p_tenant_id: tenant.tenant_id,

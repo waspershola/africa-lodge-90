@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -110,6 +111,9 @@ export default function SessionManagement() {
   // Revoke session mutation
   const revokeMutation = useMutation({
     mutationFn: async ({ sessionId, userId }: { sessionId: string; userId: string }) => {
+      // Phase R: Validate token before security operation
+      await validateAndRefreshToken();
+      
       const { error } = await supabase.rpc('revoke_all_user_sessions', {
         p_user_id: userId,
         p_reason: 'Admin revocation'
@@ -128,6 +132,9 @@ export default function SessionManagement() {
   // Cleanup old sessions mutation
   const cleanupMutation = useMutation({
     mutationFn: async () => {
+      // Phase R: Validate token before security operation
+      await validateAndRefreshToken();
+      
       const { error } = await supabase.rpc('cleanup_old_sessions');
       if (error) throw error;
     },

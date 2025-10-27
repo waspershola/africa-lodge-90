@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 import { supabaseApi } from '@/lib/supabase-api';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
@@ -265,6 +266,9 @@ export const useCreateReservation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (reservationData: any) => {
+      // Phase R: Validate token before critical booking operation
+      await validateAndRefreshToken();
+      
       const { data, error } = await supabase.rpc('create_reservation_atomic', {
         p_tenant_id: reservationData.tenant_id,
         p_guest_data: {

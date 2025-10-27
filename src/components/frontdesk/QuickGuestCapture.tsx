@@ -858,6 +858,9 @@ export const QuickGuestCapture = ({
                         current_auth_user: authData.user?.id
                       });
 
+                      // Phase R: Validate token before wallet transaction
+                      await validateAndRefreshToken();
+
                       const { error: walletError, data: walletResult } = await supabase.rpc('process_wallet_transaction', {
                         p_wallet_id: walletData.id,
                         p_transaction_type: 'deposit',
@@ -1104,6 +1107,9 @@ export const QuickGuestCapture = ({
                       .maybeSingle();
                     
                     if (walletData) {
+                      // Phase R: Validate token before wallet transaction
+                      await validateAndRefreshToken();
+                      
                       const { error: walletError } = await supabase.rpc('process_wallet_transaction', {
                         p_wallet_id: walletData.id,
                         p_transaction_type: 'deposit',

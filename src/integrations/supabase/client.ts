@@ -18,6 +18,30 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   }
 });
 
+/**
+ * Phase 7.1: Reinitialize Supabase client with fresh auth state
+ * Call this after token refresh to ensure client uses latest session
+ */
+export async function reinitializeSupabaseClient(): Promise<void> {
+  console.log('[Supabase Client] Reinitializing with fresh session');
+  
+  const { data: { session }, error } = await supabase.auth.getSession();
+  
+  if (error) {
+    console.error('[Supabase Client] Failed to get session:', error);
+    return;
+  }
+  
+  if (session) {
+    // Force client to use latest session
+    await supabase.auth.setSession({
+      access_token: session.access_token,
+      refresh_token: session.refresh_token
+    });
+    console.log('[Supabase Client] Session synchronized');
+  }
+}
+
 // Phase R.10: Global Error Handler
 // Listen for auth errors and handle token expiry
 if (typeof window !== 'undefined') {

@@ -10,7 +10,11 @@ import { toast } from 'sonner';
  * @throws Error if session is invalid or token refresh fails
  */
 export async function validateAndRefreshToken(): Promise<void> {
-  console.log('[TokenValidator] Checking session and token validity');
+  const startTime = Date.now();
+  console.log('[TokenValidator] Starting validation', {
+    timestamp: new Date().toISOString(),
+    url: window.location.pathname
+  });
   
   // Get current session
   const { data: { session }, error } = await supabase.auth.getSession();
@@ -53,4 +57,11 @@ export async function validateAndRefreshToken(): Promise<void> {
   } else {
     console.log('[TokenValidator] Token is valid, proceeding with operation');
   }
+  
+  const duration = Date.now() - startTime;
+  console.log('[TokenValidator] Validation complete', {
+    duration: `${duration}ms`,
+    tokenRefreshed: timeUntilExpiry < 300,
+    timeUntilExpiry: `${Math.floor(timeUntilExpiry / 60)} minutes`
+  });
 }

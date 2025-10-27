@@ -7,7 +7,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Home, MapPin, Clock, User, AlertTriangle, CheckCircle } from "lucide-react";
 import { useHardAssignReservation, useAvailableRoomsForAssignment } from "@/hooks/useAfricanReservationSystem";
-import { validateAndRefreshToken } from '@/lib/auth-token-validator';
+import { protectedMutate } from '@/lib/mutation-utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface RoomAssignmentDialogProps {
   open: boolean;
@@ -45,18 +46,26 @@ export default function RoomAssignmentDialog({
     reservation?.check_out_date || ""
   );
 
+  const { toast } = useToast();
+
   const handleAssignRoom = async () => {
     if (!reservation || !selectedRoomId) return;
 
     try {
-      // Phase 6: Validate token before room assignment
-      await validateAndRefreshToken();
+      // Phase 7.4: Use protected mutation wrapper
+      await protectedMutate(
+        () => hardAssign.mutateAsync({
+          reservation_id: reservation.id,
+          room_id: selectedRoomId,
+          assigned_by: "front_desk",
+          assignment_reason: assignmentReason || `Check-in for ${reservation.guest_name}`
+        }),
+        'Room Assignment'
+      );
       
-      await hardAssign.mutateAsync({
-        reservation_id: reservation.id,
-        room_id: selectedRoomId,
-        assigned_by: "front_desk",
-        assignment_reason: assignmentReason || `Check-in for ${reservation.guest_name}`
+      toast({
+        title: "Room Assigned",
+        description: `Room successfully assigned to ${reservation.guest_name}`,
       });
       
       onOpenChange(false);
@@ -64,6 +73,7 @@ export default function RoomAssignmentDialog({
       setAssignmentReason("");
     } catch (error) {
       console.error("Room assignment failed:", error);
+      // Error already handled by protectedMutate
     }
   };
 

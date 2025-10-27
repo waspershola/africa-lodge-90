@@ -13,7 +13,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { toast } from 'sonner';
-import { validateAndRefreshToken } from '@/lib/auth-token-validator';
+import { protectedMutate } from '@/lib/mutation-utils';
 
 interface CancelIncompleteReservationDialogProps {
   open: boolean;
@@ -39,77 +39,77 @@ export function CancelIncompleteReservationDialog({
     setIsProcessing(true);
     
     try {
-      // Phase 6: Validate token before critical cascading deletions
-      await validateAndRefreshToken();
-      
-      console.log('[RECOVERY] Canceling incomplete reservation:', reservationId);
-      
-      // Get folio associated with reservation
-      const { data: folio } = await supabase
-        .from('folios')
-        .select('id')
-        .eq('reservation_id', reservationId)
-        .single();
-
-      if (folio) {
-        // Delete any payments
-        await supabase
-          .from('payments')
-          .delete()
-          .eq('folio_id', folio.id);
-
-        // Delete folio charges
-        await supabase
-          .from('folio_charges')
-          .delete()
-          .eq('folio_id', folio.id);
-
-        // Delete folio
-        await supabase
+      // Phase 7.4: Use protected mutation wrapper for cascading deletions
+      await protectedMutate(async () => {
+        console.log('[RECOVERY] Canceling incomplete reservation:', reservationId);
+        
+        // Get folio associated with reservation
+        const { data: folio } = await supabase
           .from('folios')
+          .select('id')
+          .eq('reservation_id', reservationId)
+          .single();
+
+        if (folio) {
+          // Delete any payments
+          await supabase
+            .from('payments')
+            .delete()
+            .eq('folio_id', folio.id);
+
+          // Delete folio charges
+          await supabase
+            .from('folio_charges')
+            .delete()
+            .eq('folio_id', folio.id);
+
+          // Delete folio
+          await supabase
+            .from('folios')
+            .delete()
+            .eq('id', folio.id);
+        }
+
+        // Delete reservation
+        await supabase
+          .from('reservations')
           .delete()
-          .eq('id', folio.id);
-      }
+          .eq('id', reservationId);
 
-      // Delete reservation
-      await supabase
-        .from('reservations')
-        .delete()
-        .eq('id', reservationId);
+        // Reset room to available
+        await supabase
+          .from('rooms')
+          .update({ 
+            status: 'available',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', roomId);
 
-      // Reset room to available
-      await supabase
-        .from('rooms')
-        .update({ 
-          status: 'available',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', roomId);
-
-      // Create audit log
-      await supabase
-        .from('audit_log')
-        .insert({
-          action: 'INCOMPLETE_RESERVATION_CANCELED',
-          resource_type: 'RESERVATION',
-          resource_id: reservationId,
-          actor_id: user?.id,
-          actor_email: user?.email,
-          actor_role: user?.role,
-          tenant_id: tenant?.tenant_id,
-          description: `Canceled incomplete reservation for ${guestName}`,
-          metadata: {
-            room_id: roomId,
-            guest_name: guestName
-          }
-        });
+        // Create audit log
+        await supabase
+          .from('audit_log')
+          .insert({
+            action: 'INCOMPLETE_RESERVATION_CANCELED',
+            resource_type: 'RESERVATION',
+            resource_id: reservationId,
+            actor_id: user?.id,
+            actor_email: user?.email,
+            actor_role: user?.role,
+            tenant_id: tenant?.tenant_id,
+            description: `Canceled incomplete reservation for ${guestName}`,
+            metadata: {
+              room_id: roomId,
+              guest_name: guestName
+            }
+          });
+      }, 'Cancel Incomplete Reservation');
 
       toast.success('Incomplete reservation canceled successfully');
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
-      console.error('[RECOVERY] Error canceling reservation:', error);
-      toast.error(error.message || 'Failed to cancel reservation');
+      console.error('[RECOVERY] Failed to cancel incomplete reservation:', error);
+      // Error already handled by protectedMutate
     } finally {
       setIsProcessing(false);
     }

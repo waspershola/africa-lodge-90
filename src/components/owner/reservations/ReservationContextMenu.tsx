@@ -25,7 +25,7 @@ import {
   useCheckRoomConflicts
 } from '@/hooks/useApi';
 import { useToast } from '@/hooks/use-toast';
-import { validateAndRefreshToken } from '@/lib/auth-token-validator';
+import { protectedMutate } from '@/lib/mutation-utils';
 
 interface ReservationContextMenuProps {
   reservation: any;
@@ -114,23 +114,23 @@ export default function ReservationContextMenu({
 
   const handleSendConfirmation = async () => {
     try {
-      // Phase 6: Validate token before edge function call
-      await validateAndRefreshToken();
-      
-      // Real email sending using Supabase edge function
-      const { supabase } = await import('@/integrations/supabase/client');
-      const { data, error } = await supabase.functions.invoke('send-reservation-confirmation', {
-        body: {
-          reservationId: reservation.id,
-          guestEmail: reservation.email,
-          guestName: reservation.guestName || reservation.guest_name,
-          roomNumber: reservation.room || reservation.room_number,
-          checkInDate: reservation.checkIn || reservation.check_in_date,
-          checkOutDate: reservation.checkOut || reservation.check_out_date
-        }
-      });
+      // Phase 7.4: Use protected mutation wrapper for email sending
+      await protectedMutate(async () => {
+        const { supabase } = await import('@/integrations/supabase/client');
+        const { data, error } = await supabase.functions.invoke('send-reservation-confirmation', {
+          body: {
+            reservationId: reservation.id,
+            guestEmail: reservation.email,
+            guestName: reservation.guestName || reservation.guest_name,
+            roomNumber: reservation.room || reservation.room_number,
+            checkInDate: reservation.checkIn || reservation.check_in_date,
+            checkOutDate: reservation.checkOut || reservation.check_out_date
+          }
+        });
 
-      if (error) throw error;
+        if (error) throw error;
+        return data;
+      }, 'Send Confirmation Email');
 
       toast({
         title: 'Confirmation Sent',
@@ -138,11 +138,7 @@ export default function ReservationContextMenu({
       });
     } catch (error) {
       console.error('Error sending confirmation:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to send confirmation email. Please try again.',
-        variant: 'destructive'
-      });
+      // Error already handled by protectedMutate
     }
   };
 

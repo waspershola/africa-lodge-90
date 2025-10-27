@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -54,32 +54,47 @@ export const RateSelectionComponent = ({
   const roomTypeDetails = roomTypes.find(rt => rt.id === selectedRoomType);
   const baseRate = roomTypeDetails ? roomTypeDetails.base_rate : parseFloat(customRate) || 0;
 
-  // Calculate tax breakdown for room charges
-  const taxCalculation = calculateTaxesAndCharges({
-    baseAmount: baseRate * nights,
-    chargeType: 'room',
-    isTaxable: true,
-    isServiceChargeable: true,
-    guestTaxExempt: false,
-    configuration: configuration || {
-      tax: {
-        vat_rate: 7.5,
-        service_charge_rate: 10,
-        tax_inclusive: false,
-        service_charge_inclusive: false,
-        vat_applicable_to: ['room', 'food', 'beverage', 'laundry', 'spa'],
-        service_applicable_to: ['room', 'food', 'beverage', 'spa']
-      }
-    } as any
-  });
+  // Calculate tax breakdown for room charges (memoized to prevent infinite loop)
+  const taxCalculation = useMemo(() => {
+    return calculateTaxesAndCharges({
+      baseAmount: baseRate * nights,
+      chargeType: 'room',
+      isTaxable: true,
+      isServiceChargeable: true,
+      guestTaxExempt: false,
+      configuration: configuration || {
+        tax: {
+          vat_rate: 7.5,
+          service_charge_rate: 10,
+          tax_inclusive: false,
+          service_charge_inclusive: false,
+          vat_applicable_to: ['room', 'food', 'beverage', 'laundry', 'spa'],
+          service_applicable_to: ['room', 'food', 'beverage', 'spa']
+        }
+      } as any
+    });
+  }, [baseRate, nights, configuration]);
 
   // Calculate total with taxes
   const totalAmount = taxCalculation.totalAmount;
 
+  // Track previous values to prevent unnecessary calls
+  const prevValuesRef = useRef({ baseRate: 0, nights: 0, totalAmount: 0, selectedRoomType: '' });
+
   // Update parent when values change
   useEffect(() => {
-    if (baseRate > 0) {
+    const prev = prevValuesRef.current;
+    
+    // Only call onRateChange if values ACTUALLY changed
+    if (
+      baseRate > 0 &&
+      (prev.baseRate !== baseRate || 
+       prev.nights !== nights || 
+       prev.totalAmount !== totalAmount ||
+       prev.selectedRoomType !== selectedRoomType)
+    ) {
       onRateChange(baseRate, nights, totalAmount, selectedRoomType || undefined);
+      prevValuesRef.current = { baseRate, nights, totalAmount, selectedRoomType };
     }
   }, [baseRate, nights, totalAmount, selectedRoomType, onRateChange]);
 

@@ -394,6 +394,40 @@ const FrontDeskDashboard = () => {
         {/* Main Dashboard Content */}
         {!dataLoading && (
           <>
+        {/* Phase R.6: Query Debug Panel (DEV only) */}
+        {import.meta.env.DEV && (
+          <Card className="border-blue-500 bg-blue-50 dark:bg-blue-950/20">
+            <CardHeader>
+              <CardTitle className="text-sm">🔧 Query Debug Panel (Dev Only)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 text-sm">
+                <div className="grid grid-cols-3 gap-2">
+                  <div>Queries Loading: <Badge variant={dataLoading ? 'default' : 'outline'}>{dataLoading ? 'Yes' : 'No'}</Badge></div>
+                  <div>Tab Visible: <Badge variant="outline">{document.visibilityState}</Badge></div>
+                  <div>Network: <Badge variant={navigator.onLine ? 'default' : 'destructive'}>{navigator.onLine ? 'Online' : 'Offline'}</Badge></div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const cache = queryClient.getQueryCache().getAll();
+                    console.table(cache.map(q => ({
+                      key: JSON.stringify(q.queryKey),
+                      state: q.state.status,
+                      dataUpdatedAt: new Date(q.state.dataUpdatedAt).toLocaleTimeString(),
+                      stale: Date.now() - q.state.dataUpdatedAt > 30000
+                    })));
+                    console.log('[Debug] Full query cache:', cache);
+                  }}
+                >
+                  Log Query States to Console
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* PHASE 6: Data Validation Warning Banner */}
         {hasDataIssues && (
           <Card className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20">

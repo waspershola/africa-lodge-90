@@ -4,6 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { useFontManager } from "@/hooks/useFontManager";
 import { useSentry } from "@/hooks/useSentry";
 import { PaymentMethodsProvider } from "@/contexts/PaymentMethodsContext";
@@ -128,6 +130,51 @@ const SentryMonitor = () => {
   return null;
 };
 
+// Phase R.2: Tab Rehydration Handler
+const TabRehydrationManager = () => {
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[App] Tab became visible - checking connection health');
+        
+        // 1. Validate session is still active
+        supabase.auth.getSession().then(({ data: { session }, error }) => {
+          if (error || !session) {
+            console.warn('[App] Session expired while tab was inactive');
+            return;
+          }
+          
+          console.log('[App] Session valid - invalidating stale queries');
+          
+          // 2. Invalidate all queries that could have changed
+          queryClient.invalidateQueries({
+            predicate: (query) => {
+              const staleTime = query.state.dataUpdatedAt;
+              const now = Date.now();
+              const isStale = now - staleTime > 60000; // 1 minute
+              
+              // Only invalidate queries that are stale OR critical
+              const isCritical = ['rooms', 'reservations', 'folios', 'front-desk'].some(
+                key => query.queryKey[0]?.toString().includes(key)
+              );
+              
+              return isStale || isCritical;
+            }
+          });
+        });
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+  
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <MultiTenantAuthProvider>
@@ -135,6 +182,7 @@ const App = () => (
         <TooltipProvider>
           <FontManager />
           <SentryMonitor />
+          <TabRehydrationManager />
           <Toaster />
           <Sonner />
           <BrowserRouter>

@@ -106,10 +106,21 @@ export function useSessionHeartbeat(options: UseSessionHeartbeatOptions = {}) {
       intervalMinutes * 60 * 1000
     );
 
+    // Phase R.4: Check session immediately when tab becomes visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[SessionHeartbeat] Tab visible - checking session immediately');
+        checkAndRefreshSession();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     // Check immediately on mount
     checkAndRefreshSession();
 
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (intervalRef.current) {
         console.log('Session heartbeat: Cleaning up interval');
         clearInterval(intervalRef.current);

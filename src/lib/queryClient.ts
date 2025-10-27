@@ -14,7 +14,8 @@ export const queryClient = new QueryClient({
     queries: {
       staleTime: 30 * 1000, // 30 seconds - balanced freshness
       gcTime: 5 * 60 * 1000, // 5 minutes
-      refetchOnWindowFocus: false, // Prevent constant refetching
+      refetchOnWindowFocus: true, // ✅ Phase R.1: Enable tab rehydration
+      refetchOnReconnect: true, // ✅ Phase R.1: Refetch on network reconnect
       retry: 1, // Single retry for faster failure detection
     },
   },

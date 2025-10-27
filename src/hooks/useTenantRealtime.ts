@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 /**
  * @deprecated Phase 1: This hook is deprecated. Use useUnifiedRealtime() instead.
@@ -12,13 +13,14 @@ import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 export function useTenantRealtime() {
   const queryClient = useQueryClient();
   const { user, tenant } = useAuth();
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
-  useEffect(() => {
-    if (!user || !tenant?.tenant_id) return;
-
-    console.log('[Realtime] Setting up centralized tenant subscriptions:', tenant.tenant_id);
-
-    // Single tenant-scoped channel for all updates
+  // Phase R.3: Helper to setup channel
+  const setupChannel = useCallback(() => {
+    if (!user || !tenant?.tenant_id) return null;
+    
+    console.log('[Realtime] Setting up channel:', tenant.tenant_id);
+    
     const channel = supabase
       .channel(`tenant-${tenant.tenant_id}-realtime`)
       
@@ -156,11 +158,52 @@ export function useTenantRealtime() {
           queryClient.invalidateQueries({ queryKey: ['qr-orders', tenant.tenant_id] });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[Realtime] Channel status:', status);
+        
+        if (status === 'CHANNEL_ERROR') {
+          console.error('[Realtime] Channel error - will retry on next visibility change');
+        }
+      });
+    
+    return channel;
+  }, [user, tenant?.tenant_id, queryClient]);
+
+  useEffect(() => {
+    // Initial setup
+    channelRef.current = setupChannel();
+    
+    // Phase R.3: Reconnect on visibility change
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[Realtime] Tab visible - checking channel health');
+        
+        const currentChannel = channelRef.current;
+        if (currentChannel) {
+          const state = currentChannel.state;
+          
+          if (state !== 'joined') {
+            console.warn('[Realtime] Channel disconnected - reconnecting');
+            supabase.removeChannel(currentChannel);
+            channelRef.current = setupChannel();
+          } else {
+            console.log('[Realtime] Channel still healthy');
+          }
+        } else {
+          console.log('[Realtime] No channel exists - creating one');
+          channelRef.current = setupChannel();
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      console.log('[Realtime] Cleaning up tenant subscriptions');
-      supabase.removeChannel(channel);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (channelRef.current) {
+        console.log('[Realtime] Cleaning up tenant subscriptions');
+        supabase.removeChannel(channelRef.current);
+      }
     };
-  }, [user, tenant?.tenant_id, queryClient]);
+  }, [setupChannel]);
 }

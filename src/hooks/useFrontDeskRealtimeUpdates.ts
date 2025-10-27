@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 /**
  * @deprecated Phase 1: This hook is deprecated. Use useUnifiedRealtime() instead.
@@ -13,28 +14,29 @@ export function useFrontDeskRealtimeUpdates() {
   const queryClient = useQueryClient();
   const { user, tenant } = useAuth();
   const invalidationTimeoutRef = useRef<Record<string, NodeJS.Timeout>>({});
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
-  useEffect(() => {
-    if (!user || !tenant) return;
+  // Debounced invalidation to prevent rapid-fire updates and infinite loops
+  const debouncedInvalidate = useCallback((queryKey: string[], delay: number = 300) => {
+    const key = queryKey.join('-');
+    
+    if (invalidationTimeoutRef.current[key]) {
+      clearTimeout(invalidationTimeoutRef.current[key]);
+    }
+    
+    invalidationTimeoutRef.current[key] = setTimeout(() => {
+      console.log(`[Realtime] Invalidating query:`, queryKey);
+      queryClient.invalidateQueries({ queryKey });
+      delete invalidationTimeoutRef.current[key];
+    }, delay);
+  }, [queryClient]);
+
+  // Phase R.3: Helper to setup channel
+  const setupChannel = useCallback(() => {
+    if (!user || !tenant) return null;
 
     console.log('[Realtime] Setting up Front Desk subscriptions for tenant:', tenant.tenant_id);
 
-    // Debounced invalidation to prevent rapid-fire updates and infinite loops
-    const debouncedInvalidate = (queryKey: string[], delay: number = 300) => {
-      const key = queryKey.join('-');
-      
-      if (invalidationTimeoutRef.current[key]) {
-        clearTimeout(invalidationTimeoutRef.current[key]);
-      }
-      
-      invalidationTimeoutRef.current[key] = setTimeout(() => {
-        console.log(`[Realtime] Invalidating query:`, queryKey);
-        queryClient.invalidateQueries({ queryKey });
-        delete invalidationTimeoutRef.current[key];
-      }, delay);
-    };
-
-    // Phase 2: Tenant-scoped channel for better performance
     const channel = supabase
       .channel(`tenant-${tenant.tenant_id}-frontdesk`)
       
@@ -177,10 +179,50 @@ export function useFrontDeskRealtimeUpdates() {
           queryClient.invalidateQueries({ queryKey: ['qr-orders', tenant.tenant_id] });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[Realtime] Front Desk channel status:', status);
+        
+        if (status === 'CHANNEL_ERROR') {
+          console.error('[Realtime] Channel error - will retry on next visibility change');
+        }
+      });
+    
+    return channel;
+  }, [user, tenant, queryClient, debouncedInvalidate]);
+
+  useEffect(() => {
+    // Initial setup
+    channelRef.current = setupChannel();
+    
+    // Phase R.3: Reconnect on visibility change
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[Realtime] Tab visible - checking Front Desk channel health');
+        
+        const currentChannel = channelRef.current;
+        if (currentChannel) {
+          const state = currentChannel.state;
+          
+          if (state !== 'joined') {
+            console.warn('[Realtime] Front Desk channel disconnected - reconnecting');
+            supabase.removeChannel(currentChannel);
+            channelRef.current = setupChannel();
+          } else {
+            console.log('[Realtime] Front Desk channel still healthy');
+          }
+        } else {
+          console.log('[Realtime] No Front Desk channel exists - creating one');
+          channelRef.current = setupChannel();
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       console.log('[Realtime] Cleaning up Front Desk subscriptions');
+      
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       
       // Clear all pending invalidation timeouts
       Object.values(invalidationTimeoutRef.current).forEach(timeout => {
@@ -188,7 +230,9 @@ export function useFrontDeskRealtimeUpdates() {
       });
       invalidationTimeoutRef.current = {};
       
-      supabase.removeChannel(channel);
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
     };
-  }, [user, tenant, queryClient]);
+  }, [setupChannel]);
 }

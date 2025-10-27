@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 export interface CreateReservationData {
   guest_name: string;
@@ -325,6 +326,9 @@ export const useCancelReservation = () => {
         .single();
 
       if (resError) throw resError;
+
+      // Phase R: Validate token before cancellation
+      await validateAndRefreshToken();
 
       // Call atomic cancel function with correct parameters
       const { data, error } = await supabase.rpc('cancel_reservation_atomic', {

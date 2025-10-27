@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 interface SecurityQuestion {
   question: string;
@@ -13,6 +14,9 @@ export function useRecoveryManagement() {
   const generateRecoveryCodes = async (userId: string) => {
     setLoading(true);
     try {
+      // Phase R: Validate token before security operation
+      await validateAndRefreshToken();
+      
       const { data, error } = await supabase.rpc('generate_recovery_codes', {
         user_uuid: userId
       });

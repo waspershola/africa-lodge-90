@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useToast } from '@/hooks/use-toast';
 import { QRSecurity } from '@/lib/qr-security';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 export interface QRCodeInfo {
   id: string;
@@ -106,6 +107,9 @@ export const useToggleQRStatus = () => {
 
   return useMutation({
     mutationFn: async ({ qrId, isActive, reason }: { qrId: string; isActive: boolean; reason?: string }) => {
+      // Phase R: Validate token before QR status change
+      await validateAndRefreshToken();
+      
       const { data, error } = await supabase.rpc('toggle_qr_status', {
         p_qr_id: qrId,
         p_is_active: isActive,

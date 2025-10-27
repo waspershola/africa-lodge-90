@@ -17,3 +17,15 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     flowType: 'pkce'
   }
 });
+
+// Phase R.10: Global Error Handler
+// Listen for auth errors and handle token expiry
+if (typeof window !== 'undefined') {
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'TOKEN_REFRESHED') {
+      console.log('[Supabase Client] Token auto-refreshed by Supabase');
+    } else if (event === 'SIGNED_OUT') {
+      console.log('[Supabase Client] User signed out');
+    }
+  });
+}

@@ -1,5 +1,6 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -130,37 +131,74 @@ const SentryMonitor = () => {
   return null;
 };
 
-// Phase R.2: Tab Rehydration Handler
+// Phase R.7: Tab Rehydration Handler with Token Refresh
 const TabRehydrationManager = () => {
   useEffect(() => {
-    const handleVisibilityChange = () => {
+    const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible') {
-        console.log('[App] Tab became visible - checking connection health');
+        console.log('[TabRehydration] Tab became visible - validating session and token');
         
-        // 1. Validate session is still active
-        supabase.auth.getSession().then(({ data: { session }, error }) => {
-          if (error || !session) {
-            console.warn('[App] Session expired while tab was inactive');
+        // 1. Get current session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error || !session) {
+          console.warn('[TabRehydration] Session expired while tab was inactive');
+          return;
+        }
+        
+        // 2. Check token expiry
+        const expiresAt = session.expires_at;
+        if (!expiresAt) {
+          console.warn('[TabRehydration] No expiry timestamp in session');
+          return;
+        }
+
+        const now = Math.floor(Date.now() / 1000);
+        const timeUntilExpiry = expiresAt - now;
+        
+        console.log('[TabRehydration] Token status:', {
+          expiresAt: new Date(expiresAt * 1000).toISOString(),
+          timeUntilExpiry: `${Math.floor(timeUntilExpiry / 60)} minutes`,
+          needsRefresh: timeUntilExpiry < 300
+        });
+
+        // 3. If token expires in <5 minutes OR already expired, force refresh
+        if (timeUntilExpiry < 300) {
+          console.log('[TabRehydration] Token expiring soon or expired - forcing refresh');
+          
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          
+          if (refreshError) {
+            console.error('[TabRehydration] Token refresh failed:', refreshError);
+            toast.error('Your session expired. Please log in again.', {
+              duration: 10000,
+              action: {
+                label: 'Login',
+                onClick: () => window.location.href = '/auth'
+              }
+            });
             return;
           }
           
-          console.log('[App] Session valid - invalidating stale queries');
-          
-          // 2. Invalidate all queries that could have changed
-          queryClient.invalidateQueries({
-            predicate: (query) => {
-              const staleTime = query.state.dataUpdatedAt;
-              const now = Date.now();
-              const isStale = now - staleTime > 60000; // 1 minute
-              
-              // Only invalidate queries that are stale OR critical
-              const isCritical = ['rooms', 'reservations', 'folios', 'front-desk'].some(
-                key => query.queryKey[0]?.toString().includes(key)
-              );
-              
-              return isStale || isCritical;
-            }
-          });
+          console.log('[TabRehydration] Token refreshed successfully');
+        }
+        
+        // 4. Invalidate stale queries now that we have a fresh token
+        console.log('[TabRehydration] Invalidating stale queries');
+        
+        queryClient.invalidateQueries({
+          predicate: (query) => {
+            const staleTime = query.state.dataUpdatedAt;
+            const now = Date.now();
+            const isStale = now - staleTime > 60000; // 1 minute
+            
+            // Only invalidate queries that are stale OR critical
+            const isCritical = ['rooms', 'reservations', 'folios', 'front-desk', 'guests'].some(
+              key => query.queryKey[0]?.toString().includes(key)
+            );
+            
+            return isStale || isCritical;
+          }
         });
       }
     };

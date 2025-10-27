@@ -50,7 +50,7 @@ export function useSessionHeartbeat(options: UseSessionHeartbeatOptions = {}) {
         retryCount: retryCountRef.current
       });
 
-      // If session expires in less than 20 minutes, try to refresh
+      // Phase R.4 + R.7 Combined: If session expires in less than 20 minutes, try to refresh
       if (timeUntilExpiry < 1200) { // 20 minutes
         console.log('Session heartbeat: Session expiring soon, attempting refresh...');
         

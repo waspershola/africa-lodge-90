@@ -12,6 +12,7 @@ import { useShiftIntegratedAction } from "./ShiftIntegratedAction";
 import { useReceiptPrinter } from "@/hooks/useReceiptPrinter";
 import { useConfiguration } from "@/hooks/useConfiguration";
 import { calculateTaxesAndCharges } from "@/lib/tax-calculator";
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 import type { Room } from "./RoomGrid";
 
 interface TransferRoomDialogProps {
@@ -66,6 +67,9 @@ export const TransferRoomDialog = ({
     setIsProcessing(true);
 
     try {
+      // Phase R.9: Validate token before critical operation
+      await validateAndRefreshToken();
+      
       // Real backend integration for room transfer
       const { supabase } = await import('@/integrations/supabase/client');
       const { data: { user } } = await supabase.auth.getUser();

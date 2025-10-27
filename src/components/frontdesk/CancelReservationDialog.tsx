@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCurrency } from "@/hooks/useCurrency";
 import { OptimisticUpdateManager, createArrayItemUpdate } from '@/lib/optimistic-updates';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 import type { Room } from "./RoomGrid";
 
 interface CancelReservationDialogProps {
@@ -192,6 +193,9 @@ export const CancelReservationDialog = ({
     let opId: string | undefined;
 
     try {
+      // Phase R.9: Validate token before critical operation
+      await validateAndRefreshToken();
+      
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {

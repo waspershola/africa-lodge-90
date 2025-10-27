@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertTriangle, Unlock, Calendar, User, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useShiftIntegratedAction } from "./ShiftIntegratedAction";
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 import type { Room } from "./RoomGrid";
 
 interface ReleaseReservationDialogProps {
@@ -49,6 +50,9 @@ export const ReleaseReservationDialog = ({
     setIsProcessing(true);
 
     try {
+      // Phase R.9: Validate token before critical operation
+      await validateAndRefreshToken();
+      
       // REAL DB OPERATION: Call atomic cancel_reservation_atomic RPC
       const { supabase } = await import('@/integrations/supabase/client');
       const { data: { user } } = await supabase.auth.getUser();

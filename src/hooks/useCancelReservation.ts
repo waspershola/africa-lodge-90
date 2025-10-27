@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 export interface CancelReservationParams {
   reservationId: string;
@@ -41,6 +42,9 @@ export function useCancelReservation() {
     });
 
     try {
+      // Phase R.9: Validate token before critical RPC operation
+      await validateAndRefreshToken();
+      
       const { data, error: rpcError } = await supabase.rpc('cancel_reservation_atomic', {
         p_tenant_id: tenant.tenant_id,
         p_reservation_id: params.reservationId,

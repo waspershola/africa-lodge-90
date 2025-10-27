@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useQueryClient } from '@tanstack/react-query';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 export interface AtomicCheckoutParams {
   reservationId: string;
@@ -44,6 +45,9 @@ export function useAtomicCheckout() {
     });
 
     try {
+      // Phase R.9: Validate token before critical RPC operation
+      await validateAndRefreshToken();
+      
       // Call atomic checkout database function with timeout
       const checkoutPromise = supabase.rpc('atomic_checkout', {
         p_tenant_id: tenant.tenant_id,

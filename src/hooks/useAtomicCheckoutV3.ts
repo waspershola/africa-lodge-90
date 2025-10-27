@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useQueryClient } from '@tanstack/react-query';
 import { OptimisticUpdateManager, createArrayItemUpdate } from '@/lib/optimistic-updates';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 export interface AtomicCheckoutV3Params {
   reservationId: string;
@@ -52,6 +53,9 @@ export function useAtomicCheckoutV3() {
     ]);
 
     try {
+      // Phase R.9: Validate token before critical operation
+      await validateAndRefreshToken();
+      
       // Pre-checkout validation: Check folio balance
       const { data: reservation, error: resError } = await supabase
         .from('reservations')

@@ -25,6 +25,7 @@ import { useRoomTypeAvailability } from "@/hooks/useRoomTypeAvailability";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useGuestSearch, useRecentGuests } from "@/hooks/useGuestSearch";
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 interface NewReservationDialogProps {
   open: boolean;
@@ -127,6 +128,9 @@ export const NewReservationDialog = ({ open, onOpenChange }: NewReservationDialo
     const totalAmount = selectedRoom.base_rate * nights;
 
     try {
+      // Phase R.9: Validate token before critical operation
+      await validateAndRefreshToken();
+      
       await createReservation.mutateAsync({
         guest_name: guestName,
         guest_email: guestEmail,

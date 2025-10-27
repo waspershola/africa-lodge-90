@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { toast } from 'sonner';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 interface CancelIncompleteReservationDialogProps {
   open: boolean;
@@ -38,6 +39,9 @@ export function CancelIncompleteReservationDialog({
     setIsProcessing(true);
     
     try {
+      // Phase 6: Validate token before critical cascading deletions
+      await validateAndRefreshToken();
+      
       console.log('[RECOVERY] Canceling incomplete reservation:', reservationId);
       
       // Get folio associated with reservation

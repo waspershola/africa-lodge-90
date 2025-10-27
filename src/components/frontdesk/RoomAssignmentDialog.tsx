@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Home, MapPin, Clock, User, AlertTriangle, CheckCircle } from "lucide-react";
 import { useHardAssignReservation, useAvailableRoomsForAssignment } from "@/hooks/useAfricanReservationSystem";
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 interface RoomAssignmentDialogProps {
   open: boolean;
@@ -48,6 +49,9 @@ export default function RoomAssignmentDialog({
     if (!reservation || !selectedRoomId) return;
 
     try {
+      // Phase 6: Validate token before room assignment
+      await validateAndRefreshToken();
+      
       await hardAssign.mutateAsync({
         reservation_id: reservation.id,
         room_id: selectedRoomId,

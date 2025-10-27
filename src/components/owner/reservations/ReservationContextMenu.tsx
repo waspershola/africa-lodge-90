@@ -25,6 +25,7 @@ import {
   useCheckRoomConflicts
 } from '@/hooks/useApi';
 import { useToast } from '@/hooks/use-toast';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 interface ReservationContextMenuProps {
   reservation: any;
@@ -113,6 +114,9 @@ export default function ReservationContextMenu({
 
   const handleSendConfirmation = async () => {
     try {
+      // Phase 6: Validate token before edge function call
+      await validateAndRefreshToken();
+      
       // Real email sending using Supabase edge function
       const { supabase } = await import('@/integrations/supabase/client');
       const { data, error } = await supabase.functions.invoke('send-reservation-confirmation', {

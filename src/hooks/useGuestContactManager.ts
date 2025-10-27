@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 export interface GuestContactData {
   firstName: string;
@@ -31,6 +32,9 @@ export const useGuestContactManager = () => {
   // Auto-save or update guest contact information from any source
   const saveGuestContact = useMutation({
     mutationFn: async (contactData: GuestContactData) => {
+      // Phase R.9: Validate token before critical operation
+      await validateAndRefreshToken();
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
@@ -176,6 +180,9 @@ export const useGuestContactManager = () => {
     const { query, searchBy = 'all', includeInactive = false, limit = 20 } = options;
     
     if (!query || query.length < 2) return [];
+
+    // Phase R.9: Validate token before critical operation
+    await validateAndRefreshToken();
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');

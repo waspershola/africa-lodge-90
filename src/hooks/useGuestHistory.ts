@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 export interface GuestHistoryEntry {
   id: string;
@@ -44,6 +45,9 @@ export const useRoomNotes = () => {
   const addNote = async (roomId: string, note: string) => {
     setIsLoading(true);
     try {
+      // Phase R.9: Validate token before critical operation
+      await validateAndRefreshToken();
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 

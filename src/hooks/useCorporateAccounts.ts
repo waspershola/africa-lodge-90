@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 export interface CorporateAccount {
   id: string;
@@ -89,6 +90,9 @@ export const useCreateCorporateAccount = () => {
 
   return useMutation({
     mutationFn: async (accountData: CreateCorporateAccountData) => {
+      // Phase R.9: Validate token before critical operation
+      await validateAndRefreshToken();
+      
       // Get current user to add tenant_id
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) throw new Error('Not authenticated');

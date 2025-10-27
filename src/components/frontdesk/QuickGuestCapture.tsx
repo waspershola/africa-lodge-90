@@ -61,6 +61,7 @@ import { useTenantInfo } from "@/hooks/useTenantInfo";
 import { RateSelectionComponent } from "./RateSelectionComponent";
 import { ProcessingStateManager } from "./ProcessingStateManager";
 import { calculateTaxesAndCharges } from "@/lib/tax-calculator";
+import { validateAndRefreshToken } from "@/lib/auth-token-validator";
 import type { Room } from "./RoomGrid";
 import { PaymentSummaryCard } from "./PaymentSummaryCard";
 import { TaxBreakdownCard } from "@/components/billing/TaxBreakdownCard";
@@ -458,6 +459,9 @@ export const QuickGuestCapture = ({
     }, 30000); // 30 seconds timeout
 
     try {
+      // Phase R.9: Validate token before critical operation
+      await validateAndRefreshToken();
+      
       // Real backend integration
       const { supabase } = await import('@/integrations/supabase/client');
       const { data: { user } } = await supabase.auth.getUser();

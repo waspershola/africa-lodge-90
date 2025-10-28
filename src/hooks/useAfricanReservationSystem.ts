@@ -249,9 +249,6 @@ export const useHardAssignReservation = () => {
 
   return useMutation({
     mutationFn: async (assignmentData: HardAssignmentData) => {
-      // Import at runtime to avoid circular dependencies
-      const { protectedMutate } = await import('@/lib/mutation-utils');
-      
       return protectedMutate(async () => {
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         if (userError || !user) throw new Error('Not authenticated');
@@ -332,7 +329,7 @@ export const useHardAssignReservation = () => {
 
       if (updateError) throw updateError;
 
-      // ... keep existing code (folio creation, tax calculation, etc.)
+      // Step 3: Create new folio for the new reservation
       const folioNumber = `FOL-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
       const { data: newFolio, error: folioError } = await supabase
         .from('folios')
@@ -471,6 +468,9 @@ export const useHardAssignReservation = () => {
             assigned_by_name: user.user_metadata?.name || user.email
           }
         });
+
+      // Phase R: Validate token before room type update
+      await validateAndRefreshToken();
 
       // Update room type counts
       await supabase.rpc('update_room_type_counts', {

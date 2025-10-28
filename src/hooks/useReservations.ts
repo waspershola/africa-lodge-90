@@ -256,9 +256,6 @@ export const useUpdateReservation = () => {
 
   return useMutation({
     mutationFn: async (reservationData: UpdateReservationData) => {
-      // Import at runtime to avoid circular dependencies
-      const { protectedMutate } = await import('@/lib/mutation-utils');
-      
       return protectedMutate(async () => {
         const { id, ...updateData } = reservationData;
         
@@ -317,82 +314,80 @@ export const useCancelReservation = () => {
       refundAmount?: number; 
       notes?: string;
     }) => {
-      // Import at runtime to avoid circular dependencies
-      const { protectedMutate } = await import('@/lib/mutation-utils');
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error('Not authenticated');
+
+      const tenantId = user.user_metadata?.tenant_id;
+      if (!tenantId) throw new Error('Tenant ID not found');
+
+      // Get reservation details for notification before canceling
+      const { data: reservation, error: resError } = await supabase
+        .from('reservations')
+        .select('*')
+        .eq('id', reservationId)
+        .single();
+
+      if (resError) throw resError;
+
+      // Phase R: Validate token before cancellation
+      await validateAndRefreshToken();
+
+      // Call atomic cancel function with correct parameters
+      const { data, error } = await supabase.rpc('cancel_reservation_atomic', {
+        p_tenant_id: tenantId,
+        p_reservation_id: reservationId,
+        p_cancelled_by: user.id,
+        p_reason: reason || null
+      });
+
+      if (error) throw error;
+
+      // RPC returns array of rows for RETURNS TABLE
+      const result = Array.isArray(data) ? data[0] : data;
       
-      return protectedMutate(async () => {
-        // Get current user
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError || !user) throw new Error('Not authenticated');
+      if (!result || (result as any).success !== true) {
+        throw new Error((result as any)?.message || 'Failed to cancel reservation');
+      }
 
-        const tenantId = user.user_metadata?.tenant_id;
-        if (!tenantId) throw new Error('Tenant ID not found');
+      // Create cancellation notification event (only on success)
+      const notificationEvent = {
+        event_type: 'reservation_cancelled',
+        event_source: 'reservation',
+        source_id: reservationId,
+        template_data: {
+          guest_name: reservation.guest_name,
+          reservation_number: reservation.reservation_number,
+          check_in_date: reservation.check_in_date,
+          cancellation_reason: reason || 'Reservation cancelled'
+        },
+        recipients: [
+          {
+            type: 'guest',
+            email: reservation.guest_email,
+            phone: reservation.guest_phone
+          },
+          {
+            type: 'staff',
+            role: 'FRONT_DESK'
+          }
+        ],
+        channels: ['sms', 'email'],
+        priority: 'medium'
+      };
 
-        // Get reservation details for notification before canceling
-        const { data: reservation, error: resError } = await supabase
-          .from('reservations')
-          .select('*')
-          .eq('id', reservationId)
-          .single();
-
-        if (resError) throw resError;
-
-        // Call atomic cancel function with correct parameters
-        const { data, error } = await supabase.rpc('cancel_reservation_atomic', {
-          p_tenant_id: tenantId,
-          p_reservation_id: reservationId,
-          p_cancelled_by: user.id,
-          p_reason: reason || null
+      // Create the notification event
+      await supabase
+        .from('notification_events')
+        .insert({
+          tenant_id: user.user_metadata?.tenant_id,
+          ...notificationEvent,
+          status: 'pending',
+          scheduled_at: new Date().toISOString(),
+          metadata: {}
         });
 
-        if (error) throw error;
-
-        // RPC returns array of rows for RETURNS TABLE
-        const result = Array.isArray(data) ? data[0] : data;
-        
-        if (!result || (result as any).success !== true) {
-          throw new Error((result as any)?.message || 'Failed to cancel reservation');
-        }
-
-        // Create cancellation notification event (only on success)
-        const notificationEvent = {
-          event_type: 'reservation_cancelled',
-          event_source: 'reservation',
-          source_id: reservationId,
-          template_data: {
-            guest_name: reservation.guest_name,
-            reservation_number: reservation.reservation_number,
-            check_in_date: reservation.check_in_date,
-            cancellation_reason: reason || 'Reservation cancelled'
-          },
-          recipients: [
-            {
-              type: 'guest',
-              email: reservation.guest_email,
-              phone: reservation.guest_phone
-            },
-            {
-              type: 'staff',
-              role: 'FRONT_DESK'
-            }
-          ],
-          channels: ['sms', 'email'],
-          priority: 'medium'
-        };
-
-        // Create the notification event
-        await supabase
-          .from('notification_events')
-          .insert({
-            tenant_id: user.user_metadata?.tenant_id,
-            ...notificationEvent,
-            status: 'pending',
-            scheduled_at: new Date().toISOString(),
-            metadata: {}
-          });
-
-        return data;
-      }, 'cancelReservation');
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });

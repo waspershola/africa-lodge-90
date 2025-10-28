@@ -15,15 +15,8 @@ import EnhancedReservationDetails from '@/components/owner/reservations/Enhanced
 import { useReservations } from '@/hooks/useRooms';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { LoadingState } from '@/components/common/LoadingState';
-import { useVisibilityRehydrate } from '@/hooks/useVisibilityRehydrate';
 
 export default function ReservationsPage() {
-  // Phase 2: Rehydrate on mount for fresh data after tab sleep
-  useVisibilityRehydrate({ 
-    onMount: true, 
-    queryKeys: ['reservations', 'rooms'] 
-  });
-  
   const [view, setView] = useState('calendar');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');

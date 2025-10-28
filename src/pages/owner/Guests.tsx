@@ -20,15 +20,8 @@ import NewGuestDialog from '@/components/owner/guests/NewGuestDialog';
 import CorporateAccounts from '@/components/owner/guests/CorporateAccounts';
 import GuestAnalytics from '@/components/owner/guests/GuestAnalytics';
 import { useGuests } from '@/hooks/useGuests';
-import { useVisibilityRehydrate } from '@/hooks/useVisibilityRehydrate';
 
 export default function GuestsPage() {
-  // Phase 2: Rehydrate on mount for fresh data after tab sleep
-  useVisibilityRehydrate({ 
-    onMount: true, 
-    queryKeys: ['guests', 'corporate-accounts'] 
-  });
-  
   const [activeTab, setActiveTab] = useState('directory');
   const [selectedGuest, setSelectedGuest] = useState<any>(null);
   const [showNewGuestDialog, setShowNewGuestDialog] = useState(false);

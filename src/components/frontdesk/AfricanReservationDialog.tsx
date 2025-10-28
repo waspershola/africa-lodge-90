@@ -15,7 +15,6 @@ import { z } from "zod";
 import { CalendarDays, Users, CreditCard, AlertCircle, Clock, Shield, Phone, Mail } from "lucide-react";
 import { SoftHoldReservationData, useCreateSoftHoldReservation, useRoomTypeInventory } from "@/hooks/useAfricanReservationSystem";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useVisibilityRehydrate } from "@/hooks/useVisibilityRehydrate";
 
 const formSchema = z.object({
   guest_name: z.string().min(1, "Guest name is required"),
@@ -47,12 +46,6 @@ export default function AfricanReservationDialog({
   open, 
   onOpenChange 
 }: AfricanReservationDialogProps) {
-  // Phase 2: Listen to parent rehydration events (FrontDeskDashboard handles mount rehydration)
-  useVisibilityRehydrate({ 
-    onMount: false, 
-    queryKeys: ['room-type-inventory', 'reservations'] 
-  });
-  
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const { formatPrice } = useCurrency();

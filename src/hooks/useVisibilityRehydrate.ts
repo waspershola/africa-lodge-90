@@ -1,86 +1,57 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { rehydrateAll } from '@/lib/rehydration-manager';
+import { reinitializeSupabaseClient } from '@/integrations/supabase/client';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 /**
- * Phase 2: Visibility Rehydration Hook
+ * Phase 8.1: Visibility Rehydration Hook
  * 
- * Ensures data freshness when component mounts or receives rehydration events.
- * Use this in critical pages/components like:
- * - FrontDesk Dashboard
- * - Checkout Dialog
- * - Guest Search
- * - Reservation Management
- * - Folio Management
+ * Ensures data freshness when component mounts or tab becomes visible
+ * Use this in critical pages like FrontDesk, GuestSearch, Folio
  * 
- * @param options.onMount - Run rehydration when component mounts (default: true)
- * @param options.queryKeys - Specific query keys to invalidate (optional)
+ * @param queryKeys - Array of query keys to invalidate on rehydration
  */
-export function useVisibilityRehydrate(options?: { 
-  onMount?: boolean; 
-  queryKeys?: string[] 
-}) {
-  const { onMount = true, queryKeys = [] } = options || {};
+export function useVisibilityRehydrate(queryKeys: string[] = []) {
   const queryClient = useQueryClient();
-  const hasRehydratedRef = useRef(false);
-  
+
   useEffect(() => {
-    const handleRehydrate = async () => {
-      // Prevent multiple rehydrations on mount
-      if (hasRehydratedRef.current) {
-        return;
-      }
+    let busy = false;
+
+    const rehydrate = async () => {
+      if (busy || document.visibilityState !== 'visible') return;
+      busy = true;
       
       try {
-        console.log('[useVisibilityRehydrate] Starting component rehydration');
-        hasRehydratedRef.current = true;
+        console.log('[VisibilityRehydrate] Revalidating session...');
+        await validateAndRefreshToken();
+        await reinitializeSupabaseClient();
         
-        // Use global rehydration manager
-        await rehydrateAll();
-        
-        // Additionally invalidate specific query keys if provided
+        // Invalidate specified queries
         if (queryKeys.length > 0) {
           await Promise.all(
-            queryKeys.map(key => 
-              queryClient.invalidateQueries({ queryKey: [key] })
-            )
+            queryKeys.map(key => queryClient.invalidateQueries({ queryKey: [key] }))
           );
-          console.log('[useVisibilityRehydrate] Invalidated specific keys:', queryKeys);
         }
         
-      } catch (error) {
-        console.warn('[useVisibilityRehydrate] Rehydration failed:', error);
-        hasRehydratedRef.current = false; // Allow retry on error
+        console.log('[VisibilityRehydrate] Complete');
+      } catch (err) {
+        console.warn('[VisibilityRehydrate] Failed:', err);
+      } finally {
+        busy = false;
       }
     };
-    
-    // Run on mount if enabled - defer to next tick to avoid render-phase updates
-    let timeoutId: NodeJS.Timeout | undefined;
-    if (onMount) {
-      // Use setTimeout to ensure component has fully mounted before rehydration
-      timeoutId = setTimeout(() => {
-        handleRehydrate();
-      }, 100);
-    }
-    
-    // Listen to global app-rehydrated event
-    const handleAppRehydrated = () => {
-      console.log('[useVisibilityRehydrate] App rehydrated, component updated');
-      
-      // Refetch specific queries if provided
-      if (queryKeys.length > 0) {
-        queryKeys.forEach(key => {
-          queryClient.refetchQueries({ queryKey: [key] });
-        });
-      }
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') rehydrate();
     };
+
+    document.addEventListener('visibilitychange', handleVisibility);
     
-    window.addEventListener('app-rehydrated', handleAppRehydrated);
-    
+    // Run on mount
+    rehydrate();
+
     return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      window.removeEventListener('app-rehydrated', handleAppRehydrated);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only on mount - queryKeys and onMount are intentionally not in deps
+  }, [queryKeys.join(','), queryClient]);
 }

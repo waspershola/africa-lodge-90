@@ -53,73 +53,86 @@ export function useAtomicCheckoutV3() {
     ]);
 
     try {
-      // Phase R.9: Validate token before critical operation
-      await validateAndRefreshToken();
+      // Phase 2: Use protected mutation wrapper for token validation + client reinitialization
+      const { protectedMutate } = await import('@/lib/mutation-utils');
       
-      // Pre-checkout validation: Check folio balance
-      const { data: reservation, error: resError } = await supabase
-        .from('reservations')
-        .select(`
-          id,
-          status,
-          total_amount,
-          folios!inner (
+      const { data, error: rpcError } = await protectedMutate(async () => {
+        // Pre-checkout validation: Check folio balance
+        const { data: reservation, error: resError } = await supabase
+          .from('reservations')
+          .select(`
             id,
-            total_charges,
-            total_payments,
-            balance
-          )
-        `)
-        .eq('id', params.reservationId)
-        .single();
+            status,
+            total_amount,
+            folios!inner (
+              id,
+              total_charges,
+              total_payments,
+              balance
+            )
+          `)
+          .eq('id', params.reservationId)
+          .single();
 
-      if (resError || !reservation) {
-        throw new Error(`Reservation not found: ${resError?.message || 'Unknown error'}`);
-      }
+        if (resError || !reservation) {
+          throw new Error(`Reservation not found: ${resError?.message || 'Unknown error'}`);
+        }
 
-      const folio = reservation.folios[0];
-      if (!folio) {
-        throw new Error('No folio found for this reservation');
-      }
+        const folio = reservation.folios[0];
+        if (!folio) {
+          throw new Error('No folio found for this reservation');
+        }
 
-      console.log('[Atomic Checkout V3] Folio balance check:', {
-        folioBalance: folio.balance,
-        totalCharges: folio.total_charges,
-        totalPayments: folio.total_payments
-      });
+        console.log('[Atomic Checkout V3] Folio balance check:', {
+          folioBalance: folio.balance,
+          totalCharges: folio.total_charges,
+          totalPayments: folio.total_payments
+        });
 
-      // Allow checkout if balance is 0 or nearly 0 (within ₦0.01 tolerance)
-      // Only block if balance is POSITIVE (unpaid) - negative means overpaid/credit
-      const balanceTolerance = 0.01;
-      if (folio.balance > balanceTolerance) {
-        const message = `Cannot checkout: Outstanding balance of ₦${folio.balance.toFixed(2)}. Please settle all charges before checkout.`;
-        console.error('[Atomic Checkout V3] Pre-checkout validation failed:', message);
-        
+        // Allow checkout if balance is 0 or nearly 0 (within ₦0.01 tolerance)
+        // Only block if balance is POSITIVE (unpaid) - negative means overpaid/credit
+        const balanceTolerance = 0.01;
+        if (folio.balance > balanceTolerance) {
+          const message = `Cannot checkout: Outstanding balance of ₦${folio.balance.toFixed(2)}. Please settle all charges before checkout.`;
+          console.error('[Atomic Checkout V3] Pre-checkout validation failed:', message);
+          
+          optimisticManager.rollback(opId);
+          setError(message);
+          setIsLoading(false);
+          
+          return {
+            data: null,
+            error: { message } as any
+          };
+        }
+
+        // Log if guest has credit balance (overpayment)
+        if (folio.balance < -balanceTolerance) {
+          console.log('[Atomic Checkout V3] ✅ Checkout allowed with credit balance:', folio.balance);
+        } else {
+          console.log('[Atomic Checkout V3] ✅ Pre-checkout validation passed!');
+        }
+
+        // Call atomic checkout database function
+        return await supabase.rpc('atomic_checkout_v3', {
+          p_tenant_id: tenant.tenant_id,
+          p_reservation_id: params.reservationId
+        });
+      }, 'atomicCheckoutV3');
+
+      // Handle validation failure (balance check)
+      if (rpcError?.message) {
         optimisticManager.rollback(opId);
-        setError(message);
+        setError(rpcError.message);
         setIsLoading(false);
         
         return {
           success: false,
           folio_id: null,
           room_id: null,
-          message,
-          final_balance: folio.balance
+          message: rpcError.message
         };
       }
-
-      // Log if guest has credit balance (overpayment)
-      if (folio.balance < -balanceTolerance) {
-        console.log('[Atomic Checkout V3] ✅ Checkout allowed with credit balance:', folio.balance);
-      } else {
-        console.log('[Atomic Checkout V3] ✅ Pre-checkout validation passed!');
-      }
-
-      // Call atomic checkout database function
-      const { data, error: rpcError } = await supabase.rpc('atomic_checkout_v3', {
-        p_tenant_id: tenant.tenant_id,
-        p_reservation_id: params.reservationId
-      });
 
       if (rpcError) {
         console.error('[Atomic Checkout V3] RPC error:', rpcError);

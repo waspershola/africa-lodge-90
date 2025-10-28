@@ -158,9 +158,9 @@
 - [x] `src/components/frontdesk/AfricanReservationDialog.tsx` - Add `useVisibilityRehydrate` ✅
 
 ### Priority 2: Apply to Remaining Mutations
-- [x] `useAtomicCheckout.ts` - Uses existing `validateAndRefreshToken()` (can be enhanced later)
-- [x] `useAtomicCheckoutV3.ts` - Uses existing `validateAndRefreshToken()` (can be enhanced later)
-- [x] `useCorporateAccounts.ts` - Wrap mutations ✅
+- [x] `useAtomicCheckout.ts` - Wrapped with `protectedMutate` ✅
+- [x] `useAtomicCheckoutV3.ts` - Wrapped with `protectedMutate` ✅
+- [x] `useCorporateAccounts.ts` - Wrapped mutations ✅
 - N/A `useContactManagement.ts` - File does not exist
 - N/A `useGuestHistoryNotes.ts` - File does not exist
 - N/A `useRoomManagement.ts` - File does not exist

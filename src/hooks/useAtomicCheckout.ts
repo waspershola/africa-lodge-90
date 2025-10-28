@@ -45,19 +45,21 @@ export function useAtomicCheckout() {
     });
 
     try {
-      // Phase R.9: Validate token before critical RPC operation
-      await validateAndRefreshToken();
+      // Phase 2: Use protected mutation wrapper for token validation + client reinitialization
+      const { protectedMutate } = await import('@/lib/mutation-utils');
       
-      // Call atomic checkout database function with timeout
-      const checkoutPromise = supabase.rpc('atomic_checkout', {
-        p_tenant_id: tenant.tenant_id,
-        p_reservation_id: params.reservationId
-      });
+      const { data, error: rpcError } = await protectedMutate(async () => {
+        // Call atomic checkout database function with timeout
+        const checkoutPromise = supabase.rpc('atomic_checkout', {
+          p_tenant_id: tenant.tenant_id,
+          p_reservation_id: params.reservationId
+        });
 
-      const { data, error: rpcError } = await Promise.race([
-        checkoutPromise,
-        timeoutPromise
-      ]);
+        return await Promise.race([
+          checkoutPromise,
+          timeoutPromise
+        ]);
+      }, 'atomicCheckout');
 
       if (rpcError) {
         console.error('[Atomic Checkout] RPC error:', rpcError);

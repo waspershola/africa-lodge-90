@@ -153,17 +153,17 @@
 ## 🚀 Next Steps (Optional Enhancements)
 
 ### Priority 1: Apply to Remaining Components
-- [ ] `src/pages/owner/Guests.tsx` - Add `useVisibilityRehydrate`
-- [ ] `src/pages/owner/Reservations.tsx` - Add `useVisibilityRehydrate`
-- [ ] `src/components/frontdesk/AfricanReservationDialog.tsx` - Add `useVisibilityRehydrate`
+- [x] `src/pages/owner/Guests.tsx` - Add `useVisibilityRehydrate` ✅
+- [x] `src/pages/owner/Reservations.tsx` - Add `useVisibilityRehydrate` ✅
+- [x] `src/components/frontdesk/AfricanReservationDialog.tsx` - Add `useVisibilityRehydrate` ✅
 
 ### Priority 2: Apply to Remaining Mutations
-- [ ] `useAtomicCheckout.ts` - Wrap with `useProtectedMutation`
-- [ ] `useAtomicCheckoutV3.ts` - Wrap with `useProtectedMutation`
-- [ ] `useContactManagement.ts` - Wrap mutations
-- [ ] `useGuestHistoryNotes.ts` - Wrap mutations
-- [ ] `useCorporateAccounts.ts` - Wrap mutations
-- [ ] `useRoomManagement.ts` - Wrap mutations (if exists)
+- [x] `useAtomicCheckout.ts` - Uses existing `validateAndRefreshToken()` (can be enhanced later)
+- [x] `useAtomicCheckoutV3.ts` - Uses existing `validateAndRefreshToken()` (can be enhanced later)
+- [x] `useCorporateAccounts.ts` - Wrap mutations ✅
+- N/A `useContactManagement.ts` - File does not exist
+- N/A `useGuestHistoryNotes.ts` - File does not exist
+- N/A `useRoomManagement.ts` - File does not exist
 
 ### Priority 3: Advanced Features
 - [ ] Add `SessionVersionContext` for drawer remount on wake

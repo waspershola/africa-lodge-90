@@ -83,35 +83,37 @@ export const useCorporateAccount = (accountId: string) => {
   });
 };
 
-// Create corporate account mutation
+// Create corporate account mutation - Phase 2: Protected with token validation
 export const useCreateCorporateAccount = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (accountData: CreateCorporateAccountData) => {
-      // Phase R.9: Validate token before critical operation
-      await validateAndRefreshToken();
+      // Import protectedMutate at runtime to avoid circular dependencies
+      const { protectedMutate } = await import('@/lib/mutation-utils');
       
-      // Get current user to add tenant_id
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) throw new Error('Not authenticated');
+      return protectedMutate(async () => {
+        // Get current user to add tenant_id
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase
-        .from('corporate_accounts')
-        .insert({
-          ...accountData,
-          tenant_id: user.user_metadata?.tenant_id,
-          payment_terms: accountData.payment_terms || 30,
-          credit_limit: accountData.credit_limit || 0,
-          current_balance: 0,
-          status: 'active'
-        })
-        .select()
-        .single();
+        const { data, error } = await supabase
+          .from('corporate_accounts')
+          .insert({
+            ...accountData,
+            tenant_id: user.user_metadata?.tenant_id,
+            payment_terms: accountData.payment_terms || 30,
+            credit_limit: accountData.credit_limit || 0,
+            current_balance: 0,
+            status: 'active'
+          })
+          .select()
+          .single();
 
-      if (error) throw error;
-      return data;
+        if (error) throw error;
+        return data;
+      }, 'createCorporateAccount');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['corporate-accounts'] });
@@ -131,23 +133,28 @@ export const useCreateCorporateAccount = () => {
   });
 };
 
-// Update corporate account mutation
+// Update corporate account mutation - Phase 2: Protected with token validation
 export const useUpdateCorporateAccount = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (accountData: UpdateCorporateAccountData) => {
-      const { id, ...updateData } = accountData;
-      const { data, error } = await supabase
-        .from('corporate_accounts')
-        .update({ ...updateData, updated_at: new Date().toISOString() })
-        .eq('id', id)
-        .select()
-        .single();
+      // Import protectedMutate at runtime to avoid circular dependencies
+      const { protectedMutate } = await import('@/lib/mutation-utils');
+      
+      return protectedMutate(async () => {
+        const { id, ...updateData } = accountData;
+        const { data, error } = await supabase
+          .from('corporate_accounts')
+          .update({ ...updateData, updated_at: new Date().toISOString() })
+          .eq('id', id)
+          .select()
+          .single();
 
-      if (error) throw error;
-      return data;
+        if (error) throw error;
+        return data;
+      }, 'updateCorporateAccount');
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['corporate-accounts'] });
@@ -168,19 +175,24 @@ export const useUpdateCorporateAccount = () => {
   });
 };
 
-// Delete corporate account mutation
+// Delete corporate account mutation - Phase 2: Protected with token validation
 export const useDeleteCorporateAccount = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (accountId: string) => {
-      const { error } = await supabase
-        .from('corporate_accounts')
-        .delete()
-        .eq('id', accountId);
+      // Import protectedMutate at runtime to avoid circular dependencies
+      const { protectedMutate } = await import('@/lib/mutation-utils');
+      
+      return protectedMutate(async () => {
+        const { error } = await supabase
+          .from('corporate_accounts')
+          .delete()
+          .eq('id', accountId);
 
-      if (error) throw error;
+        if (error) throw error;
+      }, 'deleteCorporateAccount');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['corporate-accounts'] });

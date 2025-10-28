@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { toast } from 'sonner';
@@ -18,6 +18,9 @@ export function useSecurityValidation() {
     sessionValid: true
   });
   
+  const isValidatingRef = useRef(false);
+  const lastUserIdRef = useRef<string | null>(null);
+  
   // Safely access auth context
   let auth;
   try {
@@ -31,8 +34,21 @@ export function useSecurityValidation() {
 
   useEffect(() => {
     if (!user || !session) return;
+    
+    // Prevent infinite loops: skip if already validating or user hasn't changed
+    if (isValidatingRef.current || lastUserIdRef.current === user.id) {
+      return;
+    }
 
     const validateSecurity = async () => {
+      if (isValidatingRef.current) {
+        console.log('[SECURITY VALIDATION] Skipping - validation already in progress');
+        return;
+      }
+      
+      isValidatingRef.current = true;
+      lastUserIdRef.current = user.id;
+      
       const violations: string[] = [];
       let userDbRecord = null;
       let sessionValid = true;
@@ -162,6 +178,8 @@ export function useSecurityValidation() {
           userDbRecord: null,
           sessionValid: false
         });
+      } finally {
+        isValidatingRef.current = false;
       }
     };
 
@@ -169,8 +187,12 @@ export function useSecurityValidation() {
     validateSecurity();
     const interval = setInterval(validateSecurity, 30000);
 
-    return () => clearInterval(interval);
-  }, [user, session, logout]);
+    return () => {
+      clearInterval(interval);
+      isValidatingRef.current = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, session?.expires_at]);
 
   return validation;
 }

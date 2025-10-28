@@ -33,7 +33,28 @@ export function useNetworkStatus(): UseNetworkStatusReturn {
     errorMessage: null
   });
 
-  // Update online status from browser
+  // Phase 8: Listen for status updates from TabRehydrationManager
+  useEffect(() => {
+    const handleStatusUpdate = (event: CustomEvent) => {
+      const { status, message } = event.detail;
+      console.log('[NetworkStatus] Received update from TabRehydration:', status);
+      
+      setState(prev => ({
+        ...prev,
+        status,
+        errorMessage: message || null,
+        lastSyncAt: status === 'online' ? new Date() : prev.lastSyncAt
+      }));
+    };
+
+    window.addEventListener('network-status-update', handleStatusUpdate as EventListener);
+    return () => {
+      window.removeEventListener('network-status-update', handleStatusUpdate as EventListener);
+    };
+  }, []);
+
+  // Update online status from browser - SIMPLIFIED (Phase 8)
+  // Removed visibility handler - TabRehydrationManager handles reconnection
   useEffect(() => {
     const handleOnline = () => {
       console.log('[Network] Browser online');
@@ -63,62 +84,12 @@ export function useNetworkStatus(): UseNetworkStatusReturn {
       }));
     };
 
-    // Phase R.5: Check connection health on tab activation
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible' && navigator.onLine) {
-        console.log('[NetworkStatus] Tab visible - validating connection');
-        
-        setState(prev => ({
-          ...prev,
-          status: 'syncing'
-        }));
-        
-        // Test connection with lightweight query
-        try {
-          const { supabase } = await import('@/integrations/supabase/client');
-          const { error } = await supabase
-            .from('rooms')
-            .select('count', { count: 'exact', head: true })
-            .limit(0);
-          
-          if (error) {
-            console.error('[NetworkStatus] Connection test failed:', error);
-            setState(prev => ({
-              ...prev,
-              status: 'error',
-              errorMessage: 'Connection failed - retrying...'
-            }));
-            
-            // Retry after 2 seconds
-            setTimeout(handleVisibilityChange, 2000);
-          } else {
-            console.log('[NetworkStatus] Connection healthy');
-            setState(prev => ({
-              ...prev,
-              status: 'online',
-              lastSyncAt: new Date(),
-              errorMessage: null
-            }));
-          }
-        } catch (err) {
-          console.error('[NetworkStatus] Unexpected error during connection test:', err);
-          setState(prev => ({
-            ...prev,
-            status: 'error',
-            errorMessage: 'Connection test failed'
-          }));
-        }
-      }
-    };
-
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 

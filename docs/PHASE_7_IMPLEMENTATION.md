@@ -1,10 +1,4 @@
-# Phase 7: Client-Level Token Hygiene - Implementation Complete ✅
-
-**Status**: ✅ **FULLY IMPLEMENTED** - All token refresh and mutation protection features active
-
-## Overview
-
-Phase 7 addresses the critical issue where interactive operations (guest search, folio operations, room assignments) would fail after tab backgrounding, even though the UI rendered correctly. The root cause was Supabase client caching stale authentication tokens, causing all database operations to fail until page reload.
+# Phase 7: Client-Level Token Hygiene - Implementation Complete
 
 ## What Was Implemented
 
@@ -22,58 +16,43 @@ Phase 7 addresses the critical issue where interactive operations (guest search,
 - ✅ Waits for critical queries to refetch before marking ready
 - ✅ Prevents race conditions with `isRehydrating` flag
 
-### Phase 7.3: Protected Mutation Wrapper (ENHANCED)
-**File**: `src/lib/mutation-utils.ts`
+### Phase 7.3: Protected Mutation Wrapper
+**File**: `src/lib/mutation-utils.ts` (NEW)
 - ✅ Created `protectedMutate()` wrapper
-- ✅ **CRITICAL**: Now calls `reinitializeSupabaseClient()` before every mutation
-- ✅ Validates token before mutation (refreshes if <5 minutes to expiry)
-- ✅ Centralized error handling with enhanced auth error detection
-- ✅ Detects JWT errors, expired tokens, PGRST301, and 401 status codes
-- ✅ User-friendly toasts with actionable "Login" buttons
-- ✅ Comprehensive logging for debugging
+- ✅ Validates token before mutation
+- ✅ Reinitializes client to sync auth state
+- ✅ Centralized error handling
+- ✅ Automatic auth-error detection with login prompts
 
-### Phase 7.4: Mutation Hooks Wrapped with protectedMutate
-All critical mutation hooks now guarantee fresh tokens:
+### Phase 7.4: Updated Mutation Sites
+All critical operations now use `protectedMutate()`:
+
+**Room Operations**:
+- ✅ `src/components/frontdesk/RoomAssignmentDialog.tsx` - Room assignment
+- ✅ `src/components/frontdesk/RoomActionDrawer.tsx` - Room notifications
 
 **Reservation Operations**:
-- ✅ `src/hooks/useReservations.ts` - `useUpdateReservation` wrapped
-- ✅ `src/hooks/useReservations.ts` - `useCancelReservation` (inline) wrapped
-- ✅ `src/hooks/useAfricanReservationSystem.ts` - `useHardAssignReservation` wrapped
-- ✅ `src/hooks/useCancelReservation.ts` - Cancellation RPC wrapped
+- ✅ `src/components/frontdesk/CancelIncompleteReservationDialog.tsx` - Cascading deletions
+- ✅ `src/components/owner/reservations/ReservationContextMenu.tsx` - Email confirmations
+- ✅ `src/components/owner/reservations/PaymentReminderSystem.tsx` - Payment reminders
 
-**Components Using Protected Mutations**:
-- ✅ Room assignment dialogs
-- ✅ Reservation update/cancel dialogs
-- ✅ Check-in/check-out operations
-- ✅ Folio operations
+**Financial Operations**:
+- ✅ `src/hooks/useShiftSessions.ts` - Shift start/end
+- ✅ `src/hooks/useAddons.ts` - Addon purchases, SMS credit top-ups
 
-### Phase 7.5: Visibility Rehydration Hook (NEW)
-**File**: `src/hooks/useVisibilityRehydrate.ts` (NEW)
-- ✅ Listens to `visibilitychange` events
-- ✅ Validates and refreshes token on tab return
-- ✅ Reinitializes Supabase client
-- ✅ Invalidates specified query keys to force refetch
-- ✅ Runs on component mount and when tab becomes visible
-- ✅ Prevents race conditions with busy flag
-
-**Applied To**:
-- ✅ `src/components/FrontDeskDashboard.tsx` - invalidates: front-desk, reservations, rooms, guests, folio
-- ✅ `src/pages/owner/Guests.tsx` - invalidates: guests, reservations, folios
-- ✅ `src/pages/owner/Reservations.tsx` - invalidates: reservations, rooms, guests, folios
-
-### Phase 7.6: Network Status Indicator
-**File**: `src/components/ui/NetworkStatusIndicator.tsx`
+### Phase 7.5: Network Status Indicator
+**File**: `src/components/ui/NetworkStatusIndicator.tsx` (NEW)
 - ✅ Shows "Refreshing session..." during rehydration
 - ✅ Shows offline status when no connection
 - ✅ Auto-hides when online and stable
 - ✅ Positioned bottom-right with backdrop blur
 
-### Phase 7.7: Enhanced Logging
+### Phase 7.6: Enhanced Logging
 **File**: `src/lib/auth-token-validator.ts`
-**File**: `src/integrations/supabase/client.ts`
-- ✅ Enhanced `reinitializeSupabaseClient()` with detailed session logging
-- ✅ Logs user ID, token expiry timestamp, time until expiry (minutes)
-- ✅ Logs session synchronization status
+- ✅ Added structured logging with timestamps
+- ✅ Logs duration of validation operations
+- ✅ Logs token refresh decisions
+- ✅ Better debugging visibility
 
 ---
 
@@ -226,64 +205,39 @@ window.location.reload();
 
 ## Next Steps (Optional Enhancements)
 
-### Future: Query-Level Protection
+### Phase 7.7: Query-Level Protection (Future)
 - Wrap critical queries with pre-validation
 - Implement retry logic for failed queries
 - Add query-level error boundaries
 
-### Future: Offline Queue
+### Phase 7.8: Offline Queue (Future)
 - Queue mutations when offline
 - Auto-replay when connection restored
 - Optimistic UI updates
 
-### Future: Advanced Monitoring
+### Phase 7.9: Advanced Monitoring (Future)
 - Track rehydration success rate
 - Monitor token refresh failures
 - Alert on repeated auth errors
 
 ---
 
-## Files Modified/Created
+## Files Modified
 
-### Core Utilities (Enhanced)
-1. ✅ `src/lib/mutation-utils.ts` - Enhanced `protectedMutate()` with `reinitializeSupabaseClient()`
-2. ✅ `src/integrations/supabase/client.ts` - Enhanced logging in `reinitializeSupabaseClient()`
-3. ✅ `src/lib/auth-token-validator.ts` - Already had good logging (from Phase R.9)
-
-### Hooks (New + Wrapped)
-4. ✅ `src/hooks/useVisibilityRehydrate.ts` - **NEW** hook for tab visibility rehydration
-5. ✅ `src/hooks/useReservations.ts` - Wrapped `useUpdateReservation` and `useCancelReservation`
-6. ✅ `src/hooks/useAfricanReservationSystem.ts` - Wrapped `useHardAssignReservation`
-7. ✅ `src/hooks/useCancelReservation.ts` - Wrapped cancellation RPC with `protectedMutate()`
-8. ✅ `src/hooks/useShiftSessions.ts` - Use wrapper (Phase 7.4)
-9. ✅ `src/hooks/useAddons.ts` - Use wrapper (Phase 7.4)
-
-### Components & Pages (Rehydration Added)
-10. ✅ `src/components/FrontDeskDashboard.tsx` - Added `useVisibilityRehydrate(['front-desk', 'reservations', 'rooms', 'guests', 'folio'])`
-11. ✅ `src/pages/owner/Guests.tsx` - Added `useVisibilityRehydrate(['guests', 'reservations', 'folios'])`
-12. ✅ `src/pages/owner/Reservations.tsx` - Added `useVisibilityRehydrate(['reservations', 'rooms', 'guests', 'folios'])`
-
-### Other Components (Phase 7.4)
-13. ✅ `src/components/frontdesk/RoomAssignmentDialog.tsx` - Use wrapper
-14. ✅ `src/components/frontdesk/CancelIncompleteReservationDialog.tsx` - Use wrapper
-15. ✅ `src/components/frontdesk/RoomActionDrawer.tsx` - Use wrapper
-16. ✅ `src/components/owner/reservations/ReservationContextMenu.tsx` - Use wrapper
-17. ✅ `src/components/owner/reservations/PaymentReminderSystem.tsx` - Use wrapper
-
-### Infrastructure (Phase 7.2)
-18. ✅ `src/App.tsx` - Enhanced tab rehydration with network reconnection
-19. ✅ `src/components/ui/NetworkStatusIndicator.tsx` - Visual feedback for session refresh
-
-### Documentation
-20. ✅ `docs/PHASE_7_TOKEN_REFRESH_FIX.md` - Comprehensive technical documentation
-21. ✅ `docs/PHASE_7_COMPLETION_SUMMARY.md` - Implementation summary with testing guide
-22. ✅ `docs/PHASE_7_IMPLEMENTATION.md` - This file (updated)
+1. `src/integrations/supabase/client.ts` - Added reinit function
+2. `src/lib/mutation-utils.ts` - NEW: Protected mutation wrapper
+3. `src/lib/auth-token-validator.ts` - Enhanced logging
+4. `src/App.tsx` - Enhanced tab rehydration
+5. `src/components/ui/NetworkStatusIndicator.tsx` - NEW: Status indicator
+6. `src/components/frontdesk/RoomAssignmentDialog.tsx` - Use wrapper
+7. `src/components/frontdesk/CancelIncompleteReservationDialog.tsx` - Use wrapper
+8. `src/components/frontdesk/RoomActionDrawer.tsx` - Use wrapper
+9. `src/components/owner/reservations/ReservationContextMenu.tsx` - Use wrapper
+10. `src/components/owner/reservations/PaymentReminderSystem.tsx` - Use wrapper
+11. `src/hooks/useShiftSessions.ts` - Use wrapper
+12. `src/hooks/useAddons.ts` - Use wrapper
 
 ---
 
-**Implementation Date**: Phase 7 Complete (2025-10-28)
-**Status**: ✅ **FULLY IMPLEMENTED** - All Critical Mutations Protected
-**Related Phases**: 
-- Phase 8 (Infinite Sync Loop Fix)
-- Phase R.8 (Initial Authenticated Mutation Hook)
-- Phase R.9 (Token Validation Helper)
+**Implementation Date**: 2025-10-27  
+**Status**: ✅ Complete and Ready for Testing

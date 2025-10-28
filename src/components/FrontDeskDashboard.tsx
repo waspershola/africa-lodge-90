@@ -72,7 +72,6 @@ import { useFrontDeskDataOptimized } from "@/hooks/data/useFrontDeskDataOptimize
 import { useQueryClient } from "@tanstack/react-query";
 import { useRooms } from "@/hooks/useRooms";
 import { useToast } from "@/hooks/use-toast";
-import { useVisibilityRehydrate } from "@/hooks/useVisibilityRehydrate";
 
 const FrontDeskDashboard = () => {
   const { data: tenantInfo } = useTenantInfo();
@@ -82,9 +81,6 @@ const FrontDeskDashboard = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: roomsData } = useRooms();
-  
-  // Phase 8.1: Ensure fresh data on tab visibility
-  useVisibilityRehydrate(['front-desk', 'reservations', 'rooms', 'guests', 'folio']);
   
   // Consolidated real-time data from unified hook (OPTIMIZED)
   const {

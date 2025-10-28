@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { protectedMutate } from '@/lib/mutation-utils';
+import { validateAndRefreshToken } from '@/lib/auth-token-validator';
 
 export interface CancelReservationParams {
   reservationId: string;
@@ -42,34 +42,32 @@ export function useCancelReservation() {
     });
 
     try {
-      // Phase 7: Use protectedMutate to ensure fresh token and client
-      const result = await protectedMutate(async () => {
-        const { data, error: rpcError } = await supabase.rpc('cancel_reservation_atomic', {
-          p_tenant_id: tenant.tenant_id,
-          p_reservation_id: params.reservationId,
-          p_cancelled_by: user?.id || null,
-          p_reason: params.reason || null
-        });
+      // Phase R.9: Validate token before critical RPC operation
+      await validateAndRefreshToken();
+      
+      const { data, error: rpcError } = await supabase.rpc('cancel_reservation_atomic', {
+        p_tenant_id: tenant.tenant_id,
+        p_reservation_id: params.reservationId,
+        p_cancelled_by: user?.id || null,
+        p_reason: params.reason || null
+      });
 
-        if (rpcError) {
-          console.error('[Cancel Reservation] RPC error:', rpcError);
-          throw new Error(rpcError.message || 'Cancellation failed');
-        }
+      if (rpcError) {
+        console.error('[Cancel Reservation] RPC error:', rpcError);
+        throw new Error(rpcError.message || 'Cancellation failed');
+      }
 
-        if (!data || (Array.isArray(data) && data.length === 0)) {
-          throw new Error('No response from cancellation function');
-        }
+      if (!data || (Array.isArray(data) && data.length === 0)) {
+        throw new Error('No response from cancellation function');
+      }
 
-        const result = (Array.isArray(data) ? data[0] : data) as unknown as CancelReservationResult;
-        
-        const duration = Date.now() - startTime;
-        console.log('[Cancel Reservation] Result:', {
-          ...result,
-          duration: `${duration}ms`
-        });
-
-        return result;
-      }, 'cancelReservation');
+      const result = (Array.isArray(data) ? data[0] : data) as unknown as CancelReservationResult;
+      
+      const duration = Date.now() - startTime;
+      console.log('[Cancel Reservation] Result:', {
+        ...result,
+        duration: `${duration}ms`
+      });
 
       if (result.success) {
         console.log('[Cancel Reservation] Success - invalidating queries');

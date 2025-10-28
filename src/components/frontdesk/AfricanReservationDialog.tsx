@@ -47,9 +47,9 @@ export default function AfricanReservationDialog({
   open, 
   onOpenChange 
 }: AfricanReservationDialogProps) {
-  // Phase 2: Rehydrate on mount for fresh data after tab sleep
+  // Phase 2: Listen to parent rehydration events (FrontDeskDashboard handles mount rehydration)
   useVisibilityRehydrate({ 
-    onMount: true, 
+    onMount: false, 
     queryKeys: ['room-type-inventory', 'reservations'] 
   });
   

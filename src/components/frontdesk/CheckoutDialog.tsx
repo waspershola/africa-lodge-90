@@ -40,8 +40,8 @@ interface CheckoutDialogProps {
 }
 
 export const CheckoutDialog = ({ open, onOpenChange, roomId, onCheckoutComplete }: CheckoutDialogProps) => {
-  // Phase 2: Rehydrate data when dialog opens to ensure fresh session
-  useVisibilityRehydrate({ onMount: true, queryKeys: ['rooms', 'reservations', 'folios', 'payments'] });
+  // Phase 2: Listen to parent rehydration events (FrontDeskDashboard handles mount rehydration)
+  useVisibilityRehydrate({ onMount: false, queryKeys: ['rooms', 'reservations', 'folios', 'payments'] });
   
   const { checkoutSession, loading, error, fetchGuestBill, processPayment } = useCheckout(roomId);
   const { checkout, isLoading: isCheckingOut } = useAtomicCheckoutV3();

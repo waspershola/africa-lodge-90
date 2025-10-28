@@ -23,14 +23,17 @@ export function useSecurityValidation() {
   
   // Safely access auth context
   let auth;
+  let hasAuthContext = true;
   try {
     auth = useAuth();
   } catch (error) {
-    // Not in auth context, return default validation
-    return validation;
+    // Not in auth context
+    hasAuthContext = false;
   }
   
-  const { user, session, logout } = auth;
+  const user = hasAuthContext && auth ? auth.user : null;
+  const session = hasAuthContext && auth ? auth.session : null;
+  const logout = hasAuthContext && auth ? auth.logout : () => {};
 
   useEffect(() => {
     if (!user || !session) return;

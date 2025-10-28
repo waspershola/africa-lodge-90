@@ -132,10 +132,9 @@ const SentryMonitor = () => {
   return null;
 };
 
-// Phase 8: Enhanced Tab Rehydration with Network Status Updates
+// Phase 2: Enhanced Tab Rehydration with Global Rehydration Manager
 const TabRehydrationManager = () => {
   useEffect(() => {
-    let isRehydrating = false;
     let debounceTimeout: NodeJS.Timeout | null = null;
     
     const handleVisibilityChange = async () => {
@@ -145,9 +144,8 @@ const TabRehydrationManager = () => {
       }
       
       debounceTimeout = setTimeout(async () => {
-        if (document.visibilityState === 'visible' && !isRehydrating) {
-          isRehydrating = true;
-          console.log('[TabRehydration] Tab became visible - full rehydration');
+        if (document.visibilityState === 'visible') {
+          console.log('[TabRehydration] Tab became visible - triggering global rehydration');
           
           // Show syncing indicator
           const syncEvent = new CustomEvent('network-status-update', { 
@@ -156,90 +154,9 @@ const TabRehydrationManager = () => {
           window.dispatchEvent(syncEvent);
         
           try {
-            // 1. Get current session
-            const { data: { session }, error } = await supabase.auth.getSession();
-            
-            if (error || !session) {
-              console.warn('[TabRehydration] Session expired while tab was inactive');
-              toast.error('Your session expired. Please log in again.', {
-                duration: 10000,
-                action: {
-                  label: 'Login',
-                  onClick: () => window.location.href = '/auth'
-                }
-              });
-              return;
-            }
-            
-            // 2. Check token expiry
-            const expiresAt = session.expires_at;
-            if (!expiresAt) {
-              console.warn('[TabRehydration] No expiry timestamp in session');
-              return;
-            }
-
-            const now = Math.floor(Date.now() / 1000);
-            const timeUntilExpiry = expiresAt - now;
-            
-            console.log('[TabRehydration] Token status:', {
-              expiresAt: new Date(expiresAt * 1000).toISOString(),
-              timeUntilExpiry: `${Math.floor(timeUntilExpiry / 60)} minutes`,
-              needsRefresh: timeUntilExpiry < 300
-            });
-
-            // 3. If token expires in <5 minutes OR already expired, force refresh
-            if (timeUntilExpiry < 300) {
-              console.log('[TabRehydration] Token expiring soon - forcing refresh');
-              
-              const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-              
-              if (refreshError) {
-                console.error('[TabRehydration] Token refresh failed:', refreshError);
-                toast.error('Session refresh failed. Please log in again.', {
-                  duration: 10000,
-                  action: {
-                    label: 'Login',
-                    onClick: () => window.location.href = '/auth'
-                  }
-                });
-                return;
-              }
-              
-              console.log('[TabRehydration] Token refreshed successfully');
-            }
-            
-            // 4. **NEW**: Reinitialize Supabase client to sync internal auth state
-            const { reinitializeSupabaseClient } = await import('@/integrations/supabase/client');
-            await reinitializeSupabaseClient();
-            console.log('[TabRehydration] Supabase client reinitialized');
-            
-            // 5. Invalidate stale queries now that we have a fresh client
-            console.log('[TabRehydration] Invalidating stale queries');
-            
-            await queryClient.invalidateQueries({
-              predicate: (query) => {
-                const staleTime = query.state.dataUpdatedAt;
-                const now = Date.now();
-                const isStale = now - staleTime > 60000; // 1 minute
-                
-                const isCritical = ['rooms', 'reservations', 'folios', 'front-desk', 'guests'].some(
-                  key => query.queryKey[0]?.toString().includes(key)
-                );
-                
-                return isStale || isCritical;
-              }
-            });
-            
-            // 6. Wait for critical queries to refetch before allowing interactions
-            await queryClient.refetchQueries({
-              predicate: (query) => {
-                return ['rooms', 'reservations', 'folios', 'front-desk'].some(
-                  key => query.queryKey[0]?.toString().includes(key)
-                );
-              }
-            });
-            
-            console.log('[TabRehydration] Rehydration complete - app ready');
+            // Use centralized rehydration manager
+            const { rehydrateAll } = await import('@/lib/rehydration-manager');
+            await rehydrateAll();
             
             // Update network status to online
             const onlineEvent = new CustomEvent('network-status-update', { 
@@ -259,8 +176,6 @@ const TabRehydrationManager = () => {
             toast.error('Failed to refresh session. Some features may not work.', {
               description: 'Try reloading the page if issues persist.'
             });
-          } finally {
-            isRehydrating = false;
           }
         }
       }, 500); // 500ms debounce

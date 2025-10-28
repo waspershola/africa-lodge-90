@@ -1,57 +1,72 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { reinitializeSupabaseClient } from '@/integrations/supabase/client';
-import { validateAndRefreshToken } from '@/lib/auth-token-validator';
+import { rehydrateAll } from '@/lib/rehydration-manager';
 
 /**
- * Phase 8.1: Visibility Rehydration Hook
+ * Phase 2: Visibility Rehydration Hook
  * 
- * Ensures data freshness when component mounts or tab becomes visible
- * Use this in critical pages like FrontDesk, GuestSearch, Folio
+ * Ensures data freshness when component mounts or receives rehydration events.
+ * Use this in critical pages/components like:
+ * - FrontDesk Dashboard
+ * - Checkout Dialog
+ * - Guest Search
+ * - Reservation Management
+ * - Folio Management
  * 
- * @param queryKeys - Array of query keys to invalidate on rehydration
+ * @param options.onMount - Run rehydration when component mounts (default: true)
+ * @param options.queryKeys - Specific query keys to invalidate (optional)
  */
-export function useVisibilityRehydrate(queryKeys: string[] = []) {
+export function useVisibilityRehydrate(options?: { 
+  onMount?: boolean; 
+  queryKeys?: string[] 
+}) {
+  const { onMount = true, queryKeys = [] } = options || {};
   const queryClient = useQueryClient();
-
+  
   useEffect(() => {
-    let busy = false;
-
-    const rehydrate = async () => {
-      if (busy || document.visibilityState !== 'visible') return;
-      busy = true;
-      
+    const handleRehydrate = async () => {
       try {
-        console.log('[VisibilityRehydrate] Revalidating session...');
-        await validateAndRefreshToken();
-        await reinitializeSupabaseClient();
+        console.log('[useVisibilityRehydrate] Starting component rehydration');
         
-        // Invalidate specified queries
+        // Use global rehydration manager
+        await rehydrateAll();
+        
+        // Additionally invalidate specific query keys if provided
         if (queryKeys.length > 0) {
           await Promise.all(
-            queryKeys.map(key => queryClient.invalidateQueries({ queryKey: [key] }))
+            queryKeys.map(key => 
+              queryClient.invalidateQueries({ queryKey: [key] })
+            )
           );
+          console.log('[useVisibilityRehydrate] Invalidated specific keys:', queryKeys);
         }
         
-        console.log('[VisibilityRehydrate] Complete');
-      } catch (err) {
-        console.warn('[VisibilityRehydrate] Failed:', err);
-      } finally {
-        busy = false;
+      } catch (error) {
+        console.warn('[useVisibilityRehydrate] Rehydration failed:', error);
       }
     };
-
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') rehydrate();
-    };
-
-    document.addEventListener('visibilitychange', handleVisibility);
     
-    // Run on mount
-    rehydrate();
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibility);
+    // Run on mount if enabled
+    if (onMount) {
+      handleRehydrate();
+    }
+    
+    // Listen to global app-rehydrated event
+    const handleAppRehydrated = () => {
+      console.log('[useVisibilityRehydrate] App rehydrated, component updated');
+      
+      // Refetch specific queries if provided
+      if (queryKeys.length > 0) {
+        queryKeys.forEach(key => {
+          queryClient.refetchQueries({ queryKey: [key] });
+        });
+      }
     };
-  }, [queryKeys.join(','), queryClient]);
+    
+    window.addEventListener('app-rehydrated', handleAppRehydrated);
+    
+    return () => {
+      window.removeEventListener('app-rehydrated', handleAppRehydrated);
+    };
+  }, [onMount, queryKeys.join(','), queryClient]);
 }

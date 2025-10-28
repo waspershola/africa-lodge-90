@@ -214,119 +214,121 @@ export const useCheckout = (roomId?: string) => {
 
     setLoading(true);
     try {
-      // Phase R.9: Validate token before critical operation
-      await validateAndRefreshToken();
+      // Phase 2: Use protectedMutate wrapper for token validation + client reinit
+      const { protectedMutate } = await import('@/lib/mutation-utils');
       
-      // PHASE 2: Improved duplicate detection - 5 second window with intelligent checks
-      const checkoutFolioId = checkoutSession.guest_bill.folio_id;
-      const { data: recentPayments } = await supabase
-        .from('payments')
-        .select('*')
-        .eq('folio_id', checkoutFolioId)
-        .eq('processed_by', user.id)
-        .gte('created_at', new Date(Date.now() - 5000).toISOString()) // 5 seconds
-        .eq('status', 'completed');
+      return await protectedMutate(async () => {
+        // PHASE 2: Improved duplicate detection - 5 second window with intelligent checks
+        const checkoutFolioId = checkoutSession.guest_bill.folio_id;
+        const { data: recentPayments } = await supabase
+          .from('payments')
+          .select('*')
+          .eq('folio_id', checkoutFolioId)
+          .eq('processed_by', user.id)
+          .gte('created_at', new Date(Date.now() - 5000).toISOString()) // 5 seconds
+          .eq('status', 'completed');
 
-      if (recentPayments && recentPayments.length > 0) {
-        // Check if amount is within ₦0.01 (true duplicate)
-        const isDuplicate = recentPayments.some(p => 
-          Math.abs(p.amount - amount) < 0.01
-        );
-        
-        if (isDuplicate) {
-          setError('Duplicate payment detected. Please wait 5 seconds before retrying.');
-          setLoading(false);
-          return false;
+        if (recentPayments && recentPayments.length > 0) {
+          // Check if amount is within ₦0.01 (true duplicate)
+          const isDuplicate = recentPayments.some(p => 
+            Math.abs(p.amount - amount) < 0.01
+          );
+          
+          if (isDuplicate) {
+            setError('Duplicate payment detected. Please wait 5 seconds before retrying.');
+            setLoading(false);
+            return false;
+          }
         }
-      }
 
-      // Phase 4: Validate payment data before processing
-      const { validatePaymentData, parsePaymentError } = await import('@/lib/payment-validation');
-      
-      const validation = validatePaymentData({
-        amount,
-        paymentMethod,
-      });
-
-      if (!validation.valid) {
-        setError(validation.error || 'Payment validation failed');
-        return false;
-      }
-
-      console.log('[Checkout Payment] Starting payment processing:', {
-        amount,
-        method: paymentMethod,
-        roomId: checkoutSession.room_id,
-      });
-
-      // Get the reservation
-      const { data: reservations } = await supabase
-        .from('reservations')
-        .select('id')
-        .eq('room_id', checkoutSession.room_id)
-        .eq('status', 'checked_in')
-        .order('check_in_date', { ascending: false })
-        .limit(1);
-
-      const reservation = reservations?.[0];
-      if (!reservation) throw new Error('No active reservation found');
-
-      // Get or create folio
-      const { data: paymentFolioId, error: folioError } = await supabase
-        .rpc('get_or_create_folio', {
-          p_reservation_id: reservation.id,
-          p_tenant_id: user.tenant_id
+        // Phase 4: Validate payment data before processing
+        const { validatePaymentData, parsePaymentError } = await import('@/lib/payment-validation');
+        
+        const validation = validatePaymentData({
+          amount,
+          paymentMethod,
         });
 
-      if (folioError || !paymentFolioId) throw new Error('Failed to get or create folio');
+        if (!validation.valid) {
+          setError(validation.error || 'Payment validation failed');
+          return false;
+        }
 
-      console.log('[Checkout Payment] Creating payment for folio:', paymentFolioId);
-
-      // Map payment method to canonical database value
-      const canonicalMethod = mapToCanonicalPaymentMethod(paymentMethod);
-      console.log('[Checkout Payment] Mapped payment method:', { original: paymentMethod, canonical: canonicalMethod });
-
-      // Create payment record (triggers will auto-update folio balance and validate)
-      const { data: payment, error: paymentError } = await supabase
-        .from('payments')
-        .insert([{
-          folio_id: paymentFolioId,
+        console.log('[Checkout Payment] Starting payment processing:', {
           amount,
-          payment_method: canonicalMethod,
-          status: 'completed',
-          processed_by: user.id,
-          tenant_id: user.tenant_id
-        }])
-        .select()
-        .single();
+          method: paymentMethod,
+          roomId: checkoutSession.room_id,
+        });
 
-      if (paymentError) {
-        const userMessage = parsePaymentError(paymentError);
-        console.error('[Checkout Payment] Payment error:', paymentError);
-        throw new Error(userMessage);
-      }
+        // Get the reservation
+        const { data: reservations } = await supabase
+          .from('reservations')
+          .select('id')
+          .eq('room_id', checkoutSession.room_id)
+          .eq('status', 'checked_in')
+          .order('check_in_date', { ascending: false })
+          .limit(1);
 
-      console.log('[Checkout Payment] Payment created successfully:', payment.id);
+        const reservation = reservations?.[0];
+        if (!reservation) throw new Error('No active reservation found');
 
-      // Create audit log
-      await supabase
-        .from('audit_log')
-        .insert([{
-          action: 'payment_processed',
-          resource_type: 'payment',
-          resource_id: payment.id,
-          actor_id: user.id,
-          actor_email: user.email,
-          actor_role: user.role,
-          tenant_id: user.tenant_id,
-          description: `Processed ${paymentMethod} payment of ${amount} for folio ${paymentFolioId}`,
-          new_values: { amount, payment_method: paymentMethod }
-        }]);
+        // Get or create folio
+        const { data: paymentFolioId, error: folioError } = await supabase
+          .rpc('get_or_create_folio', {
+            p_reservation_id: reservation.id,
+            p_tenant_id: user.tenant_id
+          });
 
-      // Refetch guest bill to get updated balance from database
-      await fetchGuestBill(checkoutSession.room_id);
-      
-      return true;
+        if (folioError || !paymentFolioId) throw new Error('Failed to get or create folio');
+
+        console.log('[Checkout Payment] Creating payment for folio:', paymentFolioId);
+
+        // Map payment method to canonical database value
+        const canonicalMethod = mapToCanonicalPaymentMethod(paymentMethod);
+        console.log('[Checkout Payment] Mapped payment method:', { original: paymentMethod, canonical: canonicalMethod });
+
+        // Create payment record (triggers will auto-update folio balance and validate)
+        const { data: payment, error: paymentError } = await supabase
+          .from('payments')
+          .insert([{
+            folio_id: paymentFolioId,
+            amount,
+            payment_method: canonicalMethod,
+            status: 'completed',
+            processed_by: user.id,
+            tenant_id: user.tenant_id
+          }])
+          .select()
+          .single();
+
+        if (paymentError) {
+          const userMessage = parsePaymentError(paymentError);
+          console.error('[Checkout Payment] Payment error:', paymentError);
+          throw new Error(userMessage);
+        }
+
+        console.log('[Checkout Payment] Payment created successfully:', payment.id);
+
+        // Create audit log
+        await supabase
+          .from('audit_log')
+          .insert([{
+            action: 'payment_processed',
+            resource_type: 'payment',
+            resource_id: payment.id,
+            actor_id: user.id,
+            actor_email: user.email,
+            actor_role: user.role,
+            tenant_id: user.tenant_id,
+            description: `Processed ${paymentMethod} payment of ${amount} for folio ${paymentFolioId}`,
+            new_values: { amount, payment_method: paymentMethod }
+          }]);
+
+        // Refetch guest bill to get updated balance from database
+        await fetchGuestBill(checkoutSession.room_id);
+        
+        return true;
+      }, 'processPayment');
     } catch (err: any) {
       console.error('Payment processing error:', err);
       setError(err.message || 'Payment processing failed');
@@ -355,125 +357,127 @@ export const useCheckout = (roomId?: string) => {
     }, 30000); // 30 seconds timeout
 
     try {
-      // Phase R.9: Validate token before critical operation
-      await validateAndRefreshToken();
+      // Phase 2: Use protectedMutate wrapper for token validation + client reinit
+      const { protectedMutate } = await import('@/lib/mutation-utils');
       
-      // Phase 2: Use proper FK relationship for active reservation lookup
-      // First try rooms.reservation_id (current active reservation FK)
-      const { data: room, error: roomError } = await supabase
-        .from('rooms')
-        .select(`
-          id,
-          reservation_id,
-          current_reservation:reservations!rooms_reservation_id_fkey(id, status)
-        `)
-        .eq('id', checkoutSession.room_id)
-        .single();
-
-      if (roomError) throw roomError;
-
-      let reservation = (room as any).current_reservation;
-      
-      // Fallback: Query by room_id if FK is null or not checked-in
-      if (!reservation || reservation.status !== 'checked_in') {
-        const { data: reservations, error: reservationError } = await supabase
-          .from('reservations')
-          .select('id, status')
-          .eq('room_id', checkoutSession.room_id)
-          .eq('status', 'checked_in')
-          .order('check_in_date', { ascending: false })
-          .limit(1);
-
-        if (reservationError) throw reservationError;
-        reservation = reservations?.[0];
-      }
-
-      if (!reservation) {
-        throw new Error('No active reservation found');
-      }
-
-      console.log('[Checkout Hook] Found reservation:', reservation.id);
-
-      // Get or create folio for the reservation
-      const { data: folioId, error: folioIdError } = await supabase
-        .rpc('get_or_create_folio', {
-          p_reservation_id: reservation.id,
-          p_tenant_id: user.tenant_id  
-        });
-
-      if (folioIdError || !folioId) {
-        throw new Error('Failed to get or create folio');
-      }
-
-      console.log('[Checkout Hook] Closing folio:', folioId);
-
-      // Execute all updates in sequence with proper error handling
-      const updates = [
-        // Close the folio
-        supabase
-          .from('folios')
-          .update({
-            status: 'closed',
-            closed_by: user.id,
-            closed_at: new Date().toISOString()
-          })
-          .eq('id', folioId),
-
-        // Update reservation status to checked out
-        supabase
-          .from('reservations')
-          .update({
-            status: 'checked_out',
-            checked_out_at: new Date().toISOString(),
-            checked_out_by: user.id
-          })
-          .eq('id', reservation.id),
-
-        // Update room status to dirty (needs cleaning)
-        supabase
+      return await protectedMutate(async () => {
+        // Phase 2: Use proper FK relationship for active reservation lookup
+        // First try rooms.reservation_id (current active reservation FK)
+        const { data: room, error: roomError } = await supabase
           .from('rooms')
-          .update({ status: 'dirty' })
-          .eq('id', checkoutSession.room_id),
+          .select(`
+            id,
+            reservation_id,
+            current_reservation:reservations!rooms_reservation_id_fkey(id, status)
+          `)
+          .eq('id', checkoutSession.room_id)
+          .single();
 
-        // Create audit log
-        supabase
-          .from('audit_log')
-          .insert([{
-            action: 'checkout_completed',
-            resource_type: 'reservation',
-            resource_id: reservation.id,
-            actor_id: user.id,
-            actor_email: user.email,
-            actor_role: user.role,
-            tenant_id: user.tenant_id,
-            description: `Completed checkout for room ${checkoutSession.guest_bill.room_number}`
-          }])
-      ];
+        if (roomError) throw roomError;
 
-      // Execute all updates
-      const results = await Promise.all(updates);
-      
-      // Check for any errors
-      for (const result of results) {
-        if (result.error) {
-          throw new Error(`Update failed: ${result.error.message}`);
+        let reservation = (room as any).current_reservation;
+        
+        // Fallback: Query by room_id if FK is null or not checked-in
+        if (!reservation || reservation.status !== 'checked_in') {
+          const { data: reservations, error: reservationError } = await supabase
+            .from('reservations')
+            .select('id, status')
+            .eq('room_id', checkoutSession.room_id)
+            .eq('status', 'checked_in')
+            .order('check_in_date', { ascending: false })
+            .limit(1);
+
+          if (reservationError) throw reservationError;
+          reservation = reservations?.[0];
         }
-      }
 
-      console.log('[Checkout Hook] Database updates complete');
+        if (!reservation) {
+          throw new Error('No active reservation found');
+        }
 
-      const completedSession: CheckoutSession = {
-        ...checkoutSession,
-        checkout_status: 'completed',
-        handled_by: user.id,
-        completed_at: new Date().toISOString()
-      };
+        console.log('[Checkout Hook] Found reservation:', reservation.id);
 
-      setCheckoutSession(completedSession);
-      clearTimeout(timeoutId);
-      
-      console.log('[Checkout Hook] Checkout completion successful');
-      return true;
+        // Get or create folio for the reservation
+        const { data: folioId, error: folioIdError } = await supabase
+          .rpc('get_or_create_folio', {
+            p_reservation_id: reservation.id,
+            p_tenant_id: user.tenant_id  
+          });
+
+        if (folioIdError || !folioId) {
+          throw new Error('Failed to get or create folio');
+        }
+
+        console.log('[Checkout Hook] Closing folio:', folioId);
+
+        // Execute all updates in sequence with proper error handling
+        const updates = [
+          // Close the folio
+          supabase
+            .from('folios')
+            .update({
+              status: 'closed',
+              closed_by: user.id,
+              closed_at: new Date().toISOString()
+            })
+            .eq('id', folioId),
+
+          // Update reservation status to checked out
+          supabase
+            .from('reservations')
+            .update({
+              status: 'checked_out',
+              checked_out_at: new Date().toISOString(),
+              checked_out_by: user.id
+            })
+            .eq('id', reservation.id),
+
+          // Update room status to dirty (needs cleaning)
+          supabase
+            .from('rooms')
+            .update({ status: 'dirty' })
+            .eq('id', checkoutSession.room_id),
+
+          // Create audit log
+          supabase
+            .from('audit_log')
+            .insert([{
+              action: 'checkout_completed',
+              resource_type: 'reservation',
+              resource_id: reservation.id,
+              actor_id: user.id,
+              actor_email: user.email,
+              actor_role: user.role,
+              tenant_id: user.tenant_id,
+              description: `Completed checkout for room ${checkoutSession.guest_bill.room_number}`
+            }])
+        ];
+
+        // Execute all updates
+        const results = await Promise.all(updates);
+        
+        // Check for any errors
+        for (const result of results) {
+          if (result.error) {
+            throw new Error(`Update failed: ${result.error.message}`);
+          }
+        }
+
+        console.log('[Checkout Hook] Database updates complete');
+
+        const completedSession: CheckoutSession = {
+          ...checkoutSession,
+          checkout_status: 'completed',
+          handled_by: user.id,
+          completed_at: new Date().toISOString()
+        };
+
+        setCheckoutSession(completedSession);
+        clearTimeout(timeoutId);
+        
+        console.log('[Checkout Hook] Checkout completion successful');
+        return true;
+      }, 'completeCheckout');
     } catch (err: any) {
       console.error('[Checkout Hook] Checkout completion error:', err);
       setError(err.message || 'Checkout completion failed');

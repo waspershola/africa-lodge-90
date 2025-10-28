@@ -82,6 +82,7 @@ useVisibilityRehydrate(['front-desk', 'reservations', 'rooms', 'guests', 'folio'
 
 **Applied To:**
 - `src/components/FrontDeskDashboard.tsx` - Main front desk interface
+- `src/pages/owner/Guests.tsx` - Guest management page
 
 ### 4. Enhanced Logging (Priority 4 - Debugging)
 
@@ -178,8 +179,12 @@ User Action
    - `src/hooks/useAfricanReservationSystem.ts` - Wrapped mutations
    - `src/hooks/useVisibilityRehydrate.ts` - NEW hook
 
-3. **Components**
+3. **Components & Pages**
    - `src/components/FrontDeskDashboard.tsx` - Added visibility rehydration
+   - `src/pages/owner/Guests.tsx` - Added visibility rehydration
+   
+4. **Additional Hooks**
+   - `src/hooks/useCancelReservation.ts` - Wrapped with protectedMutate
 
 ## Related Phases
 

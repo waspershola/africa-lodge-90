@@ -20,12 +20,16 @@ import NewGuestDialog from '@/components/owner/guests/NewGuestDialog';
 import CorporateAccounts from '@/components/owner/guests/CorporateAccounts';
 import GuestAnalytics from '@/components/owner/guests/GuestAnalytics';
 import { useGuests } from '@/hooks/useGuests';
+import { useVisibilityRehydrate } from '@/hooks/useVisibilityRehydrate';
 
 export default function GuestsPage() {
   const [activeTab, setActiveTab] = useState('directory');
   const [selectedGuest, setSelectedGuest] = useState<any>(null);
   const [showNewGuestDialog, setShowNewGuestDialog] = useState(false);
   const [showGuestProfile, setShowGuestProfile] = useState(false);
+
+  // Phase 7: Ensure session freshness on tab visibility
+  useVisibilityRehydrate(['guests', 'reservations', 'folios']);
 
   // Load guest data from API
   const { data: guestsData = [] } = useGuests();

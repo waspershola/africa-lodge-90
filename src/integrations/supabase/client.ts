@@ -33,12 +33,20 @@ export async function reinitializeSupabaseClient(): Promise<void> {
   }
   
   if (session) {
+    console.log('[Supabase Client] Session found:', {
+      userId: session.user.id,
+      expiresAt: new Date((session.expires_at || 0) * 1000).toISOString(),
+      timeUntilExpiry: `${Math.floor(((session.expires_at || 0) - Date.now() / 1000) / 60)} minutes`
+    });
+    
     // Force client to use latest session
     await supabase.auth.setSession({
       access_token: session.access_token,
       refresh_token: session.refresh_token
     });
-    console.log('[Supabase Client] Session synchronized');
+    console.log('[Supabase Client] Session synchronized successfully');
+  } else {
+    console.warn('[Supabase Client] No session found - user may need to login');
   }
 }
 

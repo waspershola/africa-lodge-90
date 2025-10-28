@@ -24,10 +24,10 @@ export async function protectedMutate<T>(
     // Step 1: Validate and refresh token
     await validateAndRefreshToken();
     
-    // Step 2: Reinitialize client to ensure it uses latest session
+    // Step 2: **CRITICAL** - Reinitialize client to ensure it uses latest session
     await reinitializeSupabaseClient();
     
-    // Step 3: Execute mutation
+    // Step 3: Execute mutation with fresh context
     const result = await mutateFn();
     
     console.log(`[ProtectedMutate] ${operationName} completed successfully`);
@@ -36,10 +36,12 @@ export async function protectedMutate<T>(
   } catch (error: any) {
     console.error(`[ProtectedMutate] ${operationName} failed:`, error);
     
-    // Check if error is auth-related
+    // Enhanced error detection for auth issues
     if (error?.message?.includes('JWT') || 
         error?.message?.includes('expired') ||
-        error?.message?.includes('Session')) {
+        error?.message?.includes('Session') ||
+        error?.code === 'PGRST301' || // PostgREST auth error
+        error?.status === 401) {
       toast.error('Session expired during operation', {
         description: 'Please log in again to continue.',
         action: {

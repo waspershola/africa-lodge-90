@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { validateAndRefreshToken } from '@/lib/auth-token-validator';
+import { protectedMutate } from '@/lib/mutation-utils';
 
 export interface CreateReservationData {
   guest_name: string;
@@ -255,25 +256,27 @@ export const useUpdateReservation = () => {
 
   return useMutation({
     mutationFn: async (reservationData: UpdateReservationData) => {
-      const { id, ...updateData } = reservationData;
-      
-      // Recalculate total if dates or rate changed
-      if (updateData.check_in_date && updateData.check_out_date && updateData.room_rate) {
-        const checkInDate = new Date(updateData.check_in_date);
-        const checkOutDate = new Date(updateData.check_out_date);
-        const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
-        updateData.total_amount = nights * updateData.room_rate;
-      }
+      return protectedMutate(async () => {
+        const { id, ...updateData } = reservationData;
+        
+        // Recalculate total if dates or rate changed
+        if (updateData.check_in_date && updateData.check_out_date && updateData.room_rate) {
+          const checkInDate = new Date(updateData.check_in_date);
+          const checkOutDate = new Date(updateData.check_out_date);
+          const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
+          updateData.total_amount = nights * updateData.room_rate;
+        }
 
-      const { data, error } = await supabase
-        .from('reservations')
-        .update({ ...updateData, updated_at: new Date().toISOString() })
-        .eq('id', id)
-        .select()
-        .single();
+        const { data, error } = await supabase
+          .from('reservations')
+          .update({ ...updateData, updated_at: new Date().toISOString() })
+          .eq('id', id)
+          .select()
+          .single();
 
-      if (error) throw error;
-      return data;
+        if (error) throw error;
+        return data;
+      }, 'updateReservation');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });

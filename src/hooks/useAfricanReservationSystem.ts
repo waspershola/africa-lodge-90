@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { validateAndRefreshToken } from '@/lib/auth-token-validator';
+import { protectedMutate } from '@/lib/mutation-utils';
 
 interface RoomType {
   id: string;
@@ -248,11 +249,12 @@ export const useHardAssignReservation = () => {
 
   return useMutation({
     mutationFn: async (assignmentData: HardAssignmentData) => {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) throw new Error('Not authenticated');
+      return protectedMutate(async () => {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) throw new Error('Not authenticated');
 
-      const tenant_id = user.user_metadata?.tenant_id;
-      if (!tenant_id) throw new Error('No tenant ID found');
+        const tenant_id = user.user_metadata?.tenant_id;
+        if (!tenant_id) throw new Error('No tenant ID found');
 
       // Verify room is available and clean
       const { data: room, error: roomError } = await supabase
@@ -477,6 +479,7 @@ export const useHardAssignReservation = () => {
       });
 
       return updatedReservation;
+      }, 'hardAssignRoom');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });

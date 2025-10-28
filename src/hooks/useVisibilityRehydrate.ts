@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { rehydrateAll } from '@/lib/rehydration-manager';
 
@@ -22,11 +22,18 @@ export function useVisibilityRehydrate(options?: {
 }) {
   const { onMount = true, queryKeys = [] } = options || {};
   const queryClient = useQueryClient();
+  const hasRehydratedRef = useRef(false);
   
   useEffect(() => {
     const handleRehydrate = async () => {
+      // Prevent multiple rehydrations on mount
+      if (hasRehydratedRef.current) {
+        return;
+      }
+      
       try {
         console.log('[useVisibilityRehydrate] Starting component rehydration');
+        hasRehydratedRef.current = true;
         
         // Use global rehydration manager
         await rehydrateAll();
@@ -43,6 +50,7 @@ export function useVisibilityRehydrate(options?: {
         
       } catch (error) {
         console.warn('[useVisibilityRehydrate] Rehydration failed:', error);
+        hasRehydratedRef.current = false; // Allow retry on error
       }
     };
     
@@ -68,5 +76,6 @@ export function useVisibilityRehydrate(options?: {
     return () => {
       window.removeEventListener('app-rehydrated', handleAppRehydrated);
     };
-  }, [onMount, queryKeys.join(','), queryClient]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only on mount - queryKeys and onMount are intentionally not in deps
 }

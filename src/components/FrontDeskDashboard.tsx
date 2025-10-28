@@ -65,6 +65,7 @@ import { useUnifiedRealtime } from '@/hooks/useUnifiedRealtime';
 import DashboardNotificationBar from '@/components/layout/DashboardNotificationBar';
 import { NetworkStatusIndicator } from '@/components/common/NetworkStatusBanner';
 import { LoadingState } from '@/components/common/LoadingState';
+import { useVisibilityRehydrate } from '@/hooks/useVisibilityRehydrate';
 import type { Room } from "./frontdesk/RoomGrid";
 import { useTenantInfo } from "@/hooks/useTenantInfo";
 import { useAuth } from "@/components/auth/MultiTenantAuthProvider";
@@ -74,6 +75,9 @@ import { useRooms } from "@/hooks/useRooms";
 import { useToast } from "@/hooks/use-toast";
 
 const FrontDeskDashboard = () => {
+  // Phase 2: Rehydrate data when dashboard mounts or becomes visible
+  useVisibilityRehydrate({ onMount: true, queryKeys: ['rooms', 'reservations', 'folios', 'front-desk', 'guests'] });
+  
   const { data: tenantInfo } = useTenantInfo();
   const { logout } = useAuth();
   const navigate = useNavigate();

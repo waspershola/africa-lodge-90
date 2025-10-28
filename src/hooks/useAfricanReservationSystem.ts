@@ -472,9 +472,6 @@ export const useHardAssignReservation = () => {
           }
         });
 
-      // Phase R: Validate token before room type update
-      await validateAndRefreshToken();
-
       // Update room type counts
       await supabase.rpc('update_room_type_counts', {
         p_tenant_id: tenant_id,

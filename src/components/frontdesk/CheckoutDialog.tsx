@@ -11,6 +11,7 @@ import { useAtomicCheckoutV3 } from '@/hooks/useAtomicCheckoutV3';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/auth/MultiTenantAuthProvider';
 import { supabase } from '@/integrations/supabase/client';
+import { useVisibilityRehydrate } from '@/hooks/useVisibilityRehydrate';
 import { BillingOverview } from './BillingOverview';
 import { ServiceSummaryModal } from './ServiceSummaryModal';
 import { PaymentDialog } from './PaymentDialog';
@@ -39,6 +40,9 @@ interface CheckoutDialogProps {
 }
 
 export const CheckoutDialog = ({ open, onOpenChange, roomId, onCheckoutComplete }: CheckoutDialogProps) => {
+  // Phase 2: Rehydrate data when dialog opens to ensure fresh session
+  useVisibilityRehydrate({ onMount: true, queryKeys: ['rooms', 'reservations', 'folios', 'payments'] });
+  
   const { checkoutSession, loading, error, fetchGuestBill, processPayment } = useCheckout(roomId);
   const { checkout, isLoading: isCheckingOut } = useAtomicCheckoutV3();
   const { toast } = useToast();

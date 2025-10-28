@@ -266,10 +266,11 @@ export const useCreateReservation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (reservationData: any) => {
-      // Phase R: Validate token before critical booking operation
-      await validateAndRefreshToken();
+      // Phase 2: Use protectedMutate wrapper
+      const { protectedMutate } = await import('@/lib/mutation-utils');
       
-      const { data, error } = await supabase.rpc('create_reservation_atomic', {
+      return protectedMutate(async () => {
+        const { data, error } = await supabase.rpc('create_reservation_atomic', {
         p_tenant_id: reservationData.tenant_id,
         p_guest_data: {
           first_name: reservationData.guest_first_name,
@@ -291,8 +292,9 @@ export const useCreateReservation = () => {
         }
       });
 
-      if (error) throw new Error(error.message);
-      return data;
+        if (error) throw new Error(error.message);
+        return data;
+      }, 'createReservation');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });

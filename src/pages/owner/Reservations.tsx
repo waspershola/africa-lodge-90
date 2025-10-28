@@ -15,6 +15,7 @@ import EnhancedReservationDetails from '@/components/owner/reservations/Enhanced
 import { useReservations } from '@/hooks/useRooms';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { LoadingState } from '@/components/common/LoadingState';
+import { useVisibilityRehydrate } from '@/hooks/useVisibilityRehydrate';
 
 export default function ReservationsPage() {
   const [view, setView] = useState('calendar');
@@ -25,6 +26,9 @@ export default function ReservationsPage() {
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [page, setPage] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(50);
+
+  // Phase 7: Ensure session freshness on tab visibility
+  useVisibilityRehydrate(['reservations', 'rooms', 'guests', 'folios']);
 
   const handleReservationSelect = useCallback((reservation: any) => {
     setSelectedReservation(reservation);

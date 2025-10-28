@@ -53,6 +53,7 @@ Added critical `reinitializeSupabaseClient()` call before every mutation:
 **Applied To**:
 - ✅ `src/components/FrontDeskDashboard.tsx` - invalidates: front-desk, reservations, rooms, guests, folio
 - ✅ `src/pages/owner/Guests.tsx` - invalidates: guests, reservations, folios
+- ✅ `src/pages/owner/Reservations.tsx` - invalidates: reservations, rooms, guests, folios
 
 ### 4. Enhanced Logging ✅
 **File**: `src/integrations/supabase/client.ts`
@@ -156,6 +157,7 @@ Added detailed session logging in `reinitializeSupabaseClient()`:
 ### Components & Pages
 - ✅ `src/components/FrontDeskDashboard.tsx` - Added visibility rehydration
 - ✅ `src/pages/owner/Guests.tsx` - Added visibility rehydration
+- ✅ `src/pages/owner/Reservations.tsx` - Added visibility rehydration
 
 ### Documentation
 - ✅ `docs/PHASE_7_TOKEN_REFRESH_FIX.md` - Comprehensive fix documentation

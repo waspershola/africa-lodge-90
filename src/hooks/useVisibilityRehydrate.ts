@@ -54,9 +54,13 @@ export function useVisibilityRehydrate(options?: {
       }
     };
     
-    // Run on mount if enabled
+    // Run on mount if enabled - defer to next tick to avoid render-phase updates
+    let timeoutId: NodeJS.Timeout | undefined;
     if (onMount) {
-      handleRehydrate();
+      // Use setTimeout to ensure component has fully mounted before rehydration
+      timeoutId = setTimeout(() => {
+        handleRehydrate();
+      }, 100);
     }
     
     // Listen to global app-rehydrated event
@@ -74,6 +78,7 @@ export function useVisibilityRehydrate(options?: {
     window.addEventListener('app-rehydrated', handleAppRehydrated);
     
     return () => {
+      if (timeoutId) clearTimeout(timeoutId);
       window.removeEventListener('app-rehydrated', handleAppRehydrated);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
